@@ -16,7 +16,7 @@ version: '3.8'
 networks:
   stf-internal:
     driver: bridge
-    internal: false  # Allows outbound for initial pulls, runtime egress controlled via SSRF proxy
+    internal: false # Allows outbound for initial pulls, runtime egress controlled via SSRF proxy
     ipam:
       config:
         - subnet: 172.28.0.0/16
@@ -62,25 +62,13 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dify_user} -d ${POSTGRES_DB:-dify}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dify_user} -d ${POSTGRES_DB:-dify}" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
     command: >
-      postgres
-      -c max_connections=${POSTGRES_MAX_CONNECTIONS:-100}
-      -c shared_buffers=256MB
-      -c effective_cache_size=1GB
-      -c maintenance_work_mem=64MB
-      -c checkpoint_completion_target=0.9
-      -c wal_buffers=16MB
-      -c default_statistics_target=100
-      -c random_page_cost=1.1
-      -c effective_io_concurrency=200
-      -c work_mem=2621kB
-      -c min_wal_size=1GB
-      -c max_wal_size=4GB
+      postgres -c max_connections=${POSTGRES_MAX_CONNECTIONS:-100} -c shared_buffers=256MB -c effective_cache_size=1GB -c maintenance_work_mem=64MB -c checkpoint_completion_target=0.9 -c wal_buffers=16MB -c default_statistics_target=100 -c random_page_cost=1.1 -c effective_io_concurrency=200 -c work_mem=2621kB -c min_wal_size=1GB -c max_wal_size=4GB
 
   # --------------------------------------------------------------------------
   # Redis - Cache and message broker for Dify and diagnostic_api
@@ -98,14 +86,9 @@ services:
     volumes:
       - redis_data:/data
     command: >
-      redis-server
-      --requirepass ${REDIS_PASSWORD}
-      --maxmemory ${REDIS_MAXMEMORY:-512mb}
-      --maxmemory-policy ${REDIS_MAXMEMORY_POLICY:-allkeys-lru}
-      --appendonly yes
-      --appendfsync everysec
+      redis-server --requirepass ${REDIS_PASSWORD} --maxmemory ${REDIS_MAXMEMORY:-512mb} --maxmemory-policy ${REDIS_MAXMEMORY_POLICY:-allkeys-lru} --appendonly yes --appendfsync everysec
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -137,7 +120,7 @@ services:
     volumes:
       - weaviate_data:/var/lib/weaviate
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/v1/.well-known/ready"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/v1/.well-known/ready" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -158,12 +141,13 @@ services:
       - ollama_data:/root/.ollama
     environment:
       OLLAMA_HOST: 0.0.0.0:11434
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+    # Healthcheck removed: curl not available in minimal image
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 60s
     # Uncomment for GPU support on Linux with NVIDIA
     # deploy:
     #   resources:
@@ -173,9 +157,9 @@ services:
     #           count: 1
     #           capabilities: [gpu]
 
-  # --------------------------------------------------------------------------
-  # Dify API - Backend service for Dify workflow orchestration
-  # --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    # Dify API - Backend service for Dify workflow orchestration
+    # --------------------------------------------------------------------------
   dify-api:
     image: langgenius/dify-api:${DIFY_VERSION:-0.6.13}
     container_name: stf-dify-api
@@ -200,14 +184,14 @@ services:
       CONSOLE_API_URL: ${DIFY_CONSOLE_API_URL:-http://dify-api:5001}
       SERVICE_API_URL: ${DIFY_SERVICE_API_URL:-http://dify-api:5001}
       APP_WEB_URL: http://localhost:${DIFY_WEB_PORT:-3000}
-      
+
       # Database
       DB_USERNAME: ${POSTGRES_USER:-dify_user}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_HOST: ${POSTGRES_HOST:-postgres}
       DB_PORT: ${POSTGRES_PORT:-5432}
       DB_DATABASE: ${POSTGRES_DB:-dify}
-      
+
       # Redis
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
@@ -216,27 +200,27 @@ services:
       REDIS_DB: 0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/1
       BROKER_USE_SSL: ${DIFY_REDIS_USE_SSL:-false}
-      
+
       # Storage
       STORAGE_TYPE: ${DIFY_STORAGE_TYPE:-local}
       STORAGE_LOCAL_PATH: ${DIFY_STORAGE_LOCAL_PATH:-/app/storage}
-      
+
       # Vector Store
       VECTOR_STORE: ${DIFY_VECTOR_STORE:-weaviate}
       WEAVIATE_ENDPOINT: ${DIFY_WEAVIATE_ENDPOINT:-http://weaviate:8080}
       WEAVIATE_API_KEY: ${WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS}
-      
+
       # Edition
       EDITION: ${DIFY_EDITION:-SELF_HOSTED}
       DEPLOY_ENV: ${DIFY_DEPLOY_ENV:-PRODUCTION}
-      
+
       # SSRF Protection
       SSRF_PROXY_HTTP_URL: ${DIFY_SSRF_PROXY_HTTP_URL:-}
       SSRF_PROXY_HTTPS_URL: ${DIFY_SSRF_PROXY_HTTP_URL:-}
     volumes:
       - dify_storage:/app/storage
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:5001/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -261,14 +245,14 @@ services:
       MODE: worker
       LOG_LEVEL: INFO
       SECRET_KEY: ${DIFY_SECRET_KEY}
-      
+
       # Database
       DB_USERNAME: ${POSTGRES_USER:-dify_user}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_HOST: ${POSTGRES_HOST:-postgres}
       DB_PORT: ${POSTGRES_PORT:-5432}
       DB_DATABASE: ${POSTGRES_DB:-dify}
-      
+
       # Redis
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
@@ -277,11 +261,11 @@ services:
       REDIS_DB: 0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/1
       BROKER_USE_SSL: ${DIFY_REDIS_USE_SSL:-false}
-      
+
       # Storage
       STORAGE_TYPE: ${DIFY_STORAGE_TYPE:-local}
       STORAGE_LOCAL_PATH: ${DIFY_STORAGE_LOCAL_PATH:-/app/storage}
-      
+
       # Vector Store
       VECTOR_STORE: ${DIFY_VECTOR_STORE:-weaviate}
       WEAVIATE_ENDPOINT: ${DIFY_WEAVIATE_ENDPOINT:-http://weaviate:8080}
@@ -289,7 +273,7 @@ services:
     volumes:
       - dify_storage:/app/storage
     healthcheck:
-      test: ["CMD-SHELL", "celery -A app.celery inspect ping || exit 1"]
+      test: [ "CMD-SHELL", "celery -A app.celery inspect ping || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -314,7 +298,7 @@ services:
       APP_API_URL: ${DIFY_SERVICE_API_URL:-http://dify-api:5001}
       EDITION: ${DIFY_EDITION:-SELF_HOSTED}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      test: [ "CMD", "curl", "-f", "http://localhost:3000" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -340,7 +324,7 @@ services:
       weaviate:
         condition: service_healthy
       ollama:
-        condition: service_healthy
+        condition: service_started
     environment:
       # Database
       DB_HOST: ${POSTGRES_HOST:-postgres}
@@ -348,20 +332,20 @@ services:
       DB_NAME: ${APP_DB_NAME:-stf_diagnosis}
       DB_USER: ${APP_DB_USER:-stf_app_user}
       DB_PASSWORD: ${APP_DB_PASSWORD}
-      
+
       # LLM Configuration
       LLM_ENDPOINT: ${OLLAMA_BASE_URL:-http://ollama:11434}
       LLM_MODEL: ${OLLAMA_DEFAULT_MODEL:-llama3:8b}
-      
+
       # Weaviate Configuration
       WEAVIATE_URL: http://weaviate:8080
       WEAVIATE_API_KEY: ${WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS}
-      
+
       # Logging
       LOG_LEVEL: ${DIAGNOSTIC_API_LOG_LEVEL:-INFO}
       LOG_FORMAT: ${DIAGNOSTIC_API_LOG_FORMAT:-json}
       LOG_FILE: ${DIAGNOSTIC_API_LOG_FILE:-/app/logs/diagnostic_api.log}
-      
+
       # Security
       STRICT_MODE: ${DIAGNOSTIC_API_STRICT_MODE:-true}
       REDACT_PII: ${DIAGNOSTIC_API_REDACT_PII:-true}
@@ -369,7 +353,7 @@ services:
     volumes:
       - diagnostic_api_logs:/app/logs
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 10s
       timeout: 5s
       retries: 3
