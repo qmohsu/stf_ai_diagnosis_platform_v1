@@ -1,51 +1,56 @@
+# Development Plan
+
+## 1. Scope Boundary
 Scope boundary for this plan (so engineers don’t drift)
 
-IN SCOPE (Diagnosis AIH Cloud):
+### 1.1 In Scope (Diagnosis AIH Cloud)
+- Cloud diagnosis API + cloud workflow ("Step 5: specific fault type classified
+  by cloud model upon request").
+- RAG knowledge base for vehicle manuals + maintenance logs used to ground
+  recommendations.
+- Local LLM inference (Ollama/vLLM) + Dify workflow orchestration.
+- Storage of diagnostic records (PostgreSQL recommended; includes user/vehicle/
+  diagnosis/maintenance suggestion tables).
 
-Cloud diagnosis API + cloud workflow ("Step 5: specific fault type classified by cloud model upon request").
+### 1.2 Out of Scope (Phase 1)
+- Edge OBU hardware/software (real-time detection), mobile apps, fleet dashboard
+  UI, location tracking.
+- Training large deep learning models (we’ll build the inference integration
+  seam, not full training).
 
-RAG knowledge base for vehicle manuals + maintenance logs used to ground recommendations.
+## 2. Engineer Order and Dependencies
+### 2.1 Engineer Order (Who Goes First vs Second)
+- Engineer 1 (DevOps / Environment) goes first. Reason: the AI engineer
+  shouldn’t be blocked guessing ports, networks, secrets, and service URLs. You
+  need a stable local “cloud stack” to integrate against.
+- Engineer 2 (Full‑Stack AI Application) goes second (but can start in parallel
+  once DO‑01 is done). Reason: once the base stack is runnable, the AI engineer
+  can implement APIs, RAG ingestion/retrieval, and LLM‑guardrailed diagnosis
+  logic.
 
-Local LLM inference (Ollama/vLLM) + Dify workflow orchestration.
+### 2.2 Critical Path Dependency
+Critical path dependency: DO‑01 → (APP‑01 + APP‑03) → APP‑06 → APP‑08 (Dify
+integration) → INT‑01 (E2E demo).
 
-Storage of diagnostic records (PostgreSQL recommended; includes user/vehicle/diagnosis/maintenance suggestion tables).
-
-OUT OF SCOPE for Phase 1 here:
-
-Edge OBU hardware/software (real-time detection), mobile apps, fleet dashboard UI, location tracking.
-
-Training large deep learning models (we’ll build the inference integration seam, not full training).
-
-Engineer order (who goes first vs second)
-
-Engineer 1 (DevOps / Environment) goes first.
-Reason: the AI engineer shouldn’t be blocked guessing ports, networks, secrets, and service URLs. You need a stable local “cloud stack” to integrate against.
-
- 
-
-Engineer 2 (Full‑Stack AI Application) goes second (but can start in parallel once DO‑01 is done).
-Reason: once the base stack is runnable, the AI engineer can implement APIs, RAG ingestion/retrieval, and LLM‑guardrailed diagnosis logic.
-
- 
-
-Critical path dependency: DO‑01 → (APP‑01 + APP‑03) → APP‑06 → APP‑08 (Dify integration) → INT‑01 (E2E demo).
-
-Shared “Definition of Done” (applies to every ticket)
-
+### 2.3 Definition of Done (Applies to Every Ticket)
 A ticket is DONE only if:
+- It’s merged with docs and tests updated.
+- It respects: raw sensor data stays backend, only derived features/summaries to
+  LLM, PII redaction, Docker network isolation.
 
-It’s merged with docs and tests updated.
+### 2.4 Deviations and ADRs
+If an engineer deviates from the recommended stack (FastAPI/Pydantic/Weaviate/
+Ollama‑or‑vLLM/Dify), they must add an ADR (Architecture Decision Record)
+explaining the alternative and why it's worth it.
 
-It respects: raw sensor data stays backend, only derived features/summaries to LLM, PII redaction, Docker network isolation.
+## 3. Ticket-Style Prompts (Copy/Paste into Jira/GitHub Issues)
+Below are the “perfect prompts” in task-ticket style: task + what to do +
+acceptance criteria. I’m giving them in execution order. Each ticket includes
+owner and dependencies.
 
-If an engineer deviates from the recommended stack (FastAPI/Pydantic/Weaviate/Ollama‑or‑vLLM/Dify), they must add an ADR (Architecture Decision Record) explaining the alternative and why it's worth it.
+### 3.1 DevOps / Environment Engineer Tickets
 
-Ticket-style prompts (copy/paste into Jira/GitHub issues)
-
-Below are the “perfect prompts” in task-ticket style: task + what to do + acceptance criteria.
-I’m giving them in execution order. Each ticket includes owner and dependencies.
-
-DO‑01 — Bootstrap diagnosis cloud stack (Docker Compose)
+#### DO‑01 — Bootstrap diagnosis cloud stack (Docker Compose)
 
 Owner: DevOps / Environment Engineer
 Depends on: none
@@ -112,7 +117,7 @@ No service uses external LLM APIs (local-only inference runtime is present).
 If you strongly disagree with any tool choice:
 Create doc/adr/ADR-001-<topic>.md explaining the alternative, tradeoffs, and migration plan.
 
-DO‑02 — Network isolation + local-only exposure
+#### DO‑02 — Network isolation + local-only exposure
 
 Owner: DevOps / Environment Engineer
 Depends on: DO‑01
@@ -170,7 +175,7 @@ From another machine on the LAN, services are not reachable.
 
 SECURITY_BASELINE.md clearly documents the boundary assumptions and residual risk.
 
-DO‑03 — Local LLM runtime setup + model prefetch
+#### DO‑03 — Local LLM runtime setup + model prefetch
 
 Owner: DevOps / Environment Engineer
 Depends on: DO‑01
@@ -219,7 +224,7 @@ A simple inference or embeddings request works from within the network (smoke-te
 Tool alternatives:
 If Ollama is unstable for your target workflow, propose vLLM (OpenAI-compatible) in an ADR with rationale.
 
-DO‑04 — “One command” smoke test for the stack
+#### DO‑04 — “One command” smoke test for the stack
 
 Owner: DevOps / Environment Engineer
 Depends on: DO‑01, DO‑03
@@ -260,7 +265,7 @@ With stack up: smoke test passes.
 
 With any service down: smoke test fails fast with useful message.
 
-DO‑05 — CI pipeline skeleton (lint + unit tests + “no secrets” guard)
+#### DO‑05 — CI pipeline skeleton (lint + unit tests + “no secrets” guard)
 
 Owner: DevOps / Environment Engineer
 Depends on: DO‑01
@@ -293,8 +298,8 @@ CI triggers on PRs and main branch.
 
 CI fails if formatting/tests fail.
 
-Full‑Stack AI Application Engineer tickets
-APP‑01 — API skeleton with OpenAPI + strict request/response schemas
+### 3.2 Full-Stack AI Application Engineer Tickets
+#### APP‑01 — API skeleton with OpenAPI + strict request/response schemas
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: DO‑01 (so you know service URLs), but you can start locally in parallel.
@@ -350,7 +355,7 @@ Requests with unexpected “raw_*” fields are rejected with 400
 
 /health returns 200
 
-APP‑02 — Postgres persistence model + migrations (diagnosis records)
+#### APP‑02 — Postgres persistence model + migrations (diagnosis records)
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: DO‑01 (Postgres running)
@@ -404,7 +409,7 @@ alembic upgrade head works on a clean DB
 
 /v1/diagnosis/{id} returns the stored record
 
-APP‑03 — Weaviate schema + ingestion CLI for manuals/logs
+#### APP‑03 — Weaviate schema + ingestion CLI for manuals/logs
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: DO‑01 (Weaviate running), DO‑03 (embeddings available)
@@ -471,7 +476,7 @@ A basic query can retrieve relevant chunks
 If you think Weaviate is the wrong choice:
 Write an ADR proposing Qdrant/pgvector/etc with justification (latency, ops simplicity, offline constraints).
 
-APP‑04 — Retrieval service + API endpoint (top‑k with citations)
+#### APP‑04 — Retrieval service + API endpoint (top‑k with citations)
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: APP‑03
@@ -510,7 +515,7 @@ Endpoint returns top_k results with metadata and stable ordering
 
 Basic unit test verifies expected behavior on mocked Weaviate responses
 
-APP‑05 — Expert prompts + JSON schema validators (guardrails)
+#### APP‑05 — Expert prompts + JSON schema validators (guardrails)
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: APP‑01
@@ -572,7 +577,7 @@ Invalid output fails validation with clear reason
 
 Valid output passes and is ready to be stored/returned
 
-APP‑06 — Data boundary enforcement + PII redaction
+#### APP‑06 — Data boundary enforcement + PII redaction
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: APP‑01
@@ -624,7 +629,7 @@ LLM call path receives only derived/allowlisted data (prove via unit test)
 
 Redaction masks PII patterns in text inputs
 
-APP‑07 — LLM client integration (Ollama/vLLM) with retries + JSON repair
+#### APP‑07 — LLM client integration (Ollama/vLLM) with retries + JSON repair
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: DO‑03, APP‑05
@@ -665,7 +670,7 @@ Invalid LLM output does not crash the service
 
 Responses are always either valid schema output or explicit “review required” envelope
 
-APP‑08 — Diagnosis pipeline (“Step 5 on request”) end-to-end
+#### APP‑08 — Diagnosis pipeline (“Step 5 on request”) end-to-end
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: APP‑02, APP‑04, APP‑05, APP‑07
@@ -723,7 +728,7 @@ rag_references
 
 Record is persisted and retrievable by ID
 
-APP‑09 — Technician feedback endpoint (continuous improvement hook)
+#### APP‑09 — Technician feedback endpoint (continuous improvement hook)
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: APP‑02
@@ -761,7 +766,7 @@ Feedback can be submitted and is persisted
 
 Diagnostic record fetch shows feedback status
 
-APP‑10 — Daily report generation (minimal cloud report, not UI)
+#### APP‑10 — Daily report generation (minimal cloud report, not UI)
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: APP‑02, APP‑08
@@ -805,7 +810,7 @@ Report requests return quickly with report_id
 
 Report can be retrieved later with completed status and content
 
-APP‑11 — Dify workflow integration (agentic “front door”)
+#### APP‑11 — Dify workflow integration (agentic “front door”)
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: DO‑01, APP‑08
@@ -849,7 +854,7 @@ Acceptance Criteria:
 
 With stack running, a user can execute the workflow and get a diagnosis result end-to-end.
 
-APP‑12 — Evaluation harness (schema validity + regression tests)
+#### APP‑12 — Evaluation harness (schema validity + regression tests)
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: APP‑08
@@ -888,8 +893,8 @@ python eval/run_eval.py runs locally and produces a report
 
 CI can run evaluation in “mock LLM mode” to avoid flakiness
 
-Integration / finalization tickets (still assigned to one of the two engineers)
-INT‑01 — End-to-end demo script (“one command demo”)
+### 3.3 Integration and Finalization Tickets
+#### INT‑01 — End-to-end demo script (“one command demo”)
 
 Owner: DevOps (primary) + AI Engineer (review)
 Depends on: DO‑04, APP‑08, APP‑11
@@ -922,7 +927,7 @@ Acceptance Criteria:
 
 A new developer can run the demo and see a diagnosis result without manual setup steps.
 
-SEC‑01 — Threat model + security checks for diagnosis cloud
+#### SEC‑01 — Threat model + security checks for diagnosis cloud
 
 Owner: DevOps (primary) + AI Engineer (contributor)
 Depends on: DO‑02, APP‑06
@@ -970,7 +975,7 @@ Threat model identifies top risks and mitigations
 
 Tests fail if boundary enforcement is removed/broken
 
-ADR‑001 — Tooling deviation process (only if needed)
+#### ADR‑001 — Tooling deviation process (only if needed)
 
 Owner: Whoever wants to deviate
 Depends on: none
@@ -1015,12 +1020,9 @@ I based this plan on the repo overview + your application/presentation materials
 
 If you want, I can also convert these into a ready-to-import backlog format (CSV for Jira / GitHub Issues) — but the content above is already written as copy/paste ticket prompts.
 
-Sources
-
-Review development plan
-
-1) UM4MDC consistency review (conflicts + what to fix)
-
+## 4. Sources and Review Notes
+### 4.1 Review Development Plan
+#### 4.1.1 UM4MDC Consistency Review (Conflicts + What to Fix)
 I reviewed these four rule files in your folder:
 
 base.mdc (alwaysApply: true)
@@ -1031,7 +1033,7 @@ dev-ops-env-setup-engineer.mdc (scoped by globs)
 
 full-stack-ai-application-engineer.mdc (scoped by globs)
 
-A. Real conflicts (you should resolve before engineers start)
+##### A. Real Conflicts (You Should Resolve Before Engineers Start)
 Conflict 1 — Python line-length & formatter expectations
 
 base.mdc requires line length <= 80 chars.
@@ -1091,8 +1093,7 @@ Make python-style-guide.mdc explicitly subordinate by adding one rule at the top
 
 Or set python-style-guide.mdc to alwaysApply: false and let the full-stack role doc enforce Python style within code globs.
 
-B. Non-conflicts (looks good)
-
+##### B. Non-Conflicts (Looks Good)
 These parts are consistent across docs and are “good to go”:
 
 Local-first / no internet at runtime: consistent.
@@ -1105,14 +1106,12 @@ Pinned versions / no secrets committed: consistent.
 
 Testing expectations (schema, redaction, error handling): consistent.
 
-Bottom line on UM4MDC readiness
-
+##### Bottom Line on UM4MDC Readiness
 You’re almost good to go, but I would fix the two hard conflicts (line length + Nginx optional/mandatory) now. After that, these rule docs are strong enough to drive a clean development plan.
 
  
 
-Links for your team to open directly:
-
+##### Links for Your Team to Open Directly
 base.mdc
 
 python-style-guide.mdc
@@ -1121,8 +1120,7 @@ dev-ops-env-setup-engineer.mdc
 
 full-stack-ai-application-engineer.mdc
 
-2) Phase 1 scope (what this plan will build)
-
+#### 4.1.2 Phase 1 Scope (What This Plan Will Build)
 Per your instruction, this backlog focuses only on the Diagnosis AIH cloud computing system portion:
 
  
@@ -1147,8 +1145,7 @@ Mobile apps / web dashboard product UI (beyond Dify UI)
 
 Training deep temporal models (Transformer/LSTM) on real sensor streams
 
-3) Engineer order and dependency rules
-
+#### 4.1.3 Engineer Order and Dependency Rules
 You asked “who goes first” and “who goes second”:
 
 Engineer 1 — DevOps Environment Engineer goes first
@@ -1169,11 +1166,10 @@ Environment variable names and service hostnames inside Docker network
 
 To prevent blocking, DevOps will stand up the stack with a stub diagnostic_api first; the AI engineer then replaces it with real implementation.
 
-4) Detailed development plan — ticket-style prompts (DevOps Engineer)
-
+#### 4.1.4 Detailed Development Plan - Ticket-Style Prompts (DevOps Engineer)
 Each ticket below is written as a “task ticket prompt” your engineer can follow directly.
 
-DEVOPS-001 — Bootstrap local-first Docker network + port exposure policy
+#### DEVOPS-001 — Bootstrap local-first Docker network + port exposure policy
 
 Owner: DevOps Environment Engineer
 Depends on: none
@@ -1217,7 +1213,7 @@ Prompt (copy/paste to engineer)
 
 You are the DevOps engineer. Implement /infra/docker-compose.yml with an internal Docker network and localhost-only port bindings. Ensure only the UI ingress is exposed on 127.0.0.1. Provide the final compose file, explain which ports are exposed and why, and include run commands and verification commands.
 
-DEVOPS-002 — Stand up Dify (pinned release) + Postgres + Redis
+#### DEVOPS-002 — Stand up Dify (pinned release) + Postgres + Redis
 
 Owner: DevOps Environment Engineer
 Depends on: DEVOPS-001
@@ -1254,7 +1250,7 @@ Prompt
 
 Add Dify to /infra/docker-compose.yml using official images pinned to a specific release tag. Add Postgres + Redis with persistent volumes. Bind Dify web to 127.0.0.1 only. Produce /infra/.env.example with documented variables. Include a short “how to verify Dify is up” checklist.
 
-DEVOPS-003 — Add Weaviate (pinned) with persistence + readiness check
+#### DEVOPS-003 — Add Weaviate (pinned) with persistence + readiness check
 
 Owner: DevOps Environment Engineer
 Depends on: DEVOPS-001
@@ -1286,7 +1282,7 @@ Prompt
 
 Add Weaviate to docker-compose with pinned version and persistent storage. Ensure it is only reachable inside the Docker network. Provide health check configuration and a simple curl command to validate readiness from host (if port is exposed locally, it must still be bound to 127.0.0.1 only).
 
-DEVOPS-004 — Provide local LLM endpoint connectivity (Ollama preferred)
+#### DEVOPS-004 — Provide local LLM endpoint connectivity (Ollama preferred)
 
 Owner: DevOps Environment Engineer
 Depends on: DEVOPS-001
@@ -1318,7 +1314,7 @@ Prompt
 
 Implement and document how Docker containers reach a local LLM endpoint (Ollama preferred). Provide OS-specific notes (Linux vs Docker Desktop). Add .env.example variables for LLM_BASE_URL and model name. Provide a verification step that runs from inside a container.
 
-DEVOPS-005 — Add stub diagnostic_api service + health route check
+#### DEVOPS-005 — Add stub diagnostic_api service + health route check
 
 Owner: DevOps Environment Engineer
 Depends on: DEVOPS-001
@@ -1346,7 +1342,7 @@ Prompt
 
 Add a diagnostic_api service to docker-compose. If the real app isn’t ready, use a minimal FastAPI stub that exposes /health. Ensure the service is reachable by other containers via Docker DNS. Document the internal URL.
 
-DEVOPS-006 — SSRF / egress control baseline for Dify
+#### DEVOPS-006 — SSRF / egress control baseline for Dify
 
 Owner: DevOps Environment Engineer
 Depends on: DEVOPS-002, DEVOPS-005, DEVOPS-003, DEVOPS-004
@@ -1378,7 +1374,7 @@ Prompt
 
 Configure Dify SSRF proxy / outbound restrictions so runtime egress is limited to internal services and the local LLM endpoint. Document exact allowlist rules and how to test both allowed and blocked outbound requests.
 
-DEVOPS-007 — Create /docs/LOCAL_SETUP.md
+#### DEVOPS-007 — Create /docs/LOCAL_SETUP.md
 
 Owner: DevOps Environment Engineer
 Depends on: DEVOPS-002..006
@@ -1404,7 +1400,7 @@ Prompt
 
 Write /docs/LOCAL_SETUP.md with step-by-step commands to install prerequisites, configure .env, start Docker Compose, start Ollama, and verify each service. Include a troubleshooting section and minimum laptop specs.
 
-DEVOPS-008 — Create /docs/SECURITY_BASELINE.md
+#### DEVOPS-008 — Create /docs/SECURITY_BASELINE.md
 
 Owner: DevOps Environment Engineer
 Depends on: DEVOPS-001..006
@@ -1432,7 +1428,7 @@ Prompt
 
 Write /docs/SECURITY_BASELINE.md describing local-only exposure, internal networks, SSRF restrictions, secrets handling, and the privacy boundary: never send raw sensor data to LLM. Include a short “audit checklist” someone can run before demo.
 
-DEVOPS-009 — Smoke test script (health + schema + retrieval + logging)
+#### DEVOPS-009 — Smoke test script (health + schema + retrieval + logging)
 
 Owner: DevOps Environment Engineer
 Depends on: DEVOPS-003, DEVOPS-005, DEVOPS-007
@@ -1468,7 +1464,7 @@ Prompt
 
 Implement a smoke test script that verifies the full local stack. The script must fail fast on missing dependencies and print actionable errors. It must validate at least one schema-valid diagnostic JSON response and verify a persisted log record exists.
 
-DEVOPS-010 — Replace stub with real app build integration
+#### DEVOPS-010 — Replace stub with real app build integration
 
 Owner: DevOps Environment Engineer
 Depends on: AIAPP-002 (below)
@@ -1496,8 +1492,8 @@ Prompt
 
 Switch diagnostic_api service to build from the repository source. Ensure dependencies are pinned, build is reproducible, and the smoke test passes.
 
-5) Detailed development plan — ticket-style prompts (Full-Stack AI App Engineer)
-AIAPP-001 — Define strict JSON schema v1.0 + Pydantic models
+#### 4.1.5 Detailed Development Plan - Ticket-Style Prompts (Full-Stack AI App Engineer)
+#### AIAPP-001 — Define strict JSON schema v1.0 + Pydantic models
 
 Owner: Full-Stack AI Application Engineer
 Depends on: none (but should align with DevOps stub routes)
@@ -1538,7 +1534,7 @@ Prompt
 
 Implement strict JSON schema v1.0 for the diagnostic expert output, plus matching Pydantic models. Enforce citations (doc_id#section) for any recommendation, or NO_SOURCE with an explicit uncertainty statement. Provide a small Python validator function and at least 3 unit tests: valid output, missing citation, invalid type.
 
-AIAPP-002 — Build diagnostic_api FastAPI skeleton (health + version + typed errors)
+#### AIAPP-002 — Build diagnostic_api FastAPI skeleton (health + version + typed errors)
 
 Owner: Full-Stack AI Application Engineer
 Depends on: DEVOPS-005 (stub exists) but can proceed independently
@@ -1574,7 +1570,7 @@ Prompt
 
 Create a FastAPI app in /diagnostic_api with /health and /version. Use Pydantic models for responses. Add structured JSON logging scaffolding. Include run commands, a minimal Dockerfile if appropriate, and unit tests for /health.
 
-AIAPP-003 — Implement privacy boundary + PII redaction module
+#### AIAPP-003 — Implement privacy boundary + PII redaction module
 
 Owner: Full-Stack AI Application Engineer
 Depends on: AIAPP-002
@@ -1610,7 +1606,7 @@ Prompt
 
 Implement redact_pii(text: str) -> str and wire it into request handling so user-entered text is redacted before logging and before prompt building. Add tests for phone/email/name-like patterns. Document limitations (it won’t be perfect, but must be deterministic and safe-by-default).
 
-AIAPP-004 — Implement persistent interaction logging (Phase 1.5-ready)
+#### AIAPP-004 — Implement persistent interaction logging (Phase 1.5-ready)
 
 Owner: Full-Stack AI Application Engineer
 Depends on: AIAPP-002, AIAPP-003
@@ -1656,7 +1652,7 @@ Prompt
 
 Implement persistent JSON logging for each diagnosis request. Logs must be training-ready: include redacted inputs, retrieved chunk metadata (doc_id#section), tool outputs, final JSON, and validation results. Ensure logs persist via Docker volume. Add tests that assert sensitive fields are not present.
 
-AIAPP-005 — Implement Weaviate retrieval client + /v1/rag/retrieve
+#### AIAPP-005 — Implement Weaviate retrieval client + /v1/rag/retrieve
 
 Owner: Full-Stack AI Application Engineer
 Depends on: DEVOPS-003 (Weaviate exists), AIAPP-002
@@ -1688,7 +1684,7 @@ Prompt
 
 Implement /v1/rag/retrieve that queries Weaviate and returns top-k chunks with doc_id, section_anchor, text, and score. Enforce presence of citation metadata. Add unit tests using mocks, plus an integration test that can run when Weaviate is available.
 
-AIAPP-006 — Implement document ingestion pipeline (Phase 1 seed corpus)
+#### AIAPP-006 — Implement document ingestion pipeline (Phase 1 seed corpus)
 
 Owner: Full-Stack AI Application Engineer
 Depends on: DEVOPS-003, AIAPP-005
@@ -1718,7 +1714,7 @@ Prompt
 
 Build a CLI ingestion pipeline that takes a folder of documents, chunks them, assigns doc_id and section_anchor, and upserts into Weaviate. Document the chunking parameters and provide a small sample corpus so the pipeline is demoable immediately.
 
-AIAPP-007 — Prompt templates for strict JSON + citation discipline
+#### AIAPP-007 — Prompt templates for strict JSON + citation discipline
 
 Owner: Full-Stack AI Application Engineer
 Depends on: AIAPP-001, AIAPP-005
@@ -1750,7 +1746,7 @@ Prompt
 
 Write prompt templates that produce strict JSON matching schema v1.0. The prompt must enforce citation discipline and forbid raw sensor data in context. Provide at least 2 example prompt+expected-output pairs (goldens) and add tests that validate the example outputs against the schema.
 
-AIAPP-008 — /v1/vehicle/diagnose: orchestrate summarize → retrieve → LLM → validate → log
+#### AIAPP-008 — /v1/vehicle/diagnose: orchestrate summarize → retrieve → LLM → validate → log
 
 Owner: Full-Stack AI Application Engineer
 Depends on: AIAPP-001..007
@@ -1798,7 +1794,7 @@ Prompt
 
 Implement /v1/vehicle/diagnose as the Phase 1 cloud diagnosis endpoint. Inputs must be summaries only (no raw waveforms/audio/video/full GNSS). The endpoint must: redact PII, retrieve supporting SOP/manual chunks from Weaviate, call the local LLM, validate the JSON output against schema v1.0, attempt a single repair if invalid, then persist a structured log. Add unit tests for validation failure and repair behavior.
 
-AIAPP-009 — Validation + “repair once” mechanism
+#### AIAPP-009 — Validation + “repair once” mechanism
 
 Owner: Full-Stack AI Application Engineer
 Depends on: AIAPP-001, AIAPP-007, AIAPP-008
@@ -1836,7 +1832,7 @@ Prompt
 
 Add a schema validation layer and a single-attempt repair flow. If the model output fails validation, call a “repair” prompt once; if it still fails, return a schema-valid failure response with explicit limitations. Add tests for each failure mode and confirm no infinite loops.
 
-AIAPP-010 — Dify workflow export that uses the diagnostic_api tools
+#### AIAPP-010 — Dify workflow export that uses the diagnostic_api tools
 
 Owner: Full-Stack AI Application Engineer
 Depends on: DEVOPS-002, DEVOPS-006, AIAPP-008
@@ -1866,7 +1862,7 @@ Prompt
 
 Build and export a Dify workflow for Phase 1 “cloud diagnosis”. The workflow should collect inputs (vehicle summary + symptoms), call /v1/rag/retrieve, call the local LLM with the strict JSON prompt, validate/repair via the API, and return the final JSON. Export the workflow file into the repo and document import/run steps.
 
-6) The “good enough” integration sequence (so nobody blocks)
+#### 4.1.6 The "Good Enough" Integration Sequence (So Nobody Blocks)
 
 If you want the shortest path to a working demo:
 
