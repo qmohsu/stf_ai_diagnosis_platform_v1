@@ -1,0 +1,40 @@
+# ============================================================================
+# STF AI Diagnosis Platform - Diagnostic API Dependencies
+# Author: Li-Ta Hsu
+# Date: January 2026
+# ============================================================================
+# Pinned versions for reproducibility (Phase 1)
+# ============================================================================
+
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Database
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.25
+
+# Vector Store
+weaviate-client==4.4.1
+
+# LLM Integration
+openai==1.10.0  # OpenAI-compatible client for Ollama
+httpx==0.26.0
+
+# Utilities
+python-dotenv==1.0.0
+python-multipart==0.0.6
+
+# Logging
+structlog==24.1.0
+
+# Validation
+email-validator==2.1.0
+phonenumbers==8.13.28
+
+# Testing (optional, for development)
+pytest==7.4.4
+pytest-asyncio==0.23.3
+httpx==0.26.0

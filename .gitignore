@@ -1,12 +1,19 @@
-# Byte-compiled / optimized / DLL files
+# ============================================================================
+# STF AI Diagnosis Platform - Git Ignore Rules
+# Author: Li-Ta Hsu
+# Date: January 2026
+# ============================================================================
+
+# Environment Variables (NEVER commit secrets!)
+.env
+*.env
+!.env.example
+
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -20,107 +27,21 @@ parts/
 sdist/
 var/
 wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-PIPFILE.lock
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
+MANIFEST
+*.pytest_cache
+.coverage
 htmlcov/
 .tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
 .hypothesis/
-.pytest_cache/
 
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# PEP 582
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.venv
-env/
+# Virtual Environments
 venv/
 ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
+env/
+.venv
 
 # IDEs
 .vscode/
@@ -128,40 +49,44 @@ dmypy.json
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
-Thumbs.db
-
-# Project-specific
-# Raw sensor data (never commit)
-data/raw/
-data/sensor_logs/
-*.wav
-*.bin
-*.pcap
-
-# Model weights and checkpoints
-*.pth
-*.h5
-*.ckpt
-*.safetensors
-models/checkpoints/
 
 # Logs
-logs/
 *.log
+logs/
+*.log.*
 
-# Docker volumes
-volumes/
+# Backups
+infra/backups/
+*.tar.gz
+*.zip
+*.bak
+
+# Docker volumes (local)
+.docker-volumes/
+
+# Jupyter Notebooks
+.ipynb_checkpoints
 
 # Temporary files
+*.tmp
+*.temp
 tmp/
 temp/
-*.tmp
 
-# API keys and secrets
-.env.local
-.env.production
-secrets/
-credentials.json
+# OS-specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Spotlight-V100
+.Trashes
+
+# Project-specific
+training/datasets/*.json
+training/datasets/*.jsonl
+!training/datasets/README.md
+diagnostic_api/app/logs/
+*.db
+*.sqlite
+*.sqlite3
