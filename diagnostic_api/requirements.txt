@@ -15,6 +15,7 @@ pydantic-settings==2.1.0
 # Database
 psycopg2-binary==2.9.9
 sqlalchemy==2.0.25
+alembic==1.13.1
 
 # Vector Store
 weaviate-client==4.4.1

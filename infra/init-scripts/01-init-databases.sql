@@ -16,13 +16,16 @@ DO
 $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_user WHERE usename = 'stf_app_user') THEN
-        CREATE USER stf_app_user WITH PASSWORD 'CHANGEME';
+        CREATE USER stf_app_user WITH PASSWORD 'local_dev_password';
     END IF;
 END
 $$;
 
 -- Grant privileges on application database
 GRANT ALL PRIVILEGES ON DATABASE stf_diagnosis TO stf_app_user;
+-- Grant schema usage (required for Postgres 15+)
+\c stf_diagnosis
+GRANT ALL ON SCHEMA public TO stf_app_user;
 
 -- Connect to application database and set up schema
 \c stf_diagnosis

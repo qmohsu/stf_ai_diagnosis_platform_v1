@@ -5,7 +5,7 @@ Date: January 2026
 
 This is a Phase 1 stub implementation that provides:
 - Health check endpoint
-- Placeholder diagnostic endpoint
+- Placeholder diagnostic endpoint (with Postgres persistence)
 - Placeholder RAG retrieval endpoint
 
 Full implementation will be completed in subsequent phases.
@@ -16,10 +16,14 @@ import uuid
 from datetime import datetime
 from typing import Dict
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.db.session import SessionLocal, engine
+from app.db import base
+from app import crud
 from app.models import (
     DiagnosticRequest,
     DiagnosticResponse,
@@ -29,6 +33,7 @@ from app.models import (
     RAGRetrieveResponse,
     SubsystemRisk,
 )
+from app import models_db
 
 # Configure logging
 logging.basicConfig(
@@ -56,6 +61,15 @@ app.add_middleware(
 )
 
 
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 @app.on_event("startup")
 async def startup_event() -> None:
     """Application startup handler.
@@ -80,7 +94,6 @@ async def shutdown_event() -> None:
 
     Performs cleanup tasks:
     - Log shutdown message
-    - Close database connections
     """
     logger.info(f"Shutting down {settings.app_name}")
 
@@ -143,31 +156,32 @@ async def health_check() -> HealthResponse:
 )
 async def diagnose_vehicle(
     request: DiagnosticRequest,
+    db: Session = Depends(get_db),
 ) -> DiagnosticResponse:
     """Perform vehicle diagnostics.
 
-    This is a Phase 1 stub implementation that returns mock data.
-    Full implementation will integrate with:
-    - Local LLM (Ollama)
-    - RAG retrieval (Weaviate)
-    - Sensor data processing
+    This is a Phase 1.5 implementation that:
+    1. Persists the request to Postgres (PENDING)
+    2. Runs stub logic (returning mock data)
+    3. Persists the result to Postgres (COMPLETED)
 
     Args:
         request: Diagnostic request with vehicle ID and time range
+        db: Database session
 
     Returns:
         Diagnostic response with risk assessments and recommendations
-
-    Raises:
-        HTTPException: If request validation fails or processing error
     """
     logger.info(
         f"Diagnostic request for vehicle: {request.vehicle_id}"
     )
 
-    # Phase 1 stub: Return mock diagnostic response
-    session_id = uuid.uuid4()
+    # 1. Persist Request (PENDING)
+    db_session = crud.create_diagnostic_session(db, request)
 
+    # 2. Run Diagnosis (Logic Placeholder)
+    # Phase 2 will integrate LLM/RAG here.
+    
     # Mock subsystem risk assessment
     subsystem_risks = [
         SubsystemRisk(
@@ -196,9 +210,9 @@ async def diagnose_vehicle(
         "Limited sensor data available for time range",
         "Phase 1 stub - using mock data",
     ]
-
-    return DiagnosticResponse(
-        session_id=session_id,
+    
+    response = DiagnosticResponse(
+        session_id=db_session.id,
         vehicle_id=request.vehicle_id,
         timestamp=datetime.utcnow(),
         subsystem_risks=subsystem_risks,
@@ -207,6 +221,37 @@ async def diagnose_vehicle(
         limitations=limitations,
         confidence=0.75,
     )
+
+    # 3. Persist Result (COMPLETED)
+    crud.update_diagnostic_result(db, db_session.id, response)
+
+    return response
+
+
+@app.get(
+    "/v1/vehicle/diagnose/{session_id}",
+    response_model=DiagnosticResponse,
+    tags=["Diagnostics"],
+    status_code=status.HTTP_200_OK,
+)
+async def get_diagnosis_result(
+    session_id: uuid.UUID,
+    db: Session = Depends(get_db),
+) -> DiagnosticResponse:
+    """Retrieve a past diagnosis result by session ID."""
+    db_session = crud.get_diagnostic_session(db, session_id)
+    if not db_session:
+        raise HTTPException(status_code=404, detail="Diagnosis session not found")
+        
+    if db_session.status != "COMPLETED" or not db_session.result_payload:
+         raise HTTPException(status_code=400, detail="Diagnosis processing not complete")
+         
+    # Reconstruct Pydantic model from stored JSON
+    try:
+        return DiagnosticResponse(**db_session.result_payload)
+    except Exception as e:
+        logger.error(f"Failed to parse stored result: {e}")
+        raise HTTPException(status_code=500, detail="Corrupted session data")
 
 
 @app.post(
@@ -222,15 +267,6 @@ async def retrieve_rag_chunks(
 
     This is a Phase 1 stub implementation that returns mock data.
     Full implementation will query Weaviate for relevant chunks.
-
-    Args:
-        request: RAG retrieval request with query and parameters
-
-    Returns:
-        Retrieved chunks with doc_id#section metadata
-
-    Raises:
-        HTTPException: If retrieval fails
     """
     logger.info(f"RAG retrieval request: {request.query}")
 
