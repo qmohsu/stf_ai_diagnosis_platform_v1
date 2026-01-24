@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STF AI Diagnosis Platform - Data Schema</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; max-width: 1000px; margin: 0 auto; padding: 20px; color: #333; }
+        h1 { border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        h2 { color: #0056b3; margin-top: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; font-weight: 600; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        code { background-color: #e9ecef; padding: 2px 4px; border-radius: 4px; font-family: Consolas, monospace; color: #d63384; }
+        .section-box { border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+        .pk { background-color: #ffd700; color: #000; }
+        .fk { background-color: #17a2b8; color: #fff; }
+    </style>
+</head>
+<body>
+
+    <h1>STF AI Diagnosis Platform - Data Schema</h1>
+    <p>This document details the data models used in the application layer, covering both the relational database (PostgreSQL) and the vector database (Weaviate).</p>
+
+    <h2>1. Relational Database (PostgreSQL)</h2>
+    <div class="section-box">
+        <h3>1.1. vehicles</h3>
+        <p><strong>Purpose:</strong> Registry of all unique vehicles known to the system.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Attributes</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>id</code></td>
+                    <td>VARCHAR(50)</td>
+                    <td><span class="badge pk">PK</span></td>
+                    <td>Unique identifier (VIN).</td>
+                </tr>
+                <tr>
+                    <td><code>make</code></td>
+                    <td>VARCHAR(50)</td>
+                    <td>Nullable</td>
+                    <td>Manufacturer (e.g., Toyota, Ford).</td>
+                </tr>
+                <tr>
+                    <td><code>model</code></td>
+                    <td>VARCHAR(50)</td>
+                    <td>Nullable</td>
+                    <td>Model name (e.g., Camry, F-150).</td>
+                </tr>
+                <tr>
+                    <td><code>year</code></td>
+                    <td>INTEGER</td>
+                    <td>Nullable</td>
+                    <td>Manufacturing year.</td>
+                </tr>
+                <tr>
+                    <td><code>created_at</code></td>
+                    <td>TIMESTAMP</td>
+                    <td>Default: UTC Now</td>
+                    <td>Record creation timestamp.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>1.2. diagnostic_sessions</h3>
+        <p><strong>Purpose:</strong> Stores individual diagnostic interactions, including the raw request and the final analysis.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Attributes</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>id</code></td>
+                    <td>UUID</td>
+                    <td><span class="badge pk">PK</span></td>
+                    <td>Unique session identifier.</td>
+                </tr>
+                <tr>
+                    <td><code>vehicle_id</code></td>
+                    <td>VARCHAR(50)</td>
+                    <td><span class="badge fk">FK</span> -> vehicles.id</td>
+                    <td>The vehicle being diagnosed.</td>
+                </tr>
+                <tr>
+                    <td><code>status</code></td>
+                    <td>VARCHAR(20)</td>
+                    <td>Indexed</td>
+                    <td>Session state: <code>PENDING</code>, <code>COMPLETED</code>, <code>FAILED</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>request_payload</code></td>
+                    <td>JSONB</td>
+                    <td>Not Null</td>
+                    <td>Complete input payload (time range, subsystems, etc).</td>
+                </tr>
+                <tr>
+                    <td><code>result_payload</code></td>
+                    <td>JSONB</td>
+                    <td>Nullable</td>
+                    <td>Complete output payload (risk structure, recommendations).</td>
+                </tr>
+                <tr>
+                    <td><code>risk_score</code></td>
+                    <td>FLOAT</td>
+                    <td>Nullable</td>
+                    <td>Extracted aggregate risk metric (0.0 - 1.0).</td>
+                </tr>
+                <tr>
+                    <td><code>created_at</code></td>
+                    <td>TIMESTAMP</td>
+                    <td>Default: UTC Now</td>
+                    <td>Session start time.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>1.3. users</h3>
+        <p><strong>Purpose:</strong> Basic user registry for authentication/authorization.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Attributes</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>id</code></td>
+                    <td>UUID</td>
+                    <td><span class="badge pk">PK</span></td>
+                    <td>Unique user identifier.</td>
+                </tr>
+                <tr>
+                    <td><code>username</code></td>
+                    <td>VARCHAR(50)</td>
+                    <td>Unique, Indexed</td>
+                    <td>Login username.</td>
+                </tr>
+                <tr>
+                    <td><code>email</code></td>
+                    <td>VARCHAR(255)</td>
+                    <td>Unique, Indexed</td>
+                    <td>User email address.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h2>2. Vector Database (Weaviate)</h2>
+    <div class="section-box">
+        <h3>2.1. KnowledgeChunk</h3>
+        <p><strong>Purpose:</strong> Stores chunked text from manuals and maintenance logs for Semantic Search (RAG).</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Property</th>
+                    <th>Data Type</th>
+                    <th>Tokenization</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>text</code></td>
+                    <td>text</td>
+                    <td>whitespace</td>
+                    <td>The actual content chunk (e.g., a specific diagnostic procedure).</td>
+                </tr>
+                <tr>
+                    <td><code>doc_id</code></td>
+                    <td>text</td>
+                    <td>field</td>
+                    <td>Filename or unique ID of the source document.</td>
+                </tr>
+                <tr>
+                    <td><code>source_type</code></td>
+                    <td>text</td>
+                    <td>-</td>
+                    <td>Origin tag: <code>manual</code> or <code>log</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>section_title</code></td>
+                    <td>text</td>
+                    <td>-</td>
+                    <td>Header/Section context (e.g., "Fuel System").</td>
+                </tr>
+                <tr>
+                    <td><code>chunk_index</code></td>
+                    <td>int</td>
+                    <td>-</td>
+                    <td>Order of chunk in original document.</td>
+                </tr>
+                <tr>
+                    <td><code>vector</code></td>
+                    <td>vector[]</td>
+                    <td>-</td>
+                    <td>4096-dim embedding generated by Llama3 (via Ollama).</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>
