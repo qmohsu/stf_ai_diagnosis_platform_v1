@@ -38,6 +38,8 @@ COPY --from=builder /root/.local /root/.local
 
 # Copy application code
 COPY app/ /app/app/
+COPY data/ /app/data/
+
 
 # Create logs directory
 RUN mkdir -p /app/logs
