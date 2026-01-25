@@ -30,11 +30,18 @@ class PIIRedactor:
         "logs"    # e.g. maintenance logs strings
     }
 
+    # Max characters allow per string field (prevent ReDoS and context overflow)
+    MAX_TEXT_LENGTH = 10000
+
     @staticmethod
     def redact_text(text: str) -> str:
         """Redact PII from a string."""
         if not text:
             return ""
+        
+        # Prevent ReDoS / resource exhaustion
+        if len(text) > PIIRedactor.MAX_TEXT_LENGTH:
+            text = text[:PIIRedactor.MAX_TEXT_LENGTH] + " ... [TRUNCATED_DUE_TO_SIZE]"
         
         # Redact emails
         text = re.sub(PIIRedactor.EMAIL_PATTERN, "[EMAIL_REDACTED]", text)
