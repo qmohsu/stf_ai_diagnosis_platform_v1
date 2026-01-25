@@ -14,6 +14,10 @@ class Chunker:
         # Simple splitting by newlines for now, or fixed size
         # This is a basic implementation. 
         # For production, use recursive character splitter or similar.
+        # TODO (OPT-01): Upgrade to Recursive/Semantic Chunking.
+        # - Implement LangChain's RecursiveCharacterTextSplitter logic.
+        # - Add semantic splitting based on sentence similarity.
+        # - Respect Markdown headers (#, ##) to preserve context.
         
         words = text.split()
         chunks = []

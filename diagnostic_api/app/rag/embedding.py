@@ -14,6 +14,9 @@ class EmbeddingService:
         # But if user has llama3, we can try to use it (though it's slow/not ideal for embeddings)
         # OR we assume 'nomic-embed-text' is pulled.
         # Let's stick to the configured model but 'nomic-embed-text' is recommended.
+        # TODO (OPT-02): Switch to 'nomic-embed-text' or 'bge-m3' for production.
+        # - Update `OLLAMA_DEFAULT_MODEL` in .env
+        # - Re-run ingestion to regenerate vectors.
 
     async def get_embedding(self, text: str) -> List[float]:
         """Generate embedding for text."""

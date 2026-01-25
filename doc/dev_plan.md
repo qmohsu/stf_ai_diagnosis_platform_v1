@@ -1877,3 +1877,37 @@ AI Engineer: AIAPP-009 → 010
 DevOps: DEVOPS-010 (wire real build)
 
 That order gets you: local runnable system + one end-to-end diagnosis flow + logs.
+
+### 5. Future Optimizations (Quality Phase)
+
+#### OPT-01 — Advanced RAG Chunking
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP-03
+Reference: [Chunking Best Practices](https://example.com/chunking)
+
+PROMPT (task ticket):
+Title: OPT-01 Upgrade to Recursive/Semantic Chunking
+Context: Current chunker splits by whitespace every 500 chars. This breaks context in technical manuals.
+Task:
+- Implement recursive character splitting (paragraphs -> sentences).
+- Implement semantic splitting (break when topic changes).
+- Respect Markdown headers.
+Acceptance Criteria:
+- Chunks do not cut off mid-sentence.
+- Header context is preserved in metadata.
+
+#### OPT-02 — Optimized Embeddings (Nomic/BGE)
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP-03
+Reference: [MTEB Leaderboard](https://huggingface.co/spaces/mteb/leaderboard)
+
+PROMPT (task ticket):
+Title: OPT-02 Switch to Nomic/BGE embedding models
+Context: Current `llama3:8b` is a chat model, not optimized for retrieval.
+Task:
+- Pull `nomic-embed-text` or `bge-m3` via Ollama.
+- Configure `embedding.py` to use the new model.
+- Re-ingest all data.
+Acceptance Criteria:
+- Retrieval accuracy improves (measure top-k relevance).
+- Embeddings are generated faster.
