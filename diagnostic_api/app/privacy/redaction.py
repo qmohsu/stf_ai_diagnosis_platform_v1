@@ -12,6 +12,9 @@ class PIIRedactor:
     PHONE_PATTERN = r"\b(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]\d{4}\b"
     
     # Simple whitelist of fields allowed to reach the LLM
+    # IMPORTANT: FAIL CLOSED SECURITY
+    # If you add a new field to the data model, you MUST add it here.
+    # Any field not in this list will be silently dropped to prevent leakage.
     ALLOWED_FIELDS = {
         "vehicle_id",
         "make",
