@@ -1,8 +1,6 @@
-"""Retrieval service logic."""
 
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
-
 from app.rag.client import get_client
 from app.rag.embedding import embedding_service
 
@@ -15,6 +13,13 @@ class RetrievalResult(BaseModel):
     section_title: str
     chunk_index: int
     metadata: Dict[str, Any] = {}
+
+class RetrievalService:
+    """Service wrapper for retrieval logic."""
+    
+    async def retrieve_context(self, query: str, limit: int = 3) -> List["RetrievalResult"]:
+        """Retrieve relevant context for a query."""
+        return await retrieve_context(query, top_k=limit)
 
 async def retrieve_context(
     query: str, 
@@ -31,50 +36,39 @@ async def retrieve_context(
 
     # 2. Query Weaviate
     client = get_client()
-    # Use raw GraphQL for robustness against client version mismatches
-    # and to easily get _additional logic
-    
-    # Build filter clause if needed (omitted for MVP simplicity unless filters provided)
-    
-    gql_query = f"""
-    {{
-      Get {{
-        KnowledgeChunk(
-          nearVector: {{
-            vector: {vector}
-          }}
-          limit: {top_k}
-        ) {{
-          text
-          doc_id
-          source_type
-          section_title
-          chunk_index
-          _additional {{
-            distance
-            score
+    try:
+        # Build filter clause if needed
+        # (Using raw GraphQL for now)
+        
+        gql_query = f"""
+        {{
+          Get {{
+            KnowledgeChunk(
+              nearVector: {{
+                vector: {vector}
+              }}
+              limit: {top_k}
+            ) {{
+              text
+              doc_id
+              source_type
+              section_title
+              chunk_index
+              _additional {{
+                distance
+                score
+              }}
+            }}
           }}
         }}
-      }}
-    }}
-    """
-    
-    try:
-        response = client.graphql_raw_query(gql_query)
-        # print(f"DEBUG: Weaviate Raw Response: {response}") 
+        """
         
-        # In Weaviate v4 Python Client, the response object from graphql_raw_query
-        # extracts the 'Get' block into a property named .get if it exists.
-        # It is NOT a dict, and .get is NOT a method.
+        response = client.graphql_raw_query(gql_query)
         
         chunk_data = None
-        
-        # Strategy: Access .get attribute directly
         if hasattr(response, 'get'):
-             # This attribute contains the content of 'Get' block e.g. {'KnowledgeChunk': [...]}
              chunk_data = response.get
         elif hasattr(response, 'result'):
-             # Fallback for other versions
              res = response.result
              if hasattr(res, 'get') and not callable(res.get):
                  chunk_data = res.get
@@ -82,7 +76,7 @@ async def retrieve_context(
                  chunk_data = res.get('data', {}).get('Get')
                  
         if not chunk_data or 'KnowledgeChunk' not in chunk_data:
-            print(f"No KnowledgeChunk found in response.")
+            # print(f"No KnowledgeChunk found in response.")
             return []
             
         results = []
@@ -102,7 +96,6 @@ async def retrieve_context(
             ))
             
         return results
-
         
     except Exception as e:
         print(f"Retrieval error: {e}")

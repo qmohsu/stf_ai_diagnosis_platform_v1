@@ -1,0 +1,28 @@
+
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field
+from app.expert.schemas import LLMDiagnosisResponse
+
+class DiagnosisRequest(BaseModel):
+    """
+    Request payload for the end-to-end diagnosis endpoint.
+    """
+    vehicle_id: str = Field(..., description="Unique identifier for the vehicle (VIN or ID)")
+    make: str = Field(..., description="Vehicle Make (e.g. Ford)")
+    model: str = Field(..., description="Vehicle Model (e.g. F-150)")
+    year: int = Field(..., description="Vehicle Year")
+    mileage: Optional[int] = Field(None, description="Current Mileage")
+    symptoms: str = Field(..., description="Description of the problem reported by the driver or technician")
+    dtc_codes: Optional[List[str]] = Field(default_factory=list, description="List of Diagnostic Trouble Codes (e.g. P0300)")
+
+    def to_vehicle_string(self) -> str:
+        """Helper to format vehicle info for the prompt."""
+        return f"{self.year} {self.make} {self.model}, Mileage: {self.mileage or 'Unknown'}"
+
+class DiagnosisResponse(BaseModel):
+    """
+    Final response returned to the client.
+    """
+    diagnosis: LLMDiagnosisResponse
+    redacted_symptoms: str = Field(..., description="The symptom description AFTER PII redaction")
+    context_used: bool = Field(..., description="Whether RAG context was successfully retrieved and used")
