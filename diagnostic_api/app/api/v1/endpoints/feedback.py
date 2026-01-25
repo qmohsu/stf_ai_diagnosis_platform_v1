@@ -38,4 +38,7 @@ def submit_feedback(feedback: FeedbackRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_feedback)
     
+    # TODO: [RAG Enrichment] If rating >= 4, trigger background task to ingest this session 
+    # as a "Solved Case" into Weaviate. This creates a "Knowledge Flywheel".
+
     return {"status": "success", "feedback_id": str(db_feedback.id)}
