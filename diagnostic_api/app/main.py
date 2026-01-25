@@ -254,45 +254,10 @@ async def get_diagnosis_result(
         raise HTTPException(status_code=500, detail="Corrupted session data")
 
 
-@app.post(
-    "/v1/rag/retrieve",
-    response_model=RAGRetrieveResponse,
-    tags=["RAG"],
-    status_code=status.HTTP_200_OK,
-)
-async def retrieve_rag_chunks(
-    request: RAGRetrieveRequest,
-) -> RAGRetrieveResponse:
-    """Retrieve relevant chunks from RAG vector store.
+from app.api.v1.endpoints import rag
 
-    This is a Phase 1 stub implementation that returns mock data.
-    Full implementation will query Weaviate for relevant chunks.
-    """
-    logger.info(f"RAG retrieval request: {request.query}")
-
-    # Phase 1 stub: Return mock chunks
-    mock_chunks = [
-        RAGChunk(
-            doc_id="SOP_2024_001",
-            section="section_3_2",
-            text="For P0171 fault code, verify MAF sensor operation...",
-            score=0.92,
-            metadata={"doc_type": "sop", "year": "2024"},
-        ),
-        RAGChunk(
-            doc_id="MANUAL_V8_ENGINE",
-            section="troubleshooting_fuel",
-            text="Lean fuel mixture conditions may indicate...",
-            score=0.87,
-            metadata={"doc_type": "manual", "model": "V8"},
-        ),
-    ]
-
-    return RAGRetrieveResponse(
-        query=request.query,
-        chunks=mock_chunks[: request.top_k],
-        total_results=len(mock_chunks),
-    )
+# Include routers
+app.include_router(rag.router, prefix="/v1/rag", tags=["RAG"])
 
 
 @app.get("/v1/models", tags=["LLM"])
