@@ -1,0 +1,28 @@
+feat(app-09): implement technician feedback loop
+
+Implements the end-to-end feedback mechanism allowing technicians to rate diagnoses and provide ground truth corrections.
+
+Changes:
+- DB: Added `diagnostic_feedback` table (1-to-1 with sessions).
+- API: Added `POST /v1/feedback` endpoint.
+- Refactor: Extracted `get_db` to `app.api.deps` to resolve circular imports.
+- Test: Added `infra/test_feedback_api.py`.
+
+Impact & Roadmap:
+1. **RAG Enrichment (The "Knowledge Flywheel") - Immediate Impact**
+   When a technician rates a diagnosis as 5-Stars (Helpful) and confirms the fix (e.g., "Replacing the MAF sensor worked"), we effectively just created a super-high-quality document.
+   - *Action*: We can treat these "Solved Sessions" as new knowledge documents.
+   - *Result*: We ingest this session back into Weaviate.
+   - *Future Benefit*: The next time a car comes in with the same symptoms, the RAG system retrieves this verified past solution alongside the factory manual. The AI can then say, "This looks like the issue we solved on a similar Camry last week."
+
+2. **Creating a "Golden Dataset" - Short-Term Impact**
+   Right now, we don't strictly know if our model is good or bad. We are just guessing.
+   - *Action*: We group sessions into "Good" (4-5 stars) and "Bad" (1-2 stars).
+   - *Result*: We build a Benchmark Test Set.
+   - *Future Benefit*: Before we deploy a new model (e.g., Llama 4 or a new prompt), we run it against the "Bad" cases to see if the new version would have solved them. This gives us mathematical confidence to upgrade.
+
+3. **RLHF & Fine-Tuning - Long-Term Impact**
+   This is how models like ChatGPT got so good.
+   - *Action*: We collect pairs of `(Symptoms) -> (Diagnosis) -> (Rating)`.
+   - *Result*: We use the "Bad" diagnoses that had "Corrected Diagnosis" comments to retrain the model (Fine-Tuning/DPO).
+   - *Future Benefit*: The model learns to avoid specific hallucinations (e.g., "Don't suggest checking the carburetor on a 2018 car") and adopts the preferred speaking style of your best technicians.

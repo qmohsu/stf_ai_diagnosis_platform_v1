@@ -254,11 +254,12 @@ async def get_diagnosis_result(
         raise HTTPException(status_code=500, detail="Corrupted session data")
 
 
-from app.api.v1.endpoints import rag, diagnose
+from app.api.v1.endpoints import rag, diagnose, feedback
 
 # Include routers
 app.include_router(rag.router, prefix="/v1/rag", tags=["RAG"])
 app.include_router(diagnose.router, prefix="/v1/diagnose", tags=["Diagnostics"])
+app.include_router(feedback.router, prefix="/v1/feedback", tags=["Feedback"])
 
 
 @app.get("/v1/models", tags=["LLM"])

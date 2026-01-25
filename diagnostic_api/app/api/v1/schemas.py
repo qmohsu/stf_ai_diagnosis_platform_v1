@@ -26,3 +26,13 @@ class DiagnosisResponse(BaseModel):
     diagnosis: LLMDiagnosisResponse
     redacted_symptoms: str = Field(..., description="The symptom description AFTER PII redaction")
     context_used: bool = Field(..., description="Whether RAG context was successfully retrieved and used")
+
+class FeedbackRequest(BaseModel):
+    """
+    Payload for technician feedback.
+    """
+    session_id: str = Field(..., description="UUID of the diagnostic session")
+    rating: int = Field(..., ge=1, le=5, description="Rating from 1 to 5")
+    is_helpful: bool = Field(..., description="Whether the diagnosis was helpful")
+    comments: Optional[str] = Field(None, description="Free text comments")
+    corrected_diagnosis: Optional[str] = Field(None, description="Actual correct diagnosis if AI was wrong")

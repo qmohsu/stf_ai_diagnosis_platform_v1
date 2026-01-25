@@ -73,3 +73,23 @@ class DiagnosticSession(Base):
     
     # Relationships
     vehicle = relationship("Vehicle", back_populates="diagnostic_sessions")
+    feedback = relationship("DiagnosticFeedback", back_populates="session", uselist=False)
+
+
+class DiagnosticFeedback(Base):
+    """Feedback from technicians on diagnostic sessions."""
+
+    __tablename__ = "diagnostic_feedback"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("diagnostic_sessions.id"), nullable=False, unique=True)
+    
+    rating = Column(Integer, nullable=False)  # 1-5
+    is_helpful = Column(Boolean, nullable=False)
+    comments = Column(Text, nullable=True)
+    corrected_diagnosis = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    session = relationship("DiagnosticSession", back_populates="feedback")
