@@ -181,8 +181,8 @@ services:
       LOG_LEVEL: INFO
       SECRET_KEY: ${DIFY_SECRET_KEY:?DIFY_SECRET_KEY must be set}
       CONSOLE_WEB_URL: http://localhost:${DIFY_WEB_PORT:-3000}
-      CONSOLE_API_URL: ${DIFY_CONSOLE_API_URL:-http://dify-api:5001}
-      SERVICE_API_URL: ${DIFY_SERVICE_API_URL:-http://dify-api:5001}
+      CONSOLE_API_URL: http://localhost:${DIFY_API_PORT:-5001}
+      SERVICE_API_URL: http://localhost:${DIFY_API_PORT:-5001}
       APP_WEB_URL: http://localhost:${DIFY_WEB_PORT:-3000}
 
       # Database
@@ -294,8 +294,8 @@ services:
       dify-api:
         condition: service_healthy
     environment:
-      CONSOLE_API_URL: ${DIFY_CONSOLE_API_URL:-http://dify-api:5001}
-      APP_API_URL: ${DIFY_SERVICE_API_URL:-http://dify-api:5001}
+      CONSOLE_API_URL: http://localhost:${DIFY_API_PORT:-5001}
+      APP_API_URL: http://dify-api:5001
       EDITION: ${DIFY_EDITION:-SELF_HOSTED}
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:3000" ]

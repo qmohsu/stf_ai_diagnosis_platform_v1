@@ -36,3 +36,19 @@ class FeedbackRequest(BaseModel):
     is_helpful: bool = Field(..., description="Whether the diagnosis was helpful")
     comments: Optional[str] = Field(None, description="Free text comments")
     corrected_diagnosis: Optional[str] = Field(None, description="Actual correct diagnosis if AI was wrong")
+
+class RedactRequest(BaseModel):
+    text: str = Field(..., description="Text to redact PII from")
+
+class RedactResponse(BaseModel):
+    original_text: str
+    redacted_text: str
+    redacted_count: int
+
+class VinValidateRequest(BaseModel):
+    vin: str = Field(..., description="Vehicle Identification Number")
+
+class VinValidateResponse(BaseModel):
+    vin: str
+    is_valid: bool
+    details: Optional[Dict[str, Any]] = None

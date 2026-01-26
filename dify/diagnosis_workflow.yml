@@ -1,0 +1,96 @@
+# ============================================================================
+# Dify Workflow Specification: Automotive Diagnosis
+# ============================================================================
+# This file describes the "No-Code" logic flow for Dify.
+# Import this logic into the Dify Studio to orchestrate the API Tools.
+# ============================================================================
+
+app:
+  name: "Auto Diagnosis Expert"
+  description: "Orchestrates the Vehicle Diagnosis Pipeline using Python Tools"
+
+variables:
+  - name: vehicle_id
+    type: string
+    required: true
+  - name: symptoms
+    type: string
+    required: true
+
+workflow:
+  nodes:
+    # 1. Start Node
+    - id: start
+      type: start
+      inputs: [vehicle_id, symptoms]
+
+    # 2. Tool: Redact PII (Python API)
+    - id: tool_redact
+      type: http_request
+      config:
+        url: "http://host.docker.internal:8000/v1/tools/redact"
+        method: POST
+        body:
+          text: "{{start.symptoms}}"
+      output:
+        redacted_text: "{{body.redacted_text}}"
+
+    # 3. Tool: Validate VIN (Python API)
+    - id: tool_validate_vin
+      type: http_request
+      config:
+        url: "http://host.docker.internal:8000/v1/tools/validate-vin"
+        method: POST
+        body:
+          vin: "{{start.vehicle_id}}"
+      output:
+        is_valid: "{{body.is_valid}}"
+    
+    # 4. Conditional: Stop if VIN invalid
+    - id: check_vin
+      type: if_else
+      condition: "{{tool_validate_vin.is_valid}} == true"
+      true_path: [tool_retrieve]
+      false_path: [end_failure]
+
+    # 5. Tool: Retrieval (RAG)
+    - id: tool_retrieve
+      type: http_request
+      config:
+        url: "http://host.docker.internal:8000/v1/rag/retrieve"
+        method: POST
+        body:
+          query: "{{tool_redact.redacted_text}}"
+          top_k: 3
+      output:
+        context_chunks: "{{body.chunks}}"
+
+    # 6. LLM: Expert Analysis
+    - id: llm_expert
+      type: llm
+      model: "llama3:8b" # via Ollama
+      prompt: |
+        You are an expert diagnostic technician.
+        Analyze the following vehicle issue:
+        
+        Vehicle: {{start.vehicle_id}}
+        Symptoms (Redacted): {{tool_redact.redacted_text}}
+        
+        Retrieved Service Manuals:
+        {{tool_retrieve.context_chunks}}
+        
+        Provide a structured diagnosis including risk assessment.
+      output:
+        text: "{{text}}"
+
+    # 7. End (Success)
+    - id: end_success
+      type: end
+      outputs:
+        result: "{{llm_expert.text}}"
+
+    # 8. End (Failure)
+    - id: end_failure
+      type: end
+      outputs:
+        error: "Invalid VIN provided: {{start.vehicle_id}}"
