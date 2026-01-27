@@ -1,0 +1,477 @@
+app:
+  description: ''
+  icon: "\U0001F916"
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: Auto Diagnosis Expert
+workflow:
+  features:
+    file_upload:
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: http-request
+      id: 1769415746279-source-1769416211725-target
+      source: '1769415746279'
+      sourceHandle: source
+      target: '1769416211725'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: code
+      id: 1769416394507-source-1769417249318-target
+      source: '1769416394507'
+      sourceHandle: source
+      target: '1769417249318'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: if-else
+      id: 1769417249318-source-1769417478173-target
+      source: '1769417249318'
+      sourceHandle: source
+      target: '1769417478173'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: http-request
+      id: 1769417478173-true-1769417509455-target
+      source: '1769417478173'
+      sourceHandle: 'true'
+      target: '1769417509455'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: code
+      id: 1769416211725-source-1769417895815-target
+      source: '1769416211725'
+      sourceHandle: source
+      target: '1769417895815'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: http-request
+      id: 1769417895815-source-1769416394507-target
+      source: '1769417895815'
+      sourceHandle: source
+      target: '1769416394507'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: code
+      id: 1769417509455-source-1769418012477-target
+      source: '1769417509455'
+      sourceHandle: source
+      target: '1769418012477'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 1769418012477-source-1769418050215-target
+      source: '1769418012477'
+      sourceHandle: source
+      target: '1769418050215'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: end
+      id: 1769417478173-false-1769418545024-target
+      source: '1769417478173'
+      sourceHandle: 'false'
+      target: '1769418545024'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+      id: 1769418050215-source-1769418545025-target
+      source: '1769418050215'
+      sourceHandle: source
+      target: '1769418545025'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: vehicle_id
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: vehicle_id
+        - label: symptoms
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: symptoms
+      height: 116
+      id: '1769415746279'
+      position:
+        x: 66
+        y: 282
+      positionAbsolute:
+        x: 66
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: "{\n  \"text\": \"{{#1769415746279.symptoms#}}\"\n}"
+          type: json
+        desc: ''
+        headers: ''
+        method: post
+        params: ''
+        selected: false
+        timeout:
+          max_connect_timeout: 0
+          max_read_timeout: 0
+          max_write_timeout: 0
+        title: Redact PII
+        type: http-request
+        url: http://diagnostic-api:8000/v1/tools/redact
+        variables: []
+      height: 122
+      id: '1769416211725'
+      position:
+        x: 370
+        y: 282
+      positionAbsolute:
+        x: 370
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: "{\n  \"vin\": \"{{#1769415746279.vehicle_id#}}\"\n}"
+          type: json
+        desc: ''
+        headers: ''
+        method: post
+        params: ''
+        selected: false
+        timeout:
+          max_connect_timeout: 0
+          max_read_timeout: 0
+          max_write_timeout: 0
+        title: Validate VIN
+        type: http-request
+        url: http://diagnostic-api:8000/v1/tools/validate-vin
+        variables: []
+      height: 122
+      id: '1769416394507'
+      position:
+        x: 957
+        y: 282
+      positionAbsolute:
+        x: 957
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "import json\n\ndef main(response: str) -> dict:\n    try:\n \
+          \           data = json.loads(response)\n            # Return string \"YES\"\
+          \ or \"NO\" to avoid boolean/string confusion\n            val\
+          \ = data.get(\"is_valid\", False)\n            return {\"is_valid\": \"YES\"\
+          \ if val else \"NO\"}\n    except:\n            return {\"is_valid\": \"\
+          NO\"}"
+        code_language: python3
+        desc: ''
+        outputs:
+          is_valid:
+            children: null
+            type: string
+        selected: false
+        title: Parse Validation
+        type: code
+        variables:
+        - value_selector:
+          - '1769416394507'
+          - body
+          variable: response
+      height: 54
+      id: '1769417249318'
+      position:
+        x: 1261
+        y: 282
+      positionAbsolute:
+        x: 1261
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        conditions:
+        - comparison_operator: is
+          id: '1769417480768'
+          value: 'YES'
+          variable_selector:
+          - '1769417249318'
+          - is_valid
+        desc: ''
+        logical_operator: and
+        selected: false
+        title: Check VIN
+        type: if-else
+      height: 126
+      id: '1769417478173'
+      position:
+        x: 1565
+        y: 282
+      positionAbsolute:
+        x: 1565
+        y: 282
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: "{\n  \"query\": \"{{#1769417895815.redacted_text#}}\",\n  \"top_k\"\
+            : 3\n}"
+          type: json
+        desc: ''
+        headers: ''
+        method: post
+        params: ''
+        selected: false
+        timeout:
+          max_connect_timeout: 0
+          max_read_timeout: 0
+          max_write_timeout: 0
+        title: Retrieve Context
+        type: http-request
+        url: http://diagnostic-api:8000/v1/rag/retrieve
+        variables: []
+      height: 122
+      id: '1769417509455'
+      position:
+        x: 1869
+        y: 282
+      positionAbsolute:
+        x: 1869
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "import json\n\ndef main(response: str) -> dict:\n    try:\n \
+          \           data = json.loads(response)\n            return {\"redacted_text\"\
+          : data.get(\"redacted_text\", \"\")}\n    except:\n            return\
+          \ {\"redacted_text\": \"\"}"
+        code_language: python3
+        desc: ''
+        outputs:
+          redacted_text:
+            children: null
+            type: string
+        selected: false
+        title: Parse Redaction
+        type: code
+        variables:
+        - value_selector:
+          - '1769416211725'
+          - body
+          variable: response
+      height: 54
+      id: '1769417895815'
+      position:
+        x: 657
+        y: 282
+      positionAbsolute:
+        x: 657
+        y: 282
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "import json\n\ndef main(response: str) -> dict:\n    try:\n \
+          \           data = json.loads(response)\n            # Convert list of chunks\
+          \ to a single string\n            chunks = data.get(\"chunks\", [])\n  \
+          \          return {\"context\": \"\\n\".join(chunks)}\n    except:\n\
+          \            return {\"context\": \"\"}"
+        code_language: python3
+        desc: ''
+        outputs:
+          context:
+            children: null
+            type: string
+        selected: false
+        title: Parse Context
+        type: code
+        variables:
+        - value_selector:
+          - '1769417509455'
+          - body
+          variable: response
+      height: 54
+      id: '1769418012477'
+      position:
+        x: 2173
+        y: 282
+      positionAbsolute:
+        x: 2173
+        y: 282
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: llama3:8b
+          provider: ollama
+        prompt_template:
+        - id: da56cb00-f01b-48da-93e6-e6e58a1decfe
+          role: system
+          text: "You are an expert diagnostic technician.\n\nAnalyze the following\
+            \ vehicle issue:\n\nVehicle: {{#1769415746279.vehicle_id#}}\n\
+            Symptoms: {{#1769417895815.redacted_text#}}\n\nRetrieved\
+            \ Context:\n{{#1769418012477.context#}}\n\nProvide\
+            \ a structured diagnosis."
+        selected: false
+        title: Expert Diagnosis
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 98
+      id: '1769418050215'
+      position:
+        x: 2477
+        y: 282
+      positionAbsolute:
+        x: 2477
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs: []
+        selected: true
+        title: End
+        type: end
+      height: 54
+      id: '1769418545024'
+      position:
+        x: 1869
+        y: 443
+      positionAbsolute:
+        x: 1869
+        y: 443
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1769418050215'
+          - text
+          variable: diagnosis
+        selected: false
+        title: End Success
+        type: end
+      height: 90
+      id: '1769418545025'
+      position:
+        x: 2781
+        y: 282
+      positionAbsolute:
+        x: 2781
+        y: 282
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: -863
+      y: 148
+      zoom: 1

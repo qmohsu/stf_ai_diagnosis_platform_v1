@@ -217,6 +217,10 @@ services:
       # SSRF Protection
       SSRF_PROXY_HTTP_URL: ${DIFY_SSRF_PROXY_HTTP_URL:-}
       SSRF_PROXY_HTTPS_URL: ${DIFY_SSRF_PROXY_HTTP_URL:-}
+
+      # Sandbox
+      CODE_EXECUTION_API_KEY: dify-sandbox
+      CODE_EXECUTION_ENDPOINT: http://sandbox:8194
     volumes:
       - dify_storage:/app/storage
     healthcheck:
@@ -270,6 +274,10 @@ services:
       VECTOR_STORE: ${DIFY_VECTOR_STORE:-weaviate}
       WEAVIATE_ENDPOINT: ${DIFY_WEAVIATE_ENDPOINT:-http://weaviate:8080}
       WEAVIATE_API_KEY: ${WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS}
+      # Sandbox
+      CODE_EXECUTION_API_KEY: dify-sandbox
+      CODE_EXECUTION_ENDPOINT: http://sandbox:8194
+
     volumes:
       - dify_storage:/app/storage
     healthcheck:
@@ -278,6 +286,30 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  # --------------------------------------------------------------------------
+  # Dify Sandbox - Secure code execution environment
+  # --------------------------------------------------------------------------
+  sandbox:
+    image: langgenius/dify-sandbox:0.2.1
+    container_name: stf-dify-sandbox
+    restart: unless-stopped
+    networks:
+      - stf-internal
+    environment:
+      API_KEY: dify-sandbox
+      GIN_MODE: release
+      worker_timeout: 15
+      ENABLE_NETWORK: "true"
+      HTTP_PROXY: ""
+      HTTPS_PROXY: ""
+      SANDBOX_PORT: 8194
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8194/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # --------------------------------------------------------------------------
   # Dify Web - Frontend UI
