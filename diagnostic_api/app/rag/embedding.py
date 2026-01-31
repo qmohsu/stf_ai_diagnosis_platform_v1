@@ -1,41 +1,65 @@
-"""Embedding service using Ollama."""
+"""Embedding service using a dedicated Ollama embedding model."""
 
+import structlog
 import httpx
 from typing import List
+
 from app.config import settings
 
+logger = structlog.get_logger(__name__)
+
+
 class EmbeddingService:
-    """Client for generating embeddings via Ollama."""
-    
+    """Client for generating embeddings via Ollama.
+
+    Uses settings.embedding_model (default: nomic-embed-text) which produces
+    768-dim vectors -- much faster for search and less storage than llama3's 4096.
+    Falls back to settings.llm_endpoint if no separate embedding_endpoint is set.
+    """
+
     def __init__(self):
-        self.base_url = settings.llm_endpoint
-        self.model = settings.llm_model 
-        # Note: Ideally use an embedding model like 'nomic-embed-text'
-        # But if user has llama3, we can try to use it (though it's slow/not ideal for embeddings)
-        # OR we assume 'nomic-embed-text' is pulled.
-        # Let's stick to the configured model but 'nomic-embed-text' is recommended.
-        # TODO (OPT-02): Switch to 'nomic-embed-text' or 'bge-m3' for production.
-        # - Update `OLLAMA_DEFAULT_MODEL` in .env
-        # - Re-run ingestion to regenerate vectors.
+        self.base_url = settings.embedding_endpoint or settings.llm_endpoint
+        self.model = settings.embedding_model
+        logger.info(
+            "embedding_service.init",
+            model=self.model,
+            endpoint=self.base_url,
+        )
 
     async def get_embedding(self, text: str) -> List[float]:
-        """Generate embedding for text."""
+        """Generate embedding vector for a text string.
+
+        Args:
+            text: Input text to embed.
+
+        Returns:
+            List of floats representing the embedding vector, or empty list on error.
+        """
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
                     f"{self.base_url}/api/embeddings",
-                    json={
-                        "model": self.model,
-                        "prompt": text
-                    },
-                    timeout=30.0
+                    json={"model": self.model, "prompt": text},
+                    timeout=30.0,
                 )
                 response.raise_for_status()
                 result = response.json()
-                return result.get("embedding", [])
+                embedding = result.get("embedding", [])
+                if not embedding:
+                    logger.warning(
+                        "embedding_service.empty_response",
+                        model=self.model,
+                        text_len=len(text),
+                    )
+                return embedding
             except Exception as e:
-                print(f"Embedding error: {e}")
+                logger.error(
+                    "embedding_service.error",
+                    error=str(e),
+                    model=self.model,
+                )
                 return []
+
 
 # Singleton
 embedding_service = EmbeddingService()
