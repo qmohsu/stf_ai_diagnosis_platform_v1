@@ -10,16 +10,12 @@ def redact_pii(request: RedactRequest):
     Tool: Redact personal information from text.
     """
     original = request.text
-    redacted = redactor.redact_text(original)
-    
-    # Calculate simple stats (count of redacted tokens)
-    # This is a rough proxy since redact_text doesn't return count
-    count = redacted.count("[EMAIL_REDACTED]") + redacted.count("[PHONE_REDACTED]")
-    
+    result = redactor.redact_text_with_stats(original)
+
     return RedactResponse(
         original_text=original,
-        redacted_text=redacted,
-        redacted_count=count
+        redacted_text=result.text,
+        redacted_count=result.total_count,
     )
 
 @router.post("/validate-vin", response_model=VinValidateResponse)
