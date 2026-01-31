@@ -56,25 +56,7 @@ class PIIRedactor:
         r"|operator|contact|Mr\.|Mrs\.|Ms\.)\s+)"
         r"([A-Z][a-z]{1,20}\s+[A-Z][a-z]{1,20})"
     )
-    
-    # Simple whitelist of fields allowed to reach the LLM
-    # IMPORTANT: FAIL CLOSED SECURITY
-    # If you add a new field to the data model, you MUST add it here.
-    # Any field not in this list will be silently dropped to prevent leakage.
-    ALLOWED_FIELDS = {
-        "vehicle_id",
-        "make",
-        "model",
-        "year",
-        "mileage",
-        "symptoms",
-        "dtc_codes",
-        "description",
-        "session_id",
-        "query",
-        "fluids", # e.g. fluid levels
-        "logs"    # e.g. maintenance logs strings
-    }
+
 
     # Max characters allow per string field (prevent ReDoS and context overflow)
     MAX_TEXT_LENGTH = 10000
@@ -172,35 +154,9 @@ class PIIRedactor:
 
     @staticmethod
     def enforce_data_boundary(payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Recursively filter payload to only include allowed fields
-        and redact strings within them.
-        """
-        safe_payload = {}
-        
-        for key, value in payload.items():
-            if key in PIIRedactor.ALLOWED_FIELDS:
-                # Recursively handle nested dicts or lists
-                safe_payload[key] = PIIRedactor._sanitize_value(value)
-            # Else: Drop the field (Data Boundary)
-            
-        return safe_payload
-
-    @staticmethod
-    def _sanitize_value(value: Any) -> Any:
-        """Helper to sanitize values recursively."""
-        if isinstance(value, str):
-            return PIIRedactor.redact_text(value)
-        elif isinstance(value, dict):
-             # Recursively filter nested dicts? 
-             # For strictness, maybe we don't want arbitrary nested dicts unless checked.
-             # But let's allow nested dicts but filter their keys too.
-             return PIIRedactor.enforce_data_boundary(value)
-        elif isinstance(value, list):
-            return [PIIRedactor._sanitize_value(v) for v in value]
-        else:
-            # Numbers, bools are safe as-is
-            return value
+        """Backward-compat wrapper. Use FeatureBoundary.enforce()."""
+        from app.privacy.feature_boundary import FeatureBoundary
+        return FeatureBoundary.enforce(payload)
 
 # Singleton for easy use
 redactor = PIIRedactor()

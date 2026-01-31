@@ -2,6 +2,7 @@
 
 import sys
 from app.privacy.redaction import redactor
+from app.privacy.feature_boundary import FeatureBoundary
 
 def test_pii_redaction():
     print("Testing PII Redaction/Boundary...")
@@ -35,7 +36,7 @@ def test_pii_redaction():
     # 'nested' is NOT in ALLOWED_FIELDS, so the entire dict should be dropped?
     # Let's check ALLOWED_FIELDS in redaction.py: "symptoms" is there. "nested" is NOT.
     
-    result_payload = redactor.enforce_data_boundary(payload)
+    result_payload = FeatureBoundary.enforce(payload)
     
     if "raw_can_bus" in result_payload:
         print("❌ Data Boundary failed. 'raw_can_bus' was not removed.")
