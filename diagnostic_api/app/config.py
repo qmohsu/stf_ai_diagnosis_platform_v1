@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     llm_endpoint: str = os.getenv("LLM_ENDPOINT", "http://ollama:11434")
     llm_model: str = os.getenv("LLM_MODEL", "llama3:8b")
 
+    # Embedding Configuration
+    embedding_model: str = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
+    embedding_endpoint: str = os.getenv("EMBEDDING_ENDPOINT", "")
+
     # Weaviate Configuration
     weaviate_url: str = os.getenv("WEAVIATE_URL", "http://weaviate:8080")
     weaviate_api_key: Optional[str] = os.getenv("WEAVIATE_API_KEY")
