@@ -1,7 +1,25 @@
 """Privacy and PII redaction utilities."""
 
 import re
+from dataclasses import dataclass
 from typing import Dict, Any, List, Union
+
+import structlog
+
+logger = structlog.get_logger()
+
+
+@dataclass
+class RedactionResult:
+    """Result of a PII redaction operation."""
+    text: str
+    total_count: int
+    email_count: int
+    phone_count: int
+    name_count: int
+    location_count: int
+    plate_count: int
+    id_count: int
 
 class PIIRedactor:
     """Handles PII detection and redaction."""
@@ -63,51 +81,94 @@ class PIIRedactor:
 
     @staticmethod
     def redact_text(text: str) -> str:
-        """Redact PII from a string."""
+        """Redact PII from a string. Returns only the redacted text."""
+        return PIIRedactor.redact_text_with_stats(text).text
+
+    @staticmethod
+    def redact_text_with_stats(text: str) -> RedactionResult:
+        """Redact PII from a string and return stats on what was redacted."""
+        empty = RedactionResult(
+            text="", total_count=0, email_count=0,
+            phone_count=0, name_count=0, location_count=0,
+            plate_count=0, id_count=0,
+        )
         if not text:
-            return ""
-        
+            return empty
+
         # Prevent ReDoS / resource exhaustion
         if len(text) > PIIRedactor.MAX_TEXT_LENGTH:
             text = text[:PIIRedactor.MAX_TEXT_LENGTH] + " ... [TRUNCATED_DUE_TO_SIZE]"
-        
+
         # Redact emails
-        text = re.sub(PIIRedactor.EMAIL_PATTERN, "[EMAIL_REDACTED]", text)
+        text, email_count = re.subn(
+            PIIRedactor.EMAIL_PATTERN, "[EMAIL_REDACTED]", text
+        )
 
         # Redact GPS coordinates (before phone — coords like 121.5654
         # would otherwise match the phone pattern)
-        text = re.sub(
+        text, gps_count = re.subn(
             PIIRedactor.GPS_PATTERN, "[LOCATION_REDACTED]", text
         )
 
         # Redact Taiwan National IDs (before phone — 10-char
         # alphanumeric IDs could partially overlap digit patterns)
-        text = re.sub(
+        text, id_count = re.subn(
             PIIRedactor.TAIWAN_ID_PATTERN, "[ID_REDACTED]", text
         )
 
         # Redact phone numbers
-        text = re.sub(PIIRedactor.PHONE_PATTERN, "[PHONE_REDACTED]", text)
+        text, phone_count = re.subn(
+            PIIRedactor.PHONE_PATTERN, "[PHONE_REDACTED]", text
+        )
 
         # Redact street addresses
-        text = re.sub(
+        text, address_count = re.subn(
             PIIRedactor.ADDRESS_PATTERN, "[ADDRESS_REDACTED]", text
         )
 
         # Redact plate numbers
-        text = re.sub(
+        text, plate_count = re.subn(
             PIIRedactor.PLATE_PATTERN, "[PLATE_REDACTED]", text
         )
 
         # Redact keyword-triggered names (replace only the name part)
-        text = re.sub(
+        # re.subn with a callable replacer still returns the count
+        text, name_count = re.subn(
             PIIRedactor.NAME_PATTERN,
             lambda m: m.group(0).replace(m.group(1), "[NAME_REDACTED]"),
             text,
             flags=re.IGNORECASE,
         )
 
-        return text
+        location_count = gps_count + address_count
+        total = (
+            email_count + phone_count + name_count
+            + location_count + plate_count + id_count
+        )
+
+        # Log redaction event (counts only, never raw PII)
+        if total > 0:
+            logger.info(
+                "pii_redaction_applied",
+                total_redacted=total,
+                email_count=email_count,
+                phone_count=phone_count,
+                name_count=name_count,
+                location_count=location_count,
+                plate_count=plate_count,
+                id_count=id_count,
+            )
+
+        return RedactionResult(
+            text=text,
+            total_count=total,
+            email_count=email_count,
+            phone_count=phone_count,
+            name_count=name_count,
+            location_count=location_count,
+            plate_count=plate_count,
+            id_count=id_count,
+        )
 
     @staticmethod
     def enforce_data_boundary(payload: Dict[str, Any]) -> Dict[str, Any]:
