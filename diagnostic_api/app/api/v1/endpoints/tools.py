@@ -1,8 +1,11 @@
 import re
 
+import structlog
 from fastapi import APIRouter, HTTPException
 from app.api.v1.schemas import RedactRequest, RedactResponse, VinValidateRequest, VinValidateResponse
 from app.privacy.redaction import redactor
+
+logger = structlog.get_logger()
 
 router = APIRouter()
 
@@ -45,19 +48,27 @@ def redact_pii(request: RedactRequest):
 def validate_vin(request: VinValidateRequest):
     """
     Tool: Validate a Vehicle Identification Number (VIN).
-    Phase 1: Simple format check.
+    Performs format, character, and check-digit validation per ISO 3779.
     """
     vin = request.vin.upper().strip()
-    
+
+    # VIN is classified as PII (SECURITY_BASELINE.md).
+    # We do NOT add VIN to PIIRedactor (high false-positive risk on
+    # arbitrary 17-char alphanumeric strings). Instead, we mask VIN
+    # in all log output from this endpoint.
+    masked = vin[:3] + "***********" + vin[-4:] if len(vin) >= 7 else "***"
+
     if len(vin) != 17:
+        logger.info("vin_validation_performed", vin_masked=masked, is_valid=False, reason="invalid_length")
         return VinValidateResponse(
             vin=vin,
             is_valid=False,
             details={"error": f"Invalid length: {len(vin)}. Expected 17."}
         )
-        
+
     # VINs must be alphanumeric, excluding I, O, Q (ISO 3779)
     if not re.fullmatch(r'[A-HJ-NPR-Z0-9]{17}', vin):
+        logger.info("vin_validation_performed", vin_masked=masked, is_valid=False, reason="invalid_characters")
         return VinValidateResponse(
             vin=vin,
             is_valid=False,
@@ -65,12 +76,14 @@ def validate_vin(request: VinValidateRequest):
         )
 
     if not _vin_check_digit(vin):
+        logger.info("vin_validation_performed", vin_masked=masked, is_valid=False, reason="invalid_check_digit")
         return VinValidateResponse(
             vin=vin,
             is_valid=False,
             details={"error": "Check digit (position 9) is invalid."}
         )
 
+    logger.info("vin_validation_performed", vin_masked=masked, is_valid=True, validation_level="full")
     return VinValidateResponse(
         vin=vin,
         is_valid=True,
