@@ -1,91 +1,203 @@
-"""Ingestion CLI script."""
+"""Ingestion CLI script.
+
+Reads documents from a directory, parses them into sections, chunks the
+sections, generates embeddings, and upserts into Weaviate with idempotency
+(SHA-256 checksum deduplication).
+
+Usage:
+    python -m app.rag.ingest --dir /app/data
+    python -m app.rag.ingest --dir /app/data --force-recreate
+    python -m app.rag.ingest --dir /app/data --chunk-size 600 --overlap 80
+"""
 
 import argparse
 import asyncio
 import hashlib
-import os
+import json
 from pathlib import Path
-from typing import List
+
+import structlog
+import weaviate.classes.query as wq
 
 from app.rag.client import get_client
 from app.rag.schema import init_schema
-from app.rag.chunker import chunker
+from app.rag.parser import parse_document
+from app.rag.chunker import Chunker, ChunkedSection
 from app.rag.embedding import embedding_service
 
-async def process_file(file_path: Path, client):
-    """Process a single file."""
-    print(f"Processing {file_path.name}...")
-    
-    with open(file_path, "r", encoding="utf-8") as f:
-        text = f.read()
+logger = structlog.get_logger(__name__)
+
+
+def _checksum(doc_id: str, section_title: str, chunk_text: str) -> str:
+    """Compute a stable SHA-256 checksum for a chunk.
+
+    The checksum is derived from the document id, section title, and chunk
+    text so it remains stable across re-runs (unlike index-based hashing).
+    """
+    payload = f"{doc_id}:{section_title}:{chunk_text}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _chunk_exists(collection, checksum: str) -> bool:
+    """Check whether a chunk with the given checksum already exists."""
+    try:
+        result = collection.query.fetch_objects(
+            filters=wq.Filter.by_property("checksum").equal(checksum),
+            limit=1,
+        )
+        return len(result.objects) > 0
+    except Exception as e:
+        logger.warning("idempotency_check.error", error=str(e))
+        return False
+
+
+async def process_file(
+    file_path: Path,
+    client,
+    chunker: Chunker,
+) -> dict:
+    """Process a single file: parse -> chunk -> embed -> insert.
+
+    Returns:
+        Dict with inserted and skipped counts.
+    """
+    log = logger.bind(file=file_path.name)
+    log.info("ingest.processing_file")
+
+    text = file_path.read_text(encoding="utf-8")
+    doc_id = file_path.stem
 
     # Determine source type
-    source_type = "manual" if "manual" in file_path.name.lower() else "log" if "log" in file_path.name.lower() else "other"
-    
-    # Chunking
-    chunks = chunker.chunk_text(text)
-    
+    name_lower = file_path.name.lower()
+    if "manual" in name_lower:
+        source_type = "manual"
+    elif "log" in name_lower:
+        source_type = "log"
+    else:
+        source_type = "other"
+
+    # Parse into sections
+    sections = parse_document(text, file_path.name)
+    log.info("ingest.parsed", section_count=len(sections))
+
+    # Chunk sections
+    chunks = chunker.chunk_sections(sections)
+    log.info("ingest.chunked", chunk_count=len(chunks))
+
     collection = client.collections.get("KnowledgeChunk")
-    
-    for i, chunk_text in enumerate(chunks):
-        # Generate ID / Checksum
-        checksum = hashlib.md5(f"{file_path.name}_{i}_{chunk_text}".encode()).hexdigest()
-        
-        # Check if exists (idempotency) - optional optimization, 
-        # but pure overwrite is fine for now or check by checksum property.
-        
-        # Get embedding
-        vector = await embedding_service.get_embedding(chunk_text)
-        if not vector:
-            print(f"Failed to get embedding for chunk {i} of {file_path.name}")
+
+    inserted = 0
+    skipped = 0
+
+    for chunk in chunks:
+        cs = _checksum(doc_id, chunk.section_title, chunk.text)
+
+        # Idempotency: skip if already ingested
+        if _chunk_exists(collection, cs):
+            skipped += 1
             continue
 
-        # Insert
+        # Generate embedding
+        vector = await embedding_service.get_embedding(chunk.text)
+        if not vector:
+            log.warning(
+                "ingest.embedding_failed",
+                chunk_index=chunk.chunk_index,
+            )
+            continue
+
+        # Build metadata JSON for extra flexibility
+        meta = {
+            "dtc_codes": chunk.dtc_codes,
+        }
+
         try:
             collection.data.insert(
                 properties={
-                    "text": chunk_text,
-                    "doc_id": file_path.stem,
+                    "text": chunk.text,
+                    "doc_id": doc_id,
                     "source_type": source_type,
-                    "section_title": "Unknown", # Parser logic needed for real sections
-                    "vehicle_model": "Generic", # Parser logic needed
-                    "chunk_index": i,
-                    "checksum": checksum,
+                    "section_title": chunk.section_title,
+                    "vehicle_model": chunk.vehicle_model,
+                    "chunk_index": chunk.chunk_index,
+                    "checksum": cs,
+                    "metadata_json": json.dumps(meta),
                 },
-                vector=vector
+                vector=vector,
             )
-            print(f"  Inserted chunk {i}")
+            inserted += 1
         except Exception as e:
-            print(f"  Error inserting chunk {i}: {e}")
+            log.error(
+                "ingest.insert_error",
+                chunk_index=chunk.chunk_index,
+                error=str(e),
+            )
+
+    log.info("ingest.file_done", inserted=inserted, skipped=skipped)
+    return {"inserted": inserted, "skipped": skipped}
+
 
 async def main():
-    parser = argparse.ArgumentParser(description="Ingest documents into Weaviate.")
-    parser.add_argument("--dir", type=str, required=True, help="Directory containing documents.")
+    parser = argparse.ArgumentParser(
+        description="Ingest documents into Weaviate."
+    )
+    parser.add_argument(
+        "--dir", type=str, required=True, help="Directory containing documents."
+    )
+    parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=500,
+        help="Maximum chunk size in characters (default: 500).",
+    )
+    parser.add_argument(
+        "--overlap",
+        type=int,
+        default=50,
+        help="Overlap size in characters (default: 50).",
+    )
+    parser.add_argument(
+        "--force-recreate",
+        action="store_true",
+        help="Delete and recreate Weaviate collection before ingestion.",
+    )
     args = parser.parse_args()
-    
+
     data_dir = Path(args.dir)
     if not data_dir.exists():
-        print(f"Directory {data_dir} does not exist.")
+        logger.error("ingest.dir_not_found", dir=str(data_dir))
         return
 
-    # Init Client and Schema
+    # Init client and schema
     try:
         client = get_client()
-        init_schema(client)
-        print("Schema initialized.")
+        init_schema(client, force_recreate=args.force_recreate)
+        logger.info("ingest.schema_ready")
     except Exception as e:
-        print(f"Failed to connect/init schema: {e}")
+        logger.error("ingest.connection_failed", error=str(e))
         return
 
-    # Process files
-    files = list(data_dir.glob("*.txt")) + list(data_dir.glob("*.md"))
-    print(f"Found {len(files)} files.")
-    
+    chunker = Chunker(chunk_size=args.chunk_size, overlap=args.overlap)
+
+    # Discover files
+    files = sorted(data_dir.glob("*.txt")) + sorted(data_dir.glob("*.md"))
+    logger.info("ingest.files_found", count=len(files))
+
+    total_inserted = 0
+    total_skipped = 0
+
     for file_path in files:
-        await process_file(file_path, client)
-        
+        stats = await process_file(file_path, client, chunker)
+        total_inserted += stats["inserted"]
+        total_skipped += stats["skipped"]
+
     client.close()
-    print("Ingestion complete.")
+    logger.info(
+        "ingest.complete",
+        total_inserted=total_inserted,
+        total_skipped=total_skipped,
+    )
+
 
 if __name__ == "__main__":
     asyncio.run(main())
