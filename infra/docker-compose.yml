@@ -368,6 +368,7 @@ services:
       # LLM Configuration
       LLM_ENDPOINT: ${OLLAMA_BASE_URL:-http://ollama:11434}
       LLM_MODEL: ${OLLAMA_DEFAULT_MODEL:-llama3:8b}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
 
       # Weaviate Configuration
       WEAVIATE_URL: http://weaviate:8080
