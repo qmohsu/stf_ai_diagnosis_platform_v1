@@ -1,3 +1,5 @@
+import re
+
 from fastapi import APIRouter, HTTPException
 from app.api.v1.schemas import RedactRequest, RedactResponse, VinValidateRequest, VinValidateResponse
 from app.privacy.redaction import redactor
@@ -33,14 +35,12 @@ def validate_vin(request: VinValidateRequest):
             details={"error": f"Invalid length: {len(vin)}. Expected 17."}
         )
         
-    invalid_chars = set("IOQ") # VINs cannot contain I, O, or Q
-    found_invalid = [c for c in vin if c in invalid_chars]
-    
-    if found_invalid:
-         return VinValidateResponse(
+    # VINs must be alphanumeric, excluding I, O, Q (ISO 3779)
+    if not re.fullmatch(r'[A-HJ-NPR-Z0-9]{17}', vin):
+        return VinValidateResponse(
             vin=vin,
             is_valid=False,
-            details={"error": f"Invalid characters found: {found_invalid} (VINs cannot contain I, O, Q)."}
+            details={"error": "VIN must contain only alphanumeric characters (A-Z, 0-9, excluding I, O, Q)."}
         )
 
     return VinValidateResponse(

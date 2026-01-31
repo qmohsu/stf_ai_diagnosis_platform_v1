@@ -46,7 +46,12 @@ class RedactResponse(BaseModel):
     redacted_count: int
 
 class VinValidateRequest(BaseModel):
-    vin: str = Field(..., description="Vehicle Identification Number")
+    vin: str = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Vehicle Identification Number",
+    )
 
 class VinValidateResponse(BaseModel):
     vin: str
