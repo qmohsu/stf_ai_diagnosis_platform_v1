@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v1.0 (implementation-ready; contains TBD items) |
+| **Status** | Draft v1.1 (implementation-ready; OBD Agent + Pass-1 mapping added) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-01-21 |
+| **Last updated** | 2026-02-01 |
 | **Primary pilot stack** | Dify + (Ollama or vLLM OpenAI-compatible server) + diagnostic_api + vector store (Weaviate) |
-| **New in this revision** | Explicit Phase 1 / 1.5 / 2 gates + LlamaFactory-based fine-tuning and model swap plan |
+| **New in this revision** | Phase 1 now includes an OBD Agent (edge collector) + OBDSnapshot contract + telemetry ingestion endpoints + Pass‑1 (OBD→subsystem+PID shortlist) mapping |
 
 ## Related project deliverables (from proposal)
 •	Deliverable 1: Database establishment + preprocessing (1–18 months)
@@ -49,6 +49,7 @@ G5 — Phase-ready learning loop: Log pilot interactions so Phase 1.5/2 fine-tun
 ### 3.1 Phase 1 (baseline pilot: Prompt + RAG + tool calling)
 •	Dify workflow and UI for technician Q&A (internal pilot).
 •	diagnostic_api (FastAPI) that wraps deep model inference + summary generation (LLM-safe).
+•	OBD Agent (edge collector) + OBDSnapshot telemetry ingestion + Pass‑1 (OBD→subsystem+PID shortlist) mapping.
 •	RAG knowledge ingestion into vector store (SOPs/manuals/checklists; curated excerpts of maintenance reports).
 •	Strict JSON output contract with schema validation + citations per action.
 •	Observability: logs for each interaction (inputs, retrieved chunks, tool outputs, JSON validation, latency).
@@ -103,6 +104,7 @@ Your materials reference multiple taxonomies (8 system categories; 17-class; 33 
 •	diagnostic_api: REST wrapper around deep diagnostic inference and LLM-safe summarization.
 •	Vector store: Weaviate (Dify default) for SOP/manual chunks and sanitized knowledge.
 •	Postgres/Redis: Dify stack and job queueing.
+•	OBD Agent (edge collector): a separate service/daemon (python‑OBD or equivalent) that reads ELM327 OBD‑II and posts sanitized OBDSnapshot telemetry to diagnostic_api.
 ### 7.2 Deployment principle: local-first and interface invariants
 Interface invariants that must not change across phases:
 •	Dify (or later custom UI) calls the model through an OpenAI-compatible base URL.
@@ -126,10 +128,33 @@ Not allowed in LLM context (keep in backend):
 •	raw audio/video frames, vibration waveforms, and full GNSS tracks
 •	any personal data (faces, voice) and unredacted location details
 •	direct identifiers beyond what the workflow needs (names, phone, plate numbers, etc.)
+
+### 8.1.1 OBDSnapshot contract (edge → cloud)
+The edge collector must send a **sanitized, JSON-only** snapshot to the cloud. This keeps hardware access, serial I/O, and any adapter quirks out of the cloud API workers.
+
+**Design rules**
+• Store the full OBDSnapshot in the backend (for audit + reprocessing), but only send **derived summaries** into the LLM context.
+• Never include raw adapter debug logs, raw CAN frames, or high-frequency time-series arrays in this payload.
+• Treat OBDSnapshot as an additive contract: new fields can be added, but existing fields must remain backward compatible.
+
+**Minimum payload (illustrative)**
+```json
+{
+  "vehicle_id": "V123",
+  "ts": "2026-02-01T12:34:56Z",
+  "adapter": {"type": "ELM327", "port": "/dev/ttyUSB0"},
+  "dtc": [{"code":"P0301","desc":"..."}],
+  "freeze_frame": {"RPM": {"value": 850, "unit": "rpm"}},
+  "supported_pids": ["RPM","COOLANT_TEMP"],
+  "baseline_pids": {"RPM": {"value": 780, "unit": "rpm"}}
+}
+```
+
 ### 8.2 Storage layers (recommended)
 •	Raw layer (immutable): object storage (MinIO/S3-compatible), partitioned by date/vehicle/modality.
 •	Processed layer: standardized synchronized sequences (e.g., Parquet).
 •	Feature layer: extracted features (RMS/kurtosis/MFCC etc.) + OBD summary features.
+•	OBD snapshot layer (pilot): Postgres table `obd_snapshots` storing sanitized OBDSnapshot as JSONB, indexed by (vehicle_id, ts).
 •	Label layer: workshop-confirmed labels from maintenance records.
 •	Case packages: one record per incident/question, used for training and evaluation.
 ## 9) diagnostic_api design (pilot interface contract)
@@ -142,6 +167,8 @@ Not allowed in LLM context (keep in backend):
 •	GET /health
 •	POST /v1/vehicle/diagnose
 •	POST /v1/vehicle/latest
+•	POST /v1/telemetry/obd_snapshot
+•	GET /v1/telemetry/obd_snapshot/latest
 Example request/response (illustrative):
 
 **Request:**
@@ -185,6 +212,41 @@ POST /v1/vehicle/diagnose
 ```
 ### 9.3 Notes on taxonomy
 Include a 'taxonomy' field and keep API changes additive. This prevents breaking the expert model when moving from 8-category to 17-class or 33-type outputs.
+
+### 9.4 OBD telemetry ingestion (OBD Agent → diagnostic_api)
+**Purpose:** ingest edge-collected OBD snapshots without exposing serial/adapter logic inside the cloud API.
+
+**Endpoint:** `POST /v1/telemetry/obd_snapshot`
+
+**Behavior (minimum):**
+• Validate payload shape (Pydantic) and reject unexpected high-risk fields (raw logs, raw CAN frames, oversized arrays).
+• Persist payload (JSONB) + metadata (vehicle_id, ts, adapter.type) with indexes for latest lookup.
+• Return `{snapshot_id, stored_at}`.
+
+**Companion endpoint:** `GET /v1/telemetry/obd_snapshot/latest?vehicle_id=...&max_age_seconds=...`
+
+### 9.5 Pass‑1 mapper (OBD → subsystem shortlist)
+Pass‑1 is a deterministic **rules + tables** pipeline that turns DTC(s) + freeze frame + supported PID list (+ symptom tags) into:
+• `subsystem_shortlist` (ranked)
+• `candidate_pid_shortlist` (10–25 signals that are both relevant **and supported** by this vehicle)
+
+**Where it runs:** inside `diagnostic_api` (pure Python; no hardware calls).
+
+**How it interacts with the expert model:**
+• The LLM sees only the derived Pass‑1 summary (subsystems + candidate PIDs + freeze-frame highlights + limitations).
+• The raw OBDSnapshot stays in Postgres and is never pasted into prompts.
+
+**Additive response field (recommended):**
+```json
+{
+  "pass1": {
+    "subsystem_shortlist": [{"subsystem":"ignition","score":0.78}],
+    "candidate_pid_shortlist": ["RPM","STFT1","COOLANT_TEMP"],
+    "freeze_frame_highlights": ["RPM=850", "STFT1=+12.5%"],
+    "limitations": ["vehicle does not support FUEL_PRESSURE PID"]
+  }
+}
+```
 ## 10) Expert model system design (LLM + RAG + tool-calling)
 ### 10.1 Responsibilities
 •	Translate diagnostic engine outputs into actionable steps aligned to SOPs/manuals.
@@ -217,7 +279,7 @@ The assistant must output strict JSON with these fields (schema versioned):
 •	Do not ingest raw sensor streams into the RAG store.
 ### 10.4 Workflow ('golden workflow')
 1.	Start: inputs = vehicle_id, question, optional time_range.
-2.	HTTP Request → diagnostic_api /v1/vehicle/diagnose.
+2.	HTTP Request → diagnostic_api /v1/vehicle/diagnose (server may auto-attach latest OBDSnapshot-derived Pass‑1 summary if dtc_codes are missing).
 3.	Knowledge Retrieval query = question + predicted fault keywords + DTCs + subsystem.
 4.	LLM generation (system prompt enforces: use only diagnostic_api output + retrieved docs; produce schema-valid JSON).
 5.	Schema validation + citation checks; if invalid, retry with repair prompt; else return output + short summary.
@@ -232,6 +294,7 @@ Fine-tuning primarily improves behavior (format discipline, safe tool use, consi
 ### 11.3 Data to log in Phase 1 (mandatory for Phase 1.5/2)
 •	User input: question, role, vehicle context flags, time_range.
 •	diagnostic_api request/response (redacted; include evidence_ids and limitations).
+•	OBD telemetry (redacted): snapshot_id(s) used, Pass‑1 outputs (subsystems + candidate PIDs + highlights), and supported PID list summary.
 •	Retrieved chunks: doc_id, section, chunk_id, and snippet hash (for traceability).
 •	Assistant output JSON + validation result; retry count; latency breakdown.
 •	Human feedback: rating, correction, and ‘ground truth’ maintenance outcome if available.
@@ -310,6 +373,8 @@ Honor the project’s privacy posture: restricted access, locked storage, define
 •	/training/ (dataset builder, LlamaFactory configs, LoRA scripts)
 •	/eval/ (offline eval harness, regression suite)
 •	/docs/ (this design doc + API contract + schemas)
+•	/obd_agent/ (edge collector service; reads ELM327 and posts OBDSnapshot)
+•	/pass1/ (rules + tables: dtc_family→subsystem, symptom→subsystem, subsystem→PID priority)
 ### 16.2 Milestones (phase-gated)
 
 | Milestone | Exit criteria |
@@ -317,11 +382,15 @@ Honor the project’s privacy posture: restricted access, locked storage, define
 | M0 | Schemas finalized (diagnostic_api + expert output JSON v1.0) |
 | M1 | Dify workflow works with stub backend; schema validation + citations checks wired |
 | M2 | diagnostic_api integrated with real diagnostic outputs (LLM-safe summaries) |
+| M2.1 | OBD Agent posts snapshots; diagnostic_api stores OBDSnapshot + exposes latest lookup; Pass‑1 mapper returns subsystem+PID shortlist |
 | M3 | RAG ingestion complete; doc_id/section anchors stable; citation coverage passes |
 | M4 | Phase 1 pilot run + SME evaluation; logging pipeline producing case packages |
 | M5 | Phase 1.5: LoRA/SFT via LlamaFactory + offline regression suite; deploy tuned model behind OpenAI endpoint |
 | M6 | Phase 2: preference tuning + canary + drift/rollback + security review |
 ## 17) Open questions / TBD (must resolve early)
+•	OBD Agent deployment model: host daemon vs container with /dev passthrough; Bluetooth vs USB; offline buffering behavior.
+•	Licensing boundary decision for python‑OBD (GPL) and whether the agent ships as a separate artifact/service.
+•	Pass‑1 taxonomy: define subsystem names (8 vs 17 vs 33 mapping) and PID shortlist table ownership (who curates + approves changes).
 •	Label taxonomy for the pilot: 8 vs 17 vs 33 (and how to map between them).
 •	Final dataset volume for extension vehicles (application vs deck mismatches).
 •	Base LLM choice (language requirements, context length, latency on available GPUs).
