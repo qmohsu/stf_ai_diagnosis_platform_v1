@@ -57,6 +57,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-dify}
       POSTGRES_USER: ${POSTGRES_USER:-dify_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?APP_DB_PASSWORD must be set}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -180,10 +181,10 @@ services:
       MODE: api
       LOG_LEVEL: INFO
       SECRET_KEY: ${DIFY_SECRET_KEY:?DIFY_SECRET_KEY must be set}
-      CONSOLE_WEB_URL: http://localhost:${DIFY_WEB_PORT:-3000}
-      CONSOLE_API_URL: http://localhost:${DIFY_API_PORT:-5001}
-      SERVICE_API_URL: http://localhost:${DIFY_API_PORT:-5001}
-      APP_WEB_URL: http://localhost:${DIFY_WEB_PORT:-3000}
+      CONSOLE_WEB_URL: http://${BIND_HOST:-127.0.0.1}:${DIFY_WEB_PORT:-3000}
+      CONSOLE_API_URL: http://${BIND_HOST:-127.0.0.1}:${DIFY_API_PORT:-5001}
+      SERVICE_API_URL: http://${BIND_HOST:-127.0.0.1}:${DIFY_API_PORT:-5001}
+      APP_WEB_URL: http://${BIND_HOST:-127.0.0.1}:${DIFY_WEB_PORT:-3000}
 
       # Database
       DB_USERNAME: ${POSTGRES_USER:-dify_user}
@@ -214,9 +215,12 @@ services:
       EDITION: ${DIFY_EDITION:-SELF_HOSTED}
       DEPLOY_ENV: ${DIFY_DEPLOY_ENV:-PRODUCTION}
 
+      # Database migration on startup
+      MIGRATION_ENABLED: "true"
+
       # SSRF Protection
       SSRF_PROXY_HTTP_URL: ${DIFY_SSRF_PROXY_HTTP_URL:-}
-      SSRF_PROXY_HTTPS_URL: ${DIFY_SSRF_PROXY_HTTP_URL:-}
+      SSRF_PROXY_HTTPS_URL: ${DIFY_SSRF_PROXY_HTTPS_URL:-}
 
       # Sandbox
       CODE_EXECUTION_API_KEY: dify-sandbox
@@ -274,6 +278,7 @@ services:
       VECTOR_STORE: ${DIFY_VECTOR_STORE:-weaviate}
       WEAVIATE_ENDPOINT: ${DIFY_WEAVIATE_ENDPOINT:-http://weaviate:8080}
       WEAVIATE_API_KEY: ${WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS}
+
       # Sandbox
       CODE_EXECUTION_API_KEY: dify-sandbox
       CODE_EXECUTION_ENDPOINT: http://sandbox:8194
@@ -326,7 +331,7 @@ services:
       dify-api:
         condition: service_healthy
     environment:
-      CONSOLE_API_URL: http://localhost:${DIFY_API_PORT:-5001}
+      CONSOLE_API_URL: http://${BIND_HOST:-127.0.0.1}:${DIFY_API_PORT:-5001}
       APP_API_URL: http://dify-api:5001
       EDITION: ${DIFY_EDITION:-SELF_HOSTED}
     healthcheck:
