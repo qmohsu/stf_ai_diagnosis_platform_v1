@@ -90,3 +90,8 @@ diagnostic_api/app/logs/
 *.db
 *.sqlite
 *.sqlite3
+
+# OBD Agent
+obd_agent/.env
+obd_agent/venv/
+obd_agent/__pycache__/

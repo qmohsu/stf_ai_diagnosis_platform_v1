@@ -1,0 +1,102 @@
+{
+  "healthy": {
+    "description": "Normal operating conditions, no DTCs",
+    "dtc": [],
+    "freeze_frame": {},
+    "supported_pids": [
+      "RPM", "COOLANT_TEMP", "SHORT_FUEL_TRIM_1", "LONG_FUEL_TRIM_1",
+      "INTAKE_PRESSURE", "SPEED", "THROTTLE_POS", "ENGINE_LOAD"
+    ],
+    "baseline_pids": {
+      "RPM":               { "base": 780.0, "noise": 20.0, "unit": "rpm" },
+      "COOLANT_TEMP":      { "base": 90.0,  "noise": 2.0,  "unit": "degC" },
+      "SHORT_FUEL_TRIM_1": { "base": 1.5,   "noise": 1.0,  "unit": "percent" },
+      "LONG_FUEL_TRIM_1":  { "base": 0.5,   "noise": 0.5,  "unit": "percent" },
+      "INTAKE_PRESSURE":   { "base": 33.0,  "noise": 2.0,  "unit": "kPa" },
+      "SPEED":             { "base": 0.0,   "noise": 0.0,  "unit": "km/h" },
+      "THROTTLE_POS":      { "base": 15.0,  "noise": 2.0,  "unit": "percent" },
+      "ENGINE_LOAD":       { "base": 22.0,  "noise": 3.0,  "unit": "percent" }
+    }
+  },
+  "misfire": {
+    "description": "Cylinder 1 misfire with lean condition",
+    "dtc": [
+      { "code": "P0301", "desc": "Cylinder 1 misfire detected" },
+      { "code": "P0171", "desc": "System too lean (Bank 1)" }
+    ],
+    "freeze_frame": {
+      "RPM":               { "base": 850.0, "noise": 30.0, "unit": "rpm" },
+      "COOLANT_TEMP":      { "base": 92.0,  "noise": 1.0,  "unit": "degC" },
+      "SHORT_FUEL_TRIM_1": { "base": 12.5,  "noise": 2.0,  "unit": "percent" },
+      "INTAKE_PRESSURE":   { "base": 35.0,  "noise": 3.0,  "unit": "kPa" }
+    },
+    "supported_pids": [
+      "RPM", "COOLANT_TEMP", "SHORT_FUEL_TRIM_1", "LONG_FUEL_TRIM_1",
+      "INTAKE_PRESSURE", "SPEED", "THROTTLE_POS", "ENGINE_LOAD"
+    ],
+    "baseline_pids": {
+      "RPM":               { "base": 780.0, "noise": 40.0, "unit": "rpm" },
+      "COOLANT_TEMP":      { "base": 90.0,  "noise": 2.0,  "unit": "degC" },
+      "SHORT_FUEL_TRIM_1": { "base": 12.5,  "noise": 3.0,  "unit": "percent" },
+      "LONG_FUEL_TRIM_1":  { "base": 8.0,   "noise": 2.0,  "unit": "percent" },
+      "INTAKE_PRESSURE":   { "base": 33.0,  "noise": 3.0,  "unit": "kPa" },
+      "SPEED":             { "base": 0.0,   "noise": 0.0,  "unit": "km/h" },
+      "THROTTLE_POS":      { "base": 16.0,  "noise": 3.0,  "unit": "percent" },
+      "ENGINE_LOAD":       { "base": 28.0,  "noise": 5.0,  "unit": "percent" }
+    }
+  },
+  "lean": {
+    "description": "System lean condition, possible vacuum leak",
+    "dtc": [
+      { "code": "P0171", "desc": "System too lean (Bank 1)" },
+      { "code": "P0174", "desc": "System too lean (Bank 2)" }
+    ],
+    "freeze_frame": {
+      "RPM":               { "base": 760.0, "noise": 25.0, "unit": "rpm" },
+      "COOLANT_TEMP":      { "base": 88.0,  "noise": 2.0,  "unit": "degC" },
+      "SHORT_FUEL_TRIM_1": { "base": 18.0,  "noise": 3.0,  "unit": "percent" },
+      "INTAKE_PRESSURE":   { "base": 40.0,  "noise": 4.0,  "unit": "kPa" }
+    },
+    "supported_pids": [
+      "RPM", "COOLANT_TEMP", "SHORT_FUEL_TRIM_1", "LONG_FUEL_TRIM_1",
+      "INTAKE_PRESSURE", "SPEED", "THROTTLE_POS", "ENGINE_LOAD"
+    ],
+    "baseline_pids": {
+      "RPM":               { "base": 760.0, "noise": 30.0, "unit": "rpm" },
+      "COOLANT_TEMP":      { "base": 87.0,  "noise": 2.0,  "unit": "degC" },
+      "SHORT_FUEL_TRIM_1": { "base": 18.0,  "noise": 4.0,  "unit": "percent" },
+      "LONG_FUEL_TRIM_1":  { "base": 12.0,  "noise": 3.0,  "unit": "percent" },
+      "INTAKE_PRESSURE":   { "base": 39.0,  "noise": 4.0,  "unit": "kPa" },
+      "SPEED":             { "base": 0.0,   "noise": 0.0,  "unit": "km/h" },
+      "THROTTLE_POS":      { "base": 14.0,  "noise": 2.0,  "unit": "percent" },
+      "ENGINE_LOAD":       { "base": 20.0,  "noise": 4.0,  "unit": "percent" }
+    }
+  },
+  "overheat": {
+    "description": "Engine overheating, possible thermostat failure",
+    "dtc": [
+      { "code": "P0217", "desc": "Engine coolant over temperature" },
+      { "code": "P0128", "desc": "Coolant thermostat below regulating temperature" }
+    ],
+    "freeze_frame": {
+      "RPM":               { "base": 800.0, "noise": 20.0, "unit": "rpm" },
+      "COOLANT_TEMP":      { "base": 115.0, "noise": 3.0,  "unit": "degC" },
+      "SHORT_FUEL_TRIM_1": { "base": 3.0,   "noise": 1.5,  "unit": "percent" },
+      "INTAKE_PRESSURE":   { "base": 34.0,  "noise": 2.0,  "unit": "kPa" }
+    },
+    "supported_pids": [
+      "RPM", "COOLANT_TEMP", "SHORT_FUEL_TRIM_1", "LONG_FUEL_TRIM_1",
+      "INTAKE_PRESSURE", "SPEED", "THROTTLE_POS", "ENGINE_LOAD"
+    ],
+    "baseline_pids": {
+      "RPM":               { "base": 800.0, "noise": 25.0, "unit": "rpm" },
+      "COOLANT_TEMP":      { "base": 112.0, "noise": 5.0,  "unit": "degC" },
+      "SHORT_FUEL_TRIM_1": { "base": 3.0,   "noise": 2.0,  "unit": "percent" },
+      "LONG_FUEL_TRIM_1":  { "base": 1.0,   "noise": 1.0,  "unit": "percent" },
+      "INTAKE_PRESSURE":   { "base": 34.0,  "noise": 2.0,  "unit": "kPa" },
+      "SPEED":             { "base": 0.0,   "noise": 0.0,  "unit": "km/h" },
+      "THROTTLE_POS":      { "base": 15.0,  "noise": 2.0,  "unit": "percent" },
+      "ENGINE_LOAD":       { "base": 30.0,  "noise": 5.0,  "unit": "percent" }
+    }
+  }
+}

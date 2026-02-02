@@ -1,0 +1,24 @@
+# OBD Agent -- Full dependencies (includes GPL-licensed python-obd)
+# NOTE: python-obd is GPL-2.0. This file is for live-mode or full installs.
+# For simulation/CI without GPL deps, use requirements-sim.txt instead.
+
+# OBD adapter communication (GPL-2.0)
+obd==0.7.2
+
+# HTTP client
+httpx==0.26.0
+
+# Data validation
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Structured logging
+structlog==24.1.0
+
+# Environment variable loading
+python-dotenv==1.0.0
+
+# --- Testing ---
+pytest==7.4.4
+pytest-asyncio==0.23.3
+respx==0.21.1

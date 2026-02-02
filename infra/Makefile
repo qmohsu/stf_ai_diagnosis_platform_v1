@@ -7,7 +7,7 @@
 # ============================================================================
 
 .PHONY: help up down restart logs ps health status clean reset-volumes \
-        pull build check-env init
+        pull build check-env init obd-agent-test
 
 .DEFAULT_GOAL := help
 
@@ -208,3 +208,8 @@ watch: ## Watch container status (refreshes every 2s)
 smoke-test: ## Run comprehensive smoke tests
 	@echo "$(GREEN)Running smoke tests...$(NC)"
 	@bash smoke_test.sh
+
+obd-agent-test: ## Run OBD agent tests (simulation only, no GPL deps)
+	@echo "$(GREEN)Running OBD agent tests...$(NC)"
+	@cd .. && pip install -q -r obd_agent/requirements-sim.txt && python -m pytest obd_agent/tests/ -v
+	@echo "$(GREEN)OBD agent tests complete$(NC)"

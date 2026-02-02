@@ -1,0 +1,40 @@
+{
+  "vehicle_id": "V-SIM-001",
+  "ts": "2026-02-01T12:34:56Z",
+  "adapter": {
+    "type": "ELM327",
+    "port": "sim"
+  },
+  "dtc": [
+    {
+      "code": "P0301",
+      "desc": "Cylinder 1 misfire detected"
+    },
+    {
+      "code": "P0171",
+      "desc": "System too lean (Bank 1)"
+    }
+  ],
+  "freeze_frame": {
+    "RPM": { "value": 850.0, "unit": "rpm" },
+    "COOLANT_TEMP": { "value": 92.0, "unit": "degC" },
+    "SHORT_FUEL_TRIM_1": { "value": 12.5, "unit": "percent" },
+    "INTAKE_PRESSURE": { "value": 35.0, "unit": "kPa" }
+  },
+  "supported_pids": [
+    "RPM",
+    "COOLANT_TEMP",
+    "SHORT_FUEL_TRIM_1",
+    "LONG_FUEL_TRIM_1",
+    "INTAKE_PRESSURE",
+    "SPEED",
+    "THROTTLE_POS",
+    "ENGINE_LOAD"
+  ],
+  "baseline_pids": {
+    "RPM": { "value": 780.0, "unit": "rpm" },
+    "COOLANT_TEMP": { "value": 90.0, "unit": "degC" },
+    "SHORT_FUEL_TRIM_1": { "value": 12.5, "unit": "percent" },
+    "INTAKE_PRESSURE": { "value": 33.0, "unit": "kPa" }
+  }
+}

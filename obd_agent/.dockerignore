@@ -1,0 +1,10 @@
+.env
+tests/
+__pycache__/
+*.pyc
+venv/
+.venv/
+pytest.ini
+requirements-sim.txt
+.dockerignore
+.env.example

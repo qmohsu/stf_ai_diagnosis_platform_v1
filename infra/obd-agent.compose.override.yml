@@ -1,0 +1,46 @@
+# ============================================================================
+# OBD Agent -- Docker Compose override
+# ============================================================================
+# Usage:
+#   docker compose -f docker-compose.yml -f obd-agent.compose.override.yml up -d
+#
+# Runs the OBD agent as a container on the stf-internal network so it can
+# reach diagnostic-api without localhost port mapping.
+# ============================================================================
+
+services:
+  obd-agent:
+    container_name: stf-obd-agent
+    build:
+      context: ../obd_agent
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      diagnostic-api:
+        condition: service_healthy
+    networks:
+      - stf-internal
+    environment:
+      # Point at diagnostic-api via internal Docker network name
+      DIAGNOSTIC_API_BASE_URL: http://diagnostic-api:8000
+      # Default to simulation (no hardware)
+      OBD_PORT: sim
+      VEHICLE_ID: V-SIM-001
+      OBD_SIM_SCENARIO: misfire
+      SNAPSHOT_INTERVAL_SECONDS: 30
+      DRY_RUN: "false"
+      LOG_LEVEL: INFO
+      LOG_FORMAT: json
+
+    # --- USB device passthrough (Linux only) ---
+    # Uncomment the following to pass a USB ELM327 adapter into the container.
+    # devices:
+    #   - /dev/ttyUSB0:/dev/ttyUSB0
+
+    # No ports to expose -- agent is a client, not a server.
+
+# Network defined in base docker-compose.yml; redeclared here so this
+# file is self-documenting and fails clearly if used standalone.
+networks:
+  stf-internal:
+    external: false
