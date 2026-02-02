@@ -1,0 +1,73 @@
+{
+  "vehicle_id": "V-38615C39",
+  "adapter": "ELM327 v1.4b",
+  "time_range": {
+    "start": "2025-07-23T14:42:16Z",
+    "end": "2025-07-23T14:47:04Z",
+    "duration_seconds": 288,
+    "sample_count": 158
+  },
+  "dtc_codes": [],
+  "pid_summary": {
+    "RPM": {
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0,
+      "latest": 0.0,
+      "unit": "rpm"
+    },
+    "COOLANT_TEMP": {
+      "min": 32.0,
+      "max": 32.0,
+      "mean": 32.0,
+      "latest": 32.0,
+      "unit": "degC"
+    },
+    "SHORT_FUEL_TRIM_1": {
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0,
+      "latest": 0.0,
+      "unit": "percent"
+    },
+    "LONG_FUEL_TRIM_1": {
+      "min": -10.94,
+      "max": 0.0,
+      "mean": -0.07,
+      "latest": 0.0,
+      "unit": "percent"
+    },
+    "INTAKE_PRESSURE": {
+      "min": 99.0,
+      "max": 100.0,
+      "mean": 99.16,
+      "latest": 99.0,
+      "unit": "kPa"
+    },
+    "SPEED": {
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0,
+      "latest": 0.0,
+      "unit": "km/h"
+    },
+    "THROTTLE_POS": {
+      "min": 16.08,
+      "max": 17.25,
+      "mean": 16.09,
+      "latest": 16.08,
+      "unit": "percent"
+    },
+    "ENGINE_LOAD": {
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0,
+      "latest": 0.0,
+      "unit": "percent"
+    }
+  },
+  "anomalies": [
+    "LONG_FUEL_TRIM_1: initial=-10.94%, stabilized to 0.0% after first sample",
+    "THROTTLE_POS: initial=17.25%, stabilized to 16.08% after first sample"
+  ]
+}
