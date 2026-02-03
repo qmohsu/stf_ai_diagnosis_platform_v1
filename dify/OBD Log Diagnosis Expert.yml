@@ -176,13 +176,14 @@ workflow:
           import json
 
           def main(log_text: str) -> dict:
-              # Build the complete JSON body with proper escaping
-              body = json.dumps({"text": log_text})
-              return {"json_body": body}
+              # Escape the text value for safe JSON embedding
+              # json.dumps adds quotes, so we strip them to get just the escaped content
+              escaped = json.dumps(log_text)
+              return {"escaped_text": escaped}
         code_language: python3
         desc: 'Escape the log text for safe JSON transmission.'
         outputs:
-          json_body:
+          escaped_text:
             children: null
             type: string
         selected: false
@@ -212,10 +213,10 @@ workflow:
           config: null
           type: no-auth
         body:
-          data: "{{#escape_text.json_body#}}"
-          type: raw-text
+          data: "{\n  \"text\": {{#escape_text.escaped_text#}}\n}"
+          type: json
         desc: 'POST raw log text to the summarize-log-text API.'
-        headers: 'Content-Type: application/json'
+        headers: ''
         method: post
         params: ''
         selected: false
