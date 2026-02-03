@@ -35,30 +35,19 @@ workflow:
       voice: ''
   graph:
     edges:
-    # Start → Escape Text
+    # Start → Summarize Log Text
     - data:
         isInIteration: false
         sourceType: start
-        targetType: code
-      id: start-source-escape_text-target
-      source: start
-      sourceHandle: source
-      target: escape_text
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    # Escape Text → Summarize Log Text
-    - data:
-        isInIteration: false
-        sourceType: code
         targetType: http-request
-      id: escape_text-source-summarize-target
-      source: escape_text
+      id: start-source-summarize_log_text-target
+      source: start
       sourceHandle: source
       target: summarize_log_text
       targetHandle: target
       type: custom
       zIndex: 0
+
     # Summarize Log Text → Parse Summary
     - data:
         isInIteration: false
@@ -170,52 +159,16 @@ workflow:
       targetPosition: left
       type: custom
       width: 244
-    # ── Escape Text (code) ─────────────────────────────────────────────────
-    - data:
-        code: |
-          import json
 
-          def main(log_text: str) -> dict:
-              # Escape the text value for safe JSON embedding
-              # json.dumps adds quotes, so we strip them to get just the escaped content
-              escaped = json.dumps(log_text)
-              return {"escaped_text": escaped}
-        code_language: python3
-        desc: 'Escape the log text for safe JSON transmission.'
-        outputs:
-          escaped_text:
-            children: null
-            type: string
-        selected: false
-        title: Escape Text
-        type: code
-        variables:
-        - value_selector:
-          - start
-          - log_text
-          variable: log_text
-      height: 54
-      id: escape_text
-      position:
-        x: 370
-        y: 282
-      positionAbsolute:
-        x: 370
-        y: 282
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 244
     # ── Summarize Log Text (HTTP POST) ─────────────────────────────────────
     - data:
         authorization:
           config: null
           type: no-auth
         body:
-          data: "{\n  \"text\": {{#escape_text.escaped_text#}}\n}"
-          type: json
-        desc: 'POST raw log text to the summarize-log-text API.'
+          data: "{{#start.log_text#}}"
+          type: raw-text
+        desc: 'POST raw log text to the summarize-log-raw API.'
         headers: ''
         method: post
         params: ''
@@ -226,7 +179,7 @@ workflow:
           max_write_timeout: 0
         title: Summarize Log Text
         type: http-request
-        url: http://diagnostic-api:8000/v1/tools/summarize-log-text
+        url: http://diagnostic-api:8000/v1/tools/summarize-log-raw
         variables: []
       height: 122
       id: summarize_log_text

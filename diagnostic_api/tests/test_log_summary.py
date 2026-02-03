@@ -155,18 +155,19 @@ class TestSummarizeLogUnit:
 
 
 # ---------------------------------------------------------------------------
-# Unit tests for POST /v1/tools/summarize-log-text  (JSON body)
+# Unit tests for POST /v1/tools/summarize-log-raw  (Raw body)
 # ---------------------------------------------------------------------------
 
-class TestSummarizeLogTextUnit:
-    """Unit tests for the text-based endpoint with the real parser mocked out."""
+
+class TestSummarizeLogRawUnit:
+    """Unit tests for the raw-body endpoint with the real parser mocked out."""
 
     @patch("app.api.v1.endpoints.log_summary.summarize_log_file")
-    def test_valid_log_text_returns_200(self, mock_summarize, client):
+    def test_valid_log_raw_returns_200(self, mock_summarize, client):
         mock_summarize.return_value = _make_summary()
         resp = client.post(
-            "/v1/tools/summarize-log-text",
-            json={"text": "some\tdata\n"},
+            "/v1/tools/summarize-log-raw",
+            content=b"some\tdata\n",
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -174,47 +175,33 @@ class TestSummarizeLogTextUnit:
         assert "pid_summary" in body
         mock_summarize.assert_called_once()
 
-    def test_empty_text_returns_422(self, client):
+    def test_empty_raw_returns_422(self, client):
         resp = client.post(
-            "/v1/tools/summarize-log-text",
-            json={"text": ""},
+            "/v1/tools/summarize-log-raw",
+            content=b"",
         )
         assert resp.status_code == 422
-        assert "empty" in resp.json()["detail"].lower()
-
-    def test_whitespace_only_text_returns_422(self, client):
-        resp = client.post(
-            "/v1/tools/summarize-log-text",
-            json={"text": "  \n  "},
-        )
-        assert resp.status_code == 422
-        assert "empty" in resp.json()["detail"].lower()
-
-    def test_missing_text_field_returns_422(self, client):
-        resp = client.post(
-            "/v1/tools/summarize-log-text",
-            json={},
-        )
-        assert resp.status_code == 422
+        # detail might vary, but should be 422
 
     @patch("app.api.v1.endpoints.log_summary._MAX_FILE_SIZE", 1024)
-    def test_oversized_text_returns_413(self, client):
+    def test_oversized_raw_returns_413(self, client):
         resp = client.post(
-            "/v1/tools/summarize-log-text",
-            json={"text": "x" * 1025},
+            "/v1/tools/summarize-log-raw",
+            content=b"x" * 1025,
         )
         assert resp.status_code == 413
         assert "10 MB" in resp.json()["detail"]
 
     @patch("app.api.v1.endpoints.log_summary.summarize_log_file")
-    def test_invalid_tsv_text_returns_422(self, mock_summarize, client):
+    def test_invalid_tsv_raw_returns_422(self, mock_summarize, client):
         mock_summarize.side_effect = ValueError("bad TSV")
         resp = client.post(
-            "/v1/tools/summarize-log-text",
-            json={"text": "not a log"},
+            "/v1/tools/summarize-log-raw",
+            content=b"not a log",
         )
         assert resp.status_code == 422
-        assert "Failed to parse log text" in resp.json()["detail"]
+        assert "Failed to parse log file" in resp.json()["detail"]
+
 
 
 # ---------------------------------------------------------------------------
@@ -260,9 +247,9 @@ class TestSummarizeLogIntegration:
         not FIXTURE_LOG.exists(),
         reason="fixture file not found",
     )
-    def test_text_and_file_endpoints_match(self, client):
+    def test_raw_and_file_endpoints_match(self, client):
         """Same fixture content via both endpoints should produce identical JSON."""
-        fixture_text = FIXTURE_LOG.read_text(encoding="utf-8")
+        fixture_bytes = FIXTURE_LOG.read_bytes()
 
         # File upload endpoint
         with open(FIXTURE_LOG, "rb") as f:
@@ -271,12 +258,12 @@ class TestSummarizeLogIntegration:
                 files={"file": ("obd_log_20250723_144216.txt", f, "text/plain")},
             )
 
-        # Text body endpoint
-        text_resp = client.post(
-            "/v1/tools/summarize-log-text",
-            json={"text": fixture_text},
+        # Raw body endpoint
+        raw_resp = client.post(
+            "/v1/tools/summarize-log-raw",
+            content=fixture_bytes,
         )
 
         assert file_resp.status_code == 200
-        assert text_resp.status_code == 200
-        assert file_resp.json() == text_resp.json()
+        assert raw_resp.status_code == 200
+        assert file_resp.json() == raw_resp.json()

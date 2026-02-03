@@ -1,5 +1,5 @@
 """POST /v1/tools/summarize-log   -- upload a .txt OBD log and get a JSON summary.
-POST /v1/tools/summarize-log-text -- post raw OBD TSV text and get a JSON summary.
+POST /v1/tools/summarize-log-raw  -- post raw OBD TSV text and get a JSON summary.
 """
 
 from __future__ import annotations
@@ -23,10 +23,7 @@ _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 _READ_CHUNK = 64 * 1024  # 64 KB
 
 
-def _safe_filename(raw: str | None) -> str:
-    """Sanitise user-supplied filename for logging (truncate, strip control chars)."""
-    name = (raw or "")[:255]
-    return name.replace("\n", "").replace("\r", "").replace("\x00", "")
+
 
 
 # TODO: Add API key or JWT authentication before production deployment.
@@ -92,10 +89,22 @@ async def summarize_log(file: UploadFile = File(...)) -> LogSummary:
         )
 
     # --- write to temp file and summarise ----------------------------------
+    return await _summarize_content(contents, filename)
+
+
+def _safe_filename(raw: str | None) -> str:
+    """Sanitise user-supplied filename for logging (truncate, strip control chars)."""
+    name = (raw or "")[:255]
+    return name.replace("\n", "").replace("\r", "").replace("\x00", "")
+
+
+async def _summarize_content(contents: bytes, filename: str) -> LogSummary:
+    """Shared helper to write bytes to temp file and run summary."""
     tmp_path: str | None = None
     try:
+        # Write to temp file
         with tempfile.NamedTemporaryFile(
-            delete=False, suffix=".txt",
+            delete=False, suffix=".txt", mode="wb"
         ) as tmp:
             tmp.write(contents)
             tmp_path = tmp.name
@@ -106,6 +115,7 @@ async def summarize_log(file: UploadFile = File(...)) -> LogSummary:
             size=len(contents),
         )
 
+        # Run summarizer in thread pool
         summary: LogSummary = await asyncio.to_thread(
             summarize_log_file, tmp_path,
         )
@@ -140,86 +150,37 @@ async def summarize_log(file: UploadFile = File(...)) -> LogSummary:
                 pass
 
 
-# ---------------------------------------------------------------------------
-# POST /v1/tools/summarize-log-text  (JSON body with raw TSV text)
-# ---------------------------------------------------------------------------
 
 
-class SummarizeLogTextRequest(BaseModel):
-    """Request body for the text-based log summary endpoint."""
 
-    text: str
-
+from fastapi import Request
 
 @router.post(
-    "/summarize-log-text",
+    "/summarize-log-raw",
     response_model=LogSummary,
     status_code=status.HTTP_200_OK,
-    summary="Summarize raw OBD log text",
+    summary="Summarize raw OBD log text (Direct Body)",
 )
-async def summarize_log_text(body: SummarizeLogTextRequest) -> LogSummary:
-    """Accept raw OBD TSV log text and return a compact JSON summary.
-
-    Raises
-    ------
-    HTTPException 413
-        Text exceeds 10 MB.
-    HTTPException 422
-        Empty/whitespace text or parse failure.
+async def summarize_log_raw(request: Request) -> LogSummary:
+    """Accept raw OBD TSV log text as the direct HTTP body.
+    
+    This avoids JSON overhead and allows streaming/large inputs from clients
+    that can't easily construct large JSON payloads (conflicts with 80k char limits etc).
     """
-    # --- validate text content -----------------------------------------------
-    if not body.text or not body.text.strip():
+    body_bytes = await request.body()
+    
+    if len(body_bytes) == 0:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Text must not be empty or whitespace-only.",
+            detail="Body must not be empty.",
         )
 
-    encoded = body.text.encode("utf-8")
-    if len(encoded) > _MAX_FILE_SIZE:
-        logger.warning("log_summary_text_too_large", size=len(encoded))
+    if len(body_bytes) > _MAX_FILE_SIZE:
+        logger.warning("log_summary_raw_too_large", size=len(body_bytes))
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="Text exceeds 10 MB limit.",
         )
 
-    # --- write to temp file and summarise ------------------------------------
-    tmp_path: str | None = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", delete=False, suffix=".txt",
-        ) as tmp:
-            tmp.write(body.text)
-            tmp_path = tmp.name
+    return await _summarize_content(body_bytes, "raw_body_input")
 
-        logger.info("log_summary_text_started", size=len(encoded))
-
-        summary: LogSummary = await asyncio.to_thread(
-            summarize_log_file, tmp_path,
-        )
-
-        logger.info(
-            "log_summary_text_completed",
-            vehicle_id=summary.vehicle_id,
-            sample_count=summary.time_range.sample_count,
-        )
-
-        return summary
-
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error(
-            "log_summary_text_parse_error",
-            error=str(exc),
-            exc_info=True,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Failed to parse log text. Ensure it is valid OBD TSV log content.",
-        ) from exc
-    finally:
-        if tmp_path is not None:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
