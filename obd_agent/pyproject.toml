@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "obd_agent"
+version = "0.1.0"
+description = "OBD-II telemetry collector and log summariser"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.5",
+]
+
+[tool.setuptools.packages.find]
+include = ["obd_agent*"]
+exclude = ["tests*", "fixtures*"]
+
+[tool.setuptools.package-dir]
+obd_agent = "."

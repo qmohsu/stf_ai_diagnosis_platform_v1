@@ -346,8 +346,8 @@ services:
   # --------------------------------------------------------------------------
   diagnostic-api:
     build:
-      context: ../diagnostic_api
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: diagnostic_api/Dockerfile
     image: stf-diagnostic-api:${DIAGNOSTIC_API_VERSION:-0.1.0}
     container_name: stf-diagnostic-api
     restart: unless-stopped

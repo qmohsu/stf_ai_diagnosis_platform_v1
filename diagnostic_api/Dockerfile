@@ -4,6 +4,7 @@
 # Date: January 2026
 # ============================================================================
 # Multi-stage build for optimized image size
+# Build context must be the repository root (../) so obd_agent is accessible.
 # ============================================================================
 
 FROM python:3.11-slim as builder
@@ -17,8 +18,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
-COPY requirements.txt .
+COPY diagnostic_api/requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Install obd_agent as a local package (log_summarizer + log_parser only).
+# NOTE: obd_agent's pyproject.toml must NOT depend on python-OBD (GPL-2.0).
+# Only the Pydantic-based summariser modules are used here.
+COPY obd_agent/ /build/obd_agent/
+RUN pip install --no-cache-dir --user /build/obd_agent/
 
 # ============================================================================
 # Runtime stage
@@ -37,8 +44,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /root/.local /root/.local
 
 # Copy application code
-COPY app/ /app/app/
-COPY data/ /app/data/
+COPY diagnostic_api/app/ /app/app/
+COPY diagnostic_api/data/ /app/data/
 
 
 # Create logs directory
