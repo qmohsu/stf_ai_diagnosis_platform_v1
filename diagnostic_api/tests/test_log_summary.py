@@ -1,4 +1,9 @@
-"""Tests for POST /v1/tools/summarize-log endpoint."""
+"""Tests for POST /v1/tools/summarize-log endpoint.
+
+TODO: Add test for path traversal attack via filename (e.g., "../../etc/passwd.txt").
+TODO: Add test for concurrent requests to verify no temp file conflicts.
+TODO: Add test for Unicode content in log files.
+"""
 
 from __future__ import annotations
 
@@ -150,6 +155,69 @@ class TestSummarizeLogUnit:
 
 
 # ---------------------------------------------------------------------------
+# Unit tests for POST /v1/tools/summarize-log-text  (JSON body)
+# ---------------------------------------------------------------------------
+
+class TestSummarizeLogTextUnit:
+    """Unit tests for the text-based endpoint with the real parser mocked out."""
+
+    @patch("app.api.v1.endpoints.log_summary.summarize_log_file")
+    def test_valid_log_text_returns_200(self, mock_summarize, client):
+        mock_summarize.return_value = _make_summary()
+        resp = client.post(
+            "/v1/tools/summarize-log-text",
+            json={"text": "some\tdata\n"},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["vehicle_id"] == "V-TEST"
+        assert "pid_summary" in body
+        mock_summarize.assert_called_once()
+
+    def test_empty_text_returns_422(self, client):
+        resp = client.post(
+            "/v1/tools/summarize-log-text",
+            json={"text": ""},
+        )
+        assert resp.status_code == 422
+        assert "empty" in resp.json()["detail"].lower()
+
+    def test_whitespace_only_text_returns_422(self, client):
+        resp = client.post(
+            "/v1/tools/summarize-log-text",
+            json={"text": "  \n  "},
+        )
+        assert resp.status_code == 422
+        assert "empty" in resp.json()["detail"].lower()
+
+    def test_missing_text_field_returns_422(self, client):
+        resp = client.post(
+            "/v1/tools/summarize-log-text",
+            json={},
+        )
+        assert resp.status_code == 422
+
+    @patch("app.api.v1.endpoints.log_summary._MAX_FILE_SIZE", 1024)
+    def test_oversized_text_returns_413(self, client):
+        resp = client.post(
+            "/v1/tools/summarize-log-text",
+            json={"text": "x" * 1025},
+        )
+        assert resp.status_code == 413
+        assert "10 MB" in resp.json()["detail"]
+
+    @patch("app.api.v1.endpoints.log_summary.summarize_log_file")
+    def test_invalid_tsv_text_returns_422(self, mock_summarize, client):
+        mock_summarize.side_effect = ValueError("bad TSV")
+        resp = client.post(
+            "/v1/tools/summarize-log-text",
+            json={"text": "not a log"},
+        )
+        assert resp.status_code == 422
+        assert "Failed to parse log text" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
 # Integration test (real parser, no mocks)
 # ---------------------------------------------------------------------------
 
@@ -187,3 +255,28 @@ class TestSummarizeLogIntegration:
         assert len(body["anomalies"]) == 2
         assert any("LONG_FUEL_TRIM_1" in a for a in body["anomalies"])
         assert any("THROTTLE_POS" in a for a in body["anomalies"])
+
+    @pytest.mark.skipif(
+        not FIXTURE_LOG.exists(),
+        reason="fixture file not found",
+    )
+    def test_text_and_file_endpoints_match(self, client):
+        """Same fixture content via both endpoints should produce identical JSON."""
+        fixture_text = FIXTURE_LOG.read_text(encoding="utf-8")
+
+        # File upload endpoint
+        with open(FIXTURE_LOG, "rb") as f:
+            file_resp = client.post(
+                "/v1/tools/summarize-log",
+                files={"file": ("obd_log_20250723_144216.txt", f, "text/plain")},
+            )
+
+        # Text body endpoint
+        text_resp = client.post(
+            "/v1/tools/summarize-log-text",
+            json={"text": fixture_text},
+        )
+
+        assert file_resp.status_code == 200
+        assert text_resp.status_code == 200
+        assert file_resp.json() == text_resp.json()

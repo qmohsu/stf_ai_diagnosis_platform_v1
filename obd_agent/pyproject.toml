@@ -1,3 +1,6 @@
+# TODO: Add author, license, readme, and repository URL metadata.
+# TODO: Add optional dev/test dependencies (pytest, pytest-asyncio, mypy).
+
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -11,9 +14,9 @@ dependencies = [
     "pydantic>=2.5",
 ]
 
-[tool.setuptools.packages.find]
-include = ["obd_agent*"]
-exclude = ["tests*", "fixtures*"]
+[tool.setuptools]
+packages = ["obd_agent", "obd_agent.reader"]
 
 [tool.setuptools.package-dir]
 obd_agent = "."
+"obd_agent.reader" = "reader"

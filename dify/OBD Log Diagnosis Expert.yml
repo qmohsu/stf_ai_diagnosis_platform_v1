@@ -1,0 +1,609 @@
+# TODO: Add API key authentication to HTTP requests (currently no-auth).
+# TODO: Make service URLs configurable via environment variables (currently hardcoded diagnostic-api:8000).
+# TODO: Escape rag_query for JSON safety in Retrieve Context node (potential JSON injection).
+# TODO: Add timeouts to HTTP requests (currently 0 = unlimited).
+# TODO: Add error handling for RAG retrieval failure (check_context if-else node).
+# TODO: Remove debug output field in production.
+app:
+  description: 'Paste raw OBD TSV log text to receive an expert vehicle diagnosis.'
+  icon: "\U0001F527"
+  icon_background: '#E4FBCC'
+  mode: workflow
+  name: OBD Log Diagnosis Expert
+workflow:
+  features:
+    file_upload:
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    # Start → Escape Text
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: code
+      id: start-source-escape_text-target
+      source: start
+      sourceHandle: source
+      target: escape_text
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    # Escape Text → Summarize Log Text
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: http-request
+      id: escape_text-source-summarize-target
+      source: escape_text
+      sourceHandle: source
+      target: summarize_log_text
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    # Summarize Log Text → Parse Summary
+    - data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: code
+      id: summarize-source-parse_summary-target
+      source: summarize_log_text
+      sourceHandle: source
+      target: parse_summary
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    # Parse Summary → Check Parse
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: if-else
+      id: parse_summary-source-check_parse-target
+      source: parse_summary
+      sourceHandle: source
+      target: check_parse
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    # Check Parse YES → Retrieve Context
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: http-request
+      id: check_parse-true-retrieve_context-target
+      source: check_parse
+      sourceHandle: 'true'
+      target: retrieve_context
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    # Check Parse NO → End Error
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: end
+      id: check_parse-false-end_error-target
+      source: check_parse
+      sourceHandle: 'false'
+      target: end_error
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    # Retrieve Context → Parse Context
+    - data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: code
+      id: retrieve_context-source-parse_context-target
+      source: retrieve_context
+      sourceHandle: source
+      target: parse_context
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    # Parse Context → Expert Diagnosis
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: parse_context-source-expert_diagnosis-target
+      source: parse_context
+      sourceHandle: source
+      target: expert_diagnosis
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    # Expert Diagnosis → End Success
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+      id: expert_diagnosis-source-end_success-target
+      source: expert_diagnosis
+      sourceHandle: source
+      target: end_success
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    # ── Start ──────────────────────────────────────────────────────────────
+    - data:
+        desc: 'User pastes raw OBD TSV log text.'
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: log_text
+          max_length: 0
+          options: []
+          required: true
+          type: paragraph
+          variable: log_text
+      height: 90
+      id: start
+      position:
+        x: 66
+        y: 282
+      positionAbsolute:
+        x: 66
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    # ── Escape Text (code) ─────────────────────────────────────────────────
+    - data:
+        code: |
+          import json
+
+          def main(log_text: str) -> dict:
+              # Build the complete JSON body with proper escaping
+              body = json.dumps({"text": log_text})
+              return {"json_body": body}
+        code_language: python3
+        desc: 'Escape the log text for safe JSON transmission.'
+        outputs:
+          json_body:
+            children: null
+            type: string
+        selected: false
+        title: Escape Text
+        type: code
+        variables:
+        - value_selector:
+          - start
+          - log_text
+          variable: log_text
+      height: 54
+      id: escape_text
+      position:
+        x: 370
+        y: 282
+      positionAbsolute:
+        x: 370
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    # ── Summarize Log Text (HTTP POST) ─────────────────────────────────────
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: "{{#escape_text.json_body#}}"
+          type: raw-text
+        desc: 'POST raw log text to the summarize-log-text API.'
+        headers: 'Content-Type: application/json'
+        method: post
+        params: ''
+        selected: false
+        timeout:
+          max_connect_timeout: 0
+          max_read_timeout: 0
+          max_write_timeout: 0
+        title: Summarize Log Text
+        type: http-request
+        url: http://diagnostic-api:8000/v1/tools/summarize-log-text
+        variables: []
+      height: 122
+      id: summarize_log_text
+      position:
+        x: 674
+        y: 282
+      positionAbsolute:
+        x: 674
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    # ── Parse Summary + Build RAG Query (code) ─────────────────────────────
+    - data:
+        code: |
+          import json
+
+          def main(response: str) -> dict:
+              # Handle case where response is already a dict (Dify may pre-parse JSON)
+              if isinstance(response, dict):
+                  data = response
+              else:
+                  try:
+                      data = json.loads(response)
+                  except Exception:
+                      return {"parse_ok": "NO", "vehicle_id": "", "adapter": "",
+                              "time_range": "", "dtc_codes": "", "pid_summary": "",
+                              "anomalies": "", "rag_query": "", "debug": f"JSON parse failed: {str(response)[:200]}"}
+
+              # Check if it's an error response
+              if "detail" in data:
+                  return {"parse_ok": "NO", "vehicle_id": "", "adapter": "",
+                          "time_range": "", "dtc_codes": "", "pid_summary": "",
+                          "anomalies": "", "rag_query": "", "debug": f"API error: {data.get('detail', '')}"}
+
+              vehicle_id = data.get("vehicle_id", "")
+              adapter = data.get("adapter", "")
+
+              tr = data.get("time_range", {})
+              time_range = (
+                  f"{tr.get('start', '?')} to {tr.get('end', '?')}, "
+                  f"{tr.get('duration_seconds', 0)}s, "
+                  f"{tr.get('sample_count', 0)} samples"
+              )
+
+              dtc_codes_list = data.get("dtc_codes", [])
+              dtc_codes = ", ".join(dtc_codes_list) if dtc_codes_list else "None"
+
+              pid_map = data.get("pid_summary", {})
+              pid_lines = []
+              for name, stats in pid_map.items():
+                  pid_lines.append(
+                      f"{name}: min={stats['min']} max={stats['max']} "
+                      f"mean={stats['mean']:.2f} latest={stats['latest']} "
+                      f"{stats.get('unit', '')}"
+                  )
+              pid_summary = "\n".join(pid_lines) if pid_lines else "None"
+
+              anomalies_list = data.get("anomalies", [])
+              anomalies = "\n".join(anomalies_list) if anomalies_list else "None"
+
+              # --- Build RAG query ------------------------------------------------
+              query_parts = []
+
+              # Priority 1: DTC codes
+              if dtc_codes_list:
+                  query_parts.append("DTC codes: " + " ".join(dtc_codes_list))
+
+              # Priority 2: Anomaly descriptions
+              if anomalies_list:
+                  query_parts.append("Anomalies: " + "; ".join(anomalies_list))
+
+              # Fallback: PID names with value fluctuations
+              if not query_parts and pid_map:
+                  fluctuating = []
+                  for name, stats in pid_map.items():
+                      if stats["min"] != stats["max"]:
+                          fluctuating.append(name)
+                  if fluctuating:
+                      query_parts.append("PID fluctuations: " + " ".join(fluctuating))
+
+              # Final fallback
+              rag_query = " | ".join(query_parts) if query_parts else "general OBD vehicle health check"
+
+              return {
+                  "parse_ok": "YES",
+                  "vehicle_id": vehicle_id,
+                  "adapter": adapter,
+                  "time_range": time_range,
+                  "dtc_codes": dtc_codes,
+                  "pid_summary": pid_summary,
+                  "anomalies": anomalies,
+                  "rag_query": rag_query,
+                  "debug": f"OK, keys={list(data.keys())[:5]}",
+              }
+        code_language: python3
+        desc: 'Extract fields from summary JSON and build a RAG query from DTCs + anomalies.'
+        outputs:
+          parse_ok:
+            children: null
+            type: string
+          vehicle_id:
+            children: null
+            type: string
+          adapter:
+            children: null
+            type: string
+          time_range:
+            children: null
+            type: string
+          dtc_codes:
+            children: null
+            type: string
+          pid_summary:
+            children: null
+            type: string
+          anomalies:
+            children: null
+            type: string
+          rag_query:
+            children: null
+            type: string
+          debug:
+            children: null
+            type: string
+        selected: false
+        title: Parse Summary
+        type: code
+        variables:
+        - value_selector:
+          - summarize_log_text
+          - body
+          variable: response
+      height: 54
+      id: parse_summary
+      position:
+        x: 978
+        y: 282
+      positionAbsolute:
+        x: 978
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    # ── Check Parse (if-else) ──────────────────────────────────────────────
+    - data:
+        conditions:
+        - comparison_operator: is
+          id: cond_parse_ok
+          value: 'YES'
+          variable_selector:
+          - parse_summary
+          - parse_ok
+        desc: 'Continue only if the summary was parsed successfully.'
+        logical_operator: and
+        selected: false
+        title: Check Parse
+        type: if-else
+      height: 126
+      id: check_parse
+      position:
+        x: 1282
+        y: 282
+      positionAbsolute:
+        x: 1282
+        y: 282
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    # ── Retrieve Context (HTTP POST) ───────────────────────────────────────
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: "{\n  \"query\": \"{{#parse_summary.rag_query#}}\",\n  \"top_k\": 3\n}"
+          type: json
+        desc: 'Retrieve relevant knowledge chunks via the RAG API.'
+        headers: ''
+        method: post
+        params: ''
+        selected: false
+        timeout:
+          max_connect_timeout: 0
+          max_read_timeout: 0
+          max_write_timeout: 0
+        title: Retrieve Context
+        type: http-request
+        url: http://diagnostic-api:8000/v1/rag/retrieve
+        variables: []
+      height: 122
+      id: retrieve_context
+      position:
+        x: 1586
+        y: 282
+      positionAbsolute:
+        x: 1586
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    # ── Parse Context (code) ───────────────────────────────────────────────
+    - data:
+        code: |
+          import json
+
+          def main(response: str) -> dict:
+              if isinstance(response, dict):
+                  data = response
+              else:
+                  try:
+                      data = json.loads(response)
+                  except Exception:
+                      return {"context": ""}
+              results = data.get("results", [])
+              chunks = [r.get("text", "") for r in results if r.get("text")]
+              return {"context": "\n\n".join(chunks)}
+        code_language: python3
+        desc: 'Join retrieved result texts into a single context string.'
+        outputs:
+          context:
+            children: null
+            type: string
+        selected: false
+        title: Parse Context
+        type: code
+        variables:
+        - value_selector:
+          - retrieve_context
+          - body
+          variable: response
+      height: 54
+      id: parse_context
+      position:
+        x: 1890
+        y: 282
+      positionAbsolute:
+        x: 1890
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    # ── Expert Diagnosis (LLM) ─────────────────────────────────────────────
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 'Generate a structured vehicle diagnosis from the OBD log summary and RAG context.'
+        model:
+          completion_params:
+            temperature: 0.3
+          mode: chat
+          name: llama3:8b
+          provider: ollama
+        prompt_template:
+        - id: system-prompt-obd-diagnosis
+          role: system
+          text: >-
+            You are an expert automotive diagnostic technician with deep knowledge
+            of OBD-II protocols, engine management systems, and vehicle diagnostics.
+
+            Rules:
+            1. Reference exact PID names, values, and units from the data provided.
+            2. Cite retrieved context when it supports your analysis.
+            3. Cross-correlate multiple PIDs to identify related issues.
+            4. Distinguish between confirmed faults and suspected faults.
+            5. Rate severity: CRITICAL, MODERATE, or LOW.
+            6. Structure your response as:
+               - Summary (1-2 sentences)
+               - Findings (bullet points per issue)
+               - Root Cause Analysis
+               - Recommendations (actionable steps)
+               - Limitations (what additional data would help)
+        - id: user-prompt-obd-diagnosis
+          role: user
+          text: >-
+            Diagnose the following vehicle based on its OBD-II log data.
+
+            **Vehicle ID:** {{#parse_summary.vehicle_id#}}
+
+            **Adapter:** {{#parse_summary.adapter#}}
+
+            **Time Range:** {{#parse_summary.time_range#}}
+
+            **DTC Codes:** {{#parse_summary.dtc_codes#}}
+
+            **PID Statistics:**
+
+            {{#parse_summary.pid_summary#}}
+
+            **Anomalies Detected:**
+
+            {{#parse_summary.anomalies#}}
+
+            ---
+
+            **Retrieved Technical Context:**
+
+            {{#parse_context.context#}}
+
+            ---
+
+            Provide your expert diagnosis following the required structure.
+        selected: false
+        title: Expert Diagnosis
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 98
+      id: expert_diagnosis
+      position:
+        x: 2194
+        y: 282
+      positionAbsolute:
+        x: 2194
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    # ── End Success ────────────────────────────────────────────────────────
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - expert_diagnosis
+          - text
+          variable: diagnosis
+        selected: false
+        title: End Success
+        type: end
+      height: 90
+      id: end_success
+      position:
+        x: 2498
+        y: 282
+      positionAbsolute:
+        x: 2498
+        y: 282
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    # ── End Error ──────────────────────────────────────────────────────────
+    - data:
+        desc: 'Parse failure — summary could not be extracted.'
+        outputs:
+        - value_selector:
+          - parse_summary
+          - debug
+          variable: error
+        selected: false
+        title: End Error
+        type: end
+      height: 90
+      id: end_error
+      position:
+        x: 1586
+        y: 443
+      positionAbsolute:
+        x: 1586
+        y: 443
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 148
+      zoom: 1
