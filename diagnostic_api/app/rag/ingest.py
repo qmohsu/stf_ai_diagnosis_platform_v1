@@ -64,7 +64,14 @@ async def process_file(
     log = logger.bind(file=file_path.name)
     log.info("ingest.processing_file")
 
-    text = file_path.read_text(encoding="utf-8")
+    # Handle PDF files differently
+    # TODO(10): Move pdf_parser import to module level or document why lazy loading is needed
+    if file_path.suffix.lower() == ".pdf":
+        from .pdf_parser import extract_text_from_pdf
+        text = extract_text_from_pdf(file_path)
+    else:
+        text = file_path.read_text(encoding="utf-8")
+
     doc_id = file_path.stem
 
     # Determine source type
@@ -179,8 +186,12 @@ async def main():
 
     chunker = Chunker(chunk_size=args.chunk_size, overlap=args.overlap)
 
-    # Discover files
-    files = sorted(data_dir.glob("*.txt")) + sorted(data_dir.glob("*.md"))
+    # Discover files (txt, md, and pdf)
+    files = (
+        sorted(data_dir.glob("*.txt")) +
+        sorted(data_dir.glob("*.md")) +
+        sorted(data_dir.glob("*.pdf"))
+    )
     logger.info("ingest.files_found", count=len(files))
 
     total_inserted = 0

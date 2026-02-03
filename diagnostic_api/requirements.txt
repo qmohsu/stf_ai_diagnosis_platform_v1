@@ -35,7 +35,12 @@ structlog==24.1.0
 email-validator==2.1.0
 phonenumbers==8.13.28
 
+# PDF Processing
+# TODO(3): Pin PyMuPDF to exact version for reproducibility (e.g., PyMuPDF==1.24.0)
+PyMuPDF>=1.24.0
+
 # Testing (optional, for development)
 pytest==7.4.4
 pytest-asyncio==0.23.3
+# TODO(4): Remove duplicate httpx - already listed under LLM Integration (line 25)
 httpx==0.26.0
