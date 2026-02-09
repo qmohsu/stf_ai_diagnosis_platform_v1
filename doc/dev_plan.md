@@ -32,6 +32,8 @@ Scope boundary for this plan (so engineers don’t drift)
 ### 2.2 Critical Path Dependency
 Critical path dependency: DO‑01 → DO‑06 → (APP‑01 + APP‑02B + APP‑03) → APP‑06 → APP‑08 → APP‑11 (Dify integration) → INT‑01 (E2E demo).
 
+**Summarization Pipeline Path:** APP‑02B → APP‑13 → (APP‑14 + APP‑15) → APP‑16 → APP‑17.
+
 ### 2.3 Definition of Done (Applies to Every Ticket)
 A ticket is DONE only if:
 - It’s merged with docs and tests updated.
@@ -1044,6 +1046,208 @@ Acceptance Criteria:
 python eval/run_eval.py runs locally and produces a report
 
 CI can run evaluation in “mock LLM mode” to avoid flakiness
+
+#### APP‑13 — Upgrade Log Parsing & Time-Series Normalization (Stage 0)
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP‑02B
+
+PROMPT (task ticket):
+Title: APP‑13 Upgrade log parsing to produce unified time-series dataframe
+
+Context:
+The current `log_parser.py` produces OBDSnapshots. For the production summarization pipeline (design_doc.md Section 8.3), we need a clean, unified time-series representation suitable for advanced statistical and anomaly detection.
+
+Task:
+Refactor or extend the log parsing module to:
+
+- Parse timestamps and signal identifiers
+- Map PIDs to semantic signal names
+- Perform unit normalization
+- Resample to a unified time grid (configurable interval)
+- Handle missing values (interpolation / masking)
+
+Requirements:
+
+Use pandas for time-series operations
+Output a multivariate DataFrame: time × signals
+Maintain backward compatibility with existing OBDSnapshot flow
+Add configuration for resampling interval (default: 1 second)
+
+Deliverables:
+
+obd_agent/time_series_normalizer.py
+Unit tests for resampling and missing value handling
+Documentation of PID-to-signal-name mapping
+
+Acceptance Criteria:
+
+Given a raw TSV log, the module produces a clean DataFrame with consistent timestamps
+Missing values are handled per configuration (interpolate, forward-fill, or mask)
+Existing OBDSnapshot generation is not broken
+
+#### APP‑14 — Enhanced Value Statistics Extraction (Stage 1)
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP‑13
+
+PROMPT (task ticket):
+Title: APP‑14 Implement advanced statistics extraction with tsfresh
+
+Context:
+The current summarizer extracts only min/max/mean/latest. The production pipeline (design_doc.md Section 8.3.3) requires expanded statistics for LLM context.
+
+Task:
+Create a statistics extraction module that computes for each signal:
+
+- Mean, standard deviation, min, max
+- Percentiles (P5, P25, P50, P75, P95)
+- Autocorrelation (lag 1)
+- Energy, entropy
+- Change rate statistics (mean absolute change, max change)
+
+Requirements:
+
+Integrate tsfresh (or equivalent) for feature extraction
+Make feature set configurable (minimal vs full)
+Output schema compatible with existing LogSummary
+
+Deliverables:
+
+obd_agent/statistics_extractor.py
+Requirements update: add tsfresh dependency
+Unit tests with sample time-series data
+Performance benchmark for large logs (>10,000 rows)
+
+Acceptance Criteria:
+
+Given a time-series DataFrame, the module returns a statistics dict matching the schema
+Minimal mode returns only existing fields (backward compatible)
+Full mode includes percentiles, autocorrelation, entropy
+
+#### APP‑15 — Anomaly Detection with Temporal Context (Stage 2)
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP‑13
+
+PROMPT (task ticket):
+Title: APP‑15 Implement anomaly detection with temporal context mining
+
+Context:
+The current anomaly detection uses simple heuristics (range shift, out-of-range). The production pipeline (design_doc.md Section 8.3.4) requires context-aware anomaly detection with temporal information.
+
+Task:
+Create an anomaly detection module using:
+
+- Change-point and regime detection (ruptures)
+- Multivariate anomaly detection (Isolation Forest, LOF via scikit-learn or PyOD)
+- Optional: temporal pattern discovery (STUMPY matrix profile)
+
+Requirements:
+
+Each detected anomaly must include:
+  - time_window (start ~ end)
+  - signals involved
+  - pattern description
+  - driving context (idle, cruise, acceleration)
+  - severity (low, medium, high)
+Output is a list of anomaly event objects
+
+Deliverables:
+
+obd_agent/anomaly_detector.py
+Requirements update: add ruptures, pyod dependencies
+Unit tests with synthetic anomaly scenarios
+Integration test with real log samples
+
+Acceptance Criteria:
+
+Given a time-series DataFrame, the module returns a list of anomaly events
+Each event has time_window, signals, pattern, context, and severity fields
+Change-point detection identifies regime shifts correctly
+
+#### APP‑16 — Diagnostic Semantic Clue Generation (Stage 3)
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP‑14, APP‑15
+
+PROMPT (task ticket):
+Title: APP‑16 Implement rule-based diagnostic clue generation
+
+Context:
+The production pipeline (design_doc.md Section 8.3.5) requires conversion of statistical and anomaly findings into LLM-ready semantic facts. This must be rule-based (not LLM-generated) to ensure traceability.
+
+Task:
+Create a diagnostic clue generator that applies:
+
+- Domain heuristics (e.g., throttle variance + RPM pattern rules)
+- Signal interaction rules (e.g., fuel trim vs airflow)
+- Cause–effect temporal ordering (e.g., A precedes B patterns)
+- DTC-aware clue generation
+
+Requirements:
+
+Rules must be configurable (YAML or Python dict)
+Each clue must be traceable to source evidence
+No LLM calls in this module
+Output: list of diagnostic clue strings
+
+Deliverables:
+
+obd_agent/clue_generator.py
+obd_agent/rules/diagnostic_rules.yaml
+Unit tests for at least 10 diagnostic scenarios
+Documentation of rule format
+
+Acceptance Criteria:
+
+Given statistics + anomaly events + DTCs, the module returns diagnostic clues
+Each clue references the evidence that triggered it (for traceability)
+Rules can be extended without code changes
+
+#### APP‑17 — Unified v2 Summarization API Endpoint
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP‑13, APP‑14, APP‑15, APP‑16
+
+PROMPT (task ticket):
+Title: APP‑17 Implement POST /v2/tools/summarize-log-raw endpoint
+
+Context:
+The v1 endpoint returns basic summaries. The v2 endpoint integrates all pipeline stages for production use (design_doc.md Section 8.3.6).
+
+Task:
+Implement a new API endpoint:
+
+POST /v2/tools/summarize-log-raw
+
+Response includes:
+- vehicle_id, time_range, dtc_codes (existing)
+- value_statistics (Stage 1 output)
+- anomaly_events (Stage 2 output)
+- diagnostic_clues (Stage 3 output)
+- pid_summary (backward compatible)
+
+Requirements:
+
+Maintain v1 endpoint for backward compatibility
+Add query parameter for mode: ?mode=minimal|full
+Full mode runs all pipeline stages
+Minimal mode returns only basic stats (v1 equivalent)
+
+Deliverables:
+
+diagnostic_api/app/api/v2/endpoints/log_summary.py
+Pydantic models for v2 response schema
+Integration tests for both modes
+API documentation update
+
+Acceptance Criteria:
+
+POST /v2/tools/summarize-log-raw with raw log returns full structured summary
+mode=minimal returns v1-equivalent output
+mode=full returns all pipeline stages
+v1 endpoint continues to work unchanged
 
 ### 3.3 Integration and Finalization Tickets
 #### INT‑01 — End-to-end demo script (“one command demo”)

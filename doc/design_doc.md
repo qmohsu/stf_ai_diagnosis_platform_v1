@@ -157,6 +157,124 @@ The edge collector must send a **sanitized, JSON-only** snapshot to the cloud. T
 •	OBD snapshot layer (pilot): Postgres table `obd_snapshots` storing sanitized OBDSnapshot as JSONB, indexed by (vehicle_id, ts).
 •	Label layer: workshop-confirmed labels from maintenance records.
 •	Case packages: one record per incident/question, used for training and evaluation.
+
+### 8.3 OBD-II Diagnostic Summarization Pipeline (LLM-Ready)
+
+The summarization pipeline converts raw OBD-II log files into structured, LLM-ready diagnostic summaries. This is critical for both RAG (retrieval-augmented generation) and direct LLM prompting.
+
+**Design Principles:**
+- Model-agnostic: No dependency on proprietary LLMs or closed diagnostic systems
+- Explainable: All extracted features and events are traceable to raw signals
+- Composable: Each stage can be independently replaced or extended
+- RAG-friendly: Outputs are structured for retrieval and embedding
+- Open-source: Built entirely on widely used open-source libraries
+
+#### 8.3.1 Pipeline Stages
+
+| Stage | Purpose | Open-Source Tools | Output |
+|-------|---------|-------------------|--------|
+| **Stage 0** | Log Parsing & Time-Series Normalization | pandas, numpy | Multivariate time-series dataframe |
+| **Stage 1** | Value Statistics Extraction | pandas, tsfresh | Per-signal statistics (mean, std, percentiles, entropy) |
+| **Stage 2** | Anomaly Detection with Temporal Context | ruptures, scikit-learn/PyOD, STUMPY | Anomaly events with time windows and context |
+| **Stage 3** | Diagnostic Semantic Clue Generation | Rule-based engine | Traceable diagnostic facts for LLM reasoning |
+
+#### 8.3.2 Stage 0: Log Parsing and Time-Series Normalization
+
+**Objective:** Convert raw OBD-II logs into a clean, unified time-series representation.
+
+**Key steps:**
+- Parse timestamps and signal identifiers
+- Map PIDs to semantic signal names
+- Unit normalization
+- Resampling to a unified time grid
+- Handling missing values (interpolation / masking)
+
+**Output:** Multivariate time-series dataframe: `time × signals`
+
+#### 8.3.3 Stage 1: Value Statistics Extraction
+
+**Objective:** Capture global and local statistical characteristics of each signal.
+
+**Extracted features include:**
+- Mean, standard deviation, min, max
+- Percentiles (e.g., P95)
+- Autocorrelation
+- Energy, entropy
+- Change rate statistics
+
+**Example output:**
+```json
+{
+  "engine_rpm": {
+    "mean": 2150,
+    "std": 430,
+    "min": 780,
+    "max": 5200,
+    "p95": 4100
+  }
+}
+```
+
+#### 8.3.4 Stage 2: Anomaly Detection and Temporal Context Mining
+
+**Objective:** Identify diagnostically meaningful abnormal behaviors with context, not just point outliers.
+
+**Methods:**
+- **Change-point and regime detection:** ruptures
+- **Multivariate anomaly detection:** scikit-learn (Isolation Forest, LOF), PyOD
+- **Temporal pattern discovery (optional):** STUMPY (matrix profile)
+
+**Detected anomaly representation:**
+```json
+{
+  "time_window": "2026-02-03 16:48:10 ~ 16:49:30",
+  "signals": ["engine_rpm", "maf", "fuel_trim"],
+  "pattern": "RPM oscillation with airflow drop",
+  "context": "steady cruise, throttle stable",
+  "severity": "medium"
+}
+```
+
+#### 8.3.5 Stage 3: Diagnostic Semantic Clue Generation
+
+**Objective:** Convert statistical and temporal findings into diagnosis-oriented semantic facts suitable for LLM reasoning.
+
+> This stage is intentionally **rule-based**, not LLM-generated, to ensure traceability and avoid hallucination.
+
+**Approach:**
+- Domain heuristics (e.g., throttle variance, RPM-frequency coupling)
+- Signal interaction rules
+- Cause–effect temporal ordering
+
+**Example output:**
+```json
+{
+  "diagnostic_clues": [
+    "RPM oscillation occurs without throttle input",
+    "Fuel trim increases after RPM drop",
+    "No misfire DTC observed during anomaly window"
+  ]
+}
+```
+
+#### 8.3.6 API Endpoint
+
+**Endpoint:** `POST /v2/tools/summarize-log-raw`
+
+The v2 endpoint accepts raw OBD TSV text and returns the full structured summary including all pipeline stages. The v1 endpoint remains for backward compatibility.
+
+**v2 Response structure:**
+```json
+{
+  "vehicle_id": "V123",
+  "time_range": {...},
+  "dtc_codes": [...],
+  "value_statistics": {...},
+  "anomaly_events": [...],
+  "diagnostic_clues": [...],
+  "pid_summary": {...}
+}
+```
 ## 9) diagnostic_api design (pilot interface contract)
 ### 9.1 Goals
 •	Stable interface for Dify HTTP Request node.
