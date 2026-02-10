@@ -13,6 +13,10 @@ pandas==2.1.4
 numpy==1.26.3
 pydantic-settings==2.1.0
 
+# Anomaly detection (Stage 2 pipeline)
+ruptures==1.1.9
+scikit-learn==1.4.0
+
 # Structured logging
 structlog==24.1.0
 
