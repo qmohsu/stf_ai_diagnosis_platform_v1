@@ -1,0 +1,371 @@
+# Diagnostic Clue Generation Rules — APP-16
+# Each rule produces a traceable diagnostic clue when ALL conditions match.
+#
+# Condition types:
+#   stat_check     — compare a SignalStats field against a threshold
+#   anomaly_check  — filter anomaly events by signal/context/severity/count
+#   dtc_check      — DTC code presence, absence, or prefix match
+#   stat_compare   — cross-signal field comparison
+#   signal_exists  — check whether signal data is present (or absent)
+#
+# Severity: info | warning | critical
+# Operators (stat_check / stat_compare): eq | ne | lt | le | gt | ge
+
+# ===== Statistical rules (STAT_001–010) =====================================
+
+- id: STAT_001
+  category: statistical
+  severity: info
+  description: Engine was off during entire session
+  conditions:
+    - type: stat_check
+      signal: engine_rpm
+      field: max
+      op: le
+      value: 50
+  template: >-
+    Engine was off during entire recording session
+    (RPM max={engine_rpm.max}, mean={engine_rpm.mean}).
+
+- id: STAT_002
+  category: statistical
+  severity: info
+  description: Vehicle remained stationary
+  conditions:
+    - type: stat_check
+      signal: vehicle_speed
+      field: max
+      op: le
+      value: 1
+  template: >-
+    Vehicle remained stationary throughout the session
+    (speed max={vehicle_speed.max} km/h).
+
+- id: STAT_003
+  category: statistical
+  severity: info
+  description: Coolant temperature was constant
+  conditions:
+    - type: stat_check
+      signal: coolant_temperature
+      field: std
+      op: le
+      value: 0.5
+  template: >-
+    Coolant temperature was constant at ~{coolant_temperature.mean} degC
+    (std={coolant_temperature.std}).
+
+- id: STAT_004
+  category: statistical
+  severity: warning
+  description: Short fuel trim deviated significantly from zero
+  conditions:
+    - type: stat_check
+      signal: short_fuel_trim_1
+      field: std
+      op: gt
+      value: 5.0
+  template: >-
+    Short fuel trim showed significant variation
+    (std={short_fuel_trim_1.std}, range [{short_fuel_trim_1.min}, {short_fuel_trim_1.max}]).
+
+- id: STAT_005
+  category: statistical
+  severity: warning
+  description: Throttle position variance was high
+  conditions:
+    - type: stat_check
+      signal: throttle_position
+      field: std
+      op: gt
+      value: 10.0
+  template: >-
+    Throttle position showed high variance
+    (std={throttle_position.std}, mean={throttle_position.mean}).
+
+- id: STAT_006
+  category: statistical
+  severity: info
+  description: Intake temperature was stable
+  conditions:
+    - type: stat_check
+      signal: intake_temperature
+      field: std
+      op: le
+      value: 2.0
+  template: >-
+    Intake temperature remained stable at ~{intake_temperature.mean} degC
+    (std={intake_temperature.std}).
+
+- id: STAT_007
+  category: statistical
+  severity: warning
+  description: Coolant temperature was elevated
+  conditions:
+    - type: stat_check
+      signal: coolant_temperature
+      field: mean
+      op: gt
+      value: 100
+  template: >-
+    Coolant temperature was elevated (mean={coolant_temperature.mean} degC,
+    max={coolant_temperature.max} degC).
+
+- id: STAT_008
+  category: statistical
+  severity: warning
+  description: Long fuel trim deviated significantly
+  conditions:
+    - type: stat_check
+      signal: long_fuel_trim_1
+      field: max
+      op: gt
+      value: 20.0
+  template: >-
+    Long fuel trim reached high positive values
+    (max={long_fuel_trim_1.max}, mean={long_fuel_trim_1.mean}).
+
+- id: STAT_009
+  category: statistical
+  severity: warning
+  description: Fuel trim experienced a sudden spike
+  conditions:
+    - type: stat_check
+      signal: short_fuel_trim_1
+      field: max_abs_change
+      op: gt
+      value: 10.0
+  template: >-
+    Short fuel trim experienced a sudden spike
+    (max absolute change={short_fuel_trim_1.max_abs_change},
+    mean={short_fuel_trim_1.mean}).
+
+- id: STAT_010
+  category: statistical
+  severity: info
+  description: Engine load remained consistently low
+  conditions:
+    - type: stat_check
+      signal: engine_load
+      field: max
+      op: le
+      value: 20.0
+  template: >-
+    Engine load remained consistently low throughout the session
+    (max={engine_load.max}, mean={engine_load.mean}).
+
+# ===== Anomaly rules (ANOM_001–005) =========================================
+
+- id: ANOM_001
+  category: anomaly
+  severity: warning
+  description: Fuel trim anomaly during engine-off or idle
+  conditions:
+    - type: anomaly_check
+      signal: short_fuel_trim_1
+      context: "off"
+      min_count: 1
+  template: >-
+    Fuel trim anomaly detected while engine was off
+    ({anomaly_count} event(s) involving short_fuel_trim_1 in 'off' context).
+
+- id: ANOM_002
+  category: anomaly
+  severity: warning
+  description: Fuel trim anomaly during idle
+  conditions:
+    - type: anomaly_check
+      signal: short_fuel_trim_1
+      context: "idle"
+      min_count: 1
+  template: >-
+    Fuel trim anomaly detected during idle
+    ({anomaly_count} event(s) involving short_fuel_trim_1 in 'idle' context).
+
+- id: ANOM_003
+  category: anomaly
+  severity: critical
+  description: High-severity anomaly detected
+  conditions:
+    - type: anomaly_check
+      severity: "high"
+      min_count: 1
+  template: >-
+    High-severity anomaly detected ({anomaly_count} event(s) with severity 'high').
+
+- id: ANOM_004
+  category: anomaly
+  severity: warning
+  description: Multiple anomaly events detected in session
+  conditions:
+    - type: anomaly_check
+      min_count: 3
+  template: >-
+    Multiple anomaly events detected in session ({anomaly_count} total events).
+
+- id: ANOM_005
+  category: anomaly
+  severity: warning
+  description: Coolant temperature anomaly
+  conditions:
+    - type: anomaly_check
+      signal: coolant_temperature
+      min_count: 1
+  template: >-
+    Coolant temperature anomaly detected
+    ({anomaly_count} event(s) involving coolant_temperature).
+
+# ===== Interaction rules (INTER_001–003) ====================================
+
+- id: INTER_001
+  category: interaction
+  severity: warning
+  description: RPM oscillation without throttle input
+  conditions:
+    - type: stat_check
+      signal: engine_rpm
+      field: std
+      op: gt
+      value: 100
+    - type: stat_check
+      signal: throttle_position
+      field: std
+      op: le
+      value: 2.0
+  template: >-
+    Engine RPM oscillated (std={engine_rpm.std}) while throttle remained
+    stable (std={throttle_position.std}), suggesting idle instability or
+    vacuum leak.
+
+- id: INTER_002
+  category: interaction
+  severity: warning
+  description: Low MAF relative to engine load
+  conditions:
+    - type: stat_compare
+      signal_a: mass_airflow
+      field_a: mean
+      signal_b: engine_load
+      field_b: mean
+      op: lt
+      ratio: 0.1
+  template: >-
+    Mass airflow was low relative to engine load
+    (MAF mean={mass_airflow.mean} g/s vs load mean={engine_load.mean}%),
+    suggesting possible MAF sensor issue.
+
+- id: INTER_003
+  category: interaction
+  severity: warning
+  description: Fuel trim deviation correlated with RPM instability
+  conditions:
+    - type: stat_check
+      signal: short_fuel_trim_1
+      field: std
+      op: gt
+      value: 5.0
+    - type: stat_check
+      signal: engine_rpm
+      field: std
+      op: gt
+      value: 50
+  template: >-
+    Fuel trim deviation (std={short_fuel_trim_1.std}) occurred alongside
+    RPM instability (std={engine_rpm.std}), suggesting fuelling issue
+    affecting combustion stability.
+
+# ===== DTC rules (DTC_001–004) ==============================================
+
+- id: DTC_001
+  category: dtc
+  severity: critical
+  description: Misfire DTC present
+  conditions:
+    - type: dtc_check
+      mode: prefix
+      prefix: "P030"
+  template: >-
+    Misfire-related DTC code(s) present ({matched_dtcs}),
+    indicating cylinder misfire detected by ECU.
+
+- id: DTC_002
+  category: dtc
+  severity: warning
+  description: Catalyst efficiency DTC present
+  conditions:
+    - type: dtc_check
+      mode: prefix
+      prefix: "P042"
+  template: >-
+    Catalyst efficiency DTC code(s) present ({matched_dtcs}),
+    indicating catalytic converter degradation.
+
+- id: DTC_003
+  category: dtc
+  severity: warning
+  description: EGR system DTC present
+  conditions:
+    - type: dtc_check
+      mode: prefix
+      prefix: "P040"
+  template: >-
+    EGR system DTC code(s) present ({matched_dtcs}),
+    indicating exhaust gas recirculation fault.
+
+- id: DTC_004
+  category: dtc
+  severity: info
+  description: No DTC codes present
+  conditions:
+    - type: dtc_check
+      mode: absent
+  template: >-
+    No DTC codes were present in the session, indicating no ECU-reported faults.
+
+# ===== Negative evidence rules (NEG_001–003) ================================
+
+- id: NEG_001
+  category: negative_evidence
+  severity: info
+  description: No misfire DTC despite RPM instability
+  conditions:
+    - type: stat_check
+      signal: engine_rpm
+      field: std
+      op: gt
+      value: 100
+    - type: dtc_check
+      mode: absent_prefix
+      prefix: "P030"
+  template: >-
+    Engine RPM showed instability (std={engine_rpm.std}) but no misfire
+    DTC codes (P030x) were present, suggesting intermittent or
+    below-threshold misfire.
+
+- id: NEG_002
+  category: negative_evidence
+  severity: info
+  description: No overheating DTC despite elevated coolant
+  conditions:
+    - type: stat_check
+      signal: coolant_temperature
+      field: max
+      op: gt
+      value: 100
+    - type: dtc_check
+      mode: absent_prefix
+      prefix: "P048"
+  template: >-
+    Coolant temperature was elevated (max={coolant_temperature.max} degC)
+    but no overheating DTC codes (P048x) were present.
+
+- id: NEG_003
+  category: negative_evidence
+  severity: info
+  description: No anomalies detected at all
+  conditions:
+    - type: anomaly_check
+      max_count: 0
+  template: >-
+    No anomalies were detected during the session, suggesting normal
+    sensor behaviour throughout.

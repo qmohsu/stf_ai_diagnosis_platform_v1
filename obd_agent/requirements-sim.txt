@@ -17,6 +17,9 @@ pydantic-settings==2.1.0
 ruptures==1.1.9
 scikit-learn==1.4.0
 
+# Rule configuration
+PyYAML==6.0.1
+
 # Structured logging
 structlog==24.1.0
 

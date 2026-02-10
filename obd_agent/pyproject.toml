@@ -16,11 +16,16 @@ dependencies = [
     "numpy>=1.26",
     "ruptures>=1.1.8",
     "scikit-learn>=1.3",
+    "pyyaml>=6.0",
 ]
 
 [tool.setuptools]
-packages = ["obd_agent", "obd_agent.reader"]
+packages = ["obd_agent", "obd_agent.reader", "obd_agent.rules"]
 
 [tool.setuptools.package-dir]
 obd_agent = "."
 "obd_agent.reader" = "reader"
+"obd_agent.rules" = "rules"
+
+[tool.setuptools.package-data]
+"obd_agent.rules" = ["*.yaml"]
