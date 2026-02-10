@@ -179,7 +179,7 @@ workflow:
           max_write_timeout: 0
         title: Summarize Log Text
         type: http-request
-        url: http://diagnostic-api:8000/v1/tools/summarize-log-raw
+        url: http://diagnostic-api:8000/v2/tools/summarize-log-raw
         variables: []
       height: 122
       id: summarize_log_text
@@ -201,24 +201,26 @@ workflow:
 
           def main(response: str) -> dict:
               # Handle case where response is already a dict (Dify may pre-parse JSON)
+              _empty = {
+                  "parse_ok": "NO", "vehicle_id": "", "time_range": "",
+                  "dtc_codes": "", "pid_summary": "", "anomaly_events": "",
+                  "diagnostic_clues": "", "rag_query": "", "debug": "",
+              }
               if isinstance(response, dict):
                   data = response
               else:
                   try:
                       data = json.loads(response)
                   except Exception:
-                      return {"parse_ok": "NO", "vehicle_id": "", "adapter": "",
-                              "time_range": "", "dtc_codes": "", "pid_summary": "",
-                              "anomalies": "", "rag_query": "", "debug": f"JSON parse failed: {str(response)[:200]}"}
+                      _empty["debug"] = f"JSON parse failed: {str(response)[:200]}"
+                      return _empty
 
               # Check if it's an error response
               if "detail" in data:
-                  return {"parse_ok": "NO", "vehicle_id": "", "adapter": "",
-                          "time_range": "", "dtc_codes": "", "pid_summary": "",
-                          "anomalies": "", "rag_query": "", "debug": f"API error: {data.get('detail', '')}"}
+                  _empty["debug"] = f"API error: {data.get('detail', '')}"
+                  return _empty
 
               vehicle_id = data.get("vehicle_id", "")
-              adapter = data.get("adapter", "")
 
               tr = data.get("time_range", {})
               time_range = (
@@ -230,6 +232,7 @@ workflow:
               dtc_codes_list = data.get("dtc_codes", [])
               dtc_codes = ", ".join(dtc_codes_list) if dtc_codes_list else "None"
 
+              # PID summary (legacy summarizer)
               pid_map = data.get("pid_summary", {})
               pid_lines = []
               for name, stats in pid_map.items():
@@ -240,8 +243,29 @@ workflow:
                   )
               pid_summary = "\n".join(pid_lines) if pid_lines else "None"
 
-              anomalies_list = data.get("anomalies", [])
-              anomalies = "\n".join(anomalies_list) if anomalies_list else "None"
+              # Anomaly events (v2 structured)
+              events = data.get("anomaly_events") or []
+              event_lines = []
+              for ev in events:
+                  sigs = ", ".join(ev.get("signals", []))
+                  event_lines.append(
+                      f"[{ev.get('severity', '?').upper()}] {ev.get('pattern', '?')} "
+                      f"(context: {ev.get('context', '?')}, signals: {sigs}, "
+                      f"score: {ev.get('score', 0):.2f})"
+                  )
+              anomaly_events = "\n".join(event_lines) if event_lines else "None"
+
+              # Diagnostic clues (v2 rule-based)
+              clue_strings = data.get("diagnostic_clues") or []
+              clue_details = data.get("clue_details") or []
+              clue_lines = []
+              for cd in clue_details:
+                  evidence = "; ".join(cd.get("evidence", []))
+                  clue_lines.append(
+                      f"[{cd.get('severity', '?').upper()}] {cd.get('rule_id', '?')}: "
+                      f"{cd.get('clue', '?')} (evidence: {evidence})"
+                  )
+              diagnostic_clues = "\n".join(clue_lines) if clue_lines else "None"
 
               # --- Build RAG query ------------------------------------------------
               query_parts = []
@@ -250,9 +274,14 @@ workflow:
               if dtc_codes_list:
                   query_parts.append("DTC codes: " + " ".join(dtc_codes_list))
 
-              # Priority 2: Anomaly descriptions
-              if anomalies_list:
-                  query_parts.append("Anomalies: " + "; ".join(anomalies_list))
+              # Priority 2: Diagnostic clues (most informative for RAG)
+              if clue_strings:
+                  query_parts.append("Diagnostic clues: " + "; ".join(clue_strings[:5]))
+
+              # Priority 3: Anomaly event patterns
+              if events and not query_parts:
+                  anomaly_desc = [ev.get("pattern", "") for ev in events[:5]]
+                  query_parts.append("Anomalies: " + "; ".join(anomaly_desc))
 
               # Fallback: PID names with value fluctuations
               if not query_parts and pid_map:
@@ -269,24 +298,21 @@ workflow:
               return {
                   "parse_ok": "YES",
                   "vehicle_id": vehicle_id,
-                  "adapter": adapter,
                   "time_range": time_range,
                   "dtc_codes": dtc_codes,
                   "pid_summary": pid_summary,
-                  "anomalies": anomalies,
+                  "anomaly_events": anomaly_events,
+                  "diagnostic_clues": diagnostic_clues,
                   "rag_query": rag_query,
-                  "debug": f"OK, keys={list(data.keys())[:5]}",
+                  "debug": f"OK, keys={list(data.keys())[:8]}",
               }
         code_language: python3
-        desc: 'Extract fields from summary JSON and build a RAG query from DTCs + anomalies.'
+        desc: 'Extract fields from v2 summary JSON and build a RAG query from DTCs + clues + anomalies.'
         outputs:
           parse_ok:
             children: null
             type: string
           vehicle_id:
-            children: null
-            type: string
-          adapter:
             children: null
             type: string
           time_range:
@@ -298,7 +324,10 @@ workflow:
           pid_summary:
             children: null
             type: string
-          anomalies:
+          anomaly_events:
+            children: null
+            type: string
+          diagnostic_clues:
             children: null
             type: string
           rag_query:
@@ -469,8 +498,6 @@ workflow:
 
             **Vehicle ID:** {{#parse_summary.vehicle_id#}}
 
-            **Adapter:** {{#parse_summary.adapter#}}
-
             **Time Range:** {{#parse_summary.time_range#}}
 
             **DTC Codes:** {{#parse_summary.dtc_codes#}}
@@ -479,9 +506,13 @@ workflow:
 
             {{#parse_summary.pid_summary#}}
 
-            **Anomalies Detected:**
+            **Anomaly Events (with severity, context, and scores):**
 
-            {{#parse_summary.anomalies#}}
+            {{#parse_summary.anomaly_events#}}
+
+            **Diagnostic Clues (rule-based, with evidence):**
+
+            {{#parse_summary.diagnostic_clues#}}
 
             ---
 
