@@ -100,3 +100,26 @@ class LogSummaryV2(BaseModel):
     anomaly_events: List[AnomalyEventSchema] = Field(default_factory=list)
     diagnostic_clues: List[str] = Field(default_factory=list)
     clue_details: List[DiagnosticClueSchema] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Parsed summary for Dify (flat strings)
+# ---------------------------------------------------------------------------
+
+
+class ParsedSummary(BaseModel):
+    """Flat-string response consumed by the Dify workflow.
+
+    All fields are ``str`` (not ``bool``) because Dify's if-else node
+    compares ``parse_ok is "YES"``.
+    """
+
+    parse_ok: str
+    vehicle_id: str
+    time_range: str
+    dtc_codes: str
+    pid_summary: str
+    anomaly_events: str
+    diagnostic_clues: str
+    rag_query: str
+    debug: str

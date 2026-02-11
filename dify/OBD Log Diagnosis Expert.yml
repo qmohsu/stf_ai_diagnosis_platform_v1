@@ -35,26 +35,26 @@ workflow:
       voice: ''
   graph:
     edges:
-    # Start → Summarize Log Text
+    # Start → Fetch Parsed Summary
     - data:
         isInIteration: false
         sourceType: start
         targetType: http-request
-      id: start-source-summarize_log_text-target
+      id: start-source-fetch_parsed_summary-target
       source: start
       sourceHandle: source
-      target: summarize_log_text
+      target: fetch_parsed_summary
       targetHandle: target
       type: custom
       zIndex: 0
 
-    # Summarize Log Text → Parse Summary
+    # Fetch Parsed Summary → Parse Summary
     - data:
         isInIteration: false
         sourceType: http-request
         targetType: code
-      id: summarize-source-parse_summary-target
-      source: summarize_log_text
+      id: fetch_parsed_summary-source-parse_summary-target
+      source: fetch_parsed_summary
       sourceHandle: source
       target: parse_summary
       targetHandle: target
@@ -160,7 +160,7 @@ workflow:
       type: custom
       width: 244
 
-    # ── Summarize Log Text (HTTP POST) ─────────────────────────────────────
+    # ── Fetch Parsed Summary (HTTP POST to new endpoint) ──────────────────
     - data:
         authorization:
           config: null
@@ -168,7 +168,7 @@ workflow:
         body:
           data: "{{#start.log_text#}}"
           type: raw-text
-        desc: 'POST raw log text to the summarize-log-raw API.'
+        desc: 'POST raw log text to the parse-summary-raw API (runs full v2 pipeline + formatting).'
         headers: ''
         method: post
         params: ''
@@ -177,35 +177,33 @@ workflow:
           max_connect_timeout: 0
           max_read_timeout: 0
           max_write_timeout: 0
-        title: Summarize Log Text
+        title: Fetch Parsed Summary
         type: http-request
-        url: http://diagnostic-api:8000/v2/tools/summarize-log-raw
+        url: http://diagnostic-api:8000/v2/tools/parse-summary-raw
         variables: []
       height: 122
-      id: summarize_log_text
+      id: fetch_parsed_summary
       position:
-        x: 674
+        x: 370
         y: 282
       positionAbsolute:
-        x: 674
+        x: 370
         y: 282
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 244
-    # ── Parse Summary + Build RAG Query (code) ─────────────────────────────
+    # ── Parse Summary (thin code — extract JSON fields) ───────────────────
     - data:
         code: |
           import json
 
           def main(response: str) -> dict:
-              # Handle case where response is already a dict (Dify may pre-parse JSON)
               _empty = {
                   "parse_ok": "NO", "vehicle_id": "", "time_range": "",
                   "dtc_codes": "", "pid_summary": "", "anomaly_events": "",
                   "diagnostic_clues": "", "rag_query": "", "debug": "",
-                  "formatted_json": "",
               }
               if isinstance(response, dict):
                   data = response
@@ -213,122 +211,10 @@ workflow:
                   try:
                       data = json.loads(response)
                   except Exception:
-                      _empty["debug"] = f"JSON parse failed: {str(response)[:200]}"
                       return _empty
-
-              # Check if it's an error response
-              if "detail" in data:
-                  _empty["debug"] = f"API error: {data.get('detail', '')}"
-                  return _empty
-
-              vehicle_id = data.get("vehicle_id", "")
-
-              tr = data.get("time_range", {})
-              time_range = (
-                  f"{tr.get('start', '?')} to {tr.get('end', '?')}, "
-                  f"{tr.get('duration_seconds', 0)}s, "
-                  f"{tr.get('sample_count', 0)} samples"
-              )
-
-              dtc_codes_list = data.get("dtc_codes", [])
-              dtc_codes = ", ".join(dtc_codes_list) if dtc_codes_list else "None"
-
-              # PID summary (legacy summarizer)
-              pid_map = data.get("pid_summary", {})
-              pid_lines = []
-              for name, stats in pid_map.items():
-                  pid_lines.append(
-                      f"{name}: min={stats['min']} max={stats['max']} "
-                      f"mean={stats['mean']:.2f} latest={stats['latest']} "
-                      f"{stats.get('unit', '')}"
-                  )
-              pid_summary = "\n".join(pid_lines) if pid_lines else "None"
-
-              # Anomaly events (v2 structured)
-              events = data.get("anomaly_events") or []
-              event_lines = []
-              for ev in events:
-                  sigs = ", ".join(ev.get("signals", []))
-                  event_lines.append(
-                      f"[{ev.get('severity', '?').upper()}] {ev.get('pattern', '?')} "
-                      f"(context: {ev.get('context', '?')}, signals: {sigs}, "
-                      f"score: {ev.get('score', 0):.2f})"
-                  )
-              anomaly_events = "\n".join(event_lines) if event_lines else "None"
-
-              # Diagnostic clues (v2 rule-based)
-              clue_strings = data.get("diagnostic_clues") or []
-              clue_details = data.get("clue_details") or []
-              clue_lines = []
-              for cd in clue_details:
-                  evidence = "; ".join(cd.get("evidence", []))
-                  clue_lines.append(
-                      f"[{cd.get('severity', '?').upper()}] {cd.get('rule_id', '?')}: "
-                      f"{cd.get('clue', '?')} (evidence: {evidence})"
-                  )
-              diagnostic_clues = "\n".join(clue_lines) if clue_lines else "None"
-
-              # --- Build RAG query ------------------------------------------------
-              query_parts = []
-
-              # Priority 1: DTC codes
-              if dtc_codes_list:
-                  query_parts.append("DTC codes: " + " ".join(dtc_codes_list))
-
-              # Priority 2: Diagnostic clues (most informative for RAG)
-              if clue_strings:
-                  query_parts.append("Diagnostic clues: " + "; ".join(clue_strings[:5]))
-
-              # Priority 3: Anomaly event patterns
-              if events and not query_parts:
-                  anomaly_desc = [ev.get("pattern", "") for ev in events[:5]]
-                  query_parts.append("Anomalies: " + "; ".join(anomaly_desc))
-
-              # Fallback: PID names with value fluctuations
-              if not query_parts and pid_map:
-                  fluctuating = []
-                  for name, stats in pid_map.items():
-                      if stats["min"] != stats["max"]:
-                          fluctuating.append(name)
-                  if fluctuating:
-                      query_parts.append("PID fluctuations: " + " ".join(fluctuating))
-
-              # Final fallback
-              rag_query = " | ".join(query_parts) if query_parts else "general OBD vehicle health check"
-
-              # Build a compact pretty-printed view for debugging.
-              # Summarise value_statistics (signal names + key stats only) to avoid 50K dump.
-              compact = dict(data)
-              vs = compact.get("value_statistics")
-              if vs and isinstance(vs, dict) and "stats" in vs:
-                  summary = {}
-                  for sig, st in vs["stats"].items():
-                      summary[sig] = {
-                          "mean": st.get("mean"), "std": st.get("std"),
-                          "min": st.get("min"), "max": st.get("max"),
-                          "valid_count": st.get("valid_count"),
-                      }
-                  compact["value_statistics"] = {
-                      "stats (compact)": summary,
-                      "column_units": vs.get("column_units", {}),
-                      "resample_interval_seconds": vs.get("resample_interval_seconds"),
-                  }
-              formatted_json = json.dumps(compact, indent=2, ensure_ascii=False, default=str)
-
-              return {
-                  "parse_ok": "YES",
-                  "vehicle_id": vehicle_id,
-                  "time_range": time_range,
-                  "dtc_codes": dtc_codes,
-                  "pid_summary": pid_summary,
-                  "anomaly_events": anomaly_events,
-                  "diagnostic_clues": diagnostic_clues,
-                  "rag_query": rag_query,
-                  "debug": f"OK, keys={list(data.keys())[:8]}",
-                  "formatted_json": formatted_json,
-              }
+              return {k: data.get(k, _empty.get(k, "")) for k in _empty}
         code_language: python3
-        desc: 'Extract fields from v2 summary JSON and build a RAG query from DTCs + clues + anomalies.'
+        desc: 'Extract flat-string fields from the parse-summary-raw JSON response.'
         outputs:
           parse_ok:
             children: null
@@ -357,24 +243,21 @@ workflow:
           debug:
             children: null
             type: string
-          formatted_json:
-            children: null
-            type: string
         selected: false
         title: Parse Summary
         type: code
         variables:
         - value_selector:
-          - summarize_log_text
+          - fetch_parsed_summary
           - body
           variable: response
       height: 54
       id: parse_summary
       position:
-        x: 978
+        x: 674
         y: 282
       positionAbsolute:
-        x: 978
+        x: 674
         y: 282
       selected: false
       sourcePosition: right
@@ -398,10 +281,10 @@ workflow:
       height: 126
       id: check_parse
       position:
-        x: 1282
+        x: 978
         y: 282
       positionAbsolute:
-        x: 1282
+        x: 978
         y: 282
       sourcePosition: right
       targetPosition: left
@@ -431,10 +314,10 @@ workflow:
       height: 122
       id: retrieve_context
       position:
-        x: 1586
+        x: 1282
         y: 282
       positionAbsolute:
-        x: 1586
+        x: 1282
         y: 282
       selected: false
       sourcePosition: right
@@ -474,10 +357,10 @@ workflow:
       height: 54
       id: parse_context
       position:
-        x: 1890
+        x: 1586
         y: 282
       positionAbsolute:
-        x: 1890
+        x: 1586
         y: 282
       selected: false
       sourcePosition: right
@@ -556,10 +439,10 @@ workflow:
       height: 98
       id: expert_diagnosis
       position:
-        x: 2194
+        x: 1890
         y: 282
       positionAbsolute:
-        x: 2194
+        x: 1890
         y: 282
       selected: false
       sourcePosition: right
@@ -580,10 +463,10 @@ workflow:
       height: 90
       id: end_success
       position:
-        x: 2498
+        x: 2194
         y: 282
       positionAbsolute:
-        x: 2498
+        x: 2194
         y: 282
       sourcePosition: right
       targetPosition: left
@@ -603,10 +486,10 @@ workflow:
       height: 90
       id: end_error
       position:
-        x: 1586
+        x: 1282
         y: 443
       positionAbsolute:
-        x: 1586
+        x: 1282
         y: 443
       sourcePosition: right
       targetPosition: left
