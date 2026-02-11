@@ -205,6 +205,7 @@ workflow:
                   "parse_ok": "NO", "vehicle_id": "", "time_range": "",
                   "dtc_codes": "", "pid_summary": "", "anomaly_events": "",
                   "diagnostic_clues": "", "rag_query": "", "debug": "",
+                  "formatted_json": "",
               }
               if isinstance(response, dict):
                   data = response
@@ -295,6 +296,25 @@ workflow:
               # Final fallback
               rag_query = " | ".join(query_parts) if query_parts else "general OBD vehicle health check"
 
+              # Build a compact pretty-printed view for debugging.
+              # Summarise value_statistics (signal names + key stats only) to avoid 50K dump.
+              compact = dict(data)
+              vs = compact.get("value_statistics")
+              if vs and isinstance(vs, dict) and "stats" in vs:
+                  summary = {}
+                  for sig, st in vs["stats"].items():
+                      summary[sig] = {
+                          "mean": st.get("mean"), "std": st.get("std"),
+                          "min": st.get("min"), "max": st.get("max"),
+                          "valid_count": st.get("valid_count"),
+                      }
+                  compact["value_statistics"] = {
+                      "stats (compact)": summary,
+                      "column_units": vs.get("column_units", {}),
+                      "resample_interval_seconds": vs.get("resample_interval_seconds"),
+                  }
+              formatted_json = json.dumps(compact, indent=2, ensure_ascii=False, default=str)
+
               return {
                   "parse_ok": "YES",
                   "vehicle_id": vehicle_id,
@@ -305,6 +325,7 @@ workflow:
                   "diagnostic_clues": diagnostic_clues,
                   "rag_query": rag_query,
                   "debug": f"OK, keys={list(data.keys())[:8]}",
+                  "formatted_json": formatted_json,
               }
         code_language: python3
         desc: 'Extract fields from v2 summary JSON and build a RAG query from DTCs + clues + anomalies.'
@@ -334,6 +355,9 @@ workflow:
             children: null
             type: string
           debug:
+            children: null
+            type: string
+          formatted_json:
             children: null
             type: string
         selected: false

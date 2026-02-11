@@ -10,10 +10,9 @@ from __future__ import annotations
 import asyncio
 import os
 import tempfile
-from enum import Enum
 
 import structlog
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, HTTPException, Request, status
 
 from app.api.v2.schemas import (
     AnomalyEventSchema,
@@ -35,34 +34,12 @@ router = APIRouter()
 _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
-class PipelineMode(str, Enum):
-    full = "full"
-    minimal = "minimal"
-
-
 # ---------------------------------------------------------------------------
-# Pipeline helpers (sync — run via asyncio.to_thread)
+# Pipeline helper (sync — run via asyncio.to_thread)
 # ---------------------------------------------------------------------------
 
 
-def _run_minimal_pipeline(tmp_path: str) -> LogSummaryV2:
-    """Legacy summariser only — no pipeline stages."""
-    summary: LogSummary = summarize_log_file(tmp_path)
-
-    return LogSummaryV2(
-        vehicle_id=summary.vehicle_id,
-        time_range=summary.time_range,
-        dtc_codes=summary.dtc_codes,
-        pid_summary=summary.pid_summary,
-        # Pipeline fields explicitly None
-        value_statistics=None,
-        anomaly_events=None,
-        diagnostic_clues=None,
-        clue_details=None,
-    )
-
-
-def _run_full_pipeline(tmp_path: str) -> LogSummaryV2:
+def _run_pipeline(tmp_path: str) -> LogSummaryV2:
     """Legacy summariser + all 4 pipeline stages."""
     # Stage 0: legacy summary (for pid_summary / backward compat)
     summary: LogSummary = summarize_log_file(tmp_path)
@@ -126,20 +103,11 @@ def _run_full_pipeline(tmp_path: str) -> LogSummaryV2:
     status_code=status.HTTP_200_OK,
     summary="Summarize raw OBD log text (v2 full pipeline)",
 )
-async def summarize_log_raw_v2(
-    request: Request,
-    mode: PipelineMode = Query(
-        default=PipelineMode.full,
-        description="Pipeline mode: 'full' runs all stages, 'minimal' returns only basic summary.",
-    ),
-) -> LogSummaryV2:
+async def summarize_log_raw_v2(request: Request) -> LogSummaryV2:
     """Accept raw OBD TSV log text and return a unified v2 summary.
 
-    Query Parameters
-    ----------------
-    mode : ``full`` | ``minimal``
-        ``full`` (default) chains the complete pipeline.
-        ``minimal`` returns only the legacy pid_summary.
+    Runs the full pipeline: legacy summariser + normalise + statistics +
+    anomaly detection + clue generation.
     """
     body_bytes = await request.body()
 
@@ -164,21 +132,13 @@ async def summarize_log_raw_v2(
             tmp.write(body_bytes)
             tmp_path = tmp.name
 
-        logger.info(
-            "v2_log_summary_started",
-            size=len(body_bytes),
-            mode=mode.value,
-        )
+        logger.info("v2_log_summary_started", size=len(body_bytes))
 
-        if mode == PipelineMode.full:
-            result = await asyncio.to_thread(_run_full_pipeline, tmp_path)
-        else:
-            result = await asyncio.to_thread(_run_minimal_pipeline, tmp_path)
+        result = await asyncio.to_thread(_run_pipeline, tmp_path)
 
         logger.info(
             "v2_log_summary_completed",
             vehicle_id=result.vehicle_id,
-            mode=mode.value,
         )
 
         return result

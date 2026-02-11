@@ -87,23 +87,16 @@ class DiagnosticClueSchema(BaseModel):
 
 
 class LogSummaryV2(BaseModel):
-    """Unified v2 response combining legacy summary with full pipeline output.
+    """Unified v2 response combining legacy summary with full pipeline output."""
 
-    Fields populated in **both** modes (``full`` and ``minimal``):
-    - ``vehicle_id``, ``time_range``, ``dtc_codes``, ``pid_summary``
-
-    Fields populated **only** in ``full`` mode (``None`` in ``minimal``):
-    - ``value_statistics``, ``anomaly_events``, ``diagnostic_clues``, ``clue_details``
-    """
-
-    # Always present (from legacy summariser)
+    # Legacy summariser
     vehicle_id: str
     time_range: TimeRange
     dtc_codes: List[str] = Field(default_factory=list)
     pid_summary: Dict[str, PIDStatModel] = Field(default_factory=dict)
 
-    # Full-mode pipeline output (None when pipeline didn't run)
-    value_statistics: Optional[ValueStatistics] = None
-    anomaly_events: Optional[List[AnomalyEventSchema]] = None
-    diagnostic_clues: Optional[List[str]] = None
-    clue_details: Optional[List[DiagnosticClueSchema]] = None
+    # Pipeline output
+    value_statistics: ValueStatistics
+    anomaly_events: List[AnomalyEventSchema] = Field(default_factory=list)
+    diagnostic_clues: List[str] = Field(default_factory=list)
+    clue_details: List[DiagnosticClueSchema] = Field(default_factory=list)
