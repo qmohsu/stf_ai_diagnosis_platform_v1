@@ -1,0 +1,1458 @@
+{
+  "vehicle_id": "V-UNKNOWN",
+  "time_range": {
+    "start": "2026-02-03T16:35:04Z",
+    "end": "2026-02-03T16:53:10Z",
+    "duration_seconds": 1086,
+    "sample_count": 1087
+  },
+  "dtc_codes": [],
+  "pid_summary": {
+    "RPM": {
+      "min": 623.0,
+      "max": 1443.0,
+      "mean": 790.35,
+      "latest": 754.0,
+      "unit": "rpm"
+    },
+    "COOLANT_TEMP": {
+      "min": 83.0,
+      "max": 86.0,
+      "mean": 84.2,
+      "latest": 86.0,
+      "unit": "degC"
+    },
+    "SHORT_FUEL_TRIM_1": {
+      "min": -9.38,
+      "max": 0.0,
+      "mean": -5.49,
+      "latest": -3.91,
+      "unit": "percent"
+    },
+    "LONG_FUEL_TRIM_1": {
+      "min": -10.16,
+      "max": -7.03,
+      "mean": -7.97,
+      "latest": -7.81,
+      "unit": "percent"
+    },
+    "INTAKE_PRESSURE": {
+      "min": 24.0,
+      "max": 68.0,
+      "mean": 40.96,
+      "latest": 40.0,
+      "unit": "kPa"
+    },
+    "SPEED": {
+      "min": 0.0,
+      "max": 14.0,
+      "mean": 1.7,
+      "latest": 0.0,
+      "unit": "km/h"
+    },
+    "THROTTLE_POS": {
+      "min": 13.33,
+      "max": 19.61,
+      "mean": 14.47,
+      "latest": 14.12,
+      "unit": "percent"
+    },
+    "ENGINE_LOAD": {
+      "min": 13.73,
+      "max": 85.1,
+      "mean": 32.69,
+      "latest": 31.37,
+      "unit": "percent"
+    }
+  },
+  "value_statistics": {
+    "stats": {
+      "engine_rpm": {
+        "mean": 790.3523,
+        "std": 104.367,
+        "min": 623.0,
+        "max": 1443.0,
+        "p5": 697.0,
+        "p25": 747.0,
+        "p50": 753.0,
+        "p75": 797.0,
+        "p95": 1011.7,
+        "autocorrelation_lag1": 0.7486,
+        "mean_abs_change": 33.9503,
+        "max_abs_change": 625.0,
+        "energy": 635549.2944,
+        "entropy": 1.737,
+        "valid_count": 1087
+      },
+      "vehicle_speed": {
+        "mean": 1.7029,
+        "std": 3.1146,
+        "min": 0.0,
+        "max": 14.0,
+        "p5": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 2.0,
+        "p95": 8.0,
+        "autocorrelation_lag1": 0.9879,
+        "mean_abs_change": 0.1694,
+        "max_abs_change": 3.0,
+        "energy": 12.6007,
+        "entropy": 1.5304,
+        "valid_count": 1087
+      },
+      "throttle_position": {
+        "mean": 14.4718,
+        "std": 0.722,
+        "min": 13.33,
+        "max": 19.61,
+        "p5": 13.33,
+        "p25": 14.12,
+        "p50": 14.12,
+        "p75": 14.9,
+        "p95": 15.69,
+        "autocorrelation_lag1": 0.5642,
+        "mean_abs_change": 0.2951,
+        "max_abs_change": 5.1,
+        "energy": 209.9535,
+        "entropy": 1.8572,
+        "valid_count": 1087
+      },
+      "engine_load": {
+        "mean": 32.6892,
+        "std": 7.626,
+        "min": 13.73,
+        "max": 85.1,
+        "p5": 20.39,
+        "p25": 29.02,
+        "p50": 30.59,
+        "p75": 37.65,
+        "p95": 45.49,
+        "autocorrelation_lag1": 0.5793,
+        "mean_abs_change": 3.5631,
+        "max_abs_change": 63.14,
+        "energy": 1126.7378,
+        "entropy": 2.082,
+        "valid_count": 1087
+      },
+      "absolute_load": {
+        "mean": 23.9713,
+        "std": 5.2624,
+        "min": 10.98,
+        "max": 68.24,
+        "p5": 15.69,
+        "p25": 21.18,
+        "p50": 22.35,
+        "p75": 27.45,
+        "p95": 32.55,
+        "autocorrelation_lag1": 0.533,
+        "mean_abs_change": 2.5902,
+        "max_abs_change": 47.85,
+        "energy": 602.3163,
+        "entropy": 1.9776,
+        "valid_count": 1087
+      },
+      "relative_throttle_pos": {
+        "mean": 3.8575,
+        "std": 0.9679,
+        "min": 1.96,
+        "max": 11.76,
+        "p5": 2.35,
+        "p25": 3.53,
+        "p50": 3.53,
+        "p75": 4.31,
+        "p95": 5.1,
+        "autocorrelation_lag1": 0.5041,
+        "mean_abs_change": 0.4183,
+        "max_abs_change": 8.62,
+        "energy": 15.8167,
+        "entropy": 1.8231,
+        "valid_count": 1087
+      },
+      "throttle_actuator": {
+        "mean": 4.1754,
+        "std": 1.0224,
+        "min": 2.35,
+        "max": 11.37,
+        "p5": 2.75,
+        "p25": 3.53,
+        "p50": 3.92,
+        "p75": 4.71,
+        "p95": 5.49,
+        "autocorrelation_lag1": 0.5214,
+        "mean_abs_change": 0.4405,
+        "max_abs_change": 8.23,
+        "energy": 18.4789,
+        "entropy": 1.9907,
+        "valid_count": 1087
+      },
+      "coolant_temperature": {
+        "mean": 84.1969,
+        "std": 0.649,
+        "min": 83.0,
+        "max": 86.0,
+        "p5": 83.0,
+        "p25": 84.0,
+        "p50": 84.0,
+        "p75": 84.0,
+        "p95": 86.0,
+        "autocorrelation_lag1": 0.9792,
+        "mean_abs_change": 0.0175,
+        "max_abs_change": 1.0,
+        "energy": 7089.5345,
+        "entropy": 1.2607,
+        "valid_count": 1087
+      },
+      "intake_temperature": {
+        "mean": 55.0994,
+        "std": 1.3453,
+        "min": 52.0,
+        "max": 57.0,
+        "p5": 53.0,
+        "p25": 54.0,
+        "p50": 55.0,
+        "p75": 56.0,
+        "p95": 57.0,
+        "autocorrelation_lag1": 0.9875,
+        "mean_abs_change": 0.0451,
+        "max_abs_change": 1.0,
+        "energy": 3037.7489,
+        "entropy": 2.3046,
+        "valid_count": 1087
+      },
+      "catalyst_temp_b1s1": {
+        "mean": 628.2523,
+        "std": 11.5752,
+        "min": 614.5,
+        "max": 655.9,
+        "p5": 618.1,
+        "p25": 619.0,
+        "p50": 620.6,
+        "p75": 640.2,
+        "p95": 649.74,
+        "autocorrelation_lag1": 0.996,
+        "mean_abs_change": 0.6521,
+        "max_abs_change": 5.5,
+        "energy": 394834.8805,
+        "entropy": 2.6091,
+        "valid_count": 1087
+      },
+      "mass_airflow": {
+        "mean": 2.8389,
+        "std": 0.8517,
+        "min": 1.47,
+        "max": 10.18,
+        "p5": 1.7,
+        "p25": 2.42,
+        "p50": 2.54,
+        "p75": 3.24,
+        "p95": 4.081,
+        "autocorrelation_lag1": 0.5384,
+        "mean_abs_change": 0.3558,
+        "max_abs_change": 7.12,
+        "energy": 8.7845,
+        "entropy": 1.6498,
+        "valid_count": 1087
+      },
+      "intake_pressure": {
+        "mean": 40.9614,
+        "std": 6.3728,
+        "min": 24.0,
+        "max": 68.0,
+        "p5": 30.0,
+        "p25": 38.0,
+        "p50": 39.0,
+        "p75": 46.0,
+        "p95": 52.0,
+        "autocorrelation_lag1": 0.738,
+        "mean_abs_change": 2.3766,
+        "max_abs_change": 34.0,
+        "energy": 1718.4462,
+        "entropy": 2.3282,
+        "valid_count": 1087
+      },
+      "barometric_pressure": {
+        "mean": 101.0,
+        "std": 0.0,
+        "min": 101.0,
+        "max": 101.0,
+        "p5": 101.0,
+        "p25": 101.0,
+        "p50": 101.0,
+        "p75": 101.0,
+        "p95": 101.0,
+        "autocorrelation_lag1": null,
+        "mean_abs_change": 0.0,
+        "max_abs_change": 0.0,
+        "energy": 10201.0,
+        "entropy": 0.0,
+        "valid_count": 1087
+      },
+      "fuel_rail_pressure_direct": {
+        "mean": 3590.2576,
+        "std": 193.4933,
+        "min": 3380.0,
+        "max": 5200.0,
+        "p5": 3410.0,
+        "p25": 3500.0,
+        "p50": 3500.0,
+        "p75": 3670.0,
+        "p95": 3880.0,
+        "autocorrelation_lag1": 0.3953,
+        "mean_abs_change": 90.3683,
+        "max_abs_change": 1760.0,
+        "energy": 12927389.2364,
+        "entropy": 1.4775,
+        "valid_count": 1087
+      },
+      "short_fuel_trim_1": {
+        "mean": -5.4945,
+        "std": 1.4364,
+        "min": -9.38,
+        "max": 0.0,
+        "p5": -7.81,
+        "p25": -6.25,
+        "p50": -5.47,
+        "p75": -4.69,
+        "p95": -3.12,
+        "autocorrelation_lag1": 0.85,
+        "mean_abs_change": 0.397,
+        "max_abs_change": 3.91,
+        "energy": 32.2524,
+        "entropy": 2.5531,
+        "valid_count": 1087
+      },
+      "long_fuel_trim_1": {
+        "mean": -7.9652,
+        "std": 0.6969,
+        "min": -10.16,
+        "max": -7.03,
+        "p5": -9.38,
+        "p25": -8.59,
+        "p50": -7.81,
+        "p75": -7.81,
+        "p95": -7.03,
+        "autocorrelation_lag1": 0.9774,
+        "mean_abs_change": 0.0281,
+        "max_abs_change": 0.79,
+        "energy": 63.9301,
+        "entropy": 1.7402,
+        "valid_count": 1087
+      },
+      "timing_advance": {
+        "mean": 4.3666,
+        "std": 5.4428,
+        "min": -6.5,
+        "max": 32.0,
+        "p5": -3.0,
+        "p25": 2.0,
+        "p50": 4.0,
+        "p75": 5.5,
+        "p95": 16.0,
+        "autocorrelation_lag1": 0.567,
+        "mean_abs_change": 3.0548,
+        "max_abs_change": 26.5,
+        "energy": 48.6911,
+        "entropy": 2.1235,
+        "valid_count": 1087
+      },
+      "o2_b1s2": {
+        "mean": 0.5534,
+        "std": 0.16,
+        "min": 0.1,
+        "max": 0.75,
+        "p5": 0.2,
+        "p25": 0.48,
+        "p50": 0.58,
+        "p75": 0.69,
+        "p95": 0.71,
+        "autocorrelation_lag1": 0.932,
+        "mean_abs_change": 0.0192,
+        "max_abs_change": 0.47,
+        "energy": 0.3319,
+        "entropy": 2.8349,
+        "valid_count": 1087
+      },
+      "egr_error": {
+        "mean": 24.5784,
+        "std": 44.5325,
+        "min": -100.0,
+        "max": 99.22,
+        "p5": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 99.22,
+        "p95": 99.22,
+        "autocorrelation_lag1": 0.0847,
+        "mean_abs_change": 36.271,
+        "max_abs_change": 199.22,
+        "energy": 2587.2443,
+        "entropy": 1.0355,
+        "valid_count": 1087
+      },
+      "evaporative_purge": {
+        "mean": 16.7573,
+        "std": 9.2748,
+        "min": 0.0,
+        "max": 42.75,
+        "p5": 0.0,
+        "p25": 9.8,
+        "p50": 16.08,
+        "p75": 23.92,
+        "p95": 32.55,
+        "autocorrelation_lag1": 0.933,
+        "mean_abs_change": 1.4711,
+        "max_abs_change": 34.9,
+        "energy": 366.8285,
+        "entropy": 3.041,
+        "valid_count": 1087
+      },
+      "run_time": {
+        "mean": 1246.0,
+        "std": 313.7897,
+        "min": 703.0,
+        "max": 1789.0,
+        "p5": 757.3,
+        "p25": 974.5,
+        "p50": 1246.0,
+        "p75": 1517.5,
+        "p95": 1734.7,
+        "autocorrelation_lag1": 1.0,
+        "mean_abs_change": 1.0,
+        "max_abs_change": 1.0,
+        "energy": 1650980.0,
+        "entropy": 3.3219,
+        "valid_count": 1087
+      },
+      "distance_w_mil": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "p5": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 0.0,
+        "p95": 0.0,
+        "autocorrelation_lag1": null,
+        "mean_abs_change": 0.0,
+        "max_abs_change": 0.0,
+        "energy": 0.0,
+        "entropy": 0.0,
+        "valid_count": 1087
+      },
+      "control_module_voltage": {
+        "mean": 14.1217,
+        "std": 0.2876,
+        "min": 12.6,
+        "max": 14.43,
+        "p5": 13.4,
+        "p25": 14.1,
+        "p50": 14.2,
+        "p75": 14.28,
+        "p95": 14.35,
+        "autocorrelation_lag1": 0.3799,
+        "mean_abs_change": 0.2,
+        "max_abs_change": 1.35,
+        "energy": 199.5044,
+        "entropy": 1.9698,
+        "valid_count": 1087
+      },
+      "accelerator_pos_d": {
+        "mean": 19.3551,
+        "std": 1.3453,
+        "min": 18.82,
+        "max": 30.2,
+        "p5": 18.82,
+        "p25": 18.82,
+        "p50": 18.82,
+        "p75": 19.22,
+        "p95": 22.35,
+        "autocorrelation_lag1": 0.4995,
+        "mean_abs_change": 0.4466,
+        "max_abs_change": 10.98,
+        "energy": 376.4285,
+        "entropy": 0.6882,
+        "valid_count": 1087
+      },
+      "accelerator_pos_e": {
+        "mean": 9.6135,
+        "std": 0.6774,
+        "min": 9.41,
+        "max": 15.29,
+        "p5": 9.41,
+        "p25": 9.41,
+        "p50": 9.41,
+        "p75": 9.41,
+        "p95": 10.98,
+        "autocorrelation_lag1": 0.5029,
+        "mean_abs_change": 0.2008,
+        "max_abs_change": 5.88,
+        "energy": 92.878,
+        "entropy": 0.6355,
+        "valid_count": 1087
+      }
+    },
+    "column_units": {
+      "engine_rpm": "rpm",
+      "vehicle_speed": "km/h",
+      "throttle_position": "percent",
+      "engine_load": "percent",
+      "absolute_load": "percent",
+      "relative_throttle_pos": "percent",
+      "throttle_actuator": "percent",
+      "coolant_temperature": "degC",
+      "intake_temperature": "degC",
+      "catalyst_temp_b1s1": "degC",
+      "mass_airflow": "g/s",
+      "intake_pressure": "kPa",
+      "barometric_pressure": "kPa",
+      "fuel_rail_pressure_direct": "kPa",
+      "short_fuel_trim_1": "percent",
+      "long_fuel_trim_1": "percent",
+      "timing_advance": "degree",
+      "o2_b1s2": "volt",
+      "egr_error": "percent",
+      "evaporative_purge": "percent",
+      "run_time": "second",
+      "distance_w_mil": "km",
+      "control_module_voltage": "volt",
+      "accelerator_pos_d": "percent",
+      "accelerator_pos_e": "percent"
+    },
+    "resample_interval_seconds": 1.0
+  },
+  "anomaly_events": [
+    {
+      "time_window": [
+        "2026-02-03T16:35:49+00:00",
+        "2026-02-03T16:35:58+00:00"
+      ],
+      "signals": [
+        "o2_b1s2"
+      ],
+      "pattern": "Change-point in o2_b1s2: level shift of 0.05 (score 0.07)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.07384615384615391
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:36:09+00:00",
+        "2026-02-03T16:36:18+00:00"
+      ],
+      "signals": [
+        "egr_error"
+      ],
+      "pattern": "Change-point in egr_error: level shift of 39.69 (score 0.20)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.19921694608975
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:36:19+00:00",
+        "2026-02-03T16:36:33+00:00"
+      ],
+      "signals": [
+        "evaporative_purge",
+        "coolant_temperature",
+        "short_fuel_trim_1",
+        "long_fuel_trim_1",
+        "egr_error"
+      ],
+      "pattern": "Change-point in evaporative_purge: level shift of 2.98 (score 0.07); Change-point in coolant_temperature: level shift of 0.60 (score 0.20); Change-point in short_fuel_trim_1: level shift of 1.09 (score 0.12); Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in egr_error: level shift of 39.69 (score 0.20)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.19331775648586175
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:36:34+00:00",
+        "2026-02-03T16:36:43+00:00"
+      ],
+      "signals": [
+        "short_fuel_trim_1",
+        "o2_b1s2",
+        "evaporative_purge",
+        "run_time"
+      ],
+      "pattern": "Change-point in short_fuel_trim_1: level shift of 3.12 (score 0.33); Change-point in o2_b1s2: level shift of 0.02 (score 0.02); Change-point in evaporative_purge: level shift of 15.29 (score 0.36); Change-point in run_time: level shift of 5.00 (score 0.00)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.13642202296278022
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:37:14+00:00",
+        "2026-02-03T16:37:23+00:00"
+      ],
+      "signals": [
+        "o2_b1s2"
+      ],
+      "pattern": "Change-point in o2_b1s2: level shift of 0.16 (score 0.25)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.2461538461538461
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:37:24+00:00",
+        "2026-02-03T16:37:33+00:00"
+      ],
+      "signals": [
+        "intake_temperature"
+      ],
+      "pattern": "Change-point in intake_temperature: level shift of 0.80 (score 0.16)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.15999999999999942
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:37:34+00:00",
+        "2026-02-03T16:37:43+00:00"
+      ],
+      "signals": [
+        "long_fuel_trim_1"
+      ],
+      "pattern": "Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.24920127795527167
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:37:44+00:00",
+        "2026-02-03T16:37:53+00:00"
+      ],
+      "signals": [
+        "long_fuel_trim_1"
+      ],
+      "pattern": "Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.24920127795527167
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:37:59+00:00",
+        "2026-02-03T16:38:08+00:00"
+      ],
+      "signals": [
+        "long_fuel_trim_1"
+      ],
+      "pattern": "Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.24920127795527167
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:38:09+00:00",
+        "2026-02-03T16:38:18+00:00"
+      ],
+      "signals": [
+        "long_fuel_trim_1",
+        "run_time"
+      ],
+      "pattern": "Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in run_time: level shift of 5.00 (score 0.00)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.1269026647603246
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:38:24+00:00",
+        "2026-02-03T16:38:43+00:00"
+      ],
+      "signals": [
+        "long_fuel_trim_1",
+        "o2_b1s2"
+      ],
+      "pattern": "Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in o2_b1s2: level shift of 0.10 (score 0.16); Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.22613172769722295
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:39:04+00:00",
+        "2026-02-03T16:39:13+00:00"
+      ],
+      "signals": [
+        "intake_temperature",
+        "evaporative_purge"
+      ],
+      "pattern": "Change-point in intake_temperature: level shift of 0.60 (score 0.12); Change-point in evaporative_purge: level shift of 3.29 (score 0.08)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.09850292397660765
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:39:14+00:00",
+        "2026-02-03T16:39:28+00:00"
+      ],
+      "signals": [
+        "o2_b1s2",
+        "evaporative_purge"
+      ],
+      "pattern": "Change-point in o2_b1s2: level shift of 0.02 (score 0.04); Change-point in evaporative_purge: level shift of 8.70 (score 0.20)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.12026270805218175
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:39:34+00:00",
+        "2026-02-03T16:39:43+00:00"
+      ],
+      "signals": [
+        "evaporative_purge"
+      ],
+      "pattern": "Change-point in evaporative_purge: level shift of 3.37 (score 0.08)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.0788771929824561
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:39:49+00:00",
+        "2026-02-03T16:39:58+00:00"
+      ],
+      "signals": [
+        "o2_b1s2",
+        "evaporative_purge",
+        "run_time"
+      ],
+      "pattern": "Change-point in o2_b1s2: level shift of 0.16 (score 0.25); Change-point in evaporative_purge: level shift of 20.39 (score 0.48); Change-point in run_time: level shift of 5.00 (score 0.00)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.18387287598511792
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:39:59+00:00",
+        "2026-02-03T16:40:08+00:00"
+      ],
+      "signals": [
+        "evaporative_purge"
+      ],
+      "pattern": "Change-point in evaporative_purge: level shift of 3.37 (score 0.08)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.07887719298245623
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:40:09+00:00",
+        "2026-02-03T16:40:33+00:00"
+      ],
+      "signals": [
+        "evaporative_purge",
+        "short_fuel_trim_1",
+        "long_fuel_trim_1"
+      ],
+      "pattern": "Change-point in evaporative_purge: level shift of 3.29 (score 0.08); Change-point in short_fuel_trim_1: level shift of 0.47 (score 0.05); Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in short_fuel_trim_1: level shift of 3.43 (score 0.37); Change-point in evaporative_purge: level shift of 22.12 (score 0.52)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.3892660277726886
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:40:34+00:00",
+        "2026-02-03T16:40:53+00:00"
+      ],
+      "signals": [
+        "long_fuel_trim_1",
+        "evaporative_purge"
+      ],
+      "pattern": "Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in evaporative_purge: level shift of 3.14 (score 0.07); Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.20526353156586896
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:40:54+00:00",
+        "2026-02-03T16:41:03+00:00"
+      ],
+      "signals": [
+        "evaporative_purge"
+      ],
+      "pattern": "Change-point in evaporative_purge: level shift of 18.04 (score 0.42)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.42194152046783634
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:41:04+00:00",
+        "2026-02-03T16:41:18+00:00"
+      ],
+      "signals": [
+        "o2_b1s2",
+        "evaporative_purge",
+        "long_fuel_trim_1"
+      ],
+      "pattern": "Change-point in o2_b1s2: level shift of 0.02 (score 0.02); Change-point in evaporative_purge: level shift of 2.90 (score 0.07); Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.14771354945896736
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:41:24+00:00",
+        "2026-02-03T16:41:38+00:00"
+      ],
+      "signals": [
+        "short_fuel_trim_1",
+        "run_time"
+      ],
+      "pattern": "Change-point in short_fuel_trim_1: level shift of 0.47 (score 0.05); Change-point in run_time: level shift of 5.00 (score 0.00)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.02724872087863764
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:41:44+00:00",
+        "2026-02-03T16:41:53+00:00"
+      ],
+      "signals": [
+        "o2_b1s2"
+      ],
+      "pattern": "Change-point in o2_b1s2: level shift of 0.07 (score 0.11)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.1076923076923077
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:42:04+00:00",
+        "2026-02-03T16:42:13+00:00"
+      ],
+      "signals": [
+        "evaporative_purge"
+      ],
+      "pattern": "Change-point in evaporative_purge: level shift of 3.29 (score 0.08)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.07700584795321637
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:42:19+00:00",
+        "2026-02-03T16:42:38+00:00"
+      ],
+      "signals": [
+        "o2_b1s2",
+        "evaporative_purge",
+        "short_fuel_trim_1"
+      ],
+      "pattern": "Change-point in o2_b1s2: level shift of 0.24 (score 0.36); Change-point in evaporative_purge: level shift of 7.69 (score 0.18); Change-point in short_fuel_trim_1: level shift of 1.25 (score 0.13); Change-point in evaporative_purge: level shift of 3.45 (score 0.08)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.14150067668213778
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:42:44+00:00",
+        "2026-02-03T16:42:53+00:00"
+      ],
+      "signals": [
+        "intake_temperature",
+        "short_fuel_trim_1",
+        "evaporative_purge"
+      ],
+      "pattern": "Change-point in intake_temperature: level shift of 0.80 (score 0.16); Change-point in short_fuel_trim_1: level shift of 3.59 (score 0.38); Change-point in evaporative_purge: level shift of 16.31 (score 0.38)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.32657253831095134
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:42:59+00:00",
+        "2026-02-03T16:43:48+00:00"
+      ],
+      "signals": [
+        "relative_throttle_pos",
+        "throttle_actuator",
+        "mass_airflow",
+        "throttle_position",
+        "engine_load",
+        "absolute_load",
+        "intake_pressure",
+        "fuel_rail_pressure_direct",
+        "long_fuel_trim_1",
+        "run_time",
+        "evaporative_purge",
+        "engine_rpm",
+        "o2_b1s2",
+        "intake_temperature",
+        "short_fuel_trim_1",
+        "egr_error"
+      ],
+      "pattern": "Change-point in relative_throttle_pos: level shift of 0.94 (score 0.10); Change-point in throttle_actuator: level shift of 1.02 (score 0.11); Change-point in mass_airflow: level shift of 0.67 (score 0.08); Change-point in throttle_position: level shift of 0.86 (score 0.14); Change-point in engine_load: level shift of 10.44 (score 0.15); Change-point in absolute_load: level shift of 6.98 (score 0.12); Change-point in intake_pressure: level shift of 7.40 (score 0.17); Change-point in fuel_rail_pressure_direct: level shift of 188.00 (score 0.10); Change-point in relative_throttle_pos: level shift of 0.23 (score 0.02); Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in run_time: level shift of 5.00 (score 0.00); Change-point in evaporative_purge: level shift of 4.00 (score 0.09); Change-point in engine_rpm: level shift of 44.80 (score 0.05); Change-point in o2_b1s2: level shift of 0.31 (score 0.47); Change-point in intake_temperature: level shift of 0.40 (score 0.08); Change-point in o2_b1s2: level shift of 0.22 (score 0.33); Change-point in evaporative_purge: level shift of 4.47 (score 0.10); Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in throttle_position: level shift of 1.33 (score 0.21); Change-point in short_fuel_trim_1: level shift of 1.72 (score 0.18); Change-point in egr_error: level shift of 39.69 (score 0.20)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.19859815137671635
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:43:49+00:00",
+        "2026-02-03T16:44:23+00:00"
+      ],
+      "signals": [
+        "throttle_actuator",
+        "control_module_voltage",
+        "short_fuel_trim_1",
+        "relative_throttle_pos",
+        "long_fuel_trim_1",
+        "o2_b1s2",
+        "engine_rpm",
+        "throttle_position",
+        "mass_airflow",
+        "evaporative_purge"
+      ],
+      "pattern": "Change-point in throttle_actuator: level shift of 0.16 (score 0.02); Change-point in control_module_voltage: level shift of 0.01 (score 0.01); Change-point in short_fuel_trim_1: level shift of 1.09 (score 0.12); Change-point in relative_throttle_pos: level shift of 1.02 (score 0.10); Change-point in throttle_actuator: level shift of 1.09 (score 0.12); Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in o2_b1s2: level shift of 0.14 (score 0.22); Change-point in engine_rpm: level shift of 106.20 (score 0.13); Change-point in throttle_position: level shift of 1.10 (score 0.18); Change-point in relative_throttle_pos: level shift of 1.57 (score 0.16); Change-point in throttle_actuator: level shift of 1.25 (score 0.14); Change-point in mass_airflow: level shift of 1.02 (score 0.12); Change-point in evaporative_purge: level shift of 4.86 (score 0.11); Change-point in control_module_voltage: level shift of 0.19 (score 0.11)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.11508443421890724
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:44:24+00:00",
+        "2026-02-03T16:44:38+00:00"
+      ],
+      "signals": [
+        "long_fuel_trim_1",
+        "evaporative_purge"
+      ],
+      "pattern": "Change-point in long_fuel_trim_1: level shift of 0.79 (score 0.25); Change-point in evaporative_purge: level shift of 7.77 (score 0.18)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.21702849242381791
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:44:39+00:00",
+        "2026-02-03T16:44:48+00:00"
+      ],
+      "signals": [
+        "evaporative_purge"
+      ],
+      "pattern": "Change-point in evaporative_purge: level shift of 4.78 (score 0.11)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.11185964912280694
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:44:49+00:00",
+        "2026-02-03T16:45:03+00:00"
+      ],
+      "signals": [
+        "run_time",
+        "long_fuel_trim_1",
+        "o2_b1s2"
+      ],
+      "pattern": "Change-point in run_time: level shift of 5.00 (score 0.00); Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in o2_b1s2: level shift of 0.26 (score 0.40)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.2634513323801622
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:45:04+00:00",
+        "2026-02-03T16:45:58+00:00"
+      ],
+      "signals": [
+        "short_fuel_trim_1",
+        "o2_b1s2",
+        "engine_rpm",
+        "vehicle_speed",
+        "absolute_load",
+        "fuel_rail_pressure_direct",
+        "throttle_position",
+        "engine_load",
+        "relative_throttle_pos",
+        "throttle_actuator",
+        "catalyst_temp_b1s1",
+        "mass_airflow",
+        "intake_pressure",
+        "long_fuel_trim_1",
+        "timing_advance",
+        "accelerator_pos_e",
+        "evaporative_purge",
+        "accelerator_pos_d",
+        "intake_temperature",
+        "egr_error"
+      ],
+      "pattern": "Change-point in short_fuel_trim_1: level shift of 1.56 (score 0.17); Change-point in o2_b1s2: level shift of 0.06 (score 0.10); Change-point in engine_rpm: level shift of 30.40 (score 0.04); Change-point in vehicle_speed: level shift of 0.80 (score 0.06); Change-point in absolute_load: level shift of 3.06 (score 0.05); Change-point in fuel_rail_pressure_direct: level shift of 162.00 (score 0.09); Change-point in throttle_position: level shift of 0.94 (score 0.15); Change-point in engine_load: level shift of 14.51 (score 0.20); Change-point in relative_throttle_pos: level shift of 1.26 (score 0.13); Change-point in throttle_actuator: level shift of 1.41 (score 0.16); Change-point in catalyst_temp_b1s1: level shift of 4.86 (score 0.12); Change-point in mass_airflow: level shift of 1.16 (score 0.13); Change-point in intake_pressure: level shift of 11.40 (score 0.26); Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in timing_advance: level shift of 5.70 (score 0.15); Change-point in accelerator_pos_e: level shift of 0.31 (score 0.05); Change-point in engine_rpm: level shift of 377.40 (score 0.46); Change-point in vehicle_speed: level shift of 3.80 (score 0.27); Change-point in o2_b1s2: level shift of 0.16 (score 0.25); Change-point in evaporative_purge: level shift of 6.20 (score 0.14); Change-point in accelerator_pos_d: level shift of 3.84 (score 0.34); Multivariate outlier (1 rows): top signals engine_load, absolute_load, intake_pressure, long_fuel_trim_1, fuel_rail_pressure_direct; Change-point in engine_load: level shift of 8.70 (score 0.12); Change-point in intake_pressure: level shift of 11.00 (score 0.25); Multivariate outlier (6 rows): top signals engine_rpm, mass_airflow, throttle_position, timing_advance, fuel_rail_pressure_direct; Change-point in o2_b1s2: level shift of 0.25 (score 0.39); Change-point in evaporative_purge: level shift of 16.86 (score 0.39); Multivariate outlier (1 rows): top signals fuel_rail_pressure_direct, relative_throttle_pos, mass_airflow, throttle_actuator, accelerator_pos_d; Change-point in intake_temperature: level shift of 0.60 (score 0.12); Multivariate outlier (1 rows): top signals vehicle_speed, intake_pressure, long_fuel_trim_1, timing_advance, o2_b1s2; Change-point in o2_b1s2: level shift of 0.28 (score 0.43); Change-point in evaporative_purge: level shift of 4.86 (score 0.11); Multivariate outlier (1 rows): top signals relative_throttle_pos, accelerator_pos_d, throttle_actuator, accelerator_pos_e, o2_b1s2; Change-point in catalyst_temp_b1s1: level shift of 3.06 (score 0.07); Change-point in long_fuel_trim_1: level shift of 0.79 (score 0.25); Multivariate outlier (3 rows): top signals engine_rpm, fuel_rail_pressure_direct, throttle_position, mass_airflow, accelerator_pos_d; Multivariate outlier (1 rows): top signals relative_throttle_pos, accelerator_pos_e, accelerator_pos_d, throttle_actuator, egr_error",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "combined",
+      "score": 0.06242360416603306
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:45:59+00:00",
+        "2026-02-03T16:47:08+00:00"
+      ],
+      "signals": [
+        "evaporative_purge",
+        "accelerator_pos_e",
+        "accelerator_pos_d",
+        "timing_advance",
+        "engine_rpm",
+        "mass_airflow",
+        "intake_temperature",
+        "throttle_position",
+        "catalyst_temp_b1s1",
+        "relative_throttle_pos",
+        "throttle_actuator",
+        "vehicle_speed",
+        "short_fuel_trim_1",
+        "control_module_voltage",
+        "egr_error",
+        "engine_load",
+        "long_fuel_trim_1",
+        "run_time",
+        "fuel_rail_pressure_direct",
+        "o2_b1s2",
+        "intake_pressure",
+        "absolute_load"
+      ],
+      "pattern": "Change-point in evaporative_purge: level shift of 13.64 (score 0.32); Multivariate outlier (2 rows): top signals accelerator_pos_e, accelerator_pos_d, timing_advance, engine_rpm, mass_airflow; Change-point in intake_temperature: level shift of 1.20 (score 0.24); Multivariate outlier (3 rows): top signals accelerator_pos_e, accelerator_pos_d, engine_rpm, mass_airflow, throttle_position; Change-point in catalyst_temp_b1s1: level shift of 10.62 (score 0.26); Multivariate outlier (1 rows): top signals relative_throttle_pos, throttle_actuator, throttle_position, accelerator_pos_d, mass_airflow; Change-point in vehicle_speed: level shift of 1.60 (score 0.11); Change-point in short_fuel_trim_1: level shift of 0.94 (score 0.10); Change-point in accelerator_pos_d: level shift of 0.78 (score 0.07); Change-point in vehicle_speed: level shift of 1.20 (score 0.09); Change-point in catalyst_temp_b1s1: level shift of 8.72 (score 0.21); Multivariate outlier (1 rows): top signals control_module_voltage, accelerator_pos_e, accelerator_pos_d, egr_error, engine_load; Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in run_time: level shift of 5.00 (score 0.00); Multivariate outlier (1 rows): top signals fuel_rail_pressure_direct, accelerator_pos_e, accelerator_pos_d, throttle_actuator, mass_airflow; Change-point in vehicle_speed: level shift of 3.60 (score 0.26); Change-point in o2_b1s2: level shift of 0.04 (score 0.06); Multivariate outlier (1 rows): top signals accelerator_pos_d, mass_airflow, fuel_rail_pressure_direct, throttle_actuator, accelerator_pos_e; Multivariate outlier (1 rows): top signals accelerator_pos_d, throttle_actuator, accelerator_pos_e, relative_throttle_pos, mass_airflow; Change-point in catalyst_temp_b1s1: level shift of 7.28 (score 0.18); Change-point in evaporative_purge: level shift of 8.70 (score 0.20); Multivariate outlier (2 rows): top signals engine_rpm, accelerator_pos_d, timing_advance, accelerator_pos_e, mass_airflow; Multivariate outlier (1 rows): top signals timing_advance, vehicle_speed, intake_pressure, engine_load, engine_rpm; Change-point in engine_rpm: level shift of 107.20 (score 0.13); Change-point in vehicle_speed: level shift of 3.20 (score 0.23); Multivariate outlier (1 rows): top signals accelerator_pos_e, accelerator_pos_d, vehicle_speed, intake_pressure, evaporative_purge; Multivariate outlier (1 rows): top signals timing_advance, intake_pressure, engine_load, absolute_load, engine_rpm; Change-point in throttle_position: level shift of 0.55 (score 0.09); Change-point in engine_load: level shift of 12.16 (score 0.17); Change-point in absolute_load: level shift of 9.18 (score 0.16); Change-point in mass_airflow: level shift of 0.70 (score 0.08); Change-point in intake_pressure: level shift of 10.80 (score 0.25); Change-point in timing_advance: level shift of 3.10 (score 0.08); Change-point in evaporative_purge: level shift of 6.51 (score 0.15); Change-point in accelerator_pos_d: level shift of 1.18 (score 0.10); Change-point in o2_b1s2: level shift of 0.22 (score 0.34); Change-point in engine_rpm: level shift of 54.60 (score 0.07); Change-point in engine_load: level shift of 8.71 (score 0.12); Change-point in absolute_load: level shift of 7.45 (score 0.13); Change-point in catalyst_temp_b1s1: level shift of 6.24 (score 0.15); Change-point in mass_airflow: level shift of 0.66 (score 0.08); Change-point in intake_pressure: level shift of 8.40 (score 0.19); Change-point in short_fuel_trim_1: level shift of 0.78 (score 0.08)",
+      "context": "cruise",
+      "severity": "medium",
+      "detector": "combined",
+      "score": 0.1165603225923175
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:47:09+00:00",
+        "2026-02-03T16:47:23+00:00"
+      ],
+      "signals": [
+        "engine_rpm",
+        "timing_advance",
+        "accelerator_pos_d",
+        "vehicle_speed",
+        "long_fuel_trim_1",
+        "throttle_actuator",
+        "accelerator_pos_e",
+        "fuel_rail_pressure_direct",
+        "o2_b1s2",
+        "throttle_position",
+        "mass_airflow",
+        "absolute_load",
+        "relative_throttle_pos"
+      ],
+      "pattern": "Change-point in engine_rpm: level shift of 140.20 (score 0.17); Change-point in timing_advance: level shift of 2.20 (score 0.06); Change-point in accelerator_pos_d: level shift of 1.96 (score 0.17); Change-point in vehicle_speed: level shift of 2.60 (score 0.19); Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Multivariate outlier (2 rows): top signals accelerator_pos_d, throttle_actuator, accelerator_pos_e, fuel_rail_pressure_direct, o2_b1s2; Multivariate outlier (1 rows): top signals fuel_rail_pressure_direct, throttle_position, mass_airflow, engine_rpm, absolute_load; Multivariate outlier (2 rows): top signals fuel_rail_pressure_direct, accelerator_pos_d, relative_throttle_pos, engine_rpm, accelerator_pos_e",
+      "context": "cruise",
+      "severity": "medium",
+      "detector": "combined",
+      "score": 0.0723099668575165
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:47:24+00:00",
+        "2026-02-03T16:47:33+00:00"
+      ],
+      "signals": [
+        "engine_rpm",
+        "vehicle_speed",
+        "timing_advance",
+        "accelerator_pos_e",
+        "accelerator_pos_d"
+      ],
+      "pattern": "Change-point in engine_rpm: level shift of 207.20 (score 0.25); Change-point in vehicle_speed: level shift of 3.00 (score 0.21); Multivariate outlier (2 rows): top signals engine_rpm, timing_advance, accelerator_pos_e, accelerator_pos_d, vehicle_speed",
+      "context": "cruise",
+      "severity": "medium",
+      "detector": "combined",
+      "score": 0.1287936704498674
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:47:34+00:00",
+        "2026-02-03T16:48:18+00:00"
+      ],
+      "signals": [
+        "engine_load",
+        "absolute_load",
+        "intake_temperature",
+        "catalyst_temp_b1s1",
+        "intake_pressure",
+        "short_fuel_trim_1",
+        "evaporative_purge",
+        "fuel_rail_pressure_direct",
+        "mass_airflow",
+        "throttle_position",
+        "o2_b1s2",
+        "vehicle_speed",
+        "long_fuel_trim_1",
+        "timing_advance",
+        "engine_rpm",
+        "accelerator_pos_e",
+        "accelerator_pos_d",
+        "run_time"
+      ],
+      "pattern": "Change-point in engine_load: level shift of 3.21 (score 0.05); Change-point in absolute_load: level shift of 4.63 (score 0.08); Change-point in intake_temperature: level shift of 0.80 (score 0.16); Change-point in catalyst_temp_b1s1: level shift of 3.32 (score 0.08); Change-point in intake_pressure: level shift of 0.60 (score 0.01); Change-point in short_fuel_trim_1: level shift of 2.34 (score 0.25); Change-point in evaporative_purge: level shift of 4.86 (score 0.11); Multivariate outlier (1 rows): top signals absolute_load, fuel_rail_pressure_direct, mass_airflow, throttle_position, engine_load; Change-point in o2_b1s2: level shift of 0.18 (score 0.27); Change-point in engine_load: level shift of 6.04 (score 0.08); Change-point in absolute_load: level shift of 3.92 (score 0.07); Change-point in intake_pressure: level shift of 6.00 (score 0.14); Change-point in vehicle_speed: level shift of 3.40 (score 0.24); Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in evaporative_purge: level shift of 8.55 (score 0.20); Multivariate outlier (4 rows): top signals timing_advance, engine_rpm, accelerator_pos_e, accelerator_pos_d, vehicle_speed; Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in vehicle_speed: level shift of 1.60 (score 0.11); Change-point in timing_advance: level shift of 8.40 (score 0.22); Change-point in evaporative_purge: level shift of 2.98 (score 0.07); Multivariate outlier (1 rows): top signals accelerator_pos_e, accelerator_pos_d, timing_advance, throttle_position, mass_airflow; Change-point in short_fuel_trim_1: level shift of 0.47 (score 0.05); Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in run_time: level shift of 5.00 (score 0.00)",
+      "context": "cruise",
+      "severity": "medium",
+      "detector": "combined",
+      "score": 0.07986205717934693
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:48:19+00:00",
+        "2026-02-03T16:48:43+00:00"
+      ],
+      "signals": [
+        "vehicle_speed",
+        "engine_load",
+        "absolute_load",
+        "intake_pressure",
+        "accelerator_pos_d",
+        "evaporative_purge",
+        "engine_rpm",
+        "o2_b1s2",
+        "throttle_actuator",
+        "relative_throttle_pos",
+        "accelerator_pos_e",
+        "catalyst_temp_b1s1",
+        "timing_advance"
+      ],
+      "pattern": "Change-point in vehicle_speed: level shift of 1.20 (score 0.09); Change-point in engine_load: level shift of 7.92 (score 0.11); Change-point in absolute_load: level shift of 2.90 (score 0.05); Change-point in intake_pressure: level shift of 5.80 (score 0.13); Change-point in accelerator_pos_d: level shift of 1.18 (score 0.10); Change-point in evaporative_purge: level shift of 5.18 (score 0.12); Change-point in engine_rpm: level shift of 234.60 (score 0.29); Change-point in vehicle_speed: level shift of 3.40 (score 0.24); Change-point in engine_load: level shift of 19.84 (score 0.28); Change-point in absolute_load: level shift of 12.71 (score 0.22); Change-point in intake_pressure: level shift of 11.80 (score 0.27); Change-point in o2_b1s2: level shift of 0.14 (score 0.22); Change-point in accelerator_pos_d: level shift of 1.80 (score 0.16); Multivariate outlier (2 rows): top signals throttle_actuator, relative_throttle_pos, accelerator_pos_d, engine_load, accelerator_pos_e; Change-point in catalyst_temp_b1s1: level shift of 8.26 (score 0.20); Change-point in evaporative_purge: level shift of 17.18 (score 0.40); Multivariate outlier (1 rows): top signals accelerator_pos_e, accelerator_pos_d, throttle_actuator, relative_throttle_pos, timing_advance",
+      "context": "cruise",
+      "severity": "medium",
+      "detector": "combined",
+      "score": 0.1664759170939693
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:48:44+00:00",
+        "2026-02-03T16:49:18+00:00"
+      ],
+      "signals": [
+        "engine_rpm",
+        "engine_load",
+        "absolute_load",
+        "relative_throttle_pos",
+        "throttle_actuator",
+        "mass_airflow",
+        "intake_pressure",
+        "fuel_rail_pressure_direct",
+        "o2_b1s2",
+        "accelerator_pos_d",
+        "accelerator_pos_e",
+        "timing_advance",
+        "vehicle_speed",
+        "catalyst_temp_b1s1",
+        "egr_error",
+        "evaporative_purge",
+        "control_module_voltage",
+        "long_fuel_trim_1"
+      ],
+      "pattern": "Change-point in engine_rpm: level shift of 111.60 (score 0.14); Change-point in engine_load: level shift of 12.70 (score 0.18); Change-point in absolute_load: level shift of 6.67 (score 0.12); Change-point in relative_throttle_pos: level shift of 0.47 (score 0.05); Change-point in throttle_actuator: level shift of 0.24 (score 0.03); Change-point in mass_airflow: level shift of 0.45 (score 0.05); Change-point in intake_pressure: level shift of 8.60 (score 0.20); Change-point in fuel_rail_pressure_direct: level shift of 130.00 (score 0.07); Change-point in o2_b1s2: level shift of 0.12 (score 0.18); Change-point in accelerator_pos_d: level shift of 1.09 (score 0.10); Change-point in accelerator_pos_e: level shift of 0.71 (score 0.12); Multivariate outlier (1 rows): top signals timing_advance, intake_pressure, engine_rpm, vehicle_speed, engine_load; Change-point in vehicle_speed: level shift of 1.20 (score 0.09); Change-point in catalyst_temp_b1s1: level shift of 7.72 (score 0.19); Change-point in egr_error: level shift of 39.69 (score 0.20); Change-point in evaporative_purge: level shift of 5.02 (score 0.12); Change-point in engine_rpm: level shift of 36.00 (score 0.04); Change-point in engine_load: level shift of 10.67 (score 0.15); Change-point in absolute_load: level shift of 8.24 (score 0.14); Change-point in relative_throttle_pos: level shift of 1.49 (score 0.15); Change-point in throttle_actuator: level shift of 1.57 (score 0.17); Change-point in mass_airflow: level shift of 1.11 (score 0.13); Change-point in intake_pressure: level shift of 10.00 (score 0.23); Change-point in fuel_rail_pressure_direct: level shift of 272.00 (score 0.15); Change-point in control_module_voltage: level shift of 0.20 (score 0.11); Change-point in vehicle_speed: level shift of 3.20 (score 0.23); Change-point in engine_load: level shift of 12.23 (score 0.17); Change-point in absolute_load: level shift of 8.39 (score 0.15); Change-point in relative_throttle_pos: level shift of 1.64 (score 0.17); Change-point in throttle_actuator: level shift of 1.73 (score 0.19); Change-point in mass_airflow: level shift of 1.11 (score 0.13); Change-point in intake_pressure: level shift of 10.80 (score 0.25); Change-point in fuel_rail_pressure_direct: level shift of 280.00 (score 0.15); Change-point in egr_error: level shift of 39.69 (score 0.20); Change-point in evaporative_purge: level shift of 4.24 (score 0.10); Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in timing_advance: level shift of 0.70 (score 0.02)",
+      "context": "cruise",
+      "severity": "medium",
+      "detector": "combined",
+      "score": 0.10725832776625313
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:49:19+00:00",
+        "2026-02-03T16:49:28+00:00"
+      ],
+      "signals": [
+        "coolant_temperature"
+      ],
+      "pattern": "Change-point in coolant_temperature: level shift of 0.60 (score 0.20)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.1999999999999981
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:49:29+00:00",
+        "2026-02-03T16:49:58+00:00"
+      ],
+      "signals": [
+        "catalyst_temp_b1s1",
+        "evaporative_purge",
+        "intake_temperature",
+        "o2_b1s2",
+        "short_fuel_trim_1",
+        "run_time"
+      ],
+      "pattern": "Change-point in catalyst_temp_b1s1: level shift of 2.86 (score 0.07); Change-point in evaporative_purge: level shift of 4.71 (score 0.11); Change-point in intake_temperature: level shift of 0.80 (score 0.16); Change-point in o2_b1s2: level shift of 0.15 (score 0.22); Change-point in short_fuel_trim_1: level shift of 0.15 (score 0.02); Change-point in run_time: level shift of 5.00 (score 0.00)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.050082301376205056
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:49:59+00:00",
+        "2026-02-03T16:50:08+00:00"
+      ],
+      "signals": [
+        "long_fuel_trim_1"
+      ],
+      "pattern": "Change-point in long_fuel_trim_1: level shift of 0.79 (score 0.25)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.2523961661341856
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:50:09+00:00",
+        "2026-02-03T16:51:43+00:00"
+      ],
+      "signals": [
+        "intake_temperature",
+        "long_fuel_trim_1",
+        "o2_b1s2",
+        "vehicle_speed",
+        "accelerator_pos_d",
+        "accelerator_pos_e",
+        "engine_rpm",
+        "engine_load",
+        "catalyst_temp_b1s1",
+        "timing_advance",
+        "mass_airflow",
+        "intake_pressure",
+        "evaporative_purge",
+        "absolute_load",
+        "fuel_rail_pressure_direct",
+        "throttle_position",
+        "relative_throttle_pos",
+        "throttle_actuator",
+        "control_module_voltage",
+        "short_fuel_trim_1",
+        "run_time"
+      ],
+      "pattern": "Change-point in intake_temperature: level shift of 0.80 (score 0.16); Change-point in long_fuel_trim_1: level shift of 0.79 (score 0.25); Change-point in o2_b1s2: level shift of 0.06 (score 0.10); Change-point in vehicle_speed: level shift of 1.80 (score 0.13); Change-point in accelerator_pos_d: level shift of 2.43 (score 0.21); Change-point in accelerator_pos_e: level shift of 1.18 (score 0.20); Change-point in engine_rpm: level shift of 294.80 (score 0.36); Change-point in vehicle_speed: level shift of 7.60 (score 0.54); Change-point in engine_load: level shift of 10.20 (score 0.14); Change-point in catalyst_temp_b1s1: level shift of 11.04 (score 0.27); Change-point in timing_advance: level shift of 12.80 (score 0.33); Multivariate outlier (5 rows): top signals accelerator_pos_d, accelerator_pos_e, engine_rpm, timing_advance, mass_airflow; Change-point in intake_temperature: level shift of 0.60 (score 0.12); Change-point in intake_pressure: level shift of 0.60 (score 0.01); Change-point in evaporative_purge: level shift of 21.33 (score 0.50); Change-point in catalyst_temp_b1s1: level shift of 10.50 (score 0.25); Change-point in long_fuel_trim_1: level shift of 0.78 (score 0.25); Change-point in vehicle_speed: level shift of 1.00 (score 0.07); Change-point in evaporative_purge: level shift of 3.37 (score 0.08); Multivariate outlier (1 rows): top signals mass_airflow, absolute_load, fuel_rail_pressure_direct, throttle_position, engine_load; Multivariate outlier (1 rows): top signals accelerator_pos_d, accelerator_pos_e, relative_throttle_pos, throttle_actuator, control_module_voltage; Change-point in engine_load: level shift of 9.49 (score 0.13); Change-point in absolute_load: level shift of 6.74 (score 0.12); Change-point in mass_airflow: level shift of 0.84 (score 0.10); Change-point in intake_pressure: level shift of 9.60 (score 0.22); Change-point in fuel_rail_pressure_direct: level shift of 198.00 (score 0.11); Change-point in o2_b1s2: level shift of 0.06 (score 0.09); Multivariate outlier (1 rows): top signals accelerator_pos_e, accelerator_pos_d, relative_throttle_pos, throttle_actuator, catalyst_temp_b1s1; Change-point in catalyst_temp_b1s1: level shift of 10.74 (score 0.26); Change-point in short_fuel_trim_1: level shift of 2.66 (score 0.28); Change-point in engine_rpm: level shift of 133.60 (score 0.16); Change-point in vehicle_speed: level shift of 3.00 (score 0.21); Change-point in engine_load: level shift of 18.82 (score 0.26); Change-point in absolute_load: level shift of 12.87 (score 0.22); Change-point in mass_airflow: level shift of 1.18 (score 0.14); Change-point in intake_pressure: level shift of 13.80 (score 0.31); Change-point in fuel_rail_pressure_direct: level shift of 238.00 (score 0.13); Change-point in accelerator_pos_d: level shift of 2.74 (score 0.24); Change-point in accelerator_pos_e: level shift of 1.41 (score 0.24); Change-point in intake_temperature: level shift of 0.80 (score 0.16); Change-point in timing_advance: level shift of 4.40 (score 0.11); Change-point in vehicle_speed: level shift of 2.00 (score 0.14); Change-point in o2_b1s2: level shift of 0.09 (score 0.14); Change-point in evaporative_purge: level shift of 4.39 (score 0.10); Change-point in intake_temperature: level shift of 0.80 (score 0.16); Change-point in evaporative_purge: level shift of 1.89 (score 0.04); Change-point in short_fuel_trim_1: level shift of 2.35 (score 0.25); Change-point in run_time: level shift of 5.00 (score 0.00); Change-point in intake_temperature: level shift of 0.60 (score 0.12); Change-point in short_fuel_trim_1: level shift of 1.40 (score 0.15)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "combined",
+      "score": 0.1268760240543262
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:51:49+00:00",
+        "2026-02-03T16:51:58+00:00"
+      ],
+      "signals": [
+        "intake_temperature"
+      ],
+      "pattern": "Change-point in intake_temperature: level shift of 1.00 (score 0.20)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.2
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:51:59+00:00",
+        "2026-02-03T16:52:08+00:00"
+      ],
+      "signals": [
+        "coolant_temperature",
+        "o2_b1s2",
+        "egr_error"
+      ],
+      "pattern": "Change-point in coolant_temperature: level shift of 0.80 (score 0.27); Change-point in o2_b1s2: level shift of 0.34 (score 0.52); Change-point in egr_error: level shift of 39.69 (score 0.20)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.2962751397115414
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:52:10+00:00",
+        "2026-02-03T16:52:10+00:00"
+      ],
+      "signals": [
+        "control_module_voltage",
+        "coolant_temperature",
+        "engine_load",
+        "absolute_load",
+        "o2_b1s2"
+      ],
+      "pattern": "Multivariate outlier (1 rows): top signals control_module_voltage, coolant_temperature, engine_load, absolute_load, o2_b1s2",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "isolation_forest",
+      "score": 0.010137213151863556
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:52:19+00:00",
+        "2026-02-03T16:52:53+00:00"
+      ],
+      "signals": [
+        "engine_load",
+        "absolute_load",
+        "relative_throttle_pos",
+        "mass_airflow",
+        "short_fuel_trim_1",
+        "engine_rpm",
+        "throttle_actuator",
+        "intake_pressure",
+        "fuel_rail_pressure_direct",
+        "intake_temperature",
+        "catalyst_temp_b1s1",
+        "throttle_position",
+        "evaporative_purge"
+      ],
+      "pattern": "Change-point in engine_load: level shift of 11.30 (score 0.16); Change-point in absolute_load: level shift of 7.61 (score 0.13); Change-point in relative_throttle_pos: level shift of 1.26 (score 0.13); Change-point in mass_airflow: level shift of 0.95 (score 0.11); Change-point in short_fuel_trim_1: level shift of 1.57 (score 0.17); Change-point in engine_rpm: level shift of 24.20 (score 0.03); Change-point in engine_load: level shift of 3.76 (score 0.05); Change-point in absolute_load: level shift of 3.21 (score 0.06); Change-point in relative_throttle_pos: level shift of 0.39 (score 0.04); Change-point in throttle_actuator: level shift of 0.08 (score 0.01); Change-point in mass_airflow: level shift of 0.28 (score 0.03); Change-point in intake_pressure: level shift of 5.40 (score 0.12); Change-point in fuel_rail_pressure_direct: level shift of 46.00 (score 0.03); Change-point in short_fuel_trim_1: level shift of 2.03 (score 0.22); Change-point in intake_temperature: level shift of 0.60 (score 0.12); Change-point in catalyst_temp_b1s1: level shift of 2.56 (score 0.06); Change-point in throttle_position: level shift of 0.86 (score 0.14); Change-point in engine_load: level shift of 12.71 (score 0.18); Change-point in absolute_load: level shift of 8.32 (score 0.15); Change-point in relative_throttle_pos: level shift of 1.25 (score 0.13); Change-point in throttle_actuator: level shift of 1.34 (score 0.15); Change-point in mass_airflow: level shift of 1.03 (score 0.12); Change-point in intake_pressure: level shift of 10.60 (score 0.24); Change-point in fuel_rail_pressure_direct: level shift of 232.00 (score 0.13); Change-point in evaporative_purge: level shift of 8.47 (score 0.20)",
+      "context": "idle",
+      "severity": "medium",
+      "detector": "changepoint",
+      "score": 0.17734002179978092
+    },
+    {
+      "time_window": [
+        "2026-02-03T16:52:54+00:00",
+        "2026-02-03T16:53:03+00:00"
+      ],
+      "signals": [
+        "o2_b1s2"
+      ],
+      "pattern": "Change-point in o2_b1s2: level shift of 0.37 (score 0.56)",
+      "context": "idle",
+      "severity": "low",
+      "detector": "changepoint",
+      "score": 0.5630769230769231
+    }
+  ],
+  "diagnostic_clues": [
+    "Intake temperature remained stable at ~55.0994 degC (std=1.3453).",
+    "Fuel trim anomaly detected during idle (12 event(s) involving short_fuel_trim_1 in 'idle' context).",
+    "Multiple anomaly events detected in session (46 total events).",
+    "Coolant temperature anomaly detected (4 event(s) involving coolant_temperature).",
+    "Engine RPM oscillated (std=104.367) while throttle remained stable (std=0.722), suggesting idle instability or vacuum leak.",
+    "Mass airflow was low relative to engine load (MAF mean=2.8389 g/s vs load mean=32.6892%), suggesting possible MAF sensor issue.",
+    "No DTC codes were present in the session, indicating no ECU-reported faults.",
+    "Engine RPM showed instability (std=104.367) but no misfire DTC codes (P030x) were present, suggesting intermittent or below-threshold misfire."
+  ],
+  "clue_details": [
+    {
+      "rule_id": "STAT_006",
+      "category": "statistical",
+      "clue": "Intake temperature remained stable at ~55.0994 degC (std=1.3453).",
+      "evidence": [
+        "intake_temperature.std=1.3453"
+      ],
+      "severity": "info"
+    },
+    {
+      "rule_id": "ANOM_002",
+      "category": "anomaly",
+      "clue": "Fuel trim anomaly detected during idle (12 event(s) involving short_fuel_trim_1 in 'idle' context).",
+      "evidence": [
+        "anomaly_events_matched=12",
+        "anomaly_signal_filter=short_fuel_trim_1",
+        "anomaly_context_filter=idle"
+      ],
+      "severity": "warning"
+    },
+    {
+      "rule_id": "ANOM_004",
+      "category": "anomaly",
+      "clue": "Multiple anomaly events detected in session (46 total events).",
+      "evidence": [
+        "anomaly_events_matched=46"
+      ],
+      "severity": "warning"
+    },
+    {
+      "rule_id": "ANOM_005",
+      "category": "anomaly",
+      "clue": "Coolant temperature anomaly detected (4 event(s) involving coolant_temperature).",
+      "evidence": [
+        "anomaly_events_matched=4",
+        "anomaly_signal_filter=coolant_temperature"
+      ],
+      "severity": "warning"
+    },
+    {
+      "rule_id": "INTER_001",
+      "category": "interaction",
+      "clue": "Engine RPM oscillated (std=104.367) while throttle remained stable (std=0.722), suggesting idle instability or vacuum leak.",
+      "evidence": [
+        "engine_rpm.std=104.367",
+        "throttle_position.std=0.722"
+      ],
+      "severity": "warning"
+    },
+    {
+      "rule_id": "INTER_002",
+      "category": "interaction",
+      "clue": "Mass airflow was low relative to engine load (MAF mean=2.8389 g/s vs load mean=32.6892%), suggesting possible MAF sensor issue.",
+      "evidence": [
+        "mass_airflow.mean=2.8389",
+        "engine_load.mean=32.6892",
+        "ratio=0.1"
+      ],
+      "severity": "warning"
+    },
+    {
+      "rule_id": "DTC_004",
+      "category": "dtc",
+      "clue": "No DTC codes were present in the session, indicating no ECU-reported faults.",
+      "evidence": [
+        "dtc_count=0"
+      ],
+      "severity": "info"
+    },
+    {
+      "rule_id": "NEG_001",
+      "category": "negative_evidence",
+      "clue": "Engine RPM showed instability (std=104.367) but no misfire DTC codes (P030x) were present, suggesting intermittent or below-threshold misfire.",
+      "evidence": [
+        "engine_rpm.std=104.367",
+        "dtc_absent_prefix=P030",
+        "dtc_matched="
+      ],
+      "severity": "info"
+    }
+  ]
+}
