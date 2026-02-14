@@ -125,7 +125,7 @@ class OBDAnalysisSession(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    feedback = relationship("OBDAnalysisFeedback", back_populates="session", uselist=False)
+    feedback = relationship("OBDAnalysisFeedback", back_populates="session", uselist=True)
 
 
 class OBDAnalysisFeedback(Base):
@@ -138,7 +138,7 @@ class OBDAnalysisFeedback(Base):
         UUID(as_uuid=True),
         ForeignKey("obd_analysis_sessions.id"),
         nullable=False,
-        unique=True,
+        index=True,
     )
 
     rating = Column(Integer, nullable=False)  # 1-5

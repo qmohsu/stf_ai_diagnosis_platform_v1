@@ -32,6 +32,7 @@ from app.models import (
 )
 from app.api.deps import get_db
 from app import models_db
+from app.cache import obd_cache
 
 # Configure logging
 logging.basicConfig(
@@ -80,6 +81,7 @@ async def startup_event() -> None:
     logger.info(f"Weaviate: {settings.weaviate_url}")
     logger.info(f"Strict Mode: {settings.strict_mode}")
     logger.info(f"Redact PII: {settings.redact_pii}")
+    await obd_cache.start_cleanup_loop()
 
 
 @app.on_event("shutdown")
@@ -89,6 +91,7 @@ async def shutdown_event() -> None:
     Performs cleanup tasks:
     - Log shutdown message
     """
+    await obd_cache.stop_cleanup_loop()
     logger.info(f"Shutting down {settings.app_name}")
 
 

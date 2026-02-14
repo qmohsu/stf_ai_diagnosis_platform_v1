@@ -42,15 +42,27 @@ export function FeedbackForm({ sessionId }: FeedbackFormProps) {
     }
   };
 
+  const handleReset = () => {
+    setRating(0);
+    setIsHelpful(null);
+    setComments("");
+    setCorrectedDiagnosis("");
+    setSubmitted(false);
+    setError(null);
+  };
+
   if (submitted) {
     return (
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-6 space-y-4">
           <Alert>
             <AlertDescription>
               Feedback submitted successfully. Thank you!
             </AlertDescription>
           </Alert>
+          <Button variant="outline" className="w-full" onClick={handleReset}>
+            Submit Another Feedback
+          </Button>
         </CardContent>
       </Card>
     );
