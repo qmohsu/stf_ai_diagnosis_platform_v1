@@ -15,6 +15,10 @@ class Settings(BaseSettings):
 
     All sensitive configuration is loaded from environment variables
     to avoid hardcoding secrets in the codebase.
+
+    TODO(12): Replace manual os.getenv() calls with plain defaults and let
+    pydantic-settings handle env-var binding automatically. The current
+    pattern bypasses Pydantic type coercion and evaluates at import time.
     """
 
     # API Metadata
@@ -36,6 +40,9 @@ class Settings(BaseSettings):
     # Embedding Configuration
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
     embedding_endpoint: str = os.getenv("EMBEDDING_ENDPOINT", "")
+
+    # Vision Configuration
+    vision_model: str = os.getenv("VISION_MODEL", "llava")
 
     # Weaviate Configuration
     weaviate_url: str = os.getenv("WEAVIATE_URL", "http://weaviate:8080")

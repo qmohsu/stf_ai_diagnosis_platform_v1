@@ -39,6 +39,9 @@ phonenumbers==8.13.28
 # TODO(3): Pin PyMuPDF to exact version for reproducibility (e.g., PyMuPDF==1.24.0)
 PyMuPDF>=1.24.0
 
+# Image Processing (used by vision service for resizing before LLM inference)
+Pillow==12.1.0
+
 # Testing (optional, for development)
 pytest==7.4.4
 pytest-asyncio==0.23.3

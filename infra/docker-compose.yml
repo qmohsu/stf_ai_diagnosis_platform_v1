@@ -223,6 +223,7 @@ services:
       SSRF_PROXY_HTTPS_URL: ${DIFY_SSRF_PROXY_HTTPS_URL:-}
 
       # Sandbox
+      # TODO(17): Replace hardcoded sandbox API key with an env variable
       CODE_EXECUTION_API_KEY: dify-sandbox
       CODE_EXECUTION_ENDPOINT: http://sandbox:8194
     volumes:
@@ -374,6 +375,7 @@ services:
       LLM_ENDPOINT: ${OLLAMA_BASE_URL:-http://ollama:11434}
       LLM_MODEL: ${OLLAMA_DEFAULT_MODEL:-llama3:8b}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
+      VISION_MODEL: ${VISION_MODEL:-llava}
 
       # Weaviate Configuration
       WEAVIATE_URL: http://weaviate:8080

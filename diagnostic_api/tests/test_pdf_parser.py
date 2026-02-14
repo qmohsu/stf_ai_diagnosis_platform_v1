@@ -9,9 +9,17 @@ TODOs from code review:
 
 import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.rag.pdf_parser import extract_text_from_pdf, parse_pdf
+from app.rag.pdf_parser import (
+    extract_text_from_pdf,
+    extract_text_from_pdf_async,
+    extract_images_from_page,
+    parse_pdf,
+    _MIN_IMAGE_WIDTH,
+    _MIN_IMAGE_HEIGHT,
+    _MIN_IMAGE_BYTES,
+)
 from app.rag.parser import Section
 
 
@@ -170,3 +178,214 @@ class TestParsePdf:
         result = parse_pdf(Path("my_document.pdf"))
 
         assert result[0].title == "my_document"
+
+
+class TestExtractImagesFromPage:
+    """Tests for extract_images_from_page function."""
+
+    def test_small_images_filtered_out(self):
+        """Images smaller than minimum dimensions are skipped."""
+        mock_doc = MagicMock()
+        mock_page = MagicMock()
+
+        # Return one small image
+        mock_page.get_images.return_value = [(1, 0, 0, 0, 0, 0, 0)]
+        mock_pix = MagicMock()
+        mock_pix.width = 30  # below _MIN_IMAGE_WIDTH
+        mock_pix.height = 30  # below _MIN_IMAGE_HEIGHT
+
+        with patch("app.rag.pdf_parser.fitz") as mock_fitz:
+            mock_fitz.Pixmap.return_value = mock_pix
+            result = extract_images_from_page(mock_doc, mock_page, 1)
+
+        assert len(result) == 0
+
+    def test_large_image_returned(self):
+        """Images meeting minimum size and byte thresholds are returned."""
+        mock_doc = MagicMock()
+        mock_page = MagicMock()
+        mock_page.get_images.return_value = [(1, 0, 0, 0, 0, 0, 0)]
+
+        mock_pix = MagicMock()
+        mock_pix.width = 200
+        mock_pix.height = 200
+        mock_pix.n = 3  # RGB
+        mock_pix.tobytes.return_value = b"\x89PNG" + b"\x00" * (_MIN_IMAGE_BYTES + 100)
+
+        with patch("app.rag.pdf_parser.fitz") as mock_fitz:
+            mock_fitz.Pixmap.return_value = mock_pix
+            result = extract_images_from_page(mock_doc, mock_page, 1)
+
+        assert len(result) == 1
+        assert result[0]["index"] == 1
+
+    def test_cmyk_to_rgb_conversion(self):
+        """CMYK images (n > 4) are converted to RGB."""
+        mock_doc = MagicMock()
+        mock_page = MagicMock()
+        mock_page.get_images.return_value = [(1, 0, 0, 0, 0, 0, 0)]
+
+        mock_pix_cmyk = MagicMock()
+        mock_pix_cmyk.width = 200
+        mock_pix_cmyk.height = 200
+        mock_pix_cmyk.n = 5  # CMYK + alpha
+
+        mock_pix_rgb = MagicMock()
+        mock_pix_rgb.width = 200
+        mock_pix_rgb.height = 200
+        mock_pix_rgb.n = 3
+        mock_pix_rgb.tobytes.return_value = b"\x89PNG" + b"\x00" * (_MIN_IMAGE_BYTES + 100)
+
+        with patch("app.rag.pdf_parser.fitz") as mock_fitz:
+            # First call returns CMYK pixmap, second returns RGB conversion
+            mock_fitz.Pixmap.side_effect = [mock_pix_cmyk, mock_pix_rgb]
+            result = extract_images_from_page(mock_doc, mock_page, 1)
+
+        assert len(result) == 1
+        # Verify fitz.Pixmap was called twice (once for xref, once for conversion)
+        assert mock_fitz.Pixmap.call_count == 2
+        mock_fitz.Pixmap.assert_any_call(mock_fitz.csRGB, mock_pix_cmyk)
+
+    def test_image_extraction_failure_graceful(self):
+        """Errors during image extraction are caught and skipped."""
+        mock_doc = MagicMock()
+        mock_page = MagicMock()
+        mock_page.get_images.return_value = [(1, 0, 0, 0, 0, 0, 0)]
+
+        with patch("app.rag.pdf_parser.fitz") as mock_fitz:
+            mock_fitz.Pixmap.side_effect = RuntimeError("corrupt image")
+            result = extract_images_from_page(mock_doc, mock_page, 1)
+
+        assert len(result) == 0
+
+    def test_small_byte_size_filtered(self):
+        """Images under _MIN_IMAGE_BYTES are filtered out."""
+        mock_doc = MagicMock()
+        mock_page = MagicMock()
+        mock_page.get_images.return_value = [(1, 0, 0, 0, 0, 0, 0)]
+
+        mock_pix = MagicMock()
+        mock_pix.width = 200
+        mock_pix.height = 200
+        mock_pix.n = 3
+        mock_pix.tobytes.return_value = b"\x89PNG" + b"\x00" * 100  # < 5KB
+
+        with patch("app.rag.pdf_parser.fitz") as mock_fitz:
+            mock_fitz.Pixmap.return_value = mock_pix
+            result = extract_images_from_page(mock_doc, mock_page, 1)
+
+        assert len(result) == 0
+
+
+class TestExtractTextWithImages:
+    """Tests for async extract_text_from_pdf_async with image description."""
+
+    @pytest.mark.asyncio
+    @patch("app.rag.pdf_parser.fitz")
+    async def test_describe_images_false_skips_images(self, mock_fitz, tmp_path):
+        """Default behavior: no image descriptions when describe_images=False."""
+        mock_doc = MagicMock()
+        mock_page = MagicMock()
+        mock_page.get_text.return_value = "Regular text content"
+        mock_page.get_images.return_value = [(1, 0, 0, 0, 0, 0, 0)]
+        mock_doc.__iter__ = lambda self: iter([mock_page])
+        mock_fitz.open.return_value = mock_doc
+
+        pdf_path = tmp_path / "test.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4")
+
+        result = await extract_text_from_pdf_async(pdf_path, describe_images=False)
+
+        assert "Regular text content" in result
+        assert "[Image" not in result
+        mock_page.get_images.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("app.rag.pdf_parser.extract_images_from_page")
+    @patch("app.rag.pdf_parser.fitz")
+    async def test_describe_images_true_includes_descriptions(
+        self, mock_fitz, mock_extract_images, tmp_path,
+    ):
+        """Image descriptions are included when describe_images=True."""
+        mock_doc = MagicMock()
+        mock_page = MagicMock()
+        mock_page.get_text.return_value = "Engine diagnostics text"
+        mock_doc.__iter__ = lambda self: iter([mock_page])
+        mock_fitz.open.return_value = mock_doc
+
+        mock_extract_images.return_value = [
+            {"index": 1, "png_bytes": b"fake-png-data"},
+        ]
+
+        mock_vs = AsyncMock()
+        mock_vs.describe_image = AsyncMock(
+            return_value="Wiring diagram for ECU connector C1."
+        )
+
+        pdf_path = tmp_path / "test.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4")
+
+        with patch("app.rag.vision.get_vision_service", return_value=mock_vs):
+            result = await extract_text_from_pdf_async(
+                pdf_path, describe_images=True,
+            )
+
+        assert "[Page 1]" in result
+        assert "Engine diagnostics text" in result
+        assert "[Image 1, Page 1]" in result
+        assert "Wiring diagram for ECU connector C1." in result
+
+    @pytest.mark.asyncio
+    @patch("app.rag.pdf_parser.extract_images_from_page")
+    @patch("app.rag.pdf_parser.fitz")
+    async def test_image_extraction_failure_graceful(
+        self, mock_fitz, mock_extract_images, tmp_path,
+    ):
+        """Vision service errors don't break text extraction."""
+        mock_doc = MagicMock()
+        mock_page = MagicMock()
+        mock_page.get_text.return_value = "Page text preserved"
+        mock_doc.__iter__ = lambda self: iter([mock_page])
+        mock_fitz.open.return_value = mock_doc
+
+        mock_extract_images.return_value = [
+            {"index": 1, "png_bytes": b"fake-png-data"},
+        ]
+
+        mock_vs = AsyncMock()
+        mock_vs.describe_image = AsyncMock(side_effect=RuntimeError("vision error"))
+
+        pdf_path = tmp_path / "test.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4")
+
+        with patch("app.rag.vision.get_vision_service", return_value=mock_vs):
+            result = await extract_text_from_pdf_async(
+                pdf_path, describe_images=True,
+            )
+
+        assert "Page text preserved" in result
+        # Image marker should NOT be present since vision failed
+        assert "[Image" not in result
+
+    @pytest.mark.asyncio
+    async def test_nonexistent_pdf_raises_error(self, tmp_path):
+        """FileNotFoundError is raised for non-existent files."""
+        fake_path = tmp_path / "nonexistent.pdf"
+        with pytest.raises(FileNotFoundError):
+            await extract_text_from_pdf_async(fake_path)
+
+    @pytest.mark.asyncio
+    @patch("app.rag.pdf_parser.fitz")
+    async def test_empty_pdf_returns_empty_text(self, mock_fitz, tmp_path):
+        """PDFs with no text or images return empty string."""
+        mock_doc = MagicMock()
+        mock_page = MagicMock()
+        mock_page.get_text.return_value = "   \n  "
+        mock_doc.__iter__ = lambda self: iter([mock_page])
+        mock_fitz.open.return_value = mock_doc
+
+        pdf_path = tmp_path / "empty.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4")
+
+        result = await extract_text_from_pdf_async(pdf_path, describe_images=False)
+        assert result == ""

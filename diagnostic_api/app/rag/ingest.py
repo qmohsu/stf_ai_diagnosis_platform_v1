@@ -39,7 +39,11 @@ def _checksum(doc_id: str, section_title: str, chunk_text: str) -> str:
 
 
 def _chunk_exists(collection, checksum: str) -> bool:
-    """Check whether a chunk with the given checksum already exists."""
+    """Check whether a chunk with the given checksum already exists.
+
+    TODO(14): Batch deduplication -- fetch all checksums for a doc_id in one
+    query instead of one roundtrip per chunk (N+1 query pattern).
+    """
     try:
         result = collection.query.fetch_objects(
             filters=wq.Filter.by_property("checksum").equal(checksum),
@@ -55,8 +59,16 @@ async def process_file(
     file_path: Path,
     client,
     chunker: Chunker,
+    *,
+    describe_images: bool = True,
 ) -> dict:
     """Process a single file: parse -> chunk -> embed -> insert.
+
+    Args:
+        file_path: Path to the file to ingest.
+        client: Weaviate client.
+        chunker: Chunker instance.
+        describe_images: If True, use vision model to describe PDF images.
 
     Returns:
         Dict with inserted and skipped counts.
@@ -65,10 +77,11 @@ async def process_file(
     log.info("ingest.processing_file")
 
     # Handle PDF files differently
-    # TODO(10): Move pdf_parser import to module level or document why lazy loading is needed
     if file_path.suffix.lower() == ".pdf":
-        from .pdf_parser import extract_text_from_pdf
-        text = extract_text_from_pdf(file_path)
+        from .pdf_parser import extract_text_from_pdf_async
+        text = await extract_text_from_pdf_async(
+            file_path, describe_images=describe_images,
+        )
     else:
         text = file_path.read_text(encoding="utf-8")
 
@@ -168,6 +181,11 @@ async def main():
         action="store_true",
         help="Delete and recreate Weaviate collection before ingestion.",
     )
+    parser.add_argument(
+        "--no-describe-images",
+        action="store_true",
+        help="Disable vision model image description for PDFs.",
+    )
     args = parser.parse_args()
 
     data_dir = Path(args.dir)
@@ -176,6 +194,8 @@ async def main():
         return
 
     # Init client and schema
+    # TODO(16): Wrap client usage in try/finally to guarantee client.close()
+    # on unhandled exceptions from process_file.
     try:
         client = get_client()
         init_schema(client, force_recreate=args.force_recreate)
@@ -197,8 +217,14 @@ async def main():
     total_inserted = 0
     total_skipped = 0
 
+    describe_images = not args.no_describe_images
+
+    # TODO(15): Process files concurrently with bounded parallelism
+    # (asyncio.Semaphore) instead of sequentially.
     for file_path in files:
-        stats = await process_file(file_path, client, chunker)
+        stats = await process_file(
+            file_path, client, chunker, describe_images=describe_images,
+        )
         total_inserted += stats["inserted"]
         total_skipped += stats["skipped"]
 
