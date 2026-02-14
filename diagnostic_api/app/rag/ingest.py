@@ -22,7 +22,7 @@ import weaviate.classes.query as wq
 from app.rag.client import get_client
 from app.rag.schema import init_schema
 from app.rag.parser import parse_document
-from app.rag.chunker import Chunker, ChunkedSection
+from app.rag.chunker import Chunker
 from app.rag.embedding import embedding_service
 
 logger = structlog.get_logger(__name__)

@@ -15,12 +15,10 @@ from app.rag.pdf_parser import (
     extract_text_from_pdf,
     extract_text_from_pdf_async,
     extract_images_from_page,
-    parse_pdf,
     _MIN_IMAGE_WIDTH,
     _MIN_IMAGE_HEIGHT,
     _MIN_IMAGE_BYTES,
 )
-from app.rag.parser import Section
 
 
 class TestExtractTextFromPdf:
@@ -122,62 +120,6 @@ class TestExtractTextFromPdf:
             extract_text_from_pdf(pdf_path)
 
         mock_doc.close.assert_called_once()
-
-
-class TestParsePdf:
-    """Tests for parse_pdf function."""
-
-    @patch("app.rag.pdf_parser.extract_text_from_pdf")
-    def test_parse_pdf_returns_sections(self, mock_extract):
-        """Test that parse_pdf returns a list of Section objects."""
-        mock_extract.return_value = "## Introduction\n\nThis is content."
-
-        result = parse_pdf(Path("test.pdf"))
-
-        assert isinstance(result, list)
-        assert len(result) > 0
-        assert all(isinstance(s, Section) for s in result)
-
-    @patch("app.rag.pdf_parser.extract_text_from_pdf")
-    def test_parse_pdf_extracts_dtc_codes(self, mock_extract):
-        """Test that DTC codes are extracted from PDF content."""
-        mock_extract.return_value = "## Engine Diagnostics\n\nError code P0420 detected."
-
-        result = parse_pdf(Path("test.pdf"))
-
-        dtc_codes = []
-        for section in result:
-            dtc_codes.extend(section.dtc_codes)
-        assert "P0420" in dtc_codes
-
-    @patch("app.rag.pdf_parser.extract_text_from_pdf")
-    def test_parse_pdf_extracts_vehicle_model(self, mock_extract):
-        """Test that vehicle model is extracted from PDF content."""
-        mock_extract.return_value = "# STF-1234 Manual\n\nVehicle specifications."
-
-        result = parse_pdf(Path("test.pdf"))
-
-        vehicle_models = [s.vehicle_model for s in result]
-        assert "STF-1234" in vehicle_models
-
-    @patch("app.rag.pdf_parser.extract_text_from_pdf")
-    def test_parse_pdf_handles_no_headings(self, mock_extract):
-        """Test that PDFs without markdown headings still produce sections."""
-        mock_extract.return_value = "Plain text content without any headings."
-
-        result = parse_pdf(Path("document.pdf"))
-
-        assert len(result) == 1
-        assert result[0].body == "Plain text content without any headings."
-
-    @patch("app.rag.pdf_parser.extract_text_from_pdf")
-    def test_parse_pdf_uses_filename_for_title(self, mock_extract):
-        """Test that filename is used as fallback title when no headings."""
-        mock_extract.return_value = "Content without headings"
-
-        result = parse_pdf(Path("my_document.pdf"))
-
-        assert result[0].title == "my_document"
 
 
 class TestExtractImagesFromPage:
