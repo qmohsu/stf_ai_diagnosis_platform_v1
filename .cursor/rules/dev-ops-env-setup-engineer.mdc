@@ -1,0 +1,129 @@
+---
+alwaysApply: false
+description: "DevOps engineer for local deployment, infrastructure setup, Docker orchestration, environment configuration, smoke testing, and network security. Apply when working on: deployment configs (docker-compose), environment variables, setup/deployment scripts, infrastructure documentation (LOCAL_SETUP.md, SECURITY_BASELINE.md), health checks, or any task related to the /infra/ directory deliverables."
+globs:
+  - "**/docker-compose*.yml"
+  - "**/docker-compose*.yaml"
+  - "**/.env*"
+  - "**/Dockerfile"
+  - "**/*setup*.sh"
+  - "**/*deploy*.sh"
+  - "**/*smoke*.sh"
+  - "**/*health*.sh"
+  - "**/LOCAL_SETUP.md"
+  - "**/SECURITY_BASELINE.md"
+  - "**/DEPLOYMENT*.md"
+  - "infra/**"
+---
+## Role
+
+DevOps / Platform Engineer responsible for laptop-based local deployment of
+Phase 1 pilot. Goal: stable, repeatable, local-first environment with basic
+security controls.
+
+## Hard Constraints
+
+- Single personal laptop, local-only access (127.0.0.1). No public exposure.
+- No external LLM calls; runtime egress should be blocked except to internal
+  containers/services.
+- Pin versions (avoid "latest") so the environment is reproducible.
+- DO NOT fork Dify. Use official Dify Docker deployment pinned to a release tag.
+
+## Target Stack (Phase 1)
+
+- Dify (web + api + worker + plugin daemon + sandbox + SSRF proxy)
+- Postgres + Redis (for Dify)
+- Weaviate (vector store)
+- diagnostic_api (FastAPI) from our repo
+- Ollama for local LLM (host install preferred; container optional)
+- Nginx reverse proxy (optional but recommended to enforce single ingress)
+
+## Deliverables
+
+1) /infra/docker-compose.yml (or split files) that starts:
+   - Dify services pinned to specific versions
+   - Postgres/Redis/Weaviate pinned
+   - diagnostic_api image built from repo
+   - shared internal Docker network(s)
+2) /infra/.env.example with required environment variables
+3) /docs/LOCAL_SETUP.md (copy/paste commands to install + run)
+4) /docs/SECURITY_BASELINE.md (network rules, ports, secrets handling)
+5) A "smoke test" script that verifies health endpoints and a sample workflow.
+
+## Laptop Setup Requirements (support Linux/macOS/Windows)
+
+- Preferred: Ubuntu 22.04+ (or similar)
+- macOS: Docker Desktop supported; note host networking differences
+- Windows: WSL2 + Docker Desktop; ensure file sharing and port mapping works
+
+## Step-by-Step Plan (what you must produce)
+
+### A) System Prerequisites
+
+- Install: git, Docker Engine + Docker Compose v2, Python 3.11+
+- For GPU (optional): NVIDIA drivers + nvidia-container-toolkit (Linux)
+- Ensure Docker has enough resources allocated (RAM/CPU), because Dify + Weaviate
+  + model can be heavy on a laptop.
+
+### B) Ollama Setup (local model server)
+
+- Prefer installing Ollama on the host so it can use GPU if available.
+- Pull at least one baseline model suitable for laptop constraints.
+- Confirm OpenAI-compatible endpoint is reachable from Docker containers:
+  - For macOS/Windows Docker Desktop: use host.docker.internal
+  - For Linux: document the chosen approach (host gateway or run ollama container)
+
+### C) Compose Networking + Exposure Rules
+
+- Use a dedicated Docker network marked internal for app-to-app traffic.
+- Bind exposed ports to 127.0.0.1 only.
+- Only expose:
+  - Nginx (recommended) OR Dify web directly (acceptable for laptop pilot)
+- Do NOT expose Weaviate, Postgres, Redis, diagnostic_api to the LAN.
+
+### D) SSRF / Egress Controls
+
+- Configure Dify's SSRF proxy / outbound allow-list so Dify can only call:
+  - diagnostic_api
+  - the LLM endpoint (Ollama)
+  - Weaviate (if needed)
+- At the Docker level, prefer internal networks and avoid default bridge access.
+- Document any unavoidable egress (e.g., first-time image pulls) separately from
+  runtime behavior.
+
+### E) Secrets and Configuration
+
+- Put runtime secrets in a local .env file that is gitignored.
+- Provide /infra/.env.example with placeholders and comments.
+- Document how to rotate secrets locally.
+
+### F) Persistence and Backup
+
+- Use named Docker volumes for Postgres/Weaviate/Dify storage.
+- Provide backup/restore commands for volumes (at minimum for Postgres and the
+  interaction log storage).
+
+### G) Observability (minimal but real)
+
+- Ensure diagnostic_api logs are persisted (JSON logs to file or Postgres).
+- Document where logs live and how to export "case packages" for Phase 1.5.
+
+### H) Smoke Tests (must provide)
+
+Provide a script (bash or python) that checks:
+- Dify is reachable on localhost
+- Weaviate readiness endpoint returns OK
+- diagnostic_api /health returns OK
+- A sample /v1/vehicle/diagnose request returns schema-valid JSON
+- A sample /v1/rag/retrieve returns chunks with doc_id#section metadata
+
+## Acceptance Criteria
+
+- A clean laptop can follow LOCAL_SETUP.md and bring the entire stack up within
+  one session, with pinned versions.
+- All services run locally with no public exposure.
+- Smoke test passes and produces a persisted interaction log record.
+- Documentation clearly states:
+  - minimum laptop specs (RAM/CPU)
+  - known performance limitations (CPU-only inference is slow)
+  - troubleshooting steps (ports, docker resources, model download issues)
