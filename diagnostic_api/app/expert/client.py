@@ -1,6 +1,5 @@
 
 import os
-import json
 import structlog
 from typing import Optional
 from openai import AsyncOpenAI

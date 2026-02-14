@@ -24,7 +24,7 @@ The system implements a hybrid edge-cloud architecture:
 
 ## Documentation
 
-For detailed design specifications, see the [Design Document](doc/design_doc.md).
+For detailed design specifications, see the [Design Document](docs/design_doc.md).
 
 ## Development Standards
 
@@ -41,7 +41,7 @@ This project strictly follows the **Google Python Style Guide** and uses:
 ```
 stf_ai_diagnosis_platform_v1/
 ├── .cursor/              # Cursor IDE rules and configurations
-├── doc/                  # Design documents and specifications
+├── docs/                 # Design documents and specifications
 ├── docs/                 # Security baseline and operational docs
 ├── diagnostic_api/       # FastAPI backend (Phase 1 stub)
 │   ├── app/              # Application code
@@ -90,8 +90,8 @@ The STF AI Diagnosis Platform is now ready for local deployment! 🚀
 **Full Documentation:**
 - [Local Setup Guide](infra/README_LOCAL_SETUP.md) - Complete installation and troubleshooting
 - [Security Baseline](docs/SECURITY_BASELINE.md) - Network rules, secrets management, privacy controls
-- [Design Document](doc/design_doc.md) - Architecture and system design
-- [Development Plan](doc/dev_plan.md) - Project roadmap and task breakdown
+- [Design Document](docs/design_doc.md) - Architecture and system design
+- [Development Plan](docs/dev_plan.md) - Project roadmap and task breakdown
 
 **What's Included (Phase 1):**
 - ✅ Dify workflow orchestration + UI

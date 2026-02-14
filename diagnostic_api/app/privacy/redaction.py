@@ -2,7 +2,7 @@
 
 import re
 from dataclasses import dataclass
-from typing import Dict, Any, List, Union
+from typing import Dict, Any, List
 
 import structlog
 

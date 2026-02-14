@@ -2,7 +2,6 @@ import json
 from datetime import date, datetime
 from typing import Dict, List, Any
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from app.models_db import DiagnosticSession, DiagnosticFeedback
 
