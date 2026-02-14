@@ -398,3 +398,31 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+
+  # --------------------------------------------------------------------------
+  # OBD UI - Next.js expert diagnostic frontend
+  # --------------------------------------------------------------------------
+  obd-ui:
+    build:
+      context: ../obd-ui
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://${BIND_HOST:-127.0.0.1}:${DIAGNOSTIC_API_PORT:-8000}
+    image: stf-obd-ui:${OBD_UI_VERSION:-0.1.0}
+    container_name: stf-obd-ui
+    restart: unless-stopped
+    networks:
+      - stf-internal
+    ports:
+      - "${BIND_HOST:-127.0.0.1}:${OBD_UI_PORT:-3001}:3001"
+    depends_on:
+      diagnostic-api:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_API_URL: http://${BIND_HOST:-127.0.0.1}:${DIAGNOSTIC_API_PORT:-8000}
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

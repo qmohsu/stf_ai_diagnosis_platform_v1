@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v1.1 (implementation-ready; OBD Agent + Pass-1 mapping added) |
+| **Status** | Draft v1.2 (OBD Expert Diagnostic Web UI added) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-02-01 |
+| **Last updated** | 2026-02-14 |
 | **Primary pilot stack** | Dify + (Ollama or vLLM OpenAI-compatible server) + diagnostic_api + vector store (Weaviate) |
-| **New in this revision** | Phase 1 now includes an OBD Agent (edge collector) + OBDSnapshot contract + telemetry ingestion endpoints + Pass‑1 (OBD→subsystem+PID shortlist) mapping |
+| **New in this revision** | OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001; persisted analysis sessions + expert feedback via `/v2/obd/*` endpoints; Docker integration for frontend service. Previous: OBD Agent + OBDSnapshot + Pass‑1 mapping |
 
 ## Related project deliverables (from proposal)
 •	Deliverable 1: Database establishment + preprocessing (1–18 months)
@@ -105,6 +105,7 @@ Your materials reference multiple taxonomies (8 system categories; 17-class; 33 
 •	Vector store: Weaviate (Dify default) for SOP/manual chunks and sanitized knowledge.
 •	Postgres/Redis: Dify stack and job queueing.
 •	OBD Agent (edge collector): a separate service/daemon (python‑OBD or equivalent) that reads ELM327 OBD‑II and posts sanitized OBDSnapshot telemetry to diagnostic_api.
+•	**OBD Expert Diagnostic Web UI (`obd-ui`)**: Next.js 15 (TypeScript, Tailwind CSS, shadcn/ui, recharts) on port 3001. Provides experts with a visual interface to submit OBD logs, view analysis results (summary tables, bar charts, box plots, anomaly timelines), and submit structured feedback. Communicates with diagnostic_api via `/v2/obd/*` endpoints. Runs as a standalone Docker service.
 ### 7.2 Deployment principle: local-first and interface invariants
 Interface invariants that must not change across phases:
 •	Dify (or later custom UI) calls the model through an OpenAI-compatible base URL.
@@ -257,9 +258,9 @@ The summarization pipeline converts raw OBD-II log files into structured, LLM-re
 }
 ```
 
-#### 8.3.6 API Endpoint
+#### 8.3.6 API Endpoints
 
-**Endpoint:** `POST /v2/tools/summarize-log-raw`
+**Pipeline endpoint:** `POST /v2/tools/summarize-log-raw`
 
 The v2 endpoint accepts raw OBD TSV text and returns the full structured summary including all pipeline stages. The v1 endpoint remains for backward compatibility.
 
@@ -275,6 +276,30 @@ The v2 endpoint accepts raw OBD TSV text and returns the full structured summary
   "pid_summary": {...}
 }
 ```
+
+#### 8.3.7 OBD Expert Diagnostic Web UI Endpoints (Session Persistence + Feedback)
+
+These endpoints wrap the summarization pipeline with session persistence and expert feedback collection, serving the `obd-ui` frontend.
+
+**Endpoint:** `POST /v2/obd/analyze`
+- Accepts raw OBD TSV text body (same format as `/v2/tools/summarize-log-raw`)
+- Creates a persisted `OBDAnalysisSession` (UUID, status, SHA-256 input hash, JSONB result)
+- Runs `_run_pipeline()` internally (same 5-stage pipeline)
+- Returns `session_id` + full `LogSummaryV2` result
+- On failure, persists error state for debugging
+
+**Endpoint:** `GET /v2/obd/{session_id}`
+- Retrieves a persisted analysis session by UUID
+- Returns the stored `LogSummaryV2` from JSONB
+
+**Endpoint:** `POST /v2/obd/{session_id}/feedback`
+- Accepts expert feedback: rating (1-5), is_helpful (bool), optional comments, optional corrected_diagnosis
+- Returns 409 on duplicate feedback (one feedback per session)
+- Returns 404 if session not found
+
+**Database tables:**
+- `obd_analysis_sessions`: id (UUID PK), vehicle_id (indexed), status (indexed), input_text_hash (SHA-256, indexed), input_size_bytes, result_payload (JSONB), error_message, created_at, updated_at
+- `obd_analysis_feedback`: id (UUID PK), session_id (FK, unique), rating, is_helpful, comments, corrected_diagnosis, created_at
 ## 9) diagnostic_api design (pilot interface contract)
 ### 9.1 Goals
 •	Stable interface for Dify HTTP Request node.
@@ -492,6 +517,7 @@ Honor the project’s privacy posture: restricted access, locked storage, define
 •	/eval/ (offline eval harness, regression suite)
 •	/docs/ (this design doc + API contract + schemas)
 •	/obd_agent/ (edge collector service; reads ELM327 and posts OBDSnapshot)
+•	/obd-ui/ (Next.js expert diagnostic web UI; port 3001; shadcn/ui + recharts)
 •	/pass1/ (rules + tables: dtc_family→subsystem, symptom→subsystem, subsystem→PID priority)
 ### 16.2 Milestones (phase-gated)
 
@@ -504,6 +530,7 @@ Honor the project’s privacy posture: restricted access, locked storage, define
 | M3 | RAG ingestion complete; doc_id/section anchors stable; citation coverage passes |
 | M4 | Phase 1 pilot run + SME evaluation; logging pipeline producing case packages |
 | M5 | Phase 1.5: LoRA/SFT via LlamaFactory + offline regression suite; deploy tuned model behind OpenAI endpoint |
+| M5.1 | OBD Expert Diagnostic Web UI: obd-ui serves on :3001; `/v2/obd/*` endpoints persist sessions + collect feedback; Docker service integrated |
 | M6 | Phase 2: preference tuning + canary + drift/rollback + security review |
 ## 17) Open questions / TBD (must resolve early)
 •	OBD Agent deployment model: host daemon vs container with /dev passthrough; Bluetooth vs USB; offline buffering behavior.

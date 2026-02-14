@@ -52,7 +52,12 @@ app = FastAPI(
 # Configure CORS (localhost only for Phase 1)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:3000", "http://localhost:3000"],
+    allow_origins=[
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+        "http://127.0.0.1:3001",
+        "http://localhost:3001",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -258,6 +263,9 @@ app.include_router(log_summary_v2.router, prefix="/v2/tools", tags=["Tools v2"])
 
 from app.api.v2.endpoints import parsed_summary as parsed_summary_v2
 app.include_router(parsed_summary_v2.router, prefix="/v2/tools", tags=["Tools v2"])
+
+from app.api.v2.endpoints import obd_analysis as obd_analysis_v2
+app.include_router(obd_analysis_v2.router, prefix="/v2/obd", tags=["OBD Analysis"])
 
 
 @app.get("/v1/models", tags=["LLM"])

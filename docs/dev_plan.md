@@ -1,4 +1,4 @@
-# Development Plan (v1.1 — OBD Agent integration)
+# Development Plan (v1.2 — OBD Expert Diagnostic Web UI)
 
 ## 1. Scope Boundary
 Scope boundary for this plan (so engineers don’t drift)
@@ -12,6 +12,7 @@ Scope boundary for this plan (so engineers don’t drift)
 - Storage of diagnostic records (PostgreSQL recommended; includes user/vehicle/
   diagnosis/maintenance suggestion tables).
 - Pilot OBD edge collector ("obd-agent") + OBD telemetry ingestion endpoints + Pass‑1 (OBD→subsystem+PID shortlist) mapping.
+- OBD Expert Diagnostic Web UI ("obd-ui") — Next.js frontend for experts to submit OBD logs, view analysis results (charts, anomaly timelines, clue details), and provide structured feedback. Persisted analysis sessions via `/v2/obd/*` endpoints.
 
 ### 1.2 Out of Scope (Phase 1)
 - Full Edge OBU hardware/software (real-time detection), mobile apps, fleet dashboard
@@ -33,6 +34,8 @@ Scope boundary for this plan (so engineers don’t drift)
 Critical path dependency: DO‑01 → DO‑06 → (APP‑01 + APP‑02B + APP‑03) → APP‑06 → APP‑08 → APP‑11 (Dify integration) → INT‑01 (E2E demo).
 
 **Summarization Pipeline Path:** APP‑02B → APP‑13 → (APP‑14 + APP‑15) → APP‑16 → APP‑17.
+
+**OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence endpoints) → APP‑19 (frontend obd-ui).
 
 ### 2.3 Definition of Done (Applies to Every Ticket)
 A ticket is DONE only if:
@@ -1248,6 +1251,114 @@ POST /v2/tools/summarize-log-raw with raw log returns full structured summary
 mode=minimal returns v1-equivalent output
 mode=full returns all pipeline stages
 v1 endpoint continues to work unchanged
+
+#### APP‑18 — OBD Analysis Session Persistence + Feedback Endpoints
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP‑17
+Status: **DONE** (2026-02-14)
+
+PROMPT (task ticket):
+Title: APP‑18 Add persisted OBD analysis sessions + expert feedback API
+
+Context:
+Experts need a way to submit OBD logs via the web UI and have results persisted for later review. They also need to provide structured feedback (rating, helpfulness, corrected diagnosis) on each analysis.
+
+Task:
+Implement three new endpoints under `/v2/obd/`:
+
+1) `POST /v2/obd/analyze`
+   - Accepts raw OBD TSV text body
+   - Creates an `OBDAnalysisSession` record (UUID PK, status=PENDING)
+   - Runs `_run_pipeline()` (same 5-stage pipeline as `/v2/tools/summarize-log-raw`)
+   - Persists result as JSONB (status=COMPLETED) or error (status=FAILED)
+   - Returns session_id + full LogSummaryV2
+
+2) `GET /v2/obd/{session_id}`
+   - Retrieves persisted session by UUID
+   - Reconstructs LogSummaryV2 from stored JSONB
+
+3) `POST /v2/obd/{session_id}/feedback`
+   - Accepts: rating (1-5), is_helpful (bool), comments (optional), corrected_diagnosis (optional)
+   - One feedback per session (unique constraint); returns 409 on duplicate
+
+Database changes:
+- New table `obd_analysis_sessions`: id (UUID PK), vehicle_id (indexed), status (indexed), input_text_hash (SHA-256, indexed), input_size_bytes, result_payload (JSONB), error_message, created_at, updated_at
+- New table `obd_analysis_feedback`: id (UUID PK), session_id (FK unique), rating, is_helpful, comments, corrected_diagnosis, created_at
+- Alembic migration applied
+
+Deliverables:
+
+`diagnostic_api/app/api/v2/endpoints/obd_analysis.py`
+`diagnostic_api/app/models_db.py` (2 new ORM classes)
+`diagnostic_api/app/api/v2/schemas.py` (3 new Pydantic models)
+Alembic migration `5ed3c5aa2328_create_obd_analysis_tables.py`
+Updated `main.py` (CORS + router registration)
+
+Acceptance Criteria:
+
+POST /v2/obd/analyze with fixture TSV returns session_id + full analysis JSON ✓
+GET /v2/obd/{session_id} returns persisted session ✓
+POST feedback returns 201; duplicate returns 409 ✓
+CORS allows requests from localhost:3001 ✓
+
+#### APP‑19 — OBD Expert Diagnostic Web UI (obd-ui)
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP‑18
+Status: **DONE** (2026-02-14)
+
+PROMPT (task ticket):
+Title: APP‑19 Build Next.js expert diagnostic frontend (obd-ui)
+
+Context:
+Experts currently have no visual way to submit OBD logs, view analysis results with charts, or provide feedback. This ticket adds a Next.js frontend on port 3001 that consumes the `/v2/obd/*` endpoints from APP‑18.
+
+Task:
+Scaffold and implement a Next.js 15 application (`obd-ui/`) with:
+
+**Input Page (`/`):**
+- Large monospace textarea for pasting TSV data
+- File drag-and-drop (.txt/.tsv/.log, max 10MB)
+- "Analyze" button → calls POST /v2/obd/analyze → redirects to results page
+
+**Analysis Page (`/analysis/[sessionId]`):**
+- Fetches session via GET /v2/obd/{session_id}
+- Header: vehicle_id, time range, duration, sample count, DTC badges
+- Tab 1 (Summary): PID summary table (8 signals), diagnostic clues list, DTC codes
+- Tab 2 (Detailed):
+  - Signal bar chart (grouped min/mean/max, filterable by unit)
+  - Signal box plot (P5/P25/P50/P75/P95 visualization)
+  - Anomaly timeline (scatter: time × score, color by severity, clickable)
+  - Anomaly event cards (filterable by severity, sortable by score/time)
+  - Clue detail cards (grouped by category with evidence lists)
+- Feedback form: star rating (1-5), helpful toggle, comments, corrected diagnosis
+
+**Tech stack:**
+- Next.js 15, TypeScript, Tailwind CSS, App Router
+- shadcn/ui components (button, card, badge, tabs, table, textarea, alert, select)
+- recharts (BarChart, ComposedChart, ScatterChart)
+- lucide-react icons
+
+**Docker:**
+- Multi-stage Dockerfile (node:20-alpine builder → standalone output)
+- Service in docker-compose.yml on port 3001
+
+Deliverables:
+
+`obd-ui/` directory (~30 component files)
+`obd-ui/Dockerfile` + `.dockerignore`
+Updated `infra/docker-compose.yml` (new obd-ui service)
+
+Acceptance Criteria:
+
+Frontend serves on port 3001 ✓
+Paste sample TSV → Analyze → results page renders ✓
+Summary tab: PID table + clue bullets ✓
+Detailed tab: bar chart, box plot, anomaly timeline, event cards, clue cards ✓
+Feedback submission works ✓
+`npm run build` passes with 0 errors ✓
+Docker build succeeds ✓
 
 ### 3.3 Integration and Finalization Tickets
 #### INT‑01 — End-to-end demo script (“one command demo”)

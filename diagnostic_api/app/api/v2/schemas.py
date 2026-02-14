@@ -123,3 +123,37 @@ class ParsedSummary(BaseModel):
     diagnostic_clues: str
     rag_query: str
     debug: str
+
+
+# ---------------------------------------------------------------------------
+# OBD Analysis session & feedback schemas
+# ---------------------------------------------------------------------------
+
+
+class OBDAnalysisResponse(BaseModel):
+    """Response returned after submitting an OBD log for analysis."""
+
+    session_id: str
+    status: str
+    result: Optional[LogSummaryV2] = None
+    error_message: Optional[str] = None
+
+
+class OBDSessionSummary(BaseModel):
+    """Lightweight session metadata (for listing / retrieval)."""
+
+    session_id: str
+    vehicle_id: Optional[str] = None
+    status: str
+    input_size_bytes: int
+    created_at: str
+    updated_at: str
+
+
+class OBDFeedbackRequest(BaseModel):
+    """Expert feedback on an OBD analysis session."""
+
+    rating: int = Field(..., ge=1, le=5)
+    is_helpful: bool
+    comments: Optional[str] = None
+    corrected_diagnosis: Optional[str] = None

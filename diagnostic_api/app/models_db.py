@@ -93,3 +93,53 @@ class DiagnosticFeedback(Base):
     
     # Relationships
     session = relationship("DiagnosticSession", back_populates="feedback")
+
+
+class OBDAnalysisSession(Base):
+    """OBD analysis session records (separate from DiagnosticSession)."""
+
+    __tablename__ = "obd_analysis_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    vehicle_id = Column(String(50), nullable=True, index=True)
+
+    # Status tracking
+    status = Column(String(20), default="PENDING", index=True)  # PENDING, COMPLETED, FAILED
+
+    # Input metadata
+    input_text_hash = Column(String(64), nullable=False, index=True)  # SHA-256
+    input_size_bytes = Column(Integer, nullable=False)
+
+    # Result stored as JSONB (full LogSummaryV2)
+    result_payload = Column(JSONB, nullable=True)
+    error_message = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    feedback = relationship("OBDAnalysisFeedback", back_populates="session", uselist=False)
+
+
+class OBDAnalysisFeedback(Base):
+    """Expert feedback on OBD analysis sessions."""
+
+    __tablename__ = "obd_analysis_feedback"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    session_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("obd_analysis_sessions.id"),
+        nullable=False,
+        unique=True,
+    )
+
+    rating = Column(Integer, nullable=False)  # 1-5
+    is_helpful = Column(Boolean, nullable=False)
+    comments = Column(Text, nullable=True)
+    corrected_diagnosis = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    session = relationship("OBDAnalysisSession", back_populates="feedback")
