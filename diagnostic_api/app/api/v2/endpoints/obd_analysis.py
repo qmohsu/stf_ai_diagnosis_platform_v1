@@ -25,6 +25,7 @@ from app.api.v2.schemas import (
     OBDFeedbackRequest,
 )
 from app.models_db import OBDAnalysisFeedback, OBDAnalysisSession
+from obd_agent.summary_formatter import format_summary_for_dify
 
 logger = structlog.get_logger()
 
@@ -61,12 +62,15 @@ async def analyze_obd_log(
 
     input_hash = hashlib.sha256(body_bytes).hexdigest()
 
+    raw_text = body_bytes.decode("utf-8", errors="replace")
+
     # Create PENDING session
     db_session = OBDAnalysisSession(
         id=uuid.uuid4(),
         status="PENDING",
         input_text_hash=input_hash,
         input_size_bytes=len(body_bytes),
+        raw_input_text=raw_text,
     )
     db.add(db_session)
     db.commit()
@@ -87,9 +91,13 @@ async def analyze_obd_log(
         result: LogSummaryV2 = await asyncio.to_thread(_run_pipeline, tmp_path)
 
         # Persist COMPLETED
+        result_dict = result.model_dump(mode="json")
+        parsed_dict = format_summary_for_dify(result_dict)
+
         db_session.status = "COMPLETED"
         db_session.vehicle_id = result.vehicle_id
-        db_session.result_payload = result.model_dump(mode="json")
+        db_session.result_payload = result_dict
+        db_session.parsed_summary_payload = parsed_dict
         db.commit()
 
         logger.info(
@@ -102,6 +110,8 @@ async def analyze_obd_log(
             session_id=session_id,
             status="COMPLETED",
             result=result,
+            raw_input_text=raw_text,
+            parsed_summary=parsed_dict,
         )
 
     except HTTPException:
@@ -161,6 +171,8 @@ async def get_obd_session(
         status=db_session.status,
         result=result,
         error_message=db_session.error_message,
+        raw_input_text=db_session.raw_input_text,
+        parsed_summary=db_session.parsed_summary_payload,
     )
 
 

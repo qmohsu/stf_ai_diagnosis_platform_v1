@@ -110,8 +110,15 @@ class OBDAnalysisSession(Base):
     input_text_hash = Column(String(64), nullable=False, index=True)  # SHA-256
     input_size_bytes = Column(Integer, nullable=False)
 
+    # Raw OBD TSV text verbatim
+    raw_input_text = Column(Text, nullable=True)
+
     # Result stored as JSONB (full LogSummaryV2)
     result_payload = Column(JSONB, nullable=True)
+
+    # Dify-formatted parsed summary (short JSON)
+    parsed_summary_payload = Column(JSONB, nullable=True)
+
     error_message = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
