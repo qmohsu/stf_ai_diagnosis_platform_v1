@@ -133,6 +133,12 @@ class OBDSessionCache:
         with self._lock:
             return len(self._store)
 
+    def values(self) -> list[CachedSession]:
+        """Return all non-expired cached sessions (snapshot)."""
+        now = time.monotonic()
+        with self._lock:
+            return [entry for exp, entry in self._store.values() if now <= exp]
+
     def clear(self) -> None:
         with self._lock:
             self._store.clear()

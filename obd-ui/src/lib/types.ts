@@ -102,7 +102,6 @@ export interface OBDFeedbackRequest {
   rating: number;
   is_helpful: boolean;
   comments?: string;
-  corrected_diagnosis?: string;
 }
 
 export interface FeedbackResponse {

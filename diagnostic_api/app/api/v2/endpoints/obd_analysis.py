@@ -1,7 +1,7 @@
 """OBD Analysis endpoints — analyze, retrieve, and provide feedback.
 
-POST /v2/obd/analyze                    — accepts raw TSV body, runs pipeline, caches result
-GET  /v2/obd/{session_id}              — cache-first, DB fallback retrieval
+POST /v2/obd/analyze                    — accepts raw TSV body, runs pipeline, persists to DB
+GET  /v2/obd/{session_id}              — retrieve session from DB
 POST /v2/obd/{session_id}/diagnose     — generate AI diagnosis (Dify workflow style)
 POST /v2/obd/{session_id}/feedback/summary       — expert feedback on summary view
 POST /v2/obd/{session_id}/feedback/detailed      — expert feedback on detailed view
@@ -17,7 +17,6 @@ import json
 import os
 import tempfile
 import uuid
-from dataclasses import replace
 from typing import Literal, NamedTuple, Optional, Type, Union
 
 import structlog
@@ -34,7 +33,6 @@ from app.api.v2.schemas import (
     OBDAnalysisResponse,
     OBDFeedbackRequest,
 )
-from app.cache import CachedSession, obd_cache
 from app.expert.client import ExpertLLMClient
 from app.models_db import (
     OBDAIDiagnosisFeedback,
@@ -51,13 +49,13 @@ FeedbackType = Literal["summary", "detailed", "rag", "ai_diagnosis"]
 
 _MAX_FEEDBACK_PER_SESSION: int = 10
 _MAX_DIAGNOSIS_LENGTH: int = 50_000
+_ALLOWED_EXTRA_FIELDS = frozenset({"diagnosis_text", "retrieved_text"})
 _expert_client = ExpertLLMClient()
 
 
 class SessionData(NamedTuple):
     parsed_summary: Optional[dict]
     diagnosis_text: Optional[str]
-    source: str
 
 logger = structlog.get_logger()
 
@@ -68,16 +66,16 @@ router = APIRouter()
     "/analyze",
     response_model=OBDAnalysisResponse,
     status_code=status.HTTP_200_OK,
-    summary="Analyze raw OBD log (stateless — no DB write)",
+    summary="Analyze raw OBD log and persist to DB",
 )
 async def analyze_obd_log(
     request: Request,
+    db: Session = Depends(get_db),
 ) -> OBDAnalysisResponse:
-    """Accept raw OBD TSV log text, run the full pipeline, cache the
-    result in-memory, and return session_id + full LogSummaryV2 result.
+    """Accept raw OBD TSV log text, run the full pipeline, persist the
+    session to Postgres, and return session_id + full LogSummaryV2 result.
 
-    No database row is created — the session is persisted only when
-    expert feedback is submitted via the feedback endpoint.
+    Hash-based deduplication prevents duplicate rows for the same input.
     """
     body_bytes = await request.body()
 
@@ -95,8 +93,31 @@ async def analyze_obd_log(
         )
 
     input_hash = hashlib.sha256(body_bytes).hexdigest()
+
+    # --- deduplication: return existing session if same file was already analyzed ---
+    existing = (
+        db.query(OBDAnalysisSession)
+        .filter(
+            OBDAnalysisSession.input_text_hash == input_hash,
+            OBDAnalysisSession.status == "COMPLETED",
+        )
+        .first()
+    )
+    if existing:
+        result = None
+        if existing.result_payload:
+            result = LogSummaryV2(**existing.result_payload)
+        logger.info("obd_analyze_dedup", session_id=str(existing.id), hash=input_hash)
+        return OBDAnalysisResponse(
+            session_id=str(existing.id),
+            status=existing.status,
+            result=result,
+            parsed_summary=existing.parsed_summary_payload,
+            diagnosis_text=existing.diagnosis_text,
+        )
+
     raw_text = body_bytes.decode("utf-8", errors="replace")
-    session_id = str(uuid.uuid4())
+    session_id = uuid.uuid4()
     tmp_path: str | None = None
 
     try:
@@ -106,16 +127,16 @@ async def analyze_obd_log(
             tmp.write(body_bytes)
             tmp_path = tmp.name
 
-        logger.info("obd_analyze_started", session_id=session_id, size=len(body_bytes))
+        logger.info("obd_analyze_started", session_id=str(session_id), size=len(body_bytes))
 
         result: LogSummaryV2 = await asyncio.to_thread(_run_pipeline, tmp_path)
 
         result_dict = result.model_dump(mode="json")
         parsed_dict = format_summary_for_dify(result_dict)
 
-        # Store in cache (no DB write)
-        cached = CachedSession(
-            session_id=session_id,
+        # Persist to DB immediately
+        db_session = OBDAnalysisSession(
+            id=session_id,
             status="COMPLETED",
             vehicle_id=result.vehicle_id,
             input_text_hash=input_hash,
@@ -125,16 +146,42 @@ async def analyze_obd_log(
             parsed_summary_payload=parsed_dict,
             error_message=None,
         )
-        obd_cache.put(cached)
+        db.add(db_session)
+        try:
+            db.commit()
+        except IntegrityError:
+            # Concurrent insert with same input_text_hash — fetch existing row
+            db.rollback()
+            existing = (
+                db.query(OBDAnalysisSession)
+                .filter(
+                    OBDAnalysisSession.input_text_hash == input_hash,
+                    OBDAnalysisSession.status == "COMPLETED",
+                )
+                .first()
+            )
+            if existing:
+                result_obj = None
+                if existing.result_payload:
+                    result_obj = LogSummaryV2(**existing.result_payload)
+                logger.info("obd_analyze_dedup_concurrent", session_id=str(existing.id), hash=input_hash)
+                return OBDAnalysisResponse(
+                    session_id=str(existing.id),
+                    status=existing.status,
+                    result=result_obj,
+                    parsed_summary=existing.parsed_summary_payload,
+                    diagnosis_text=existing.diagnosis_text,
+                )
+            raise
 
         logger.info(
             "obd_analyze_completed",
-            session_id=session_id,
+            session_id=str(session_id),
             vehicle_id=result.vehicle_id,
         )
 
         return OBDAnalysisResponse(
-            session_id=session_id,
+            session_id=str(session_id),
             status="COMPLETED",
             result=result,
             parsed_summary=parsed_dict,
@@ -145,7 +192,7 @@ async def analyze_obd_log(
     except Exception as exc:
         logger.error(
             "obd_analyze_error",
-            session_id=session_id,
+            session_id=str(session_id),
             error=str(exc),
             exc_info=True,
         )
@@ -165,33 +212,13 @@ async def analyze_obd_log(
     "/{session_id}",
     response_model=OBDAnalysisResponse,
     status_code=status.HTTP_200_OK,
-    summary="Retrieve an OBD analysis session (cache-first, DB fallback)",
+    summary="Retrieve an OBD analysis session from DB",
 )
 async def get_obd_session(
     session_id: uuid.UUID,
     db: Session = Depends(get_db),
 ) -> OBDAnalysisResponse:
-    """Retrieve an OBD session — checks in-memory cache first, then falls
-    back to Postgres for sessions already promoted via feedback.
-    """
-    sid = str(session_id)
-
-    # 1. Cache hit
-    cached = obd_cache.get(sid)
-    if cached is not None:
-        result = None
-        if cached.result_payload:
-            result = LogSummaryV2(**cached.result_payload)
-        return OBDAnalysisResponse(
-            session_id=cached.session_id,
-            status=cached.status,
-            result=result,
-            error_message=cached.error_message,
-            parsed_summary=cached.parsed_summary_payload,
-            diagnosis_text=cached.diagnosis_text,
-        )
-
-    # 2. DB fallback (post-feedback sessions)
+    """Retrieve an OBD session from Postgres."""
     db_session = (
         db.query(OBDAnalysisSession)
         .filter(OBDAnalysisSession.id == session_id)
@@ -214,64 +241,21 @@ async def get_obd_session(
     )
 
 
-def _ensure_session_in_db(
-    session_id: uuid.UUID,
-    db: Session,
-) -> None:
-    """Promote a cached session to Postgres if it hasn't been persisted yet.
-
-    Uses a check-then-insert pattern: if the session already exists in DB
-    (from a prior promotion), this is a no-op.  On concurrent promotion
-    the IntegrityError is caught and silently ignored.
-    """
-    sid = str(session_id)
-    cached = obd_cache.get(sid)
-    if cached is None:
-        return  # nothing to promote
-
-    # Already in DB? Skip the INSERT.
-    exists = (
-        db.query(OBDAnalysisSession.id)
-        .filter(OBDAnalysisSession.id == session_id)
-        .first()
-    )
-    if exists is not None:
-        obd_cache.pop(sid)
-        return
-
-    db_session = OBDAnalysisSession(
-        id=session_id,
-        status=cached.status,
-        vehicle_id=cached.vehicle_id,
-        input_text_hash=cached.input_text_hash,
-        input_size_bytes=cached.input_size_bytes,
-        raw_input_text=cached.raw_input_text,
-        result_payload=cached.result_payload,
-        parsed_summary_payload=cached.parsed_summary_payload,
-        error_message=cached.error_message,
-        diagnosis_text=cached.diagnosis_text,
-        created_at=cached.created_at,
-    )
-    db.add(db_session)
-    try:
-        db.flush()
-    except IntegrityError:
-        # Concurrent promotion — session already inserted by another request.
-        db.rollback()
-        logger.info("obd_feedback_concurrent_promotion", session_id=sid)
-    else:
-        obd_cache.pop(sid)
-
-
 def _insert_feedback(
     session_id: uuid.UUID,
     feedback: OBDFeedbackRequest,
     db: Session,
     model_class: FeedbackModel,
     feedback_type: FeedbackType,
+    extra_fields: Optional[dict] = None,
 ) -> dict:
     """Insert a feedback row and commit.  The session must already exist in DB."""
     sid = str(session_id)
+
+    if extra_fields:
+        invalid = set(extra_fields) - _ALLOWED_EXTRA_FIELDS
+        if invalid:
+            raise ValueError(f"Unexpected extra_fields: {invalid}")
 
     db_feedback = model_class(
         id=uuid.uuid4(),
@@ -279,7 +263,7 @@ def _insert_feedback(
         rating=feedback.rating,
         is_helpful=feedback.is_helpful,
         comments=feedback.comments,
-        corrected_diagnosis=feedback.corrected_diagnosis,
+        **(extra_fields or {}),
     )
     db.add(db_feedback)
     try:
@@ -310,15 +294,13 @@ async def _submit_feedback(
     db: Session,
     model_class: FeedbackModel,
     feedback_type: FeedbackType,
+    extra_fields: Optional[dict] = None,
 ) -> dict:
-    """Promote a cached session to Postgres (if needed) and store feedback.
+    """Store feedback for an existing DB session.
 
-    Returns 404 if the session is not found in cache or DB.
+    Returns 404 if the session is not found in DB.
     Returns 429 if the per-session feedback cap has been reached.
     """
-    # Ensure session row exists in DB (promotes from cache if necessary).
-    _ensure_session_in_db(session_id, db)
-
     # Verify the session exists before inserting feedback.
     exists = (
         db.query(OBDAnalysisSession.id)
@@ -340,7 +322,7 @@ async def _submit_feedback(
             detail="Maximum feedback submissions reached for this session.",
         )
 
-    return _insert_feedback(session_id, feedback, db, model_class, feedback_type)
+    return _insert_feedback(session_id, feedback, db, model_class, feedback_type, extra_fields)
 
 
 @router.post(
@@ -383,8 +365,26 @@ async def submit_rag_feedback(
     feedback: OBDFeedbackRequest,
     db: Session = Depends(get_db),
 ) -> dict:
+    # Snapshot the RAG-retrieved text the user was viewing
+    session_data = _get_session_data(session_id, db)
+    retrieved_text: Optional[str] = None
+    if session_data.parsed_summary:
+        rag_query = session_data.parsed_summary.get("rag_query", "")
+        if rag_query:
+            try:
+                results = await retrieve_context(rag_query, top_k=5)
+                retrieved_text = "\n\n".join(
+                    f"[{r.source_type} - {r.doc_id} - {r.section_title}] "
+                    f"(score: {r.score:.3f})\n{r.text}"
+                    for r in results
+                )
+            except Exception as exc:
+                logger.warning("rag_feedback_retrieval_failed", error=str(exc))
+    if retrieved_text and len(retrieved_text) > _MAX_DIAGNOSIS_LENGTH:
+        retrieved_text = retrieved_text[:_MAX_DIAGNOSIS_LENGTH]
     return await _submit_feedback(
         session_id, feedback, db, OBDRAGFeedback, "rag",
+        extra_fields={"retrieved_text": retrieved_text},
     )
 
 
@@ -397,13 +397,7 @@ def _get_session_data(
     session_id: uuid.UUID,
     db: Session,
 ) -> SessionData:
-    """Return (parsed_summary, diagnosis_text, source) from cache or DB."""
-    sid = str(session_id)
-
-    cached = obd_cache.get(sid)
-    if cached is not None:
-        return SessionData(cached.parsed_summary_payload, cached.diagnosis_text, "cache")
-
+    """Return (parsed_summary, diagnosis_text) from DB."""
     db_session = (
         db.query(OBDAnalysisSession)
         .filter(OBDAnalysisSession.id == session_id)
@@ -412,29 +406,21 @@ def _get_session_data(
     if db_session is None:
         raise HTTPException(status_code=404, detail="OBD analysis session not found")
 
-    return SessionData(db_session.parsed_summary_payload, db_session.diagnosis_text, "db")
+    return SessionData(db_session.parsed_summary_payload, db_session.diagnosis_text)
 
 
 def _store_diagnosis_text(
     session_id: uuid.UUID,
     diagnosis_text: str,
 ) -> None:
-    """Persist diagnosis_text to cache and/or DB.
+    """Persist diagnosis_text to DB.
 
     Uses its own DB session so it is safe to call from a streaming
     generator (where the request-scoped ``Depends(get_db)`` session
     may already be closed).
     """
-    sid = str(session_id)
     text = diagnosis_text[:_MAX_DIAGNOSIS_LENGTH]
 
-    # Update cache (frozen dataclass → replace)
-    cached = obd_cache.get(sid)
-    if cached is not None:
-        updated = replace(cached, diagnosis_text=text)
-        obd_cache.put(updated)
-
-    # Update DB if session exists there — use a dedicated session
     db = SessionLocal()
     try:
         db_session = (
@@ -458,6 +444,7 @@ def _store_diagnosis_text(
 )
 async def generate_diagnosis(
     session_id: uuid.UUID,
+    force: bool = False,
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
     """Run the Dify-style AI diagnosis workflow with SSE streaming.
@@ -472,9 +459,9 @@ async def generate_diagnosis(
     sent and the stream closes immediately.
     """
     # --- pre-flight checks (run before entering the stream generator) ---
-    parsed_summary, existing_diagnosis, source = _get_session_data(session_id, db)
+    parsed_summary, existing_diagnosis = _get_session_data(session_id, db)
 
-    if existing_diagnosis:
+    if existing_diagnosis and not force:
         async def _cached_stream():
             yield _sse_event("cached", existing_diagnosis)
 
@@ -552,6 +539,12 @@ async def submit_ai_diagnosis_feedback(
     feedback: OBDFeedbackRequest,
     db: Session = Depends(get_db),
 ) -> dict:
+    # Snapshot the diagnosis text the user is rating
+    session_data = _get_session_data(session_id, db)
+    diag_text = session_data.diagnosis_text
+    if diag_text and len(diag_text) > _MAX_DIAGNOSIS_LENGTH:
+        diag_text = diag_text[:_MAX_DIAGNOSIS_LENGTH]
     return await _submit_feedback(
         session_id, feedback, db, OBDAIDiagnosisFeedback, "ai_diagnosis",
+        extra_fields={"diagnosis_text": diag_text},
     )

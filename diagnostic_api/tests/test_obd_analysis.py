@@ -1,9 +1,10 @@
 """Tests for OBD analysis endpoints (analyze, retrieve, feedback).
 
 Covers:
-  - POST /v2/obd/analyze (empty body, oversized, pipeline error, success)
-  - GET  /v2/obd/{session_id} (cache hit, DB fallback, 404)
-  - POST /v2/obd/{session_id}/feedback/{tab} (all 3 tabs, 404, 429 cap)
+  - POST /v2/obd/analyze (empty body, oversized, pipeline error, success, dedup)
+  - GET  /v2/obd/{session_id} (DB hit, 404)
+  - POST /v2/obd/{session_id}/feedback/{tab} (all 4 tabs, 404, 429 cap)
+  - POST /v2/obd/{session_id}/feedback/ai_diagnosis (diagnosis text snapshot)
   - raw_input_text excluded from API responses (C-1 regression)
 """
 
@@ -14,8 +15,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-
-from app.cache import CachedSession, obd_cache
 
 
 # ---------------------------------------------------------------------------
@@ -90,33 +89,10 @@ def app_ref():
 
 
 @pytest.fixture(autouse=True)
-def clear_cache():
-    """Ensure the in-memory cache is empty before each test."""
-    obd_cache.clear()
-    yield
-    obd_cache.clear()
-
-
-@pytest.fixture(autouse=True)
 def clear_overrides(app_ref):
     """Ensure dependency overrides are cleaned up after each test."""
     yield
     app_ref.dependency_overrides.clear()
-
-
-def _make_cached_session(session_id: str | None = None) -> CachedSession:
-    """Create a CachedSession with realistic test data."""
-    return CachedSession(
-        session_id=session_id or str(uuid.uuid4()),
-        status="COMPLETED",
-        vehicle_id="V-TEST",
-        input_text_hash="a" * 64,
-        input_size_bytes=100,
-        raw_input_text="fake log data",
-        result_payload=FAKE_RESULT_PAYLOAD,
-        parsed_summary_payload=FAKE_PARSED_SUMMARY,
-        error_message=None,
-    )
 
 
 def _mock_db_none():
@@ -148,7 +124,13 @@ class TestAnalyzeEndpoint:
         "app.api.v2.endpoints.obd_analysis._run_pipeline",
         side_effect=ValueError("bad data"),
     )
-    def test_pipeline_error_returns_422(self, mock_pipeline, client):
+    def test_pipeline_error_returns_422(self, mock_pipeline, client, app_ref):
+        mock_db = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+
         resp = client.post("/v2/obd/analyze", content=b"corrupt\tdata\n")
         assert resp.status_code == 422
         assert "Failed to parse" in resp.json()["detail"]
@@ -156,12 +138,19 @@ class TestAnalyzeEndpoint:
     @patch("app.api.v2.endpoints.obd_analysis.format_summary_for_dify")
     @patch("app.api.v2.endpoints.obd_analysis._run_pipeline")
     def test_successful_analyze_returns_session(
-        self, mock_pipeline, mock_format, client,
+        self, mock_pipeline, mock_format, client, app_ref,
     ):
         from app.api.v2.schemas import LogSummaryV2
 
         mock_pipeline.return_value = LogSummaryV2(**FAKE_RESULT_PAYLOAD)
         mock_format.return_value = FAKE_PARSED_SUMMARY
+
+        mock_db = MagicMock()
+        # Dedup query returns None (no existing session)
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
 
         resp = client.post("/v2/obd/analyze", content=b"valid log data\n")
         assert resp.status_code == 200
@@ -171,17 +160,26 @@ class TestAnalyzeEndpoint:
         assert body["session_id"]
         assert body["result"] is not None
         assert body["parsed_summary"] is not None
+        # Verify DB write happened
+        mock_db.add.assert_called_once()
+        mock_db.commit.assert_called_once()
 
     @patch("app.api.v2.endpoints.obd_analysis.format_summary_for_dify")
     @patch("app.api.v2.endpoints.obd_analysis._run_pipeline")
     def test_response_excludes_raw_input_text(
-        self, mock_pipeline, mock_format, client,
+        self, mock_pipeline, mock_format, client, app_ref,
     ):
         """Regression: raw_input_text must NOT appear in the response (C-1)."""
         from app.api.v2.schemas import LogSummaryV2
 
         mock_pipeline.return_value = LogSummaryV2(**FAKE_RESULT_PAYLOAD)
         mock_format.return_value = FAKE_PARSED_SUMMARY
+
+        mock_db = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
 
         resp = client.post("/v2/obd/analyze", content=b"valid log data\n")
         assert resp.status_code == 200
@@ -196,24 +194,45 @@ class TestAnalyzeEndpoint:
 class TestGetSessionEndpoint:
     """Tests for the session retrieval endpoint."""
 
-    def test_cache_hit_returns_session(self, client):
-        sid = str(uuid.uuid4())
-        cached = _make_cached_session(sid)
-        obd_cache.put(cached)
+    def test_db_hit_returns_session(self, client, app_ref):
+        sid = uuid.uuid4()
+        mock_db = MagicMock()
+        mock_row = MagicMock()
+        mock_row.id = sid
+        mock_row.status = "COMPLETED"
+        mock_row.result_payload = FAKE_RESULT_PAYLOAD
+        mock_row.error_message = None
+        mock_row.parsed_summary_payload = FAKE_PARSED_SUMMARY
+        mock_row.diagnosis_text = None
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_row
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
 
         resp = client.get(f"/v2/obd/{sid}")
         assert resp.status_code == 200
 
         body = resp.json()
-        assert body["session_id"] == sid
+        assert body["session_id"] == str(sid)
         assert body["status"] == "COMPLETED"
         assert body["result"]["vehicle_id"] == "V-TEST"
         assert body["parsed_summary"] is not None
 
-    def test_cache_hit_excludes_raw_input_text(self, client):
-        """Regression: raw_input_text must NOT appear in cache-hit response."""
-        sid = str(uuid.uuid4())
-        obd_cache.put(_make_cached_session(sid))
+    def test_db_hit_excludes_raw_input_text(self, client, app_ref):
+        """Regression: raw_input_text must NOT appear in DB-hit response."""
+        sid = uuid.uuid4()
+        mock_db = MagicMock()
+        mock_row = MagicMock()
+        mock_row.id = sid
+        mock_row.status = "COMPLETED"
+        mock_row.result_payload = FAKE_RESULT_PAYLOAD
+        mock_row.error_message = None
+        mock_row.parsed_summary_payload = FAKE_PARSED_SUMMARY
+        mock_row.diagnosis_text = None
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_row
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
 
         resp = client.get(f"/v2/obd/{sid}")
         assert resp.status_code == 200
@@ -238,7 +257,7 @@ class TestGetSessionEndpoint:
 class TestFeedbackEndpoints:
     """Tests for all three feedback tab endpoints."""
 
-    @pytest.mark.parametrize("tab", ["summary", "detailed", "rag"])
+    @pytest.mark.parametrize("tab", ["summary", "detailed", "rag", "ai_diagnosis"])
     def test_feedback_unknown_session_returns_404(self, tab, client, app_ref):
         from app.api.deps import get_db
         app_ref.dependency_overrides[get_db] = _mock_db_none
@@ -248,13 +267,12 @@ class TestFeedbackEndpoints:
         )
         assert resp.status_code == 404
 
-    @pytest.mark.parametrize("tab", ["summary", "detailed", "rag"])
+    @pytest.mark.parametrize("tab", ["summary", "detailed"])
     @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
-    @patch("app.api.v2.endpoints.obd_analysis._ensure_session_in_db")
     def test_feedback_success_all_tabs(
-        self, mock_ensure, mock_insert, tab, client, app_ref,
+        self, mock_insert, tab, client, app_ref,
     ):
-        """Each tab endpoint calls _submit_feedback which promotes + inserts."""
+        """Each tab endpoint calls _submit_feedback which inserts feedback."""
         sid = uuid.uuid4()
 
         mock_db = MagicMock()
@@ -308,8 +326,7 @@ class TestFeedbackEndpoints:
 class TestFeedbackCap:
     """Tests for the per-session feedback submission cap."""
 
-    @patch("app.api.v2.endpoints.obd_analysis._ensure_session_in_db")
-    def test_feedback_cap_returns_429(self, mock_ensure, client, app_ref):
+    def test_feedback_cap_returns_429(self, client, app_ref):
         """After 10 submissions, further attempts should return 429."""
         sid = uuid.uuid4()
 
@@ -337,9 +354,8 @@ class TestFeedbackCap:
         assert "Maximum feedback" in resp.json()["detail"]
 
     @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
-    @patch("app.api.v2.endpoints.obd_analysis._ensure_session_in_db")
     def test_feedback_under_cap_allowed(
-        self, mock_ensure, mock_insert, client, app_ref,
+        self, mock_insert, client, app_ref,
     ):
         """Fewer than 10 submissions should still be allowed."""
         sid = uuid.uuid4()
@@ -362,7 +378,233 @@ class TestFeedbackCap:
         app_ref.dependency_overrides[get_db] = lambda: mock_db
 
         resp = client.post(
+            f"/v2/obd/{sid}/feedback/summary",
+            json=VALID_FEEDBACK,
+        )
+        assert resp.status_code == 201
+
+
+# ---------------------------------------------------------------------------
+# AI Diagnosis feedback — diagnosis text snapshot
+# ---------------------------------------------------------------------------
+
+
+class TestAIDiagnosisFeedback:
+    """Tests for the AI diagnosis feedback endpoint and its text snapshot."""
+
+    @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
+    def test_feedback_snapshots_diagnosis_text(
+        self, mock_insert, client, app_ref,
+    ):
+        """AI diagnosis feedback should include the current diagnosis_text."""
+        sid = uuid.uuid4()
+
+        # _get_session_data queries DB, then _submit_feedback does exists + count queries
+        mock_db = MagicMock()
+        mock_session_row = MagicMock()
+        mock_session_row.parsed_summary_payload = FAKE_PARSED_SUMMARY
+        mock_session_row.diagnosis_text = "Test diagnosis output"
+
+        # 1st query: _get_session_data → returns session row
+        # 2nd query: _submit_feedback exists check → returns (sid,)
+        # 3rd query: _submit_feedback count check → returns 0
+        get_data_chain = MagicMock()
+        get_data_chain.filter.return_value.first.return_value = mock_session_row
+        exists_chain = MagicMock()
+        exists_chain.filter.return_value.first.return_value = (sid,)
+        count_chain = MagicMock()
+        count_chain.filter.return_value.count.return_value = 0
+        mock_db.query.side_effect = [get_data_chain, exists_chain, count_chain]
+
+        mock_insert.return_value = {
+            "status": "ok",
+            "feedback_id": str(uuid.uuid4()),
+        }
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+
+        resp = client.post(
+            f"/v2/obd/{sid}/feedback/ai_diagnosis",
+            json=VALID_FEEDBACK,
+        )
+        assert resp.status_code == 201
+
+        # Verify diagnosis_text was passed through extra_fields
+        # extra_fields is the 6th positional arg to _insert_feedback
+        extra = mock_insert.call_args[0][5]
+        assert extra == {"diagnosis_text": "Test diagnosis output"}
+
+    @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
+    def test_feedback_snapshots_none_when_no_diagnosis(
+        self, mock_insert, client, app_ref,
+    ):
+        """When no diagnosis exists, snapshot should be None."""
+        sid = uuid.uuid4()
+
+        mock_db = MagicMock()
+        mock_session_row = MagicMock()
+        mock_session_row.parsed_summary_payload = FAKE_PARSED_SUMMARY
+        mock_session_row.diagnosis_text = None
+
+        get_data_chain = MagicMock()
+        get_data_chain.filter.return_value.first.return_value = mock_session_row
+        exists_chain = MagicMock()
+        exists_chain.filter.return_value.first.return_value = (sid,)
+        count_chain = MagicMock()
+        count_chain.filter.return_value.count.return_value = 0
+        mock_db.query.side_effect = [get_data_chain, exists_chain, count_chain]
+
+        mock_insert.return_value = {
+            "status": "ok",
+            "feedback_id": str(uuid.uuid4()),
+        }
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+
+        resp = client.post(
+            f"/v2/obd/{sid}/feedback/ai_diagnosis",
+            json=VALID_FEEDBACK,
+        )
+        assert resp.status_code == 201
+
+        extra = mock_insert.call_args[0][5]
+        assert extra == {"diagnosis_text": None}
+
+    @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
+    def test_feedback_truncates_long_diagnosis(
+        self, mock_insert, client, app_ref,
+    ):
+        """Diagnosis text exceeding MAX_DIAGNOSIS_LENGTH should be truncated."""
+        sid = uuid.uuid4()
+        long_text = "x" * 60_000
+
+        mock_db = MagicMock()
+        mock_session_row = MagicMock()
+        mock_session_row.parsed_summary_payload = FAKE_PARSED_SUMMARY
+        mock_session_row.diagnosis_text = long_text
+
+        get_data_chain = MagicMock()
+        get_data_chain.filter.return_value.first.return_value = mock_session_row
+        exists_chain = MagicMock()
+        exists_chain.filter.return_value.first.return_value = (sid,)
+        count_chain = MagicMock()
+        count_chain.filter.return_value.count.return_value = 0
+        mock_db.query.side_effect = [get_data_chain, exists_chain, count_chain]
+
+        mock_insert.return_value = {
+            "status": "ok",
+            "feedback_id": str(uuid.uuid4()),
+        }
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+
+        resp = client.post(
+            f"/v2/obd/{sid}/feedback/ai_diagnosis",
+            json=VALID_FEEDBACK,
+        )
+        assert resp.status_code == 201
+
+        extra = mock_insert.call_args[0][5]
+        assert len(extra["diagnosis_text"]) == 50_000
+
+
+# ---------------------------------------------------------------------------
+# RAG feedback — retrieved text snapshot
+# ---------------------------------------------------------------------------
+
+
+class TestRAGFeedback:
+    """Tests for the RAG feedback endpoint and its retrieved text snapshot."""
+
+    @patch("app.api.v2.endpoints.obd_analysis.retrieve_context")
+    @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
+    def test_feedback_snapshots_retrieved_text(
+        self, mock_insert, mock_retrieve, client, app_ref,
+    ):
+        """RAG feedback should snapshot the retrieved text."""
+        from app.rag.retrieve import RetrievalResult as RR
+
+        sid = uuid.uuid4()
+
+        mock_retrieve.return_value = [
+            RR(text="Chunk 1 text", score=0.95, doc_id="doc1",
+               source_type="pdf", section_title="Section A", chunk_index=0),
+            RR(text="Chunk 2 text", score=0.80, doc_id="doc2",
+               source_type="pdf", section_title="Section B", chunk_index=1),
+        ]
+
+        mock_db = MagicMock()
+        # _get_session_data query
+        mock_session_row = MagicMock()
+        mock_session_row.parsed_summary_payload = FAKE_PARSED_SUMMARY
+        mock_session_row.diagnosis_text = None
+        get_data_chain = MagicMock()
+        get_data_chain.filter.return_value.first.return_value = mock_session_row
+        # _submit_feedback exists + count queries
+        exists_chain = MagicMock()
+        exists_chain.filter.return_value.first.return_value = (sid,)
+        count_chain = MagicMock()
+        count_chain.filter.return_value.count.return_value = 0
+        mock_db.query.side_effect = [get_data_chain, exists_chain, count_chain]
+
+        mock_insert.return_value = {
+            "status": "ok",
+            "feedback_id": str(uuid.uuid4()),
+        }
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+
+        resp = client.post(
             f"/v2/obd/{sid}/feedback/rag",
             json=VALID_FEEDBACK,
         )
         assert resp.status_code == 201
+
+        extra = mock_insert.call_args[0][5]
+        assert "retrieved_text" in extra
+        assert "Chunk 1 text" in extra["retrieved_text"]
+        assert "Chunk 2 text" in extra["retrieved_text"]
+        assert "Section A" in extra["retrieved_text"]
+
+    @patch("app.api.v2.endpoints.obd_analysis.retrieve_context")
+    @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
+    def test_feedback_snapshots_none_when_no_rag_query(
+        self, mock_insert, mock_retrieve, client, app_ref,
+    ):
+        """When rag_query is empty, retrieved_text should be None."""
+        sid = uuid.uuid4()
+        summary_no_rag = {**FAKE_PARSED_SUMMARY, "rag_query": ""}
+
+        mock_db = MagicMock()
+        mock_session_row = MagicMock()
+        mock_session_row.parsed_summary_payload = summary_no_rag
+        mock_session_row.diagnosis_text = None
+        get_data_chain = MagicMock()
+        get_data_chain.filter.return_value.first.return_value = mock_session_row
+        exists_chain = MagicMock()
+        exists_chain.filter.return_value.first.return_value = (sid,)
+        count_chain = MagicMock()
+        count_chain.filter.return_value.count.return_value = 0
+        mock_db.query.side_effect = [get_data_chain, exists_chain, count_chain]
+
+        mock_insert.return_value = {
+            "status": "ok",
+            "feedback_id": str(uuid.uuid4()),
+        }
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+
+        resp = client.post(
+            f"/v2/obd/{sid}/feedback/rag",
+            json=VALID_FEEDBACK,
+        )
+        assert resp.status_code == 201
+
+        extra = mock_insert.call_args[0][5]
+        assert extra == {"retrieved_text": None}
+        mock_retrieve.assert_not_called()

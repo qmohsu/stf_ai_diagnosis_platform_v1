@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { LogSummaryV2, ParsedSummary } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,7 +18,8 @@ interface AnalysisLayoutProps {
   diagnosisText: string | null;
 }
 
-export function AnalysisLayout({ sessionId, data, parsedSummary, diagnosisText }: AnalysisLayoutProps) {
+export function AnalysisLayout({ sessionId, data, parsedSummary, diagnosisText: initialDiagnosisText }: AnalysisLayoutProps) {
+  const [diagnosisText, setDiagnosisText] = useState<string | null>(initialDiagnosisText);
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -55,23 +57,23 @@ export function AnalysisLayout({ sessionId, data, parsedSummary, diagnosisText }
           <TabsTrigger value="ai_diagnosis">AI Diagnostic Result</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="summary" className="space-y-6">
+        <TabsContent value="summary" forceMount className="space-y-6 data-[state=inactive]:hidden">
           <SummaryView data={data} />
           <FeedbackForm sessionId={sessionId} feedbackTab="summary" />
         </TabsContent>
 
-        <TabsContent value="detailed" className="space-y-6">
+        <TabsContent value="detailed" forceMount className="space-y-6 data-[state=inactive]:hidden">
           <DetailedView data={data} />
           <FeedbackForm sessionId={sessionId} feedbackTab="detailed" />
         </TabsContent>
 
-        <TabsContent value="rag" className="space-y-6">
+        <TabsContent value="rag" forceMount className="space-y-6 data-[state=inactive]:hidden">
           <RAGView ragQuery={parsedSummary?.rag_query ?? ""} />
           <FeedbackForm sessionId={sessionId} feedbackTab="rag" />
         </TabsContent>
 
-        <TabsContent value="ai_diagnosis" className="space-y-6">
-          <AIDiagnosisView sessionId={sessionId} initialDiagnosisText={diagnosisText} />
+        <TabsContent value="ai_diagnosis" forceMount className="space-y-6 data-[state=inactive]:hidden">
+          <AIDiagnosisView sessionId={sessionId} initialDiagnosisText={diagnosisText} onDiagnosisGenerated={setDiagnosisText} />
           <FeedbackForm sessionId={sessionId} feedbackTab="ai_diagnosis" />
         </TabsContent>
       </Tabs>

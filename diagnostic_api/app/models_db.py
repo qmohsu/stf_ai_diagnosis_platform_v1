@@ -161,7 +161,6 @@ class _OBDFeedbackMixin:
     rating = Column(Integer, nullable=False)  # 1-5
     is_helpful = Column(Boolean, nullable=False)
     comments = Column(Text, nullable=True)
-    corrected_diagnosis = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=_utcnow)
 
@@ -187,6 +186,9 @@ class OBDRAGFeedback(_OBDFeedbackMixin, Base):
 
     __tablename__ = "obd_rag_feedback"
 
+    # Snapshot of the RAG-retrieved text the user was rating
+    retrieved_text = Column(Text, nullable=True)
+
     session = relationship("OBDAnalysisSession", back_populates="rag_feedback")
 
 
@@ -194,5 +196,8 @@ class OBDAIDiagnosisFeedback(_OBDFeedbackMixin, Base):
     """Expert feedback on OBD AI diagnosis view."""
 
     __tablename__ = "obd_ai_diagnosis_feedback"
+
+    # Snapshot of the diagnosis text the user was rating
+    diagnosis_text = Column(Text, nullable=True)
 
     session = relationship("OBDAnalysisSession", back_populates="ai_diagnosis_feedback")
