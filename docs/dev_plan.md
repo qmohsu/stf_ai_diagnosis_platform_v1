@@ -12,7 +12,7 @@ Scope boundary for this plan (so engineers don’t drift)
 - Storage of diagnostic records (PostgreSQL recommended; includes user/vehicle/
   diagnosis/maintenance suggestion tables).
 - Pilot OBD edge collector ("obd-agent") + OBD telemetry ingestion endpoints + Pass‑1 (OBD→subsystem+PID shortlist) mapping.
-- OBD Expert Diagnostic Web UI ("obd-ui") — Next.js frontend for experts to submit OBD logs, view analysis results (charts, anomaly timelines, clue details), and provide structured feedback. Persisted analysis sessions via `/v2/obd/*` endpoints.
+- OBD Expert Diagnostic Web UI ("obd-ui") — Next.js frontend for experts to submit OBD logs, view analysis results across 4 tabs (Summary, Detailed, RAG, AI Diagnosis), and provide per-tab structured feedback. AI diagnosis powered by SSE streaming via `POST /v2/obd/{session_id}/diagnose`. Persisted analysis sessions via `/v2/obd/*` endpoints with DB-first persistence.
 
 ### 1.2 Out of Scope (Phase 1)
 - Full Edge OBU hardware/software (real-time detection), mobile apps, fleet dashboard
@@ -35,7 +35,7 @@ Critical path dependency: DO‑01 → DO‑06 → (APP‑01 + APP‑02B + APP‑
 
 **Summarization Pipeline Path:** APP‑02B → APP‑13 → (APP‑14 + APP‑15) → APP‑16 → APP‑17.
 
-**OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence endpoints) → APP‑19 (frontend obd-ui).
+**OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence + feedback endpoints) → APP‑19 (frontend obd-ui) → APP‑20 (AI diagnosis SSE + RAG/AI feedback tables + DB-first session refactoring).
 
 ### 2.3 Definition of Done (Applies to Every Ticket)
 A ticket is DONE only if:
@@ -1262,15 +1262,17 @@ PROMPT (task ticket):
 Title: APP‑18 Add persisted OBD analysis sessions + expert feedback API
 
 Context:
-Experts need a way to submit OBD logs via the web UI and have results persisted for later review. They also need to provide structured feedback (rating, helpfulness, corrected diagnosis) on each analysis.
+Experts need a way to submit OBD logs via the web UI and have results persisted for later review. They also need to provide per-tab structured feedback (rating, helpfulness, comments) on each analysis, across 4 result categories: summary, detailed, RAG, and AI diagnosis.
 
 Task:
-Implement three new endpoints under `/v2/obd/`:
+Implement endpoints under `/v2/obd/`:
 
 1) `POST /v2/obd/analyze`
    - Accepts raw OBD TSV text body
-   - Creates an `OBDAnalysisSession` record (UUID PK, status=PENDING)
+   - Creates an `OBDAnalysisSession` record (UUID PK, status=PENDING) persisted to Postgres immediately (DB-first, no in-memory cache)
+   - Deduplicates via SHA-256 hash of input text; returns existing session on match
    - Runs `_run_pipeline()` (same 5-stage pipeline as `/v2/tools/summarize-log-raw`)
+   - Stores `raw_input_text`, `parsed_summary_payload`, and `result_payload` (JSONB)
    - Persists result as JSONB (status=COMPLETED) or error (status=FAILED)
    - Returns session_id + full LogSummaryV2
 
@@ -1278,28 +1280,43 @@ Implement three new endpoints under `/v2/obd/`:
    - Retrieves persisted session by UUID
    - Reconstructs LogSummaryV2 from stored JSONB
 
-3) `POST /v2/obd/{session_id}/feedback`
-   - Accepts: rating (1-5), is_helpful (bool), comments (optional), corrected_diagnosis (optional)
-   - One feedback per session (unique constraint); returns 409 on duplicate
+3) `POST /v2/obd/{session_id}/diagnose`
+   - SSE streaming AI diagnosis endpoint
+   - Streams diagnosis text via Server-Sent Events
+   - Stores `diagnosis_text` on the session record upon completion
+
+4) `POST /v2/obd/{session_id}/feedback/summary`
+   `POST /v2/obd/{session_id}/feedback/detailed`
+   `POST /v2/obd/{session_id}/feedback/rag`
+   `POST /v2/obd/{session_id}/feedback/ai_diagnosis`
+   - Accepts: rating (1-5), is_helpful (bool), comments (optional)
+   - Multiple feedback per session allowed (capped at 10 per tab); returns 429 when limit exceeded
+   - RAG feedback snapshots retrieved RAG text; AI diagnosis feedback snapshots diagnosis text via `extra_fields`
 
 Database changes:
-- New table `obd_analysis_sessions`: id (UUID PK), vehicle_id (indexed), status (indexed), input_text_hash (SHA-256, indexed), input_size_bytes, result_payload (JSONB), error_message, created_at, updated_at
-- New table `obd_analysis_feedback`: id (UUID PK), session_id (FK unique), rating, is_helpful, comments, corrected_diagnosis, created_at
-- Alembic migration applied
+- Table `obd_analysis_sessions`: id (UUID PK), vehicle_id (indexed), status (indexed), input_text_hash (SHA-256, indexed, unique for dedup), input_size_bytes, raw_input_text, parsed_summary_payload (JSONB), result_payload (JSONB), diagnosis_text, error_message, created_at, updated_at
+- 4 feedback tables (one per tab):
+  - `obd_summary_feedback`: id, session_id (FK), rating, is_helpful, comments, created_at
+  - `obd_detailed_feedback`: id, session_id (FK), rating, is_helpful, comments, created_at
+  - `obd_rag_feedback`: id, session_id (FK), rating, is_helpful, comments, rag_retrieved_text, created_at
+  - `obd_ai_diagnosis_feedback`: id, session_id (FK), rating, is_helpful, comments, diagnosis_text, created_at
+- Alembic migrations applied
 
 Deliverables:
 
 `diagnostic_api/app/api/v2/endpoints/obd_analysis.py`
-`diagnostic_api/app/models_db.py` (2 new ORM classes)
-`diagnostic_api/app/api/v2/schemas.py` (3 new Pydantic models)
-Alembic migration `5ed3c5aa2328_create_obd_analysis_tables.py`
+`diagnostic_api/app/models_db.py` (5 new ORM classes: 1 session + 4 feedback)
+`diagnostic_api/app/api/v2/schemas.py` (Pydantic models for session, diagnosis, and 4 feedback types)
+Alembic migrations
 Updated `main.py` (CORS + router registration)
 
 Acceptance Criteria:
 
 POST /v2/obd/analyze with fixture TSV returns session_id + full analysis JSON ✓
-GET /v2/obd/{session_id} returns persisted session ✓
-POST feedback returns 201; duplicate returns 409 ✓
+Duplicate input text returns existing session (dedup via SHA-256) ✓
+GET /v2/obd/{session_id} returns persisted session with raw_input_text and parsed_summary ✓
+POST /v2/obd/{session_id}/diagnose streams AI diagnosis via SSE ✓
+POST feedback (4 endpoints) returns 201; 11th submission returns 429 ✓
 CORS allows requests from localhost:3001 ✓
 
 #### APP‑19 — OBD Expert Diagnostic Web UI (obd-ui)
@@ -1332,7 +1349,11 @@ Scaffold and implement a Next.js 15 application (`obd-ui/`) with:
   - Anomaly timeline (scatter: time × score, color by severity, clickable)
   - Anomaly event cards (filterable by severity, sortable by score/time)
   - Clue detail cards (grouped by category with evidence lists)
-- Feedback form: star rating (1-5), helpful toggle, comments, corrected diagnosis
+- Tab 3 (RAG): RAG retrieval display with retrieved text and feedback form
+- Tab 4 (AI Diagnosis): SSE streaming AI diagnostic result via POST /v2/obd/{session_id}/diagnose, with real-time text rendering and feedback form
+- Per-tab feedback forms: star rating (1-5), helpful toggle, comments (no corrected_diagnosis field)
+- Dedup handling: re-submitting identical input returns existing session
+- forceMount on tab panels to preserve state across tab switches
 
 **Tech stack:**
 - Next.js 15, TypeScript, Tailwind CSS, App Router
@@ -1354,11 +1375,65 @@ Acceptance Criteria:
 
 Frontend serves on port 3001 ✓
 Paste sample TSV → Analyze → results page renders ✓
-Summary tab: PID table + clue bullets ✓
-Detailed tab: bar chart, box plot, anomaly timeline, event cards, clue cards ✓
-Feedback submission works ✓
+Summary tab: PID table + clue bullets + per-tab feedback ✓
+Detailed tab: bar chart, box plot, anomaly timeline, event cards, clue cards + per-tab feedback ✓
+RAG tab: retrieval display + feedback ✓
+AI Diagnosis tab: SSE streaming diagnosis + feedback ✓
+Duplicate input detected and existing session returned ✓
+Feedback submission works (4 separate endpoints) ✓
 `npm run build` passes with 0 errors ✓
 Docker build succeeds ✓
+
+#### APP‑20 — AI Diagnosis + RAG Feedback + DB-First Session Refactoring
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP‑19
+Status: **DONE** (2026-02-15)
+
+PROMPT (task ticket):
+Title: APP‑20 AI diagnosis SSE endpoint, feedback table split, and DB-first session refactoring
+
+Context:
+After APP‑19 shipped the initial 2-tab UI with a single feedback table, iterative work expanded the platform to 4 analysis tabs with dedicated feedback tables, an SSE-streaming AI diagnosis endpoint, and a DB-first session architecture replacing the in-memory cache layer.
+
+Task:
+This ticket covers the post-APP‑19 refinements delivered across multiple commits:
+
+1) **AI Diagnosis SSE endpoint** — `POST /v2/obd/{session_id}/diagnose` streams LLM diagnosis text via Server-Sent Events; stores `diagnosis_text` on the session record upon completion.
+
+2) **Feedback table split** — Replaced the single `obd_analysis_feedback` table with 4 per-tab tables: `obd_summary_feedback`, `obd_detailed_feedback`, `obd_rag_feedback`, `obd_ai_diagnosis_feedback`. Each supports multiple submissions per session (capped at 10); excess returns 429.
+
+3) **RAG + AI diagnosis feedback text snapshots** — RAG feedback rows snapshot the retrieved RAG text; AI diagnosis feedback rows snapshot the diagnosis text at submission time via `extra_fields`.
+
+4) **Dropped `corrected_diagnosis`** — Removed from all feedback tables and schemas (redundant with comments field).
+
+5) **DB-first session persistence** — Removed in-memory cache layer; sessions are now written to Postgres immediately on `POST /v2/obd/analyze`. Deleted `_ensure_session_in_db` helper.
+
+6) **Dedup via SHA-256** — `input_text_hash` column (unique index) enables dedup; re-submitting identical input returns the existing session instead of creating a new one.
+
+7) **New session columns** — `raw_input_text`, `parsed_summary_payload` (JSONB), `diagnosis_text` added to `obd_analysis_sessions`.
+
+8) **Frontend updates** — obd-ui expanded to 4 tabs (Summary, Detailed, RAG, AI Diagnosis) with per-tab feedback forms, `forceMount` for tab state preservation, and regenerate-diagnosis support.
+
+Deliverables:
+
+Updated `diagnostic_api/app/api/v2/endpoints/obd_analysis.py` (SSE diagnose endpoint, 4 feedback endpoints, DB-first persistence)
+Updated `diagnostic_api/app/models_db.py` (4 feedback ORM classes, expanded session columns)
+Updated `diagnostic_api/app/api/v2/schemas.py` (per-tab feedback schemas, diagnosis schemas)
+Alembic migrations for table split, new columns, and dropped fields
+Updated obd-ui components (RAG tab, AI Diagnosis tab, per-tab feedback forms, dedup handling)
+
+Acceptance Criteria:
+
+POST /v2/obd/{session_id}/diagnose streams diagnosis via SSE ✓
+4 feedback endpoints accept submissions independently ✓
+11th feedback on same tab returns 429 ✓
+RAG feedback includes rag_retrieved_text snapshot ✓
+AI diagnosis feedback includes diagnosis_text snapshot ✓
+No corrected_diagnosis field in any schema or table ✓
+Sessions persisted to DB immediately on analyze (no in-memory cache) ✓
+Duplicate input returns existing session via SHA-256 dedup ✓
+obd-ui renders 4 tabs with per-tab feedback ✓
 
 ### 3.3 Integration and Finalization Tickets
 #### INT‑01 — End-to-end demo script (“one command demo”)
