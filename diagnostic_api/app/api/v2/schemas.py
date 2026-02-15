@@ -138,6 +138,7 @@ class OBDAnalysisResponse(BaseModel):
     result: Optional[LogSummaryV2] = None
     error_message: Optional[str] = None
     parsed_summary: Optional[dict] = None
+    diagnosis_text: Optional[str] = None
 
 
 class OBDSessionSummary(BaseModel):

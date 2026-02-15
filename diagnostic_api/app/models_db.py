@@ -126,6 +126,9 @@ class OBDAnalysisSession(Base):
 
     error_message = Column(Text, nullable=True)
 
+    # AI diagnosis (free-form markdown from LLM)
+    diagnosis_text = Column(Text, nullable=True)
+
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
@@ -133,6 +136,7 @@ class OBDAnalysisSession(Base):
     summary_feedback = relationship("OBDSummaryFeedback", back_populates="session", uselist=True)
     detailed_feedback = relationship("OBDDetailedFeedback", back_populates="session", uselist=True)
     rag_feedback = relationship("OBDRAGFeedback", back_populates="session", uselist=True)
+    ai_diagnosis_feedback = relationship("OBDAIDiagnosisFeedback", back_populates="session", uselist=True)
 
 
 class _OBDFeedbackMixin:
@@ -184,3 +188,11 @@ class OBDRAGFeedback(_OBDFeedbackMixin, Base):
     __tablename__ = "obd_rag_feedback"
 
     session = relationship("OBDAnalysisSession", back_populates="rag_feedback")
+
+
+class OBDAIDiagnosisFeedback(_OBDFeedbackMixin, Base):
+    """Expert feedback on OBD AI diagnosis view."""
+
+    __tablename__ = "obd_ai_diagnosis_feedback"
+
+    session = relationship("OBDAnalysisSession", back_populates="ai_diagnosis_feedback")

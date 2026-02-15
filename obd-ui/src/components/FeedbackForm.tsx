@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 interface FeedbackFormProps {
   sessionId: string;
-  feedbackTab: "summary" | "detailed" | "rag";
+  feedbackTab: "summary" | "detailed" | "rag" | "ai_diagnosis";
 }
 
 export function FeedbackForm({ sessionId, feedbackTab }: FeedbackFormProps) {
@@ -73,7 +73,7 @@ export function FeedbackForm({ sessionId, feedbackTab }: FeedbackFormProps) {
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">
-          Expert Feedback — {feedbackTab === "summary" ? "Summary" : feedbackTab === "detailed" ? "Detailed" : "RAG"} View
+          Expert Feedback — {feedbackTab === "summary" ? "Summary" : feedbackTab === "detailed" ? "Detailed" : feedbackTab === "rag" ? "RAG" : "AI Diagnosis"} View
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

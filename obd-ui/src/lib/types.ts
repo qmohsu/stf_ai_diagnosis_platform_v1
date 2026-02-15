@@ -95,6 +95,7 @@ export interface OBDAnalysisResponse {
   result: LogSummaryV2 | null;
   error_message: string | null;
   parsed_summary: ParsedSummary | null;
+  diagnosis_text: string | null;
 }
 
 export interface OBDFeedbackRequest {
