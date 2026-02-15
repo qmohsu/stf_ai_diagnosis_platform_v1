@@ -96,6 +96,49 @@ async def analyze_obd_log(
         )
 
     input_hash = hashlib.sha256(body_bytes).hexdigest()
+
+    # --- deduplication: return existing session if same file was already analyzed ---
+    # 1. Check in-memory cache
+    for cached in obd_cache.values():
+        if cached.input_text_hash == input_hash and cached.status == "COMPLETED":
+            result = None
+            if cached.result_payload:
+                result = LogSummaryV2(**cached.result_payload)
+            logger.info("obd_analyze_dedup_cache", session_id=cached.session_id, hash=input_hash)
+            return OBDAnalysisResponse(
+                session_id=cached.session_id,
+                status=cached.status,
+                result=result,
+                parsed_summary=cached.parsed_summary_payload,
+                diagnosis_text=cached.diagnosis_text,
+            )
+
+    # 2. Check DB
+    db_dup = SessionLocal()
+    try:
+        existing = (
+            db_dup.query(OBDAnalysisSession)
+            .filter(
+                OBDAnalysisSession.input_text_hash == input_hash,
+                OBDAnalysisSession.status == "COMPLETED",
+            )
+            .first()
+        )
+        if existing:
+            result = None
+            if existing.result_payload:
+                result = LogSummaryV2(**existing.result_payload)
+            logger.info("obd_analyze_dedup_db", session_id=str(existing.id), hash=input_hash)
+            return OBDAnalysisResponse(
+                session_id=str(existing.id),
+                status=existing.status,
+                result=result,
+                parsed_summary=existing.parsed_summary_payload,
+                diagnosis_text=existing.diagnosis_text,
+            )
+    finally:
+        db_dup.close()
+
     raw_text = body_bytes.decode("utf-8", errors="replace")
     session_id = str(uuid.uuid4())
     tmp_path: str | None = None
@@ -484,6 +527,7 @@ def _store_diagnosis_text(
 )
 async def generate_diagnosis(
     session_id: uuid.UUID,
+    force: bool = False,
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
     """Run the Dify-style AI diagnosis workflow with SSE streaming.
@@ -500,7 +544,7 @@ async def generate_diagnosis(
     # --- pre-flight checks (run before entering the stream generator) ---
     parsed_summary, existing_diagnosis, source = _get_session_data(session_id, db)
 
-    if existing_diagnosis:
+    if existing_diagnosis and not force:
         async def _cached_stream():
             yield _sse_event("cached", existing_diagnosis)
 

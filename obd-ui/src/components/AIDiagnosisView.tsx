@@ -9,9 +9,10 @@ import { streamDiagnosis } from "@/lib/api";
 interface AIDiagnosisViewProps {
   sessionId: string;
   initialDiagnosisText: string | null;
+  onDiagnosisGenerated?: (text: string) => void;
 }
 
-export function AIDiagnosisView({ sessionId, initialDiagnosisText }: AIDiagnosisViewProps) {
+export function AIDiagnosisView({ sessionId, initialDiagnosisText, onDiagnosisGenerated }: AIDiagnosisViewProps) {
   const [diagnosisText, setDiagnosisText] = useState<string>(initialDiagnosisText ?? "");
   const [streaming, setStreaming] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
@@ -19,8 +20,9 @@ export function AIDiagnosisView({ sessionId, initialDiagnosisText }: AIDiagnosis
   const [error, setError] = useState<string | null>(null);
   const textRef = useRef("");
 
-  const handleGenerate = useCallback(async () => {
+  const handleGenerate = useCallback(async (force?: boolean) => {
     setStreaming(true);
+    setDone(false);
     setError(null);
     setStatusMsg("Connecting...");
     setDiagnosisText("");
@@ -34,10 +36,11 @@ export function AIDiagnosisView({ sessionId, initialDiagnosisText }: AIDiagnosis
           textRef.current += token;
           setDiagnosisText(textRef.current);
         },
-        (_fullText) => {
+        (fullText) => {
           setStatusMsg(null);
           setDone(true);
           setStreaming(false);
+          onDiagnosisGenerated?.(fullText);
         },
         (err) => {
           setStatusMsg(null);
@@ -47,10 +50,14 @@ export function AIDiagnosisView({ sessionId, initialDiagnosisText }: AIDiagnosis
         (status) => {
           setStatusMsg(status);
         },
+        force,
       );
       // Stream ended (connection closed)
       setStreaming(false);
-      if (textRef.current) setDone(true);
+      if (textRef.current) {
+        setDone(true);
+        onDiagnosisGenerated?.(textRef.current);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate diagnosis");
       setStreaming(false);
@@ -75,7 +82,7 @@ export function AIDiagnosisView({ sessionId, initialDiagnosisText }: AIDiagnosis
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <Button onClick={handleGenerate} className="w-full">
+          <Button onClick={() => handleGenerate()} className="w-full">
             Generate AI Diagnosis
           </Button>
         </CardContent>
@@ -119,6 +126,12 @@ export function AIDiagnosisView({ sessionId, initialDiagnosisText }: AIDiagnosis
             {diagnosisText}
             {streaming && <span className="inline-block w-2 h-4 bg-foreground animate-pulse align-text-bottom" />}
           </pre>
+        )}
+
+        {done && (
+          <Button variant="outline" className="w-full mt-4" onClick={() => handleGenerate(true)}>
+            Regenerate Diagnosis
+          </Button>
         )}
       </CardContent>
     </Card>

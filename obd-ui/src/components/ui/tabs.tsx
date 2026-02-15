@@ -72,13 +72,16 @@ function TabsTrigger({ className, value, ...props }: TabsTriggerProps) {
 
 interface TabsContentProps extends React.HTMLAttributes<HTMLDivElement> {
   value: string;
+  forceMount?: boolean;
 }
 
-function TabsContent({ className, value, ...props }: TabsContentProps) {
+function TabsContent({ className, value, forceMount, ...props }: TabsContentProps) {
   const ctx = React.useContext(TabsContext);
-  if (ctx.value !== value) return null;
+  const active = ctx.value === value;
+  if (!active && !forceMount) return null;
   return (
     <div
+      data-state={active ? "active" : "inactive"}
       className={cn("mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2", className)}
       {...props}
     />

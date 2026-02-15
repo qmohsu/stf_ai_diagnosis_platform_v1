@@ -54,8 +54,12 @@ export async function streamDiagnosis(
   onDone: (fullText: string) => void,
   onError: (error: string) => void,
   onStatus?: (message: string) => void,
+  force?: boolean,
 ): Promise<void> {
-  const res = await fetch(`${API_URL}/v2/obd/${sessionId}/diagnose`, {
+  const url = force
+    ? `${API_URL}/v2/obd/${sessionId}/diagnose?force=true`
+    : `${API_URL}/v2/obd/${sessionId}/diagnose`;
+  const res = await fetch(url, {
     method: "POST",
     cache: "no-store",
   });
