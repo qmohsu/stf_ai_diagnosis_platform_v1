@@ -1,8 +1,9 @@
 """OBD Analysis endpoints — analyze, retrieve, and provide feedback.
 
-POST /v2/obd/analyze      — accepts raw TSV body, runs pipeline, caches result
-GET  /v2/obd/{session_id} — cache-first, DB fallback retrieval
-POST /v2/obd/{session_id}/feedback — promotes cached session to DB with feedback
+POST /v2/obd/analyze                    — accepts raw TSV body, runs pipeline, caches result
+GET  /v2/obd/{session_id}              — cache-first, DB fallback retrieval
+POST /v2/obd/{session_id}/feedback/summary  — expert feedback on summary view
+POST /v2/obd/{session_id}/feedback/detailed — expert feedback on detailed view
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ import hashlib
 import os
 import tempfile
 import uuid
+from typing import Literal, Type, Union
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -26,8 +28,11 @@ from app.api.v2.schemas import (
     OBDFeedbackRequest,
 )
 from app.cache import CachedSession, obd_cache
-from app.models_db import OBDAnalysisFeedback, OBDAnalysisSession
+from app.models_db import OBDDetailedFeedback, OBDSummaryFeedback, OBDAnalysisSession
 from obd_agent.summary_formatter import format_summary_for_dify
+
+FeedbackModel = Type[Union[OBDSummaryFeedback, OBDDetailedFeedback]]
+FeedbackType = Literal["summary", "detailed"]
 
 logger = structlog.get_logger()
 
@@ -185,86 +190,65 @@ async def get_obd_session(
     )
 
 
-@router.post(
-    "/{session_id}/feedback",
-    status_code=status.HTTP_201_CREATED,
-    summary="Submit expert feedback for an OBD analysis session",
-)
-async def submit_obd_feedback(
+def _ensure_session_in_db(
     session_id: uuid.UUID,
-    feedback: OBDFeedbackRequest,
-    db: Session = Depends(get_db),
-) -> dict:
-    """Promote a cached session to Postgres and store expert feedback in a
-    single transaction.  Multiple feedback submissions per session are allowed.
+    db: Session,
+) -> None:
+    """Promote a cached session to Postgres if it hasn't been persisted yet.
 
-    Returns 404 if the session is not found in cache or DB.
+    Uses a check-then-insert pattern: if the session already exists in DB
+    (from a prior promotion), this is a no-op.  On concurrent promotion
+    the IntegrityError is caught and silently ignored.
     """
     sid = str(session_id)
-
-    # --- Path A: session still in cache → promote to DB ---
     cached = obd_cache.get(sid)
-    if cached is not None:
-        db_session = OBDAnalysisSession(
-            id=session_id,
-            status=cached.status,
-            vehicle_id=cached.vehicle_id,
-            input_text_hash=cached.input_text_hash,
-            input_size_bytes=cached.input_size_bytes,
-            raw_input_text=cached.raw_input_text,
-            result_payload=cached.result_payload,
-            parsed_summary_payload=cached.parsed_summary_payload,
-            error_message=cached.error_message,
-            created_at=cached.created_at,
-        )
-        db_feedback = OBDAnalysisFeedback(
-            id=uuid.uuid4(),
-            session_id=session_id,
-            rating=feedback.rating,
-            is_helpful=feedback.is_helpful,
-            comments=feedback.comments,
-            corrected_diagnosis=feedback.corrected_diagnosis,
-        )
-        db.add(db_session)
-        db.add(db_feedback)
-        try:
-            db.commit()
-        except IntegrityError:
-            # Session was concurrently promoted by another request —
-            # roll back the duplicate session INSERT, fall through to Path B.
-            db.rollback()
-            logger.info("obd_feedback_concurrent_promotion", session_id=sid)
-        except Exception as exc:
-            db.rollback()
-            logger.error(
-                "obd_feedback_commit_failed",
-                session_id=sid,
-                error=str(exc),
-                exc_info=True,
-            )
-            raise
-        else:
-            # Commit succeeded — evict from cache
-            obd_cache.pop(sid)
-            logger.info(
-                "obd_feedback_submitted",
-                session_id=sid,
-                rating=feedback.rating,
-                is_helpful=feedback.is_helpful,
-                source="cache",
-            )
-            return {"status": "ok", "feedback_id": str(db_feedback.id)}
+    if cached is None:
+        return  # nothing to promote
 
-    # --- Path B: session already in DB (previously promoted) ---
-    db_session = (
-        db.query(OBDAnalysisSession)
+    # Already in DB? Skip the INSERT.
+    exists = (
+        db.query(OBDAnalysisSession.id)
         .filter(OBDAnalysisSession.id == session_id)
         .first()
     )
-    if not db_session:
-        raise HTTPException(status_code=404, detail="OBD analysis session not found")
+    if exists is not None:
+        obd_cache.pop(sid)
+        return
 
-    db_feedback = OBDAnalysisFeedback(
+    db_session = OBDAnalysisSession(
+        id=session_id,
+        status=cached.status,
+        vehicle_id=cached.vehicle_id,
+        input_text_hash=cached.input_text_hash,
+        input_size_bytes=cached.input_size_bytes,
+        raw_input_text=cached.raw_input_text,
+        result_payload=cached.result_payload,
+        parsed_summary_payload=cached.parsed_summary_payload,
+        error_message=cached.error_message,
+        created_at=cached.created_at,
+    )
+    db.add(db_session)
+    try:
+        db.flush()
+    except IntegrityError:
+        # Concurrent promotion — session already inserted by another request.
+        db.rollback()
+        logger.info("obd_feedback_concurrent_promotion", session_id=sid)
+    else:
+        obd_cache.pop(sid)
+
+
+def _insert_feedback(
+    session_id: uuid.UUID,
+    feedback: OBDFeedbackRequest,
+    db: Session,
+    model_class: FeedbackModel,
+    feedback_type: FeedbackType,
+) -> dict:
+    """Insert a feedback row and commit.  The session must already exist in DB."""
+    sid = str(session_id)
+
+    db_feedback = model_class(
         id=uuid.uuid4(),
         session_id=session_id,
         rating=feedback.rating,
@@ -290,7 +274,62 @@ async def submit_obd_feedback(
         session_id=sid,
         rating=feedback.rating,
         is_helpful=feedback.is_helpful,
-        source="db",
+        feedback_type=feedback_type,
+    )
+    return {"status": "ok", "feedback_id": str(db_feedback.id)}
+
+
+async def _submit_feedback(
+    session_id: uuid.UUID,
+    feedback: OBDFeedbackRequest,
+    db: Session,
+    model_class: FeedbackModel,
+    feedback_type: FeedbackType,
+) -> dict:
+    """Promote a cached session to Postgres (if needed) and store feedback.
+
+    Returns 404 if the session is not found in cache or DB.
+    """
+    # Ensure session row exists in DB (promotes from cache if necessary).
+    _ensure_session_in_db(session_id, db)
+
+    # Verify the session exists before inserting feedback.
+    exists = (
+        db.query(OBDAnalysisSession.id)
+        .filter(OBDAnalysisSession.id == session_id)
+        .first()
+    )
+    if not exists:
+        raise HTTPException(status_code=404, detail="OBD analysis session not found")
+
+    return _insert_feedback(session_id, feedback, db, model_class, feedback_type)
+
+
+@router.post(
+    "/{session_id}/feedback/summary",
+    status_code=status.HTTP_201_CREATED,
+    summary="Submit expert feedback for the summary view",
+)
+async def submit_summary_feedback(
+    session_id: uuid.UUID,
+    feedback: OBDFeedbackRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    return await _submit_feedback(
+        session_id, feedback, db, OBDSummaryFeedback, "summary",
     )
 
-    return {"status": "ok", "feedback_id": str(db_feedback.id)}
+
+@router.post(
+    "/{session_id}/feedback/detailed",
+    status_code=status.HTTP_201_CREATED,
+    summary="Submit expert feedback for the detailed view",
+)
+async def submit_detailed_feedback(
+    session_id: uuid.UUID,
+    feedback: OBDFeedbackRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    return await _submit_feedback(
+        session_id, feedback, db, OBDDetailedFeedback, "detailed",
+    )

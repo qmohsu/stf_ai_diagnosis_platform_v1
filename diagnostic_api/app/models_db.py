@@ -4,7 +4,7 @@ Author: Li-Ta Hsu
 Date: January 2026
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -18,9 +18,14 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class User(Base):
@@ -32,7 +37,7 @@ class User(Base):
     username = Column(String(50), unique=True, index=True, nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
 
 
 class Vehicle(Base):
@@ -44,7 +49,7 @@ class Vehicle(Base):
     make = Column(String(50), nullable=True)
     model = Column(String(50), nullable=True)
     year = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
     
     # Relationships
     diagnostic_sessions = relationship("DiagnosticSession", back_populates="vehicle")
@@ -68,8 +73,8 @@ class DiagnosticSession(Base):
     # Extracted fields for efficient querying without parsing JSONB
     risk_score = Column(Float, nullable=True)
     
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
     
     # Relationships
     vehicle = relationship("Vehicle", back_populates="diagnostic_sessions")
@@ -89,7 +94,7 @@ class DiagnosticFeedback(Base):
     comments = Column(Text, nullable=True)
     corrected_diagnosis = Column(Text, nullable=True)
     
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
     
     # Relationships
     session = relationship("DiagnosticSession", back_populates="feedback")
@@ -121,32 +126,47 @@ class OBDAnalysisSession(Base):
 
     error_message = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
     # Relationships
-    feedback = relationship("OBDAnalysisFeedback", back_populates="session", uselist=True)
+    summary_feedback = relationship("OBDSummaryFeedback", back_populates="session", uselist=True)
+    detailed_feedback = relationship("OBDDetailedFeedback", back_populates="session", uselist=True)
 
 
-class OBDAnalysisFeedback(Base):
-    """Expert feedback on OBD analysis sessions."""
-
-    __tablename__ = "obd_analysis_feedback"
+class _OBDFeedbackMixin:
+    """Shared columns for OBD feedback tables."""
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    session_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("obd_analysis_sessions.id"),
-        nullable=False,
-        index=True,
-    )
+
+    @declared_attr
+    def session_id(cls):
+        return Column(
+            UUID(as_uuid=True),
+            ForeignKey("obd_analysis_sessions.id"),
+            nullable=False,
+            index=True,
+        )
 
     rating = Column(Integer, nullable=False)  # 1-5
     is_helpful = Column(Boolean, nullable=False)
     comments = Column(Text, nullable=True)
     corrected_diagnosis = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
 
-    # Relationships
-    session = relationship("OBDAnalysisSession", back_populates="feedback")
+
+class OBDSummaryFeedback(_OBDFeedbackMixin, Base):
+    """Expert feedback on OBD analysis summary view."""
+
+    __tablename__ = "obd_summary_feedback"
+
+    session = relationship("OBDAnalysisSession", back_populates="summary_feedback")
+
+
+class OBDDetailedFeedback(_OBDFeedbackMixin, Base):
+    """Expert feedback on OBD analysis detailed view."""
+
+    __tablename__ = "obd_detailed_feedback"
+
+    session = relationship("OBDAnalysisSession", back_populates="detailed_feedback")

@@ -157,5 +157,5 @@ class OBDFeedbackRequest(BaseModel):
 
     rating: int = Field(..., ge=1, le=5)
     is_helpful: bool
-    comments: Optional[str] = None
-    corrected_diagnosis: Optional[str] = None
+    comments: Optional[str] = Field(None, max_length=5000)
+    corrected_diagnosis: Optional[str] = Field(None, max_length=10000)

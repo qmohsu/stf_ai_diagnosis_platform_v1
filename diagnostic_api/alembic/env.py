@@ -13,7 +13,10 @@ sys.path.append(os.getcwd())
 from app.config import settings
 from app.db.base import Base
 # Import models so they are registered with Base metadata
-from app.models_db import User, Vehicle, DiagnosticSession, OBDAnalysisSession, OBDAnalysisFeedback
+from app.models_db import (
+    User, Vehicle, DiagnosticSession, DiagnosticFeedback,
+    OBDAnalysisSession, OBDSummaryFeedback, OBDDetailedFeedback,
+)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

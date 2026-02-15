@@ -11,9 +11,10 @@ import { cn } from "@/lib/utils";
 
 interface FeedbackFormProps {
   sessionId: string;
+  feedbackTab: "summary" | "detailed";
 }
 
-export function FeedbackForm({ sessionId }: FeedbackFormProps) {
+export function FeedbackForm({ sessionId, feedbackTab }: FeedbackFormProps) {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [isHelpful, setIsHelpful] = useState<boolean | null>(null);
@@ -33,7 +34,7 @@ export function FeedbackForm({ sessionId }: FeedbackFormProps) {
         is_helpful: isHelpful,
         comments: comments || undefined,
         corrected_diagnosis: correctedDiagnosis || undefined,
-      });
+      }, feedbackTab);
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit feedback");
@@ -71,12 +72,14 @@ export function FeedbackForm({ sessionId }: FeedbackFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Expert Feedback</CardTitle>
+        <CardTitle className="text-lg">
+          Expert Feedback — {feedbackTab === "summary" ? "Summary" : "Detailed"} View
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Star Rating */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Rating</label>
+          <label htmlFor={`rating-${feedbackTab}`} className="text-sm font-medium">Rating</label>
           <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map((star) => (
               <button
@@ -103,7 +106,7 @@ export function FeedbackForm({ sessionId }: FeedbackFormProps) {
 
         {/* Helpful Toggle */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Was this analysis helpful?</label>
+          <label htmlFor={`helpful-${feedbackTab}`} className="text-sm font-medium">Was this analysis helpful?</label>
           <div className="flex gap-2">
             <Button
               variant={isHelpful === true ? "default" : "outline"}
@@ -124,8 +127,9 @@ export function FeedbackForm({ sessionId }: FeedbackFormProps) {
 
         {/* Comments */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Comments (optional)</label>
+          <label htmlFor={`comments-${feedbackTab}`} className="text-sm font-medium">Comments (optional)</label>
           <Textarea
+            id={`comments-${feedbackTab}`}
             placeholder="Any additional comments..."
             value={comments}
             onChange={(e) => setComments(e.target.value)}
@@ -136,8 +140,9 @@ export function FeedbackForm({ sessionId }: FeedbackFormProps) {
         {/* Corrected Diagnosis (shown when not helpful) */}
         {isHelpful === false && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">Corrected Diagnosis</label>
+            <label htmlFor={`corrected-${feedbackTab}`} className="text-sm font-medium">Corrected Diagnosis</label>
             <Textarea
+              id={`corrected-${feedbackTab}`}
               placeholder="What would be the correct diagnosis?"
               value={correctedDiagnosis}
               onChange={(e) => setCorrectedDiagnosis(e.target.value)}

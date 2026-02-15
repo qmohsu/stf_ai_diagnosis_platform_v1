@@ -49,17 +49,16 @@ export function AnalysisLayout({ sessionId, data }: AnalysisLayoutProps) {
           <TabsTrigger value="detailed">Detailed</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="summary">
+        <TabsContent value="summary" className="space-y-6">
           <SummaryView data={data} />
+          <FeedbackForm sessionId={sessionId} feedbackTab="summary" />
         </TabsContent>
 
-        <TabsContent value="detailed">
+        <TabsContent value="detailed" className="space-y-6">
           <DetailedView data={data} />
+          <FeedbackForm sessionId={sessionId} feedbackTab="detailed" />
         </TabsContent>
       </Tabs>
-
-      {/* Feedback */}
-      <FeedbackForm sessionId={sessionId} />
     </div>
   );
 }
