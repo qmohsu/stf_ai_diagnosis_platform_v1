@@ -286,7 +286,6 @@ def _insert_feedback(
         rating=feedback.rating,
         is_helpful=feedback.is_helpful,
         comments=feedback.comments,
-        corrected_diagnosis=feedback.corrected_diagnosis,
         **(extra_fields or {}),
     )
     db.add(db_feedback)

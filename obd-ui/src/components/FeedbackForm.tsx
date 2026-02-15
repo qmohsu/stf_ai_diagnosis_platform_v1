@@ -19,7 +19,6 @@ export function FeedbackForm({ sessionId, feedbackTab }: FeedbackFormProps) {
   const [hoverRating, setHoverRating] = useState(0);
   const [isHelpful, setIsHelpful] = useState<boolean | null>(null);
   const [comments, setComments] = useState("");
-  const [correctedDiagnosis, setCorrectedDiagnosis] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -33,7 +32,6 @@ export function FeedbackForm({ sessionId, feedbackTab }: FeedbackFormProps) {
         rating,
         is_helpful: isHelpful,
         comments: comments || undefined,
-        corrected_diagnosis: correctedDiagnosis || undefined,
       }, feedbackTab);
       setSubmitted(true);
     } catch (err) {
@@ -47,7 +45,6 @@ export function FeedbackForm({ sessionId, feedbackTab }: FeedbackFormProps) {
     setRating(0);
     setIsHelpful(null);
     setComments("");
-    setCorrectedDiagnosis("");
     setSubmitted(false);
     setError(null);
   };
@@ -136,20 +133,6 @@ export function FeedbackForm({ sessionId, feedbackTab }: FeedbackFormProps) {
             className="min-h-[80px]"
           />
         </div>
-
-        {/* Corrected Diagnosis (shown when not helpful) */}
-        {isHelpful === false && (
-          <div className="space-y-2">
-            <label htmlFor={`corrected-${feedbackTab}`} className="text-sm font-medium">Corrected Diagnosis</label>
-            <Textarea
-              id={`corrected-${feedbackTab}`}
-              placeholder="What would be the correct diagnosis?"
-              value={correctedDiagnosis}
-              onChange={(e) => setCorrectedDiagnosis(e.target.value)}
-              className="min-h-[80px]"
-            />
-          </div>
-        )}
 
         {error && (
           <Alert variant="destructive">

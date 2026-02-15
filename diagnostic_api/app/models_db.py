@@ -161,7 +161,6 @@ class _OBDFeedbackMixin:
     rating = Column(Integer, nullable=False)  # 1-5
     is_helpful = Column(Boolean, nullable=False)
     comments = Column(Text, nullable=True)
-    corrected_diagnosis = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=_utcnow)
 
