@@ -51,7 +51,7 @@ FeedbackType = Literal["summary", "detailed", "rag", "ai_diagnosis"]
 
 _MAX_FEEDBACK_PER_SESSION: int = 10
 _MAX_DIAGNOSIS_LENGTH: int = 50_000
-_ALLOWED_EXTRA_FIELDS = frozenset({"diagnosis_text"})
+_ALLOWED_EXTRA_FIELDS = frozenset({"diagnosis_text", "retrieved_text"})
 _expert_client = ExpertLLMClient()
 
 
@@ -392,8 +392,26 @@ async def submit_rag_feedback(
     feedback: OBDFeedbackRequest,
     db: Session = Depends(get_db),
 ) -> dict:
+    # Snapshot the RAG-retrieved text the user was viewing
+    session_data = _get_session_data(session_id, db)
+    retrieved_text: Optional[str] = None
+    if session_data.parsed_summary:
+        rag_query = session_data.parsed_summary.get("rag_query", "")
+        if rag_query:
+            try:
+                results = await retrieve_context(rag_query, top_k=5)
+                retrieved_text = "\n\n".join(
+                    f"[{r.source_type} - {r.doc_id} - {r.section_title}] "
+                    f"(score: {r.score:.3f})\n{r.text}"
+                    for r in results
+                )
+            except Exception as exc:
+                logger.warning("rag_feedback_retrieval_failed", error=str(exc))
+    if retrieved_text and len(retrieved_text) > _MAX_DIAGNOSIS_LENGTH:
+        retrieved_text = retrieved_text[:_MAX_DIAGNOSIS_LENGTH]
     return await _submit_feedback(
         session_id, feedback, db, OBDRAGFeedback, "rag",
+        extra_fields={"retrieved_text": retrieved_text},
     )
 
 

@@ -250,7 +250,7 @@ class TestFeedbackEndpoints:
         )
         assert resp.status_code == 404
 
-    @pytest.mark.parametrize("tab", ["summary", "detailed", "rag"])
+    @pytest.mark.parametrize("tab", ["summary", "detailed"])
     @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
     @patch("app.api.v2.endpoints.obd_analysis._ensure_session_in_db")
     def test_feedback_success_all_tabs(
@@ -364,7 +364,7 @@ class TestFeedbackCap:
         app_ref.dependency_overrides[get_db] = lambda: mock_db
 
         resp = client.post(
-            f"/v2/obd/{sid}/feedback/rag",
+            f"/v2/obd/{sid}/feedback/summary",
             json=VALID_FEEDBACK,
         )
         assert resp.status_code == 201
@@ -475,3 +475,89 @@ class TestAIDiagnosisFeedback:
 
         extra = mock_insert.call_args[0][5]
         assert len(extra["diagnosis_text"]) == 50_000
+
+
+# ---------------------------------------------------------------------------
+# RAG feedback — retrieved text snapshot
+# ---------------------------------------------------------------------------
+
+
+class TestRAGFeedback:
+    """Tests for the RAG feedback endpoint and its retrieved text snapshot."""
+
+    @patch("app.api.v2.endpoints.obd_analysis.retrieve_context")
+    @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
+    @patch("app.api.v2.endpoints.obd_analysis._ensure_session_in_db")
+    def test_feedback_snapshots_retrieved_text(
+        self, mock_ensure, mock_insert, mock_retrieve, client, app_ref,
+    ):
+        """RAG feedback should snapshot the retrieved text."""
+        from app.rag.retrieve import RetrievalResult as RR
+
+        sid = str(uuid.uuid4())
+        obd_cache.put(_make_cached_session(sid))
+
+        mock_retrieve.return_value = [
+            RR(text="Chunk 1 text", score=0.95, doc_id="doc1",
+               source_type="pdf", section_title="Section A", chunk_index=0),
+            RR(text="Chunk 2 text", score=0.80, doc_id="doc2",
+               source_type="pdf", section_title="Section B", chunk_index=1),
+        ]
+
+        mock_db = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = (sid,)
+        mock_db.query.return_value.filter.return_value.count.return_value = 0
+        mock_insert.return_value = {
+            "status": "ok",
+            "feedback_id": str(uuid.uuid4()),
+        }
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+
+        resp = client.post(
+            f"/v2/obd/{sid}/feedback/rag",
+            json=VALID_FEEDBACK,
+        )
+        assert resp.status_code == 201
+
+        extra = mock_insert.call_args[0][5]
+        assert "retrieved_text" in extra
+        assert "Chunk 1 text" in extra["retrieved_text"]
+        assert "Chunk 2 text" in extra["retrieved_text"]
+        assert "Section A" in extra["retrieved_text"]
+
+    @patch("app.api.v2.endpoints.obd_analysis.retrieve_context")
+    @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
+    @patch("app.api.v2.endpoints.obd_analysis._ensure_session_in_db")
+    def test_feedback_snapshots_none_when_no_rag_query(
+        self, mock_ensure, mock_insert, mock_retrieve, client, app_ref,
+    ):
+        """When rag_query is empty, retrieved_text should be None."""
+        sid = str(uuid.uuid4())
+        cached = _make_cached_session(sid)
+        # Override parsed_summary to have empty rag_query
+        summary_no_rag = {**FAKE_PARSED_SUMMARY, "rag_query": ""}
+        cached_no_rag = replace(cached, parsed_summary_payload=summary_no_rag)
+        obd_cache.put(cached_no_rag)
+
+        mock_db = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = (sid,)
+        mock_db.query.return_value.filter.return_value.count.return_value = 0
+        mock_insert.return_value = {
+            "status": "ok",
+            "feedback_id": str(uuid.uuid4()),
+        }
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+
+        resp = client.post(
+            f"/v2/obd/{sid}/feedback/rag",
+            json=VALID_FEEDBACK,
+        )
+        assert resp.status_code == 201
+
+        extra = mock_insert.call_args[0][5]
+        assert extra == {"retrieved_text": None}
+        mock_retrieve.assert_not_called()

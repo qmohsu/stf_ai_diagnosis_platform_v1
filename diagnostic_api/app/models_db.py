@@ -187,6 +187,9 @@ class OBDRAGFeedback(_OBDFeedbackMixin, Base):
 
     __tablename__ = "obd_rag_feedback"
 
+    # Snapshot of the RAG-retrieved text the user was rating
+    retrieved_text = Column(Text, nullable=True)
+
     session = relationship("OBDAnalysisSession", back_populates="rag_feedback")
 
 
