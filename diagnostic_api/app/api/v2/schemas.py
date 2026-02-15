@@ -137,7 +137,6 @@ class OBDAnalysisResponse(BaseModel):
     status: str
     result: Optional[LogSummaryV2] = None
     error_message: Optional[str] = None
-    raw_input_text: Optional[str] = None
     parsed_summary: Optional[dict] = None
 
 

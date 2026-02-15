@@ -1,19 +1,21 @@
 "use client";
 
-import type { LogSummaryV2 } from "@/lib/types";
+import type { LogSummaryV2, ParsedSummary } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SummaryView } from "@/components/SummaryView";
 import { DetailedView } from "@/components/DetailedView";
+import { RAGView } from "@/components/RAGView";
 import { FeedbackForm } from "@/components/FeedbackForm";
 import { formatDuration } from "@/lib/utils";
 
 interface AnalysisLayoutProps {
   sessionId: string;
   data: LogSummaryV2;
+  parsedSummary: ParsedSummary | null;
 }
 
-export function AnalysisLayout({ sessionId, data }: AnalysisLayoutProps) {
+export function AnalysisLayout({ sessionId, data, parsedSummary }: AnalysisLayoutProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -47,6 +49,7 @@ export function AnalysisLayout({ sessionId, data }: AnalysisLayoutProps) {
         <TabsList>
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="detailed">Detailed</TabsTrigger>
+          <TabsTrigger value="rag">RAG</TabsTrigger>
         </TabsList>
 
         <TabsContent value="summary" className="space-y-6">
@@ -57,6 +60,11 @@ export function AnalysisLayout({ sessionId, data }: AnalysisLayoutProps) {
         <TabsContent value="detailed" className="space-y-6">
           <DetailedView data={data} />
           <FeedbackForm sessionId={sessionId} feedbackTab="detailed" />
+        </TabsContent>
+
+        <TabsContent value="rag" className="space-y-6">
+          <RAGView ragQuery={parsedSummary?.rag_query ?? ""} />
+          <FeedbackForm sessionId={sessionId} feedbackTab="rag" />
         </TabsContent>
       </Tabs>
     </div>

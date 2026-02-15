@@ -132,10 +132,16 @@ class OBDAnalysisSession(Base):
     # Relationships
     summary_feedback = relationship("OBDSummaryFeedback", back_populates="session", uselist=True)
     detailed_feedback = relationship("OBDDetailedFeedback", back_populates="session", uselist=True)
+    rag_feedback = relationship("OBDRAGFeedback", back_populates="session", uselist=True)
 
 
 class _OBDFeedbackMixin:
-    """Shared columns for OBD feedback tables."""
+    """Shared columns for OBD feedback tables.
+
+    ``session_id`` uses ``@declared_attr`` because its ``ForeignKey`` must be
+    unique per table; plain ``Column`` objects (``id``, ``rating``, etc.) are
+    safely copied by SQLAlchemy's mixin machinery.
+    """
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
 
@@ -170,3 +176,11 @@ class OBDDetailedFeedback(_OBDFeedbackMixin, Base):
     __tablename__ = "obd_detailed_feedback"
 
     session = relationship("OBDAnalysisSession", back_populates="detailed_feedback")
+
+
+class OBDRAGFeedback(_OBDFeedbackMixin, Base):
+    """Expert feedback on OBD analysis RAG view."""
+
+    __tablename__ = "obd_rag_feedback"
+
+    session = relationship("OBDAnalysisSession", back_populates="rag_feedback")

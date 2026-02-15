@@ -15,7 +15,7 @@ from app.db.base import Base
 # Import models so they are registered with Base metadata
 from app.models_db import (
     User, Vehicle, DiagnosticSession, DiagnosticFeedback,
-    OBDAnalysisSession, OBDSummaryFeedback, OBDDetailedFeedback,
+    OBDAnalysisSession, OBDSummaryFeedback, OBDDetailedFeedback, OBDRAGFeedback,
 )
 
 # this is the Alembic Config object, which provides

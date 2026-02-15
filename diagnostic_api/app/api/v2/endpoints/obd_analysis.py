@@ -4,6 +4,7 @@ POST /v2/obd/analyze                    — accepts raw TSV body, runs pipeline,
 GET  /v2/obd/{session_id}              — cache-first, DB fallback retrieval
 POST /v2/obd/{session_id}/feedback/summary  — expert feedback on summary view
 POST /v2/obd/{session_id}/feedback/detailed — expert feedback on detailed view
+POST /v2/obd/{session_id}/feedback/rag      — expert feedback on RAG view
 """
 
 from __future__ import annotations
@@ -28,11 +29,13 @@ from app.api.v2.schemas import (
     OBDFeedbackRequest,
 )
 from app.cache import CachedSession, obd_cache
-from app.models_db import OBDDetailedFeedback, OBDSummaryFeedback, OBDAnalysisSession
+from app.models_db import OBDDetailedFeedback, OBDRAGFeedback, OBDSummaryFeedback, OBDAnalysisSession
 from obd_agent.summary_formatter import format_summary_for_dify
 
-FeedbackModel = Type[Union[OBDSummaryFeedback, OBDDetailedFeedback]]
-FeedbackType = Literal["summary", "detailed"]
+FeedbackModel = Type[Union[OBDSummaryFeedback, OBDDetailedFeedback, OBDRAGFeedback]]
+FeedbackType = Literal["summary", "detailed", "rag"]
+
+_MAX_FEEDBACK_PER_SESSION: int = 10
 
 logger = structlog.get_logger()
 
@@ -112,7 +115,6 @@ async def analyze_obd_log(
             session_id=session_id,
             status="COMPLETED",
             result=result,
-            raw_input_text=raw_text,
             parsed_summary=parsed_dict,
         )
 
@@ -163,7 +165,6 @@ async def get_obd_session(
             status=cached.status,
             result=result,
             error_message=cached.error_message,
-            raw_input_text=cached.raw_input_text,
             parsed_summary=cached.parsed_summary_payload,
         )
 
@@ -185,7 +186,6 @@ async def get_obd_session(
         status=db_session.status,
         result=result,
         error_message=db_session.error_message,
-        raw_input_text=db_session.raw_input_text,
         parsed_summary=db_session.parsed_summary_payload,
     )
 
@@ -289,6 +289,7 @@ async def _submit_feedback(
     """Promote a cached session to Postgres (if needed) and store feedback.
 
     Returns 404 if the session is not found in cache or DB.
+    Returns 429 if the per-session feedback cap has been reached.
     """
     # Ensure session row exists in DB (promotes from cache if necessary).
     _ensure_session_in_db(session_id, db)
@@ -301,6 +302,18 @@ async def _submit_feedback(
     )
     if not exists:
         raise HTTPException(status_code=404, detail="OBD analysis session not found")
+
+    # Guard against unbounded feedback submissions.
+    existing_count = (
+        db.query(model_class)
+        .filter(model_class.session_id == session_id)
+        .count()
+    )
+    if existing_count >= _MAX_FEEDBACK_PER_SESSION:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Maximum feedback submissions reached for this session.",
+        )
 
     return _insert_feedback(session_id, feedback, db, model_class, feedback_type)
 
@@ -332,4 +345,19 @@ async def submit_detailed_feedback(
 ) -> dict:
     return await _submit_feedback(
         session_id, feedback, db, OBDDetailedFeedback, "detailed",
+    )
+
+
+@router.post(
+    "/{session_id}/feedback/rag",
+    status_code=status.HTTP_201_CREATED,
+    summary="Submit expert feedback for the RAG view",
+)
+async def submit_rag_feedback(
+    session_id: uuid.UUID,
+    feedback: OBDFeedbackRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    return await _submit_feedback(
+        session_id, feedback, db, OBDRAGFeedback, "rag",
     )
