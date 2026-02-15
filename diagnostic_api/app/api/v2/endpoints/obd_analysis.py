@@ -51,6 +51,7 @@ FeedbackType = Literal["summary", "detailed", "rag", "ai_diagnosis"]
 
 _MAX_FEEDBACK_PER_SESSION: int = 10
 _MAX_DIAGNOSIS_LENGTH: int = 50_000
+_ALLOWED_EXTRA_FIELDS = frozenset({"diagnosis_text"})
 _expert_client = ExpertLLMClient()
 
 
@@ -269,9 +270,15 @@ def _insert_feedback(
     db: Session,
     model_class: FeedbackModel,
     feedback_type: FeedbackType,
+    extra_fields: Optional[dict] = None,
 ) -> dict:
     """Insert a feedback row and commit.  The session must already exist in DB."""
     sid = str(session_id)
+
+    if extra_fields:
+        invalid = set(extra_fields) - _ALLOWED_EXTRA_FIELDS
+        if invalid:
+            raise ValueError(f"Unexpected extra_fields: {invalid}")
 
     db_feedback = model_class(
         id=uuid.uuid4(),
@@ -280,6 +287,7 @@ def _insert_feedback(
         is_helpful=feedback.is_helpful,
         comments=feedback.comments,
         corrected_diagnosis=feedback.corrected_diagnosis,
+        **(extra_fields or {}),
     )
     db.add(db_feedback)
     try:
@@ -310,6 +318,7 @@ async def _submit_feedback(
     db: Session,
     model_class: FeedbackModel,
     feedback_type: FeedbackType,
+    extra_fields: Optional[dict] = None,
 ) -> dict:
     """Promote a cached session to Postgres (if needed) and store feedback.
 
@@ -340,7 +349,7 @@ async def _submit_feedback(
             detail="Maximum feedback submissions reached for this session.",
         )
 
-    return _insert_feedback(session_id, feedback, db, model_class, feedback_type)
+    return _insert_feedback(session_id, feedback, db, model_class, feedback_type, extra_fields)
 
 
 @router.post(
@@ -552,6 +561,12 @@ async def submit_ai_diagnosis_feedback(
     feedback: OBDFeedbackRequest,
     db: Session = Depends(get_db),
 ) -> dict:
+    # Snapshot the diagnosis text the user is rating
+    session_data = _get_session_data(session_id, db)
+    diag_text = session_data.diagnosis_text
+    if diag_text and len(diag_text) > _MAX_DIAGNOSIS_LENGTH:
+        diag_text = diag_text[:_MAX_DIAGNOSIS_LENGTH]
     return await _submit_feedback(
         session_id, feedback, db, OBDAIDiagnosisFeedback, "ai_diagnosis",
+        extra_fields={"diagnosis_text": diag_text},
     )

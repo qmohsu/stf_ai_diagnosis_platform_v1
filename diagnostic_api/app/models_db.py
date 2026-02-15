@@ -195,4 +195,7 @@ class OBDAIDiagnosisFeedback(_OBDFeedbackMixin, Base):
 
     __tablename__ = "obd_ai_diagnosis_feedback"
 
+    # Snapshot of the diagnosis text the user was rating
+    diagnosis_text = Column(Text, nullable=True)
+
     session = relationship("OBDAnalysisSession", back_populates="ai_diagnosis_feedback")

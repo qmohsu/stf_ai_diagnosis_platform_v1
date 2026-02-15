@@ -3,13 +3,15 @@
 Covers:
   - POST /v2/obd/analyze (empty body, oversized, pipeline error, success)
   - GET  /v2/obd/{session_id} (cache hit, DB fallback, 404)
-  - POST /v2/obd/{session_id}/feedback/{tab} (all 3 tabs, 404, 429 cap)
+  - POST /v2/obd/{session_id}/feedback/{tab} (all 4 tabs, 404, 429 cap)
+  - POST /v2/obd/{session_id}/feedback/ai_diagnosis (diagnosis text snapshot)
   - raw_input_text excluded from API responses (C-1 regression)
 """
 
 from __future__ import annotations
 
 import uuid
+from dataclasses import replace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -238,7 +240,7 @@ class TestGetSessionEndpoint:
 class TestFeedbackEndpoints:
     """Tests for all three feedback tab endpoints."""
 
-    @pytest.mark.parametrize("tab", ["summary", "detailed", "rag"])
+    @pytest.mark.parametrize("tab", ["summary", "detailed", "rag", "ai_diagnosis"])
     def test_feedback_unknown_session_returns_404(self, tab, client, app_ref):
         from app.api.deps import get_db
         app_ref.dependency_overrides[get_db] = _mock_db_none
@@ -366,3 +368,110 @@ class TestFeedbackCap:
             json=VALID_FEEDBACK,
         )
         assert resp.status_code == 201
+
+
+# ---------------------------------------------------------------------------
+# AI Diagnosis feedback — diagnosis text snapshot
+# ---------------------------------------------------------------------------
+
+
+class TestAIDiagnosisFeedback:
+    """Tests for the AI diagnosis feedback endpoint and its text snapshot."""
+
+    @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
+    @patch("app.api.v2.endpoints.obd_analysis._ensure_session_in_db")
+    def test_feedback_snapshots_diagnosis_text(
+        self, mock_ensure, mock_insert, client, app_ref,
+    ):
+        """AI diagnosis feedback should include the current diagnosis_text."""
+        sid = str(uuid.uuid4())
+        cached = _make_cached_session(sid)
+        cached_with_diag = replace(cached, diagnosis_text="Test diagnosis output")
+        obd_cache.put(cached_with_diag)
+
+        mock_db = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = (sid,)
+        mock_db.query.return_value.filter.return_value.count.return_value = 0
+
+        mock_insert.return_value = {
+            "status": "ok",
+            "feedback_id": str(uuid.uuid4()),
+        }
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+
+        resp = client.post(
+            f"/v2/obd/{sid}/feedback/ai_diagnosis",
+            json=VALID_FEEDBACK,
+        )
+        assert resp.status_code == 201
+
+        # Verify diagnosis_text was passed through extra_fields
+        # extra_fields is the 6th positional arg to _insert_feedback
+        extra = mock_insert.call_args[0][5]
+        assert extra == {"diagnosis_text": "Test diagnosis output"}
+
+    @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
+    @patch("app.api.v2.endpoints.obd_analysis._ensure_session_in_db")
+    def test_feedback_snapshots_none_when_no_diagnosis(
+        self, mock_ensure, mock_insert, client, app_ref,
+    ):
+        """When no diagnosis exists, snapshot should be None."""
+        sid = str(uuid.uuid4())
+        cached = _make_cached_session(sid)
+        obd_cache.put(cached)
+
+        mock_db = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = (sid,)
+        mock_db.query.return_value.filter.return_value.count.return_value = 0
+
+        mock_insert.return_value = {
+            "status": "ok",
+            "feedback_id": str(uuid.uuid4()),
+        }
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+
+        resp = client.post(
+            f"/v2/obd/{sid}/feedback/ai_diagnosis",
+            json=VALID_FEEDBACK,
+        )
+        assert resp.status_code == 201
+
+        extra = mock_insert.call_args[0][5]
+        assert extra == {"diagnosis_text": None}
+
+    @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
+    @patch("app.api.v2.endpoints.obd_analysis._ensure_session_in_db")
+    def test_feedback_truncates_long_diagnosis(
+        self, mock_ensure, mock_insert, client, app_ref,
+    ):
+        """Diagnosis text exceeding MAX_DIAGNOSIS_LENGTH should be truncated."""
+        sid = str(uuid.uuid4())
+        cached = _make_cached_session(sid)
+        long_text = "x" * 60_000
+        cached_with_diag = replace(cached, diagnosis_text=long_text)
+        obd_cache.put(cached_with_diag)
+
+        mock_db = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = (sid,)
+        mock_db.query.return_value.filter.return_value.count.return_value = 0
+
+        mock_insert.return_value = {
+            "status": "ok",
+            "feedback_id": str(uuid.uuid4()),
+        }
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+
+        resp = client.post(
+            f"/v2/obd/{sid}/feedback/ai_diagnosis",
+            json=VALID_FEEDBACK,
+        )
+        assert resp.status_code == 201
+
+        extra = mock_insert.call_args[0][5]
+        assert len(extra["diagnosis_text"]) == 50_000
