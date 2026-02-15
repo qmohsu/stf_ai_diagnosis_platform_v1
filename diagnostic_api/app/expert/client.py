@@ -1,7 +1,7 @@
 
 import os
 import structlog
-from typing import Optional
+from typing import AsyncIterator, Optional
 from openai import AsyncOpenAI
 from app.expert import prompts, schemas, validate
 
@@ -64,4 +64,82 @@ class ExpertLLMClient:
 
         except Exception as e:
             logger.error("diagnosis_generation_failed", error=str(e))
+            raise
+
+    def _build_obd_diagnosis_messages(
+        self,
+        parsed_summary: dict,
+        context: str,
+    ) -> list[dict]:
+        """Build the message list for OBD diagnosis prompts."""
+        user_prompt = prompts.OBD_DIAGNOSIS_USER_TEMPLATE.format(
+            vehicle_id=parsed_summary.get("vehicle_id", "Unknown"),
+            time_range=parsed_summary.get("time_range", "Unknown"),
+            dtc_codes=parsed_summary.get("dtc_codes", "None"),
+            pid_summary=parsed_summary.get("pid_summary", "N/A"),
+            anomaly_events=parsed_summary.get("anomaly_events", "None"),
+            diagnostic_clues=parsed_summary.get("diagnostic_clues", "None"),
+            context=context or "No additional context retrieved.",
+        )
+        return [
+            {"role": "system", "content": prompts.OBD_DIAGNOSIS_SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ]
+
+    async def generate_obd_diagnosis(
+        self,
+        parsed_summary: dict,
+        context: str,
+    ) -> str:
+        """Generate a free-form markdown OBD diagnosis (Dify workflow style).
+
+        Returns:
+            Raw markdown diagnosis text.
+        """
+        messages = self._build_obd_diagnosis_messages(parsed_summary, context)
+        logger.info("obd_diagnosis_start", vehicle_id=parsed_summary.get("vehicle_id"))
+
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=0.3,
+            )
+
+            content = response.choices[0].message.content
+            logger.info("obd_diagnosis_completed", length=len(content))
+            return content
+
+        except Exception as e:
+            logger.error("obd_diagnosis_failed", error=str(e))
+            raise
+
+    async def generate_obd_diagnosis_stream(
+        self,
+        parsed_summary: dict,
+        context: str,
+    ) -> AsyncIterator[str]:
+        """Stream OBD diagnosis token-by-token.
+
+        Yields:
+            Text chunks as the LLM generates them.
+        """
+        messages = self._build_obd_diagnosis_messages(parsed_summary, context)
+        logger.info("obd_diagnosis_stream_start", vehicle_id=parsed_summary.get("vehicle_id"))
+
+        try:
+            stream = await self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=0.3,
+                stream=True,
+            )
+
+            async for chunk in stream:
+                delta = chunk.choices[0].delta
+                if delta.content:
+                    yield delta.content
+
+        except Exception as e:
+            logger.error("obd_diagnosis_stream_failed", error=str(e))
             raise

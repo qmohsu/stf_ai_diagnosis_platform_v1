@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SummaryView } from "@/components/SummaryView";
 import { DetailedView } from "@/components/DetailedView";
 import { RAGView } from "@/components/RAGView";
+import { AIDiagnosisView } from "@/components/AIDiagnosisView";
 import { FeedbackForm } from "@/components/FeedbackForm";
 import { formatDuration } from "@/lib/utils";
 
@@ -13,9 +14,10 @@ interface AnalysisLayoutProps {
   sessionId: string;
   data: LogSummaryV2;
   parsedSummary: ParsedSummary | null;
+  diagnosisText: string | null;
 }
 
-export function AnalysisLayout({ sessionId, data, parsedSummary }: AnalysisLayoutProps) {
+export function AnalysisLayout({ sessionId, data, parsedSummary, diagnosisText }: AnalysisLayoutProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -50,6 +52,7 @@ export function AnalysisLayout({ sessionId, data, parsedSummary }: AnalysisLayou
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="detailed">Detailed</TabsTrigger>
           <TabsTrigger value="rag">RAG</TabsTrigger>
+          <TabsTrigger value="ai_diagnosis">AI Diagnostic Result</TabsTrigger>
         </TabsList>
 
         <TabsContent value="summary" className="space-y-6">
@@ -65,6 +68,11 @@ export function AnalysisLayout({ sessionId, data, parsedSummary }: AnalysisLayou
         <TabsContent value="rag" className="space-y-6">
           <RAGView ragQuery={parsedSummary?.rag_query ?? ""} />
           <FeedbackForm sessionId={sessionId} feedbackTab="rag" />
+        </TabsContent>
+
+        <TabsContent value="ai_diagnosis" className="space-y-6">
+          <AIDiagnosisView sessionId={sessionId} initialDiagnosisText={diagnosisText} />
+          <FeedbackForm sessionId={sessionId} feedbackTab="ai_diagnosis" />
         </TabsContent>
       </Tabs>
     </div>

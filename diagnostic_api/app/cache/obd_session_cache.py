@@ -30,6 +30,7 @@ class CachedSession:
     result_payload: Optional[dict]
     parsed_summary_payload: Optional[dict]
     error_message: Optional[str]
+    diagnosis_text: Optional[str] = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 

@@ -56,7 +56,7 @@ export default function AnalysisPage() {
     );
   }
 
-  return <AnalysisLayout sessionId={sessionId} data={data.result} parsedSummary={data.parsed_summary} />;
+  return <AnalysisLayout sessionId={sessionId} data={data.result} parsedSummary={data.parsed_summary} diagnosisText={data.diagnosis_text} />;
 }
 
 function AnalysisLoadingSkeleton() {
