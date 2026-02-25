@@ -133,3 +133,11 @@ obd_agent/        # OBD-II edge agent
 
 - Never commit secrets — use `.env.example` and gitignore real `.env`
 - Prefer deterministic, testable behavior; fail safe when inputs are missing
+
+## Memory Management
+
+When you discover something valuable for future sessions — architectural decisions, bug fixes, gotchas, environment quirks — immediately append it to .claude/memory.md
+
+Don't wait to be asked. Don't wait for session end.
+
+Keep entries short: date, what, why. Read this file at the start of every session.
