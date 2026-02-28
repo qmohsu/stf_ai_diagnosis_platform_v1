@@ -1,12 +1,14 @@
 """OBD Analysis endpoints — analyze, retrieve, and provide feedback.
 
-POST /v2/obd/analyze                    — accepts raw TSV body, runs pipeline, persists to DB
-GET  /v2/obd/{session_id}              — retrieve session from DB
-POST /v2/obd/{session_id}/diagnose     — generate AI diagnosis (Dify workflow style)
-POST /v2/obd/{session_id}/feedback/summary       — expert feedback on summary view
-POST /v2/obd/{session_id}/feedback/detailed      — expert feedback on detailed view
-POST /v2/obd/{session_id}/feedback/rag           — expert feedback on RAG view
-POST /v2/obd/{session_id}/feedback/ai_diagnosis  — expert feedback on AI diagnosis view
+POST /v2/obd/analyze                             — accepts raw TSV body
+GET  /v2/obd/{session_id}                       — retrieve session
+POST /v2/obd/{session_id}/diagnose              — local AI diagnosis
+POST /v2/obd/{session_id}/feedback/summary      — feedback on summary
+POST /v2/obd/{session_id}/feedback/detailed     — feedback on detailed
+POST /v2/obd/{session_id}/feedback/rag          — feedback on RAG
+POST /v2/obd/{session_id}/feedback/ai_diagnosis — feedback on AI diag
+
+Premium endpoints live in ``obd_premium.py``.
 """
 
 from __future__ import annotations
@@ -34,9 +36,11 @@ from app.api.v2.schemas import (
     OBDFeedbackRequest,
 )
 from app.expert.client import ExpertLLMClient
+from app.config import settings
 from app.models_db import (
     OBDAIDiagnosisFeedback,
     OBDDetailedFeedback,
+    OBDPremiumDiagnosisFeedback,
     OBDRAGFeedback,
     OBDSummaryFeedback,
     OBDAnalysisSession,
@@ -44,8 +48,14 @@ from app.models_db import (
 from app.rag.retrieve import retrieve_context
 from obd_agent.summary_formatter import format_summary_for_dify
 
-FeedbackModel = Type[Union[OBDSummaryFeedback, OBDDetailedFeedback, OBDRAGFeedback, OBDAIDiagnosisFeedback]]
-FeedbackType = Literal["summary", "detailed", "rag", "ai_diagnosis"]
+FeedbackModel = Type[Union[
+    OBDSummaryFeedback, OBDDetailedFeedback, OBDRAGFeedback,
+    OBDAIDiagnosisFeedback, OBDPremiumDiagnosisFeedback,
+]]
+FeedbackType = Literal[
+    "summary", "detailed", "rag", "ai_diagnosis",
+    "premium_diagnosis",
+]
 
 _MAX_FEEDBACK_PER_SESSION: int = 10
 _MAX_DIAGNOSIS_LENGTH: int = 50_000
@@ -56,6 +66,7 @@ _expert_client = ExpertLLMClient()
 class SessionData(NamedTuple):
     parsed_summary: Optional[dict]
     diagnosis_text: Optional[str]
+    premium_diagnosis_text: Optional[str]
 
 logger = structlog.get_logger()
 
@@ -109,11 +120,13 @@ async def analyze_obd_log(
             result = LogSummaryV2(**existing.result_payload)
         logger.info("obd_analyze_dedup", session_id=str(existing.id), hash=input_hash)
         return OBDAnalysisResponse(
+            premium_llm_enabled=settings.premium_llm_enabled,
             session_id=str(existing.id),
             status=existing.status,
             result=result,
             parsed_summary=existing.parsed_summary_payload,
             diagnosis_text=existing.diagnosis_text,
+            premium_diagnosis_text=existing.premium_diagnosis_text,
         )
 
     raw_text = body_bytes.decode("utf-8", errors="replace")
@@ -166,11 +179,13 @@ async def analyze_obd_log(
                     result_obj = LogSummaryV2(**existing.result_payload)
                 logger.info("obd_analyze_dedup_concurrent", session_id=str(existing.id), hash=input_hash)
                 return OBDAnalysisResponse(
+                    premium_llm_enabled=settings.premium_llm_enabled,
                     session_id=str(existing.id),
                     status=existing.status,
                     result=result_obj,
                     parsed_summary=existing.parsed_summary_payload,
                     diagnosis_text=existing.diagnosis_text,
+                    premium_diagnosis_text=existing.premium_diagnosis_text,
                 )
             raise
 
@@ -181,6 +196,7 @@ async def analyze_obd_log(
         )
 
         return OBDAnalysisResponse(
+            premium_llm_enabled=settings.premium_llm_enabled,
             session_id=str(session_id),
             status="COMPLETED",
             result=result,
@@ -232,12 +248,14 @@ async def get_obd_session(
         result = LogSummaryV2(**db_session.result_payload)
 
     return OBDAnalysisResponse(
+        premium_llm_enabled=settings.premium_llm_enabled,
         session_id=str(db_session.id),
         status=db_session.status,
         result=result,
         error_message=db_session.error_message,
         parsed_summary=db_session.parsed_summary_payload,
         diagnosis_text=db_session.diagnosis_text,
+        premium_diagnosis_text=db_session.premium_diagnosis_text,
     )
 
 
@@ -397,7 +415,15 @@ def _get_session_data(
     session_id: uuid.UUID,
     db: Session,
 ) -> SessionData:
-    """Return (parsed_summary, diagnosis_text) from DB."""
+    """Return SessionData from DB.
+
+    Returns:
+        SessionData with parsed_summary, diagnosis_text,
+        and premium_diagnosis_text.
+
+    Raises:
+        HTTPException: 404 if session not found.
+    """
     db_session = (
         db.query(OBDAnalysisSession)
         .filter(OBDAnalysisSession.id == session_id)
@@ -406,20 +432,31 @@ def _get_session_data(
     if db_session is None:
         raise HTTPException(status_code=404, detail="OBD analysis session not found")
 
-    return SessionData(db_session.parsed_summary_payload, db_session.diagnosis_text)
+    return SessionData(
+        db_session.parsed_summary_payload,
+        db_session.diagnosis_text,
+        db_session.premium_diagnosis_text,
+    )
 
 
-def _store_diagnosis_text(
+def _store_session_field(
     session_id: uuid.UUID,
-    diagnosis_text: str,
+    field_name: str,
+    value: str,
 ) -> None:
-    """Persist diagnosis_text to DB.
+    """Persist a text field on the session row in DB.
 
     Uses its own DB session so it is safe to call from a streaming
     generator (where the request-scoped ``Depends(get_db)`` session
     may already be closed).
+
+    Args:
+        session_id: Target session UUID.
+        field_name: Column attribute name on OBDAnalysisSession
+            (e.g. ``"diagnosis_text"``).
+        value: Text to store (truncated to _MAX_DIAGNOSIS_LENGTH).
     """
-    text = diagnosis_text[:_MAX_DIAGNOSIS_LENGTH]
+    text = value[:_MAX_DIAGNOSIS_LENGTH]
 
     db = SessionLocal()
     try:
@@ -429,7 +466,7 @@ def _store_diagnosis_text(
             .first()
         )
         if db_session is not None:
-            db_session.diagnosis_text = text
+            setattr(db_session, field_name, text)
             db.commit()
     except Exception:
         db.rollback()
@@ -459,7 +496,9 @@ async def generate_diagnosis(
     sent and the stream closes immediately.
     """
     # --- pre-flight checks (run before entering the stream generator) ---
-    parsed_summary, existing_diagnosis = _get_session_data(session_id, db)
+    session_data = _get_session_data(session_id, db)
+    parsed_summary = session_data.parsed_summary
+    existing_diagnosis = session_data.diagnosis_text
 
     if existing_diagnosis and not force:
         async def _cached_stream():
@@ -508,7 +547,7 @@ async def generate_diagnosis(
                 yield _sse_event("token", token)
 
             full_text = "".join(full_text_parts)
-            _store_diagnosis_text(session_id, full_text)
+            _store_session_field(session_id, "diagnosis_text", full_text)
             logger.info("obd_diagnosis_generated", session_id=str(session_id))
             yield _sse_event("done", full_text)
 

@@ -16,10 +16,13 @@ interface AnalysisLayoutProps {
   data: LogSummaryV2;
   parsedSummary: ParsedSummary | null;
   diagnosisText: string | null;
+  premiumDiagnosisText: string | null;
+  premiumLlmEnabled: boolean;
 }
 
-export function AnalysisLayout({ sessionId, data, parsedSummary, diagnosisText: initialDiagnosisText }: AnalysisLayoutProps) {
+export function AnalysisLayout({ sessionId, data, parsedSummary, diagnosisText: initialDiagnosisText, premiumDiagnosisText: initialPremiumDiagnosisText, premiumLlmEnabled }: AnalysisLayoutProps) {
   const [diagnosisText, setDiagnosisText] = useState<string | null>(initialDiagnosisText);
+  const [premiumDiagnosisText, setPremiumDiagnosisText] = useState<string | null>(initialPremiumDiagnosisText);
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -73,8 +76,29 @@ export function AnalysisLayout({ sessionId, data, parsedSummary, diagnosisText: 
         </TabsContent>
 
         <TabsContent value="ai_diagnosis" forceMount className="space-y-6 data-[state=inactive]:hidden">
-          <AIDiagnosisView sessionId={sessionId} initialDiagnosisText={diagnosisText} onDiagnosisGenerated={setDiagnosisText} />
-          <FeedbackForm sessionId={sessionId} feedbackTab="ai_diagnosis" />
+          {premiumLlmEnabled ? (
+            <Tabs defaultValue="local">
+              <TabsList className="mb-4">
+                <TabsTrigger value="local">Local LLM</TabsTrigger>
+                <TabsTrigger value="premium">Premium LLM (Claude)</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="local" forceMount className="space-y-6 data-[state=inactive]:hidden">
+                <AIDiagnosisView sessionId={sessionId} initialDiagnosisText={diagnosisText} onDiagnosisGenerated={setDiagnosisText} provider="local" />
+                <FeedbackForm sessionId={sessionId} feedbackTab="ai_diagnosis" />
+              </TabsContent>
+
+              <TabsContent value="premium" forceMount className="space-y-6 data-[state=inactive]:hidden">
+                <AIDiagnosisView sessionId={sessionId} initialDiagnosisText={premiumDiagnosisText} onDiagnosisGenerated={setPremiumDiagnosisText} provider="premium" />
+                <FeedbackForm sessionId={sessionId} feedbackTab="premium_diagnosis" />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <>
+              <AIDiagnosisView sessionId={sessionId} initialDiagnosisText={diagnosisText} onDiagnosisGenerated={setDiagnosisText} provider="local" />
+              <FeedbackForm sessionId={sessionId} feedbackTab="ai_diagnosis" />
+            </>
+          )}
         </TabsContent>
       </Tabs>
     </div>

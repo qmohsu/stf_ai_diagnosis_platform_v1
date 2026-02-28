@@ -44,6 +44,15 @@ class Settings(BaseSettings):
     # Vision Configuration
     vision_model: str = os.getenv("VISION_MODEL", "llava")
 
+    # Premium LLM Configuration (Cloud API — opt-in)
+    premium_llm_enabled: bool = (
+        os.getenv("PREMIUM_LLM_ENABLED", "false").lower() == "true"
+    )
+    premium_llm_api_key: str = os.getenv("PREMIUM_LLM_API_KEY", "")
+    premium_llm_model: str = os.getenv(
+        "PREMIUM_LLM_MODEL", "claude-opus-4-6"
+    )
+
     # Weaviate Configuration
     weaviate_url: str = os.getenv("WEAVIATE_URL", "http://weaviate:8080")
     weaviate_api_key: Optional[str] = os.getenv("WEAVIATE_API_KEY")

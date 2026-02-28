@@ -270,6 +270,9 @@ app.include_router(parsed_summary_v2.router, prefix="/v2/tools", tags=["Tools v2
 from app.api.v2.endpoints import obd_analysis as obd_analysis_v2
 app.include_router(obd_analysis_v2.router, prefix="/v2/obd", tags=["OBD Analysis"])
 
+from app.api.v2.endpoints import obd_premium as obd_premium_v2
+app.include_router(obd_premium_v2.router, prefix="/v2/obd", tags=["OBD Premium"])
+
 
 @app.get("/v1/models", tags=["LLM"])
 async def list_models() -> Dict[str, str]:

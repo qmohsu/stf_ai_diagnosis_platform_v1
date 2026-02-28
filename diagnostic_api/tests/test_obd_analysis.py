@@ -204,6 +204,7 @@ class TestGetSessionEndpoint:
         mock_row.error_message = None
         mock_row.parsed_summary_payload = FAKE_PARSED_SUMMARY
         mock_row.diagnosis_text = None
+        mock_row.premium_diagnosis_text = None
         mock_db.query.return_value.filter.return_value.first.return_value = mock_row
 
         from app.api.deps import get_db
@@ -229,6 +230,7 @@ class TestGetSessionEndpoint:
         mock_row.error_message = None
         mock_row.parsed_summary_payload = FAKE_PARSED_SUMMARY
         mock_row.diagnosis_text = None
+        mock_row.premium_diagnosis_text = None
         mock_db.query.return_value.filter.return_value.first.return_value = mock_row
 
         from app.api.deps import get_db
@@ -257,7 +259,7 @@ class TestGetSessionEndpoint:
 class TestFeedbackEndpoints:
     """Tests for all three feedback tab endpoints."""
 
-    @pytest.mark.parametrize("tab", ["summary", "detailed", "rag", "ai_diagnosis"])
+    @pytest.mark.parametrize("tab", ["summary", "detailed", "rag", "ai_diagnosis", "premium_diagnosis"])
     def test_feedback_unknown_session_returns_404(self, tab, client, app_ref):
         from app.api.deps import get_db
         app_ref.dependency_overrides[get_db] = _mock_db_none

@@ -40,29 +40,19 @@ export async function retrieveRAG(
   return res.json();
 }
 
-/**
- * Stream AI diagnosis via SSE.
- *
- * @param onToken   Called for each incremental text chunk.
- * @param onDone    Called once with the full diagnosis text when generation completes.
- * @param onError   Called if the stream encounters an error.
- * @param onStatus  Called with status messages (e.g. "Initializing LLM...").
- */
-export async function streamDiagnosis(
-  sessionId: string,
-  onToken: (token: string) => void,
-  onDone: (fullText: string) => void,
-  onError: (error: string) => void,
-  onStatus?: (message: string) => void,
-  force?: boolean,
-): Promise<void> {
-  const url = force
-    ? `${API_URL}/v2/obd/${sessionId}/diagnose?force=true`
-    : `${API_URL}/v2/obd/${sessionId}/diagnose`;
-  const res = await fetch(url, {
-    method: "POST",
-    cache: "no-store",
-  });
+// ---------------------------------------------------------------------------
+// Shared SSE streaming helper
+// ---------------------------------------------------------------------------
+
+type SSECallbacks = {
+  onToken: (token: string) => void;
+  onDone: (fullText: string) => void;
+  onError: (error: string) => void;
+  onStatus?: (message: string) => void;
+};
+
+async function streamSSE(url: string, cb: SSECallbacks): Promise<void> {
+  const res = await fetch(url, { method: "POST", cache: "no-store" });
 
   if (!res.ok) {
     const detail = await res.json().catch(() => ({ detail: res.statusText }));
@@ -116,27 +106,68 @@ export async function streamDiagnosis(
 
       switch (event) {
         case "token":
-          onToken(parsed);
+          cb.onToken(parsed);
           break;
         case "cached":
         case "done":
-          onDone(parsed);
+          cb.onDone(parsed);
           break;
         case "error":
-          onError(parsed);
+          cb.onError(parsed);
           break;
         case "status":
-          onStatus?.(parsed);
+          cb.onStatus?.(parsed);
           break;
       }
     }
   }
 }
 
+/**
+ * Stream AI diagnosis via SSE.
+ *
+ * @param onToken   Called for each incremental text chunk.
+ * @param onDone    Called once with the full diagnosis text when generation completes.
+ * @param onError   Called if the stream encounters an error.
+ * @param onStatus  Called with status messages (e.g. "Initializing LLM...").
+ */
+export async function streamDiagnosis(
+  sessionId: string,
+  onToken: (token: string) => void,
+  onDone: (fullText: string) => void,
+  onError: (error: string) => void,
+  onStatus?: (message: string) => void,
+  force?: boolean,
+): Promise<void> {
+  const url = force
+    ? `${API_URL}/v2/obd/${sessionId}/diagnose?force=true`
+    : `${API_URL}/v2/obd/${sessionId}/diagnose`;
+  return streamSSE(url, { onToken, onDone, onError, onStatus });
+}
+
+/**
+ * Stream premium AI diagnosis via SSE (cloud LLM).
+ *
+ * Same interface as streamDiagnosis but hits the /premium endpoint.
+ */
+export async function streamPremiumDiagnosis(
+  sessionId: string,
+  onToken: (token: string) => void,
+  onDone: (fullText: string) => void,
+  onError: (error: string) => void,
+  onStatus?: (message: string) => void,
+  force?: boolean,
+): Promise<void> {
+  const url = force
+    ? `${API_URL}/v2/obd/${sessionId}/diagnose/premium?force=true`
+    : `${API_URL}/v2/obd/${sessionId}/diagnose/premium`;
+  return streamSSE(url, { onToken, onDone, onError, onStatus });
+}
+
 export async function submitFeedback(
   sessionId: string,
   feedback: OBDFeedbackRequest,
-  tab: "summary" | "detailed" | "rag" | "ai_diagnosis",
+  tab: "summary" | "detailed" | "rag" | "ai_diagnosis" | "premium_diagnosis",
 ): Promise<FeedbackResponse> {
   const res = await fetch(`${API_URL}/v2/obd/${sessionId}/feedback/${tab}`, {
     method: "POST",

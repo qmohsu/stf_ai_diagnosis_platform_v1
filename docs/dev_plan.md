@@ -1,4 +1,4 @@
-# Development Plan (v1.2 — OBD Expert Diagnostic Web UI)
+# Development Plan (v1.3 — Premium LLM Comparison)
 
 ## 1. Scope Boundary
 Scope boundary for this plan (so engineers don’t drift)
@@ -13,6 +13,7 @@ Scope boundary for this plan (so engineers don’t drift)
   diagnosis/maintenance suggestion tables).
 - Pilot OBD edge collector ("obd-agent") + OBD telemetry ingestion endpoints + Pass‑1 (OBD→subsystem+PID shortlist) mapping.
 - OBD Expert Diagnostic Web UI ("obd-ui") — Next.js frontend for experts to submit OBD logs, view analysis results across 4 tabs (Summary, Detailed, RAG, AI Diagnosis), and provide per-tab structured feedback. AI diagnosis powered by SSE streaming via `POST /v2/obd/{session_id}/diagnose`. Persisted analysis sessions via `/v2/obd/*` endpoints with DB-first persistence.
+- Premium LLM comparison — opt-in Anthropic Claude integration for side-by-side diagnosis quality comparison against local Ollama. AI Diagnosis tab contains Local LLM / Premium LLM sub-tabs with independent streaming and feedback. Gated by `PREMIUM_LLM_ENABLED` env var; the only internet-requiring feature.
 
 ### 1.2 Out of Scope (Phase 1)
 - Full Edge OBU hardware/software (real-time detection), mobile apps, fleet dashboard
@@ -35,7 +36,7 @@ Critical path dependency: DO‑01 → DO‑06 → (APP‑01 + APP‑02B + APP‑
 
 **Summarization Pipeline Path:** APP‑02B → APP‑13 → (APP‑14 + APP‑15) → APP‑16 → APP‑17.
 
-**OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence + feedback endpoints) → APP‑19 (frontend obd-ui) → APP‑20 (AI diagnosis SSE + RAG/AI feedback tables + DB-first session refactoring).
+**OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence + feedback endpoints) → APP‑19 (frontend obd-ui) → APP‑20 (AI diagnosis SSE + RAG/AI feedback tables + DB-first session refactoring) → APP‑21 (Premium LLM comparison).
 
 ### 2.3 Definition of Done (Applies to Every Ticket)
 A ticket is DONE only if:
@@ -1434,6 +1435,54 @@ No corrected_diagnosis field in any schema or table ✓
 Sessions persisted to DB immediately on analyze (no in-memory cache) ✓
 Duplicate input returns existing session via SHA-256 dedup ✓
 obd-ui renders 4 tabs with per-tab feedback ✓
+
+#### APP‑21 — Premium LLM (Claude) Diagnosis Comparison
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP‑20
+Status: **IN PROGRESS**
+
+PROMPT (task ticket):
+Title: APP‑21 Add opt-in premium LLM (Anthropic Claude) diagnosis with side-by-side comparison
+
+Context:
+Users want to compare local Ollama diagnosis against a premium cloud LLM (Claude Opus 4.6) to evaluate quality. This is the only feature that requires internet access and is disabled by default via feature flag.
+
+Task:
+This ticket adds a premium LLM diagnosis path alongside the existing local Ollama diagnosis:
+
+1) **PremiumLLMClient** — New `diagnostic_api/app/expert/premium_client.py` using Anthropic Python SDK (`AsyncAnthropic`) with streaming support. Reuses existing OBD diagnosis prompts (`OBD_DIAGNOSIS_SYSTEM_PROMPT`, `OBD_DIAGNOSIS_USER_TEMPLATE`).
+
+2) **Premium diagnose endpoint** — `POST /v2/obd/{session_id}/diagnose/premium` SSE endpoint mirroring the existing `/diagnose` pattern. Feature-gated: returns 403 when `PREMIUM_LLM_ENABLED=false`. Same SSE event format (token, done, cached, error, status).
+
+3) **DB schema changes** — `premium_diagnosis_text` column on `obd_analysis_sessions`; new `obd_premium_diagnosis_feedback` table (same mixin pattern as existing feedback tables).
+
+4) **Premium feedback endpoint** — `POST /v2/obd/{session_id}/feedback/premium_diagnosis` with diagnosis text snapshot.
+
+5) **Frontend sub-tabs** — AI Diagnosis tab split into “Local LLM” / “Premium LLM (Claude)” sub-tabs. `AIDiagnosisView` parameterized with `provider` prop to select stream function. Each sub-tab has independent streaming, caching, and feedback.
+
+6) **Configuration** — `PREMIUM_LLM_ENABLED`, `PREMIUM_LLM_API_KEY`, `PREMIUM_LLM_MODEL` env vars added to `config.py`, `.env.example`, and `docker-compose.yml`.
+
+Deliverables:
+
+New `diagnostic_api/app/expert/premium_client.py`
+Alembic migration for new column + table
+Updated `diagnostic_api/app/api/v2/endpoints/obd_analysis.py` (premium endpoint + feedback)
+Updated `diagnostic_api/app/models_db.py`, `schemas.py`, `config.py`
+Updated `obd-ui/src/components/AIDiagnosisView.tsx`, `AnalysisLayout.tsx`
+Updated `obd-ui/src/lib/api.ts`, `types.ts`
+Updated `infra/.env.example`, `infra/docker-compose.yml`
+Updated `docs/design_doc.md`, `docs/dev_plan.md`
+
+Acceptance Criteria:
+
+With `PREMIUM_LLM_ENABLED=false`, `POST /diagnose/premium` returns 403 ✓
+With flag enabled + valid API key, premium diagnosis streams via SSE ✓
+`premium_diagnosis_text` persisted to DB and returned in `GET /v2/obd/{session_id}` ✓
+AI Diagnosis tab shows Local LLM / Premium LLM sub-tabs ✓
+Both sub-tabs generate/stream/cache independently ✓
+Feedback submits to distinct endpoints per sub-tab ✓
+`npm run build` in obd-ui succeeds with no type errors ✓
 
 ### 3.3 Integration and Finalization Tickets
 #### INT‑01 — End-to-end demo script (“one command demo”)

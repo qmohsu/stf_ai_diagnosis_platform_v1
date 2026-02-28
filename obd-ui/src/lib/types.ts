@@ -96,6 +96,8 @@ export interface OBDAnalysisResponse {
   error_message: string | null;
   parsed_summary: ParsedSummary | null;
   diagnosis_text: string | null;
+  premium_diagnosis_text: string | null;
+  premium_llm_enabled: boolean;
 }
 
 export interface OBDFeedbackRequest {

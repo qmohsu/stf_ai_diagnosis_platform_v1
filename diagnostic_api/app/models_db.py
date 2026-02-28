@@ -129,6 +129,9 @@ class OBDAnalysisSession(Base):
     # AI diagnosis (free-form markdown from LLM)
     diagnosis_text = Column(Text, nullable=True)
 
+    # Premium AI diagnosis (cloud LLM, opt-in)
+    premium_diagnosis_text = Column(Text, nullable=True)
+
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
@@ -137,6 +140,7 @@ class OBDAnalysisSession(Base):
     detailed_feedback = relationship("OBDDetailedFeedback", back_populates="session", uselist=True)
     rag_feedback = relationship("OBDRAGFeedback", back_populates="session", uselist=True)
     ai_diagnosis_feedback = relationship("OBDAIDiagnosisFeedback", back_populates="session", uselist=True)
+    premium_diagnosis_feedback = relationship("OBDPremiumDiagnosisFeedback", back_populates="session", uselist=True)
 
 
 class _OBDFeedbackMixin:
@@ -201,3 +205,14 @@ class OBDAIDiagnosisFeedback(_OBDFeedbackMixin, Base):
     diagnosis_text = Column(Text, nullable=True)
 
     session = relationship("OBDAnalysisSession", back_populates="ai_diagnosis_feedback")
+
+
+class OBDPremiumDiagnosisFeedback(_OBDFeedbackMixin, Base):
+    """Expert feedback on OBD premium AI diagnosis view."""
+
+    __tablename__ = "obd_premium_diagnosis_feedback"
+
+    # Snapshot of the premium diagnosis text the user was rating
+    diagnosis_text = Column(Text, nullable=True)
+
+    session = relationship("OBDAnalysisSession", back_populates="premium_diagnosis_feedback")

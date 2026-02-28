@@ -139,6 +139,8 @@ class OBDAnalysisResponse(BaseModel):
     error_message: Optional[str] = None
     parsed_summary: Optional[dict] = None
     diagnosis_text: Optional[str] = None
+    premium_diagnosis_text: Optional[str] = None
+    premium_llm_enabled: bool = False
 
 
 class OBDSessionSummary(BaseModel):

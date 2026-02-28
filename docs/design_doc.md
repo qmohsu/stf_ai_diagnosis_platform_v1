@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v1.3 (AI Diagnosis + RAG tabs, DB-first sessions) |
+| **Status** | Draft v1.4 (Premium LLM comparison) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-02-15 |
+| **Last updated** | 2026-02-28 |
 | **Primary pilot stack** | Dify + (Ollama or vLLM OpenAI-compatible server) + diagnostic_api + vector store (Weaviate) |
-| **New in this revision** | DB-first session persistence (no in-memory cache); SHA-256 dedup on `/v2/obd/analyze`; 4 feedback tables (summary, detailed, RAG, AI diagnosis) replacing single `obd_analysis_feedback`; multiple feedback per session (up to 10 per tab); `POST /v2/obd/{session_id}/diagnose` SSE-streaming AI diagnosis via Ollama; RAG feedback snapshots retrieved text; AI diagnosis feedback snapshots diagnosis text; `corrected_diagnosis` column dropped; `raw_input_text`, `parsed_summary_payload`, `diagnosis_text` added to sessions table. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001; initial session persistence + single feedback endpoint; Docker integration for frontend service. |
+| **New in this revision** | Premium LLM (Anthropic Claude) comparison via opt-in `POST /v2/obd/{session_id}/diagnose/premium` SSE endpoint; `premium_diagnosis_text` column on sessions table; `obd_premium_diagnosis_feedback` table; AI Diagnosis tab split into Local LLM / Premium LLM sub-tabs; feature-gated by `PREMIUM_LLM_ENABLED` env var. Previous: DB-first session persistence (no in-memory cache); SHA-256 dedup on `/v2/obd/analyze`; 4 feedback tables (summary, detailed, RAG, AI diagnosis) replacing single `obd_analysis_feedback`; multiple feedback per session (up to 10 per tab); `POST /v2/obd/{session_id}/diagnose` SSE-streaming AI diagnosis via Ollama; RAG feedback snapshots retrieved text; AI diagnosis feedback snapshots diagnosis text; `corrected_diagnosis` column dropped; `raw_input_text`, `parsed_summary_payload`, `diagnosis_text` added to sessions table. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001; initial session persistence + single feedback endpoint; Docker integration for frontend service. |
 
 ## Related project deliverables (from proposal)
 •	Deliverable 1: Database establishment + preprocessing (1–18 months)
@@ -105,13 +105,17 @@ Your materials reference multiple taxonomies (8 system categories; 17-class; 33 
 •	Vector store: Weaviate (Dify default) for SOP/manual chunks and sanitized knowledge.
 •	Postgres/Redis: Dify stack and job queueing.
 •	OBD Agent (edge collector): a separate service/daemon (python‑OBD or equivalent) that reads ELM327 OBD‑II and posts sanitized OBDSnapshot telemetry to diagnostic_api.
-•	**OBD Expert Diagnostic Web UI (`obd-ui`)**: Next.js 15 (TypeScript, Tailwind CSS, shadcn/ui, recharts) on port 3001. Provides experts with a visual interface to submit OBD logs, view analysis results across four tabs (Summary, Detailed, RAG, AI Diagnosis), and submit structured feedback per tab (up to 10 submissions per tab per session). RAG tab displays retrieved context; AI Diagnosis tab streams results via SSE from Ollama. Communicates with diagnostic_api via `/v2/obd/*` endpoints. Runs as a standalone Docker service.
+•	**OBD Expert Diagnostic Web UI (`obd-ui`)**: Next.js 15 (TypeScript, Tailwind CSS, shadcn/ui, recharts) on port 3001. Provides experts with a visual interface to submit OBD logs, view analysis results across four tabs (Summary, Detailed, RAG, AI Diagnosis), and submit structured feedback per tab (up to 10 submissions per tab per session). RAG tab displays retrieved context; AI Diagnosis tab contains Local LLM / Premium LLM sub-tabs for side-by-side comparison — local streams via SSE from Ollama, premium streams via SSE from Anthropic Claude (opt-in). Communicates with diagnostic_api via `/v2/obd/*` endpoints. Runs as a standalone Docker service.
+•	**Premium LLM client (opt-in)**: `PremiumLLMClient` using Anthropic Python SDK for cloud-based diagnosis via Claude. Feature-gated (`PREMIUM_LLM_ENABLED=false` by default). The only component that requires internet access. Uses the same prompts and RAG context as the local Ollama client.
 ### 7.2 Deployment principle: local-first and interface invariants
 Interface invariants that must not change across phases:
 •	Dify (or later custom UI) calls the model through an OpenAI-compatible base URL.
 •	diagnostic_api schema stays stable; new fields are additive.
 •	Expert output JSON schema is versioned and backward compatible.
 •	RAG doc_id + section anchors are stable (no silent renumbering).
+
+**Exception — Premium LLM (opt-in internet access):**
+The premium LLM client is the sole exception to the local-only deployment rule. It is disabled by default (`PREMIUM_LLM_ENABLED=false`) and requires an explicit `PREMIUM_LLM_API_KEY`. When enabled, the diagnostic_api container must have outbound internet access to reach the Anthropic API. All other services remain strictly local.
 ### 7.3 Network flow (reference)
 Dify’s containerized deployment typically splits UI and API services and may include workers, a plugin daemon, a sandbox, and an SSRF proxy. The outbound allow-list should be enforced at the SSRF proxy and/or network layer to restrict calls to internal services only.
 
@@ -295,23 +299,32 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 - Returns the stored `LogSummaryV2` from JSONB
 
 **Endpoint:** `POST /v2/obd/{session_id}/diagnose`
-- **SSE-streaming AI diagnosis** powered by Ollama
+- **SSE-streaming AI diagnosis** powered by Ollama (local LLM)
 - Streams diagnostic text tokens to the client in real time via Server-Sent Events
 - Stores the final `diagnosis_text` on the session row upon completion
 - Returns 404 if session not found
 
+**Endpoint:** `POST /v2/obd/{session_id}/diagnose/premium`
+- **SSE-streaming AI diagnosis** via premium cloud LLM (Anthropic Claude)
+- Feature-gated: returns 403 if `PREMIUM_LLM_ENABLED=false`; returns 503 if API key is missing
+- Same SSE event format as `/diagnose` (token, done, cached, error, status)
+- Stores `premium_diagnosis_text` on the session row upon completion
+- Independent from local diagnosis — both can exist simultaneously on the same session
+- Uses the same prompts and RAG context as the local endpoint
+
 **Endpoint:** `POST /v2/obd/{session_id}/feedback/{feedback_type}`
-- `feedback_type` is one of: `summary`, `detailed`, `rag`, `ai_diagnosis`
+- `feedback_type` is one of: `summary`, `detailed`, `rag`, `ai_diagnosis`, `premium_diagnosis`
 - Accepts expert feedback: rating (1-5), is_helpful (bool), optional comments, plus type-specific fields (see table details below)
 - **Multiple feedback per session allowed** (up to 10 per feedback type per session); returns 429 when the cap is reached
 - Returns 404 if session not found
 
 **Database tables:**
-- `obd_analysis_sessions`: id (UUID PK), vehicle_id (indexed), status (indexed), input_text_hash (SHA-256, indexed, used for dedup), input_size_bytes, raw_input_text, parsed_summary_payload (JSONB), diagnosis_text, result_payload (JSONB), error_message, created_at, updated_at
+- `obd_analysis_sessions`: id (UUID PK), vehicle_id (indexed), status (indexed), input_text_hash (SHA-256, indexed, used for dedup), input_size_bytes, raw_input_text, parsed_summary_payload (JSONB), diagnosis_text, premium_diagnosis_text, result_payload (JSONB), error_message, created_at, updated_at
 - `obd_summary_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, extra_fields (JSONB), created_at
 - `obd_detailed_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, extra_fields (JSONB), created_at
 - `obd_rag_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, retrieved_text (snapshots the RAG-retrieved text at submission time), extra_fields (JSONB), created_at
 - `obd_ai_diagnosis_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, diagnosis_text (snapshots the AI diagnosis at submission time), extra_fields (JSONB), created_at
+- `obd_premium_diagnosis_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, diagnosis_text (snapshots the premium AI diagnosis at submission time), extra_fields (JSONB), created_at
 ## 9) diagnostic_api design (pilot interface contract)
 ### 9.1 Goals
 •	Stable interface for Dify HTTP Request node.

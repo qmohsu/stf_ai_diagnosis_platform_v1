@@ -22,6 +22,7 @@ weaviate-client==4.4.1
 
 # LLM Integration
 openai==1.10.0  # OpenAI-compatible client for Ollama
+anthropic==0.49.0  # Anthropic SDK for premium LLM (opt-in)
 httpx==0.26.0
 
 # Utilities
