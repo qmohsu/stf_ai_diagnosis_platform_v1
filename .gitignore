@@ -91,6 +91,12 @@ diagnostic_api/app/logs/
 *.sqlite
 *.sqlite3
 
+# Claude Code (local session data)
+.claude/
+
+# Next.js build cache
+.next/
+
 # OBD Agent
 obd_agent/.env
 obd_agent/venv/
