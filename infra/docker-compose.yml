@@ -149,14 +149,14 @@ services:
     #   timeout: 10s
     #   retries: 3
     #   start_period: 60s
-    # Uncomment for GPU support on Linux with NVIDIA
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
+    # GPU support (NVIDIA RTX 4080 Super)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
     # --------------------------------------------------------------------------
     # Dify API - Backend service for Dify workflow orchestration
@@ -397,6 +397,8 @@ services:
       ALLOW_EXTERNAL_APIS: ${DIAGNOSTIC_API_ALLOW_EXTERNAL_APIS:-false}
     volumes:
       - diagnostic_api_logs:/app/logs
+    # Note: easyocr runs on CPU (pip torch is CPU-only in slim image).
+    # For GPU OCR, switch to a CUDA base image and install torch+cu121.
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 10s

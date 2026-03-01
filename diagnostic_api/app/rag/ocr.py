@@ -71,9 +71,16 @@ def _get_reader() -> object:
     if _reader is None:
         import easyocr  # type: ignore[import-untyped]
 
+        import torch
+
+        use_gpu = torch.cuda.is_available()
         _reader = easyocr.Reader(
             ["ch_tra", "en"],
-            gpu=False,
+            gpu=use_gpu,
+        )
+        logger.info(
+            "ocr.gpu_status",
+            gpu_available=use_gpu,
         )
         logger.info("ocr.reader_initialized")
     return _reader
@@ -98,11 +105,16 @@ def ocr_image_bytes(
         return []
 
     reader = _get_reader()
+    # easyocr accepts bytes, numpy arrays, or file paths — not PIL
+    # Image objects.  Convert to numpy via PIL for reliable decoding.
+    import numpy as np
+
     img = Image.open(io.BytesIO(image_bytes))
+    img_array = np.array(img)
 
     try:
         results = reader.readtext(
-            img,
+            img_array,
             detail=detail,
             paragraph=False,
         )
