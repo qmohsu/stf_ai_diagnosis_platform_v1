@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v1.4 (Premium LLM comparison) |
+| **Status** | Draft v1.5 (PDF image parsing pipeline) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-02-28 |
+| **Last updated** | 2026-03-01 |
 | **Primary pilot stack** | Dify + (Ollama or vLLM OpenAI-compatible server) + diagnostic_api + vector store (Weaviate) |
-| **New in this revision** | Premium LLM (Anthropic Claude) comparison via opt-in `POST /v2/obd/{session_id}/diagnose/premium` SSE endpoint; `premium_diagnosis_text` column on sessions table; `obd_premium_diagnosis_feedback` table; AI Diagnosis tab split into Local LLM / Premium LLM sub-tabs; feature-gated by `PREMIUM_LLM_ENABLED` env var. Previous: DB-first session persistence (no in-memory cache); SHA-256 dedup on `/v2/obd/analyze`; 4 feedback tables (summary, detailed, RAG, AI diagnosis) replacing single `obd_analysis_feedback`; multiple feedback per session (up to 10 per tab); `POST /v2/obd/{session_id}/diagnose` SSE-streaming AI diagnosis via Ollama; RAG feedback snapshots retrieved text; AI diagnosis feedback snapshots diagnosis text; `corrected_diagnosis` column dropped; `raw_input_text`, `parsed_summary_payload`, `diagnosis_text` added to sessions table. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001; initial session persistence + single feedback endpoint; Docker integration for frontend service. |
+| **New in this revision** | PDF image parsing pipeline for RAG: OCR module (easyocr, CJK+English) for extracting text from PDF images (part numbers, torque specs, dimensions); full-page rendering at 150 DPI; vision model health check (`check_model_ready`); image-marker-aware chunking with atomic blocks (`[Image N, Page M]`, `[OCR, Page M]`, `[Full Page, Page M]`); `has_image` metadata on chunks; `--enable-ocr` and `--enable-page-render` CLI flags on ingestion; pre-flight vision model check with graceful fallback. Previous: Premium LLM (Anthropic Claude) comparison via opt-in `POST /v2/obd/{session_id}/diagnose/premium` SSE endpoint; `premium_diagnosis_text` column on sessions table; `obd_premium_diagnosis_feedback` table; AI Diagnosis tab split into Local LLM / Premium LLM sub-tabs; feature-gated by `PREMIUM_LLM_ENABLED` env var. Previous: DB-first session persistence (no in-memory cache); SHA-256 dedup on `/v2/obd/analyze`; 4 feedback tables (summary, detailed, RAG, AI diagnosis) replacing single `obd_analysis_feedback`; multiple feedback per session (up to 10 per tab); `POST /v2/obd/{session_id}/diagnose` SSE-streaming AI diagnosis via Ollama; RAG feedback snapshots retrieved text; AI diagnosis feedback snapshots diagnosis text; `corrected_diagnosis` column dropped; `raw_input_text`, `parsed_summary_payload`, `diagnosis_text` added to sessions table. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001; initial session persistence + single feedback endpoint; Docker integration for frontend service. |
 
 ## Related project deliverables (from proposal)
 •	Deliverable 1: Database establishment + preprocessing (1–18 months)
@@ -50,7 +50,7 @@ G5 — Phase-ready learning loop: Log pilot interactions so Phase 1.5/2 fine-tun
 •	Dify workflow and UI for technician Q&A (internal pilot).
 •	diagnostic_api (FastAPI) that wraps deep model inference + summary generation (LLM-safe).
 •	OBD Agent (edge collector) + OBDSnapshot telemetry ingestion + Pass‑1 (OBD→subsystem+PID shortlist) mapping.
-•	RAG knowledge ingestion into vector store (SOPs/manuals/checklists; curated excerpts of maintenance reports).
+•	RAG knowledge ingestion into vector store (SOPs/manuals/checklists; curated excerpts of maintenance reports). Includes PDF image parsing pipeline: OCR (easyocr, CJK+English) for text-in-image extraction, vision model descriptions, full-page rendering, and image-aware chunking.
 •	Strict JSON output contract with schema validation + citations per action.
 •	Observability: logs for each interaction (inputs, retrieved chunks, tool outputs, JSON validation, latency).
 •	Security baseline: local-only deployment, RBAC, network allow-listing for outbound calls.
@@ -102,7 +102,7 @@ Your materials reference multiple taxonomies (8 system categories; 17-class; 33 
 •	Model server (Phase 1): Ollama (OpenAI-compatible endpoints).
 •	Model server (Phase 1.5/2): tuned model served via vLLM/SGLang (OpenAI-compatible), or Ollama with adapters (if chosen).
 •	diagnostic_api: REST wrapper around deep diagnostic inference and LLM-safe summarization.
-•	Vector store: Weaviate (Dify default) for SOP/manual chunks and sanitized knowledge.
+•	Vector store: Weaviate (Dify default) for SOP/manual chunks and sanitized knowledge. Chunk metadata includes `has_image` flag and `metadata_json` for image-containing chunks.
 •	Postgres/Redis: Dify stack and job queueing.
 •	OBD Agent (edge collector): a separate service/daemon (python‑OBD or equivalent) that reads ELM327 OBD‑II and posts sanitized OBDSnapshot telemetry to diagnostic_api.
 •	**OBD Expert Diagnostic Web UI (`obd-ui`)**: Next.js 15 (TypeScript, Tailwind CSS, shadcn/ui, recharts) on port 3001. Provides experts with a visual interface to submit OBD logs, view analysis results across four tabs (Summary, Detailed, RAG, AI Diagnosis), and submit structured feedback per tab (up to 10 submissions per tab per session). RAG tab displays retrieved context; AI Diagnosis tab contains Local LLM / Premium LLM sub-tabs for side-by-side comparison — local streams via SSE from Ollama, premium streams via SSE from Anthropic Claude (opt-in). Communicates with diagnostic_api via `/v2/obd/*` endpoints. Runs as a standalone Docker service.
@@ -112,7 +112,7 @@ Interface invariants that must not change across phases:
 •	Dify (or later custom UI) calls the model through an OpenAI-compatible base URL.
 •	diagnostic_api schema stays stable; new fields are additive.
 •	Expert output JSON schema is versioned and backward compatible.
-•	RAG doc_id + section anchors are stable (no silent renumbering).
+•	RAG doc_id + section anchors are stable (no silent renumbering). Image markers (`[Image N, Page M]`, `[OCR, Page M]`, `[Full Page, Page M]`) are stable inline references within section bodies.
 
 **Exception — Premium LLM (opt-in internet access):**
 The premium LLM client is the sole exception to the local-only deployment rule. It is disabled by default (`PREMIUM_LLM_ENABLED=false`) and requires an explicit `PREMIUM_LLM_API_KEY`. When enabled, the diagnostic_api container must have outbound internet access to reach the Anthropic API. All other services remain strictly local.
@@ -445,6 +445,31 @@ The assistant must output strict JSON with these fields (schema versioned):
 •	Internal fault label mapping guidelines (taxonomy mapping).
 •	Sanitized historical maintenance report excerpts (text-only).
 •	Do not ingest raw sensor streams into the RAG store.
+
+#### 10.3.1 PDF image parsing pipeline
+
+Real-world service manual PDFs contain critical diagnostic information embedded in images (exploded-part diagrams, torque specification tables, tool catalogs, procedure illustrations) that is invisible to the PDF text layer. The RAG ingestion pipeline includes an optional multi-stage image parsing pipeline to extract this information:
+
+**Pipeline stages (per page with images):**
+1. **Individual image extraction** — PyMuPDF extracts embedded images, filtering by minimum dimensions (50x50 px) and byte size (5 KB) to skip icons and decorative elements.
+2. **OCR on images** (`--enable-ocr`) — easyocr (Traditional Chinese `ch_tra` + English, CPU-only) extracts text from each image. Results are categorised into structured fields: part numbers (`\d{5}-[A-Z0-9]{5,7}`), torque values (`N·m`, `kgf·m`, `lb·ft`), and dimensions (`mm`, `cm`). A token-overlap deduplication step (80% threshold, CJK-aware) skips OCR text already present in the PDF text layer. Non-redundant results are inserted as `[OCR, Page M]` blocks.
+3. **Vision model description** (`--describe-images`) — Images are sent (with OCR text as context) to the local Ollama vision model (llava) for spatial/procedural descriptions, inserted as `[Image N, Page M]` blocks. An injection fence prevents the vision model from following instructions found in page text.
+4. **Full-page rendering** (`--enable-page-render`) — Entire pages are rendered at 150 DPI (~0.8 MB/page) and processed through OCR and/or vision for spatial context that individual image extraction misses. Results are inserted as `[Full Page, Page M]` blocks.
+
+**Merge order per page:** text layer → OCR blocks → image descriptions → full-page description.
+
+**Image-aware chunking:** The chunker treats image blocks (marker line + description) as atomic units that are never split mid-description. The `has_image` field on `ChunkedSection` propagates to `metadata_json` in Weaviate, enabling image-aware retrieval filtering.
+
+**Vision model pre-flight:** Before processing any PDFs, the ingestion pipeline verifies the vision model is available via the Ollama `/api/tags` endpoint. If unavailable, image description is disabled gracefully and ingestion proceeds with text-only extraction.
+
+**Modules:**
+| Module | Role |
+|--------|------|
+| `app/rag/ocr.py` | easyocr wrapper with structured extraction + CJK-aware overlap dedup |
+| `app/rag/pdf_parser.py` | `render_page_image()`, `has_tables_on_page()`, extended `extract_pdf_sections_async()` |
+| `app/rag/vision.py` | `check_model_ready()` health check, image description via Ollama |
+| `app/rag/chunker.py` | Image-marker atomic blocks, `has_image` field on `ChunkedSection` |
+| `app/rag/ingest.py` | Pre-flight vision check, `--enable-ocr` / `--enable-page-render` CLI flags |
 ### 10.4 Workflow ('golden workflow')
 1.	Start: inputs = vehicle_id, question, optional time_range.
 2.	HTTP Request → diagnostic_api /v1/vehicle/diagnose (server may auto-attach latest OBDSnapshot-derived Pass‑1 summary if dtc_codes are missing).
@@ -536,7 +561,7 @@ Honor the project’s privacy posture: restricted access, locked storage, define
 ### 16.1 Repo layout (recommended)
 •	/infra/ (docker compose, env templates, network policy)
 •	/diagnostic_api/ (FastAPI app + schemas)
-•	/rag/ (ingestion scripts, chunking config, doc registry)
+•	/rag/ (ingestion scripts, chunking config, doc registry, OCR module, PDF image parsing)
 •	/expert_model/ (prompts, JSON schemas, validators)
 •	/training/ (dataset builder, LlamaFactory configs, LoRA scripts)
 •	/eval/ (offline eval harness, regression suite)
@@ -552,7 +577,7 @@ Honor the project’s privacy posture: restricted access, locked storage, define
 | M1 | Dify workflow works with stub backend; schema validation + citations checks wired |
 | M2 | diagnostic_api integrated with real diagnostic outputs (LLM-safe summaries) |
 | M2.1 | OBD Agent posts snapshots; diagnostic_api stores OBDSnapshot + exposes latest lookup; Pass‑1 mapper returns subsystem+PID shortlist |
-| M3 | RAG ingestion complete; doc_id/section anchors stable; citation coverage passes |
+| M3 | RAG ingestion complete; doc_id/section anchors stable; citation coverage passes. Text extraction done (APP‑03, 2026-02-28); PDF image parsing done (APP‑22, 2026-03-01): OCR + vision + page render + image-aware chunking. |
 | M4 | Phase 1 pilot run + SME evaluation; logging pipeline producing case packages |
 | M5 | Phase 1.5: LoRA/SFT via LlamaFactory + offline regression suite; deploy tuned model behind OpenAI endpoint |
 | M5.1 | OBD Expert Diagnostic Web UI: obd-ui serves on :3001; `/v2/obd/*` endpoints persist sessions + collect feedback; Docker service integrated |

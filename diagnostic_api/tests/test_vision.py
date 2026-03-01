@@ -225,3 +225,102 @@ class TestVisionService:
         await service.close()
 
         mock_client.aclose.assert_called_once()
+
+
+class TestVisionHealthCheck:
+    """Tests for VisionService.check_model_ready()."""
+
+    @pytest.fixture
+    def service(self):
+        """Create a VisionService with mocked settings."""
+        with patch("app.rag.vision.settings") as mock_s:
+            mock_s.llm_endpoint = "http://test:11434"
+            mock_s.vision_model = "llava"
+            svc = VisionService()
+        return svc
+
+    def _inject_mock_client(self, service, mock_client):
+        """Set a mock httpx client on the service."""
+        mock_client.is_closed = False
+        service._client = mock_client
+
+    @pytest.mark.asyncio
+    async def test_model_found(self, service):
+        """Returns True when model appears in tags list."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "models": [
+                {"name": "llava:latest"},
+                {"name": "llama3:8b"},
+            ],
+        }
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(
+            return_value=mock_response,
+        )
+        self._inject_mock_client(service, mock_client)
+
+        assert await service.check_model_ready() is True
+
+    @pytest.mark.asyncio
+    async def test_model_not_found(self, service):
+        """Returns False when model is not in tags list."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "models": [
+                {"name": "llama3:8b"},
+            ],
+        }
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(
+            return_value=mock_response,
+        )
+        self._inject_mock_client(service, mock_client)
+
+        assert await service.check_model_ready() is False
+
+    @pytest.mark.asyncio
+    async def test_empty_model_list(self, service):
+        """Returns False when Ollama has no models."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"models": []}
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(
+            return_value=mock_response,
+        )
+        self._inject_mock_client(service, mock_client)
+
+        assert await service.check_model_ready() is False
+
+    @pytest.mark.asyncio
+    async def test_connection_error(self, service):
+        """Returns False on connection failure."""
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(
+            side_effect=httpx.ConnectError(
+                "Connection refused",
+            ),
+        )
+        self._inject_mock_client(service, mock_client)
+
+        assert await service.check_model_ready() is False
+
+    @pytest.mark.asyncio
+    async def test_timeout_error(self, service):
+        """Returns False on timeout."""
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(
+            side_effect=httpx.TimeoutException("timed out"),
+        )
+        self._inject_mock_client(service, mock_client)
+
+        assert await service.check_model_ready() is False

@@ -5,14 +5,42 @@ Splits documents on markdown headings, extracts DTC codes and vehicle models.
 
 import re
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from pydantic import BaseModel
 
 # Regex patterns
 DTC_PATTERN = re.compile(r"\b[PBCU]\d{4}\b")
-VEHICLE_MODEL_PATTERN = re.compile(r"\bSTF[-\s]?\d{3,4}\b", re.IGNORECASE)
 HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+)$", re.MULTILINE)
+
+# Vehicle model patterns: (compiled regex, normalization format).
+# Format placeholders: {raw} = matched text as-is,
+#                      {digits} = first digit group extracted.
+# Evaluated in order; first match wins.
+VEHICLE_MODEL_PATTERNS: List[Tuple[re.Pattern, str]] = [
+    (
+        re.compile(r"\bSTF[-\s]?\d{3,4}\b", re.IGNORECASE),
+        "STF-{digits}",
+    ),
+    (
+        re.compile(
+            r"\bMWS[-\s]?\d{2,4}[-\s]?[A-Z]?\b", re.IGNORECASE,
+        ),
+        "{raw}",
+    ),
+    (
+        re.compile(r"\bTRICITY\s*\d{2,3}\b", re.IGNORECASE),
+        "{raw}",
+    ),
+    (
+        re.compile(r"\bNMAX\s*\d{2,3}\b", re.IGNORECASE),
+        "{raw}",
+    ),
+    (
+        re.compile(r"\bXMAX\s*\d{2,3}\b", re.IGNORECASE),
+        "{raw}",
+    ),
+]
 
 
 class Section(BaseModel):
@@ -31,13 +59,28 @@ def _extract_dtc_codes(text: str) -> List[str]:
 
 
 def _extract_vehicle_model(text: str) -> str:
-    """Extract vehicle model (STF-NNN pattern) from text."""
-    match = VEHICLE_MODEL_PATTERN.search(text)
-    if match:
-        # Normalize to "STF-NNNN" format
-        raw = match.group()
-        digits = re.search(r"\d{3,4}", raw).group()
-        return f"STF-{digits}"
+    """Extract and normalize a vehicle model identifier from text.
+
+    Tries each pattern in ``VEHICLE_MODEL_PATTERNS`` in order and
+    returns the first match, normalized according to its format
+    string.  Returns ``"Generic"`` if no pattern matches.
+
+    Args:
+        text: Text to search (may include filename, section body,
+            or title).
+
+    Returns:
+        Normalized vehicle model string, or ``"Generic"``.
+    """
+    for pattern, fmt in VEHICLE_MODEL_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            raw = match.group().strip()
+            # Normalize whitespace/dashes
+            raw = re.sub(r"[-\s]+", "-", raw).upper()
+            digits_match = re.search(r"\d{2,4}", raw)
+            digits = digits_match.group() if digits_match else ""
+            return fmt.format(raw=raw, digits=digits)
     return "Generic"
 
 

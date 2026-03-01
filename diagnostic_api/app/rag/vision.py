@@ -82,6 +82,50 @@ class VisionService:
         if self._client is not None and not self._client.is_closed:
             await self._client.aclose()
 
+    async def check_model_ready(self) -> bool:
+        """Verify the vision model is available in Ollama.
+
+        Sends a lightweight GET to the Ollama ``/api/tags``
+        endpoint and checks whether ``self.model`` appears in
+        the list of locally available models.
+
+        Returns:
+            ``True`` if the model is pulled and ready,
+            ``False`` otherwise (logs an error with the
+            available model names).
+        """
+        client = await self._get_client()
+        try:
+            response = await client.get(
+                f"{self.base_url}/api/tags",
+                timeout=10.0,
+            )
+            response.raise_for_status()
+            models = response.json().get("models", [])
+            names = [m.get("name", "") for m in models]
+            # Match with or without tag suffix
+            ready = any(
+                self.model in name for name in names
+            )
+            if not ready:
+                logger.error(
+                    "vision_service.model_not_found",
+                    model=self.model,
+                    available=names,
+                )
+            else:
+                logger.info(
+                    "vision_service.model_ready",
+                    model=self.model,
+                )
+            return ready
+        except Exception as exc:
+            logger.error(
+                "vision_service.health_check_failed",
+                error=str(exc),
+            )
+            return False
+
     async def describe_image(
         self,
         image_bytes: bytes,

@@ -1,4 +1,4 @@
-# Development Plan (v1.3 — Premium LLM Comparison)
+# Development Plan (v1.4 — PDF Image Parsing Pipeline)
 
 ## 1. Scope Boundary
 Scope boundary for this plan (so engineers don’t drift)
@@ -7,7 +7,8 @@ Scope boundary for this plan (so engineers don’t drift)
 - Cloud diagnosis API + cloud workflow ("Step 5: specific fault type classified
   by cloud model upon request").
 - RAG knowledge base for vehicle manuals + maintenance logs used to ground
-  recommendations.
+  recommendations. Includes PDF image parsing pipeline: OCR (easyocr, CJK+English),
+  vision model descriptions, full-page rendering, and image-aware chunking.
 - Local LLM inference (Ollama/vLLM) + Dify workflow orchestration.
 - Storage of diagnostic records (PostgreSQL recommended; includes user/vehicle/
   diagnosis/maintenance suggestion tables).
@@ -37,6 +38,8 @@ Critical path dependency: DO‑01 → DO‑06 → (APP‑01 + APP‑02B + APP‑
 **Summarization Pipeline Path:** APP‑02B → APP‑13 → (APP‑14 + APP‑15) → APP‑16 → APP‑17.
 
 **OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence + feedback endpoints) → APP‑19 (frontend obd-ui) → APP‑20 (AI diagnosis SSE + RAG/AI feedback tables + DB-first session refactoring) → APP‑21 (Premium LLM comparison).
+
+**RAG Image Parsing Path:** APP‑03 → APP‑22 (PDF image parsing: OCR + vision + page render + image-aware chunking).
 
 ### 2.3 Definition of Done (Applies to Every Ticket)
 A ticket is DONE only if:
@@ -571,6 +574,7 @@ Given a P03xx code and supported_pids, the mapper returns ignition/misfire as to
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: DO‑01 (Weaviate running), DO‑03 (embeddings available)
+Status: **DONE** (2026-02-28) — Font-based PDF heading detection, CJK chunking with jieba, generalized vehicle model patterns. Extended by APP‑22 (PDF image parsing).
 
  
 
@@ -630,6 +634,12 @@ Running ingestion against sample docs produces objects in Weaviate
 Re-running ingestion is idempotent (doesn’t duplicate chunks)
 
 A basic query can retrieve relevant chunks
+
+PDF ingestion uses font-based heading detection (not markdown) for real-world manual PDFs ✓
+
+CJK chunking uses jieba segmentation for Chinese text ✓
+
+Generalized vehicle model patterns detect STF, MWS, TRICITY, NMAX, XMAX families ✓
 
 If you think Weaviate is the wrong choice:
 Write an ADR proposing Qdrant/pgvector/etc with justification (latency, ops simplicity, offline constraints).
@@ -1484,6 +1494,79 @@ Both sub-tabs generate/stream/cache independently ✓
 Feedback submits to distinct endpoints per sub-tab ✓
 `npm run build` in obd-ui succeeds with no type errors ✓
 
+#### APP‑22 — PDF Image Parsing Pipeline for RAG
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP‑03
+Status: **DONE** (2026-03-01)
+
+PROMPT (task ticket):
+Title: APP‑22 Add PDF image parsing pipeline (OCR + vision + page render + image-aware chunking)
+
+Context:
+Real-world service manual PDFs (e.g., Yamaha MWS150-A) contain 130+ images across 57 pages carrying critical diagnostic information invisible to the PDF text layer: exploded-part diagrams with callout numbers, torque specification tables, tool catalogs with part numbers/dimensions, and procedure illustrations. 86% of image pages also contain tables, and 79% have torque specs only inside images.
+
+Task:
+Implement a multi-stage PDF image parsing pipeline that integrates with the existing RAG ingestion flow:
+
+1) **New OCR module** (`app/rag/ocr.py`) — easyocr wrapper (Traditional Chinese `ch_tra` + English, GPU disabled for local deployment):
+   - `_get_reader()` — lazy singleton (avoids 2-5s startup on each call)
+   - `ocr_image_bytes(image_bytes)` — raw OCR with confidence filtering (>0.3)
+   - `ocr_extract_structured(image_bytes)` — categorised results: part numbers (`\d{5}-[A-Z0-9]{5,7}`), torque values (`N·m`, `kgf·m`, `lb·ft`), dimensions (`mm`, `cm`)
+   - `compute_text_overlap(ocr_text, page_text)` — CJK-aware token overlap dedup (80% threshold); individual CJK character tokenisation to handle whitespace differences between OCR and PDF text layers
+
+2) **PDF parser extensions** (`app/rag/pdf_parser.py`):
+   - `render_page_image(page, dpi=150)` — full-page PNG rendering via PyMuPDF pixmap
+   - `has_tables_on_page(page)` — `find_tables()` with heuristic fallback (left-edge x-position counting)
+   - Extended `extract_pdf_sections_async()` with `enable_ocr` and `enable_page_render` flags
+   - `_build_page_to_section_map()` — maps pages to their parent sections for correct enrichment
+   - Per-page processing: individual image OCR → vision descriptions → full-page render (OCR + vision)
+
+3) **Vision health check** (`app/rag/vision.py`):
+   - `check_model_ready()` — GET `/api/tags`, verify model name in list, 10s timeout, graceful fallback
+
+4) **Image-aware chunking** (`app/rag/chunker.py`):
+   - `_IMAGE_MARKER` regex: `[Image N, Page M]`, `[OCR, Page M]`, `[Full Page, Page M]`
+   - `_merge_image_blocks()` — merges marker paragraph with ONE following description paragraph (atomic unit)
+   - `has_image: bool` field on `ChunkedSection` — set when chunk contains image/OCR markers
+   - Oversized image blocks get their own chunk (never split mid-description)
+
+5) **Ingestion pipeline** (`app/rag/ingest.py`):
+   - `_preflight_vision_check()` — async pre-flight, falls back to `describe_images=False` if model unavailable
+   - `--enable-ocr` and `--enable-page-render` CLI arguments
+   - `has_image` in `metadata_json` for Weaviate (backward-compatible, no schema changes)
+
+6) **Dependencies** (`requirements.txt`):
+   - Added `easyocr>=1.7.0` for OCR, `Pillow==12.1.0` for image processing
+
+Deliverables:
+
+New `diagnostic_api/app/rag/ocr.py`
+New `diagnostic_api/tests/test_ocr.py` (19 tests)
+New `diagnostic_api/tests/test_page_render.py` (16 tests)
+New `diagnostic_api/tests/test_pdf_sections.py` (12 tests incl. 5 async OCR integration)
+Updated `diagnostic_api/app/rag/pdf_parser.py` (+780 lines)
+Updated `diagnostic_api/app/rag/vision.py` (+44 lines)
+Updated `diagnostic_api/app/rag/chunker.py` (+298 lines)
+Updated `diagnostic_api/app/rag/ingest.py` (+85 lines)
+Updated `diagnostic_api/requirements.txt` (+6 lines)
+Updated `diagnostic_api/tests/test_vision.py` (+99 lines)
+Updated `infra/test_chunker.py` (+319 lines)
+
+Acceptance Criteria:
+
+Full test suite passes: 223/223 tests ✓
+OCR extracts structured data (part numbers, torque, dimensions) from images ✓
+OCR dedup skips text already in PDF text layer (CJK-aware) ✓
+Vision model health check detects available/missing models ✓
+Full-page render produces PNG at configurable DPI ✓
+Table detection works via `find_tables()` + heuristic fallback ✓
+Image marker blocks treated as atomic units by chunker ✓
+`has_image` metadata propagates to Weaviate chunks ✓
+Pre-flight vision check gracefully falls back when model unavailable ✓
+All error paths caught and logged (no silent failures) ✓
+No security issues (injection fence on vision context, no raw PII) ✓
+
 ### 3.3 Integration and Finalization Tickets
 #### INT‑01 — End-to-end demo script (“one command demo”)
 
@@ -1610,3 +1693,10 @@ The design doc (design_doc.md) is now present and should be treated as the autho
 I based this plan on the repo overview + your application/presentation materials describing the cloud diagnosis flow, inputs (manuals/logs), and the "Step 5" on-demand classification requirement.
 
 If you want, I can also convert these into a ready-to-import backlog format (CSV for Jira / GitHub Issues) — but the content above is already written as copy/paste ticket prompts.
+
+### Changelog
+
+| Date | Version | Changes |
+|------|---------|---------|
+| 2026-03-01 | v1.4 | Added APP‑22 (PDF image parsing pipeline: OCR, vision, page render, image-aware chunking). Updated APP‑03 status to DONE. Added RAG Image Parsing Path to critical path. Updated scope to include PDF image parsing. |
+| 2026-02-28 | v1.3 | Added APP‑21 (Premium LLM comparison). |

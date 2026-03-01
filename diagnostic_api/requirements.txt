@@ -40,6 +40,12 @@ phonenumbers==8.13.28
 # TODO(3): Pin PyMuPDF to exact version for reproducibility (e.g., PyMuPDF==1.24.0)
 PyMuPDF>=1.24.0
 
+# CJK Text Processing (Chinese word segmentation for RAG chunker)
+jieba>=0.42.1
+
+# OCR (CJK + English text extraction from PDF images)
+easyocr>=1.7.0
+
 # Image Processing (used by vision service for resizing before LLM inference)
 Pillow==12.1.0
 

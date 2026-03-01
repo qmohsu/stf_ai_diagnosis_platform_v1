@@ -8,6 +8,7 @@ Usage:
     python -m app.rag.ingest --dir /app/data
     python -m app.rag.ingest --dir /app/data --force-recreate
     python -m app.rag.ingest --dir /app/data --chunk-size 600 --overlap 80
+    python -m app.rag.ingest --dir /app/data --enable-ocr --enable-page-render
 """
 
 import argparse
@@ -55,12 +56,40 @@ def _chunk_exists(collection, checksum: str) -> bool:
         return False
 
 
+async def _preflight_vision_check() -> bool:
+    """Verify the Ollama vision model is available.
+
+    Returns:
+        ``True`` if the vision model is ready, ``False`` otherwise.
+        When ``False``, image description should be disabled to
+        avoid failed API calls during ingestion.
+    """
+    try:
+        from app.rag.vision import get_vision_service
+        vision_svc = get_vision_service()
+        ready = await vision_svc.check_model_ready()
+        if not ready:
+            logger.warning(
+                "ingest.vision_model_not_ready",
+                msg="Falling back to describe_images=False",
+            )
+        return ready
+    except Exception as exc:
+        logger.warning(
+            "ingest.vision_preflight_error",
+            error=str(exc),
+        )
+        return False
+
+
 async def process_file(
     file_path: Path,
     client,
     chunker: Chunker,
     *,
     describe_images: bool = True,
+    enable_ocr: bool = False,
+    enable_page_render: bool = False,
 ) -> dict:
     """Process a single file: parse -> chunk -> embed -> insert.
 
@@ -69,21 +98,14 @@ async def process_file(
         client: Weaviate client.
         chunker: Chunker instance.
         describe_images: If True, use vision model to describe PDF images.
+        enable_ocr: If True, run OCR on PDF images to extract text.
+        enable_page_render: If True, render full PDF pages as images.
 
     Returns:
         Dict with inserted and skipped counts.
     """
     log = logger.bind(file=file_path.name)
     log.info("ingest.processing_file")
-
-    # Handle PDF files differently
-    if file_path.suffix.lower() == ".pdf":
-        from .pdf_parser import extract_text_from_pdf_async
-        text = await extract_text_from_pdf_async(
-            file_path, describe_images=describe_images,
-        )
-    else:
-        text = file_path.read_text(encoding="utf-8")
 
     doc_id = file_path.stem
 
@@ -96,8 +118,20 @@ async def process_file(
     else:
         source_type = "other"
 
-    # Parse into sections
-    sections = parse_document(text, file_path.name)
+    # Parse into sections — PDFs use font-based structured extraction;
+    # text/markdown files use the original markdown heading parser.
+    if file_path.suffix.lower() == ".pdf":
+        from .pdf_parser import extract_pdf_sections_async
+        sections = await extract_pdf_sections_async(
+            file_path,
+            filename=file_path.name,
+            describe_images=describe_images,
+            enable_ocr=enable_ocr,
+            enable_page_render=enable_page_render,
+        )
+    else:
+        text = file_path.read_text(encoding="utf-8")
+        sections = parse_document(text, file_path.name)
     log.info("ingest.parsed", section_count=len(sections))
 
     # Chunk sections
@@ -129,6 +163,7 @@ async def process_file(
         # Build metadata JSON for extra flexibility
         meta = {
             "dtc_codes": chunk.dtc_codes,
+            "has_image": chunk.has_image,
         }
 
         try:
@@ -186,6 +221,16 @@ async def main():
         action="store_true",
         help="Disable vision model image description for PDFs.",
     )
+    parser.add_argument(
+        "--enable-ocr",
+        action="store_true",
+        help="Run OCR on PDF images to extract text (part numbers, torque, etc.).",
+    )
+    parser.add_argument(
+        "--enable-page-render",
+        action="store_true",
+        help="Render full PDF pages as images for OCR/vision processing.",
+    )
     args = parser.parse_args()
 
     data_dir = Path(args.dir)
@@ -219,11 +264,27 @@ async def main():
 
     describe_images = not args.no_describe_images
 
+    # Pre-flight: verify vision model is available before processing
+    if describe_images:
+        vision_ready = await _preflight_vision_check()
+        if not vision_ready:
+            describe_images = False
+            logger.warning(
+                "ingest.vision_disabled",
+                msg="Vision model unavailable, proceeding without "
+                    "image descriptions.",
+            )
+
     # TODO(15): Process files concurrently with bounded parallelism
     # (asyncio.Semaphore) instead of sequentially.
     for file_path in files:
         stats = await process_file(
-            file_path, client, chunker, describe_images=describe_images,
+            file_path,
+            client,
+            chunker,
+            describe_images=describe_images,
+            enable_ocr=args.enable_ocr,
+            enable_page_render=args.enable_page_render,
         )
         total_inserted += stats["inserted"]
         total_skipped += stats["skipped"]
