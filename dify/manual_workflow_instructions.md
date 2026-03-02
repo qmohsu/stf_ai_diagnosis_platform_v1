@@ -115,7 +115,7 @@ In the Workflow Editor, replicate this flow:
     - `context` (String)
 
 ### Node E: LLM (Expert)
-- **Model**: `qwen3.5:35b-a3b` (via Ollama)
+- **Model**: `qwen3.5:27b` (via Ollama)
 - **Prompt**:
     ```text
     You are an expert diagnostic technician.

@@ -205,7 +205,7 @@ make logs
 ### 5. Pull Ollama Model
 
 ```bash
-# Pull the default model (qwen3.5:35b-a3b)
+# Pull the default model (qwen3.5:27b)
 # This may take 10-30 minutes depending on your connection
 make ollama-pull
 
@@ -253,8 +253,8 @@ APP_DB_PASSWORD=<set-strong-password>
 #### Ollama Configuration
 ```bash
 OLLAMA_VERSION=0.1.26
-OLLAMA_DEFAULT_MODEL=qwen3.5:35b-a3b
-# MoE model: 35B total / 3B active params, ~24 GB Q4_K_M
+OLLAMA_DEFAULT_MODEL=qwen3.5:27b
+# Dense 27B model, ~17 GB Q4_K_M, 256K context
 ```
 
 ### Step 2: Resource Limits (Optional)
@@ -364,7 +364,7 @@ Service Health Check:
 3. Configure LLM provider:
    - Type: OpenAI-compatible
    - Endpoint: http://ollama:11434/v1
-   - Model: qwen3.5:35b-a3b
+   - Model: qwen3.5:27b
 4. Configure vector store (Weaviate already connected)
 
 ### Diagnostic API
@@ -486,7 +486,7 @@ curl -X POST "http://127.0.0.1:8000/v1/rag/retrieve" \
 #### 3. Test Ollama
 ```bash
 curl http://127.0.0.1:11434/api/generate -d '{
-  "model": "qwen3.5:35b-a3b",
+  "model": "qwen3.5:27b",
   "prompt": "What is a vehicle diagnostic code?",
   "stream": false
 }'
@@ -632,7 +632,7 @@ docker-compose logs -f ollama
 ```
 
 **Solutions:**
-- Use a smaller quantization: `qwen3.5:35b-a3b-q2_K`
+- Use a smaller quantization: `qwen3.5:27b-q2_K`
 - Download on a faster network
 - Resume interrupted downloads (Ollama handles this automatically)
 
