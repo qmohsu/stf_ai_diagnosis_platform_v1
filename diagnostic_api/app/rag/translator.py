@@ -7,6 +7,7 @@ pattern as embedding.py and vision.py (singleton httpx.AsyncClient,
 structlog).
 """
 
+import re
 from typing import List
 
 import httpx
@@ -23,6 +24,7 @@ from app.rag.parser import Section
 logger = structlog.get_logger(__name__)
 
 _TRANSLATION_PROMPT = (
+    "/no_think "
     "Translate the following automotive service manual text "
     "from Chinese to English.\n"
     "Rules:\n"
@@ -35,6 +37,12 @@ _TRANSLATION_PROMPT = (
     "or omit content\n"
     "- Output ONLY the English translation, no explanations\n"
     "\nChinese text:\n"
+)
+
+# Strip <think>...</think> blocks from model output (safety net
+# in case /no_think is ignored or only partially effective).
+_THINK_TAG_RE = re.compile(
+    r"<think>.*?</think>\s*", re.DOTALL
 )
 
 # Skip translation for very short text (likely just a code)
@@ -114,7 +122,9 @@ class TranslationService:
             )
             response.raise_for_status()
             result = response.json()
-            translated = result.get("response", "").strip()
+            raw = result.get("response", "")
+            # Strip any <think>...</think> blocks that leaked
+            translated = _THINK_TAG_RE.sub("", raw).strip()
 
             if not translated:
                 logger.warning(
@@ -246,7 +256,7 @@ class TranslationService:
             if has_cjk(result.body) and has_cjk(section.body):
                 failed += 1
 
-            if (idx + 1) % 50 == 0 or idx + 1 == total:
+            if (idx + 1) % 10 == 0 or idx + 1 == total:
                 logger.info(
                     "translation_service.progress",
                     done=idx + 1,

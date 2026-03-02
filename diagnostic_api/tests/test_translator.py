@@ -133,6 +133,24 @@ class TestTranslateText:
         mock_client.post.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_think_tags_stripped(self, service):
+        """<think> blocks from qwen3 should be stripped."""
+        raw = (
+            "<think>Let me translate this...</think>\n\n"
+            "Engine overheating"
+        )
+        fake_resp = _mock_ollama_response(raw)
+
+        mock_client = AsyncMock()
+        mock_client.post.return_value = fake_resp
+        mock_client.is_closed = False
+        service._client = mock_client
+
+        result = await service.translate_text("引擎過熱問題")
+        assert result == "Engine overheating"
+        assert "<think>" not in result
+
+    @pytest.mark.asyncio
     async def test_null_bytes_stripped(self, service):
         """Null bytes from PDF extraction should be removed."""
         fake_resp = _mock_ollama_response("Engine overheating")

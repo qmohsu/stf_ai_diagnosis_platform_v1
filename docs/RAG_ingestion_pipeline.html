@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STF AI Diagnosis — Ingestion Pipeline</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --border: #334155;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --accent3: #34d399;
+    --accent4: #fb923c;
+    --accent5: #f472b6;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --dim: #475569;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem;
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+  }
+
+  /* ── Pipeline container ── */
+  .pipeline {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* ── Arrow between stages ── */
+  .arrow {
+    display: flex;
+    justify-content: center;
+    padding: 0.3rem 0;
+  }
+  .arrow svg { width: 24px; height: 32px; }
+  .arrow path { stroke: var(--dim); stroke-width: 2; fill: none; }
+  .arrow polygon { fill: var(--dim); }
+
+  /* ── Stage card ── */
+  .stage {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    position: relative;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .stage:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.08);
+  }
+  .stage-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .stage-num {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+  .stage-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+  .stage-file {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    margin-left: auto;
+    background: rgba(255,255,255,0.05);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .stage-body {
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .stage-body ul {
+    list-style: none;
+    padding: 0;
+  }
+  .stage-body li {
+    padding: 0.2rem 0;
+    padding-left: 1.25rem;
+    position: relative;
+  }
+  .stage-body li::before {
+    content: '>';
+    position: absolute;
+    left: 0;
+    color: var(--dim);
+    font-family: monospace;
+    font-weight: 700;
+  }
+  .highlight {
+    color: var(--text);
+    font-weight: 500;
+  }
+  code {
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.8rem;
+    color: var(--accent3);
+  }
+
+  /* ── Color per stage ── */
+  .c1 .stage-num { background: rgba(56,189,248,0.15); color: var(--accent); }
+  .c1 { border-left: 3px solid var(--accent); }
+  .c2 .stage-num { background: rgba(129,140,248,0.15); color: var(--accent2); }
+  .c2 { border-left: 3px solid var(--accent2); }
+  .c3 .stage-num { background: rgba(52,211,153,0.15); color: var(--accent3); }
+  .c3 { border-left: 3px solid var(--accent3); }
+  .c4 .stage-num { background: rgba(251,146,60,0.15); color: var(--accent4); }
+  .c4 { border-left: 3px solid var(--accent4); }
+  .c5 .stage-num { background: rgba(244,114,182,0.15); color: var(--accent5); }
+  .c5 { border-left: 3px solid var(--accent5); }
+
+  /* ── Sub-pipeline (parallel tracks) ── */
+  .sub-tracks {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+  }
+  .sub-track {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem;
+    font-size: 0.8rem;
+  }
+  .sub-track-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .badge {
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-model {
+    background: rgba(56,189,248,0.15);
+    color: var(--accent);
+  }
+  .badge-flag {
+    background: rgba(251,146,60,0.15);
+    color: var(--accent4);
+  }
+
+  /* ── Config table ── */
+  .config-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+  .config-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.02);
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+  }
+  .config-key { color: var(--muted); }
+  .config-val { color: var(--accent3); font-family: monospace; font-weight: 600; }
+
+  /* ── Output schema ── */
+  .schema-box {
+    margin-top: 0.75rem;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: var(--muted);
+    overflow-x: auto;
+  }
+  .schema-box .key { color: var(--accent); }
+  .schema-box .type { color: var(--accent4); }
+  .schema-box .comment { color: var(--dim); font-style: italic; }
+
+  /* ── Legend ── */
+  .legend {
+    max-width: 1100px;
+    margin: 1.5rem auto 0;
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .sub-tracks { grid-template-columns: 1fr; }
+    .config-grid { grid-template-columns: 1fr; }
+    .stage-file { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<h1>STF AI Diagnosis — RAG Ingestion Pipeline</h1>
+<p class="subtitle">MWS150-A Service Manual &rarr; Weaviate Vector Store &nbsp;|&nbsp; All models run locally via Ollama</p>
+
+<div class="pipeline">
+
+  <!-- Stage 1: CLI & Schema -->
+  <div class="stage c1">
+    <div class="stage-header">
+      <div class="stage-num">1</div>
+      <div class="stage-title">CLI Entry &amp; Schema Init</div>
+      <div class="stage-file">ingest.py &bull; schema.py</div>
+    </div>
+    <div class="stage-body">
+      <ul>
+        <li><span class="highlight">CLI parses flags</span>: <code>--dir</code>, <code>--chunk-size 500</code>, <code>--overlap 50</code>, <code>--force-recreate</code>, <code>--enable-ocr</code>, <code>--enable-page-render</code>, <code>--enable-translation</code></li>
+        <li>Creates/recreates <code>KnowledgeChunk</code> collection in Weaviate (8 properties + vector)</li>
+        <li>Discovers <code>*.pdf</code>, <code>*.txt</code>, <code>*.md</code> files in the target directory</li>
+        <li>Detects <span class="highlight">source_type</span> from filename: <code>"manual"</code> | <code>"log"</code> | <code>"other"</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="arrow"><svg viewBox="0 0 24 32"><path d="M12 0 L12 24"/><polygon points="6,22 12,32 18,22"/></svg></div>
+
+  <!-- Stage 2: PDF Parsing -->
+  <div class="stage c2">
+    <div class="stage-header">
+      <div class="stage-num">2</div>
+      <div class="stage-title">PDF Structure Extraction</div>
+      <div class="stage-file">pdf_parser.py &bull; parser.py</div>
+    </div>
+    <div class="stage-body">
+      <ul>
+        <li><span class="highlight">Font-based heading detection</span>: computes <code>body_size</code> (most common font), then L1 heading &ge; 1.5&times; body, L2 &ge; 1.25&times; body</li>
+        <li>Splits document into <span class="highlight">Section</span> objects: <code>title</code>, <code>level</code>, <code>body</code>, <code>vehicle_model</code>, <code>dtc_codes</code></li>
+        <li>Extracts DTC codes via regex <code>[PBCU]\d{4}</code> &nbsp;|&nbsp; Vehicle model via pattern matching (STF-###, MWS-##-A, etc.)</li>
+        <li>Skips page numbers (<code>^\d{1,2}-\d{1,3}$</code>) and EAS/EWA/ECA codes</li>
+      </ul>
+      <div style="text-align:center; margin-top:0.6rem; font-size:0.8rem; color:var(--dim);">
+        MWS150-A &rarr; <span class="highlight">409 sections</span> extracted
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow"><svg viewBox="0 0 24 32"><path d="M12 0 L12 24"/><polygon points="6,22 12,32 18,22"/></svg></div>
+
+  <!-- Stage 3: Image Enrichment -->
+  <div class="stage c3">
+    <div class="stage-header">
+      <div class="stage-num">3</div>
+      <div class="stage-title">Image Enrichment (per page)</div>
+      <div class="stage-file">ocr.py &bull; vision.py &bull; pdf_parser.py</div>
+    </div>
+    <div class="stage-body">
+      <ul>
+        <li>Three parallel enrichment tracks run for each PDF page (when flags are enabled):</li>
+      </ul>
+      <div class="sub-tracks">
+        <div class="sub-track">
+          <div class="sub-track-title">
+            OCR
+            <span class="badge badge-flag">--enable-ocr</span>
+          </div>
+          <ul style="list-style:none; padding:0; color:var(--muted); font-size:0.78rem;">
+            <li>&bull; EasyOCR (zh_tra + en)</li>
+            <li>&bull; Extracts: part numbers, torque values, dimensions</li>
+            <li>&bull; Dedup: skip if &ge;80% overlap with text layer</li>
+            <li>&bull; Inserts <code>[OCR, Page N]</code> markers</li>
+          </ul>
+        </div>
+        <div class="sub-track">
+          <div class="sub-track-title">
+            Vision
+            <span class="badge badge-model">llava</span>
+          </div>
+          <ul style="list-style:none; padding:0; color:var(--muted); font-size:0.78rem;">
+            <li>&bull; Images &ge; 50x50 px, &ge; 5 KB</li>
+            <li>&bull; Resize to max 1024 px longest side</li>
+            <li>&bull; Describe diagrams, connectors, labels</li>
+            <li>&bull; Inserts <code>[Image N, Page M]</code> markers</li>
+          </ul>
+        </div>
+        <div class="sub-track">
+          <div class="sub-track-title">
+            Full Page Render
+            <span class="badge badge-flag">--enable-page-render</span>
+          </div>
+          <ul style="list-style:none; padding:0; color:var(--muted); font-size:0.78rem;">
+            <li>&bull; Renders page at 150 DPI (~0.8 MB)</li>
+            <li>&bull; Runs both OCR + Vision on full page</li>
+            <li>&bull; Captures table layouts, mixed content</li>
+            <li>&bull; Inserts <code>[Full Page, Page N]</code> markers</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow"><svg viewBox="0 0 24 32"><path d="M12 0 L12 24"/><polygon points="6,22 12,32 18,22"/></svg></div>
+
+  <!-- Stage 4: Translation -->
+  <div class="stage c4">
+    <div class="stage-header">
+      <div class="stage-num">4</div>
+      <div class="stage-title">Chinese &rarr; English Translation</div>
+      <div class="stage-file">translator.py &bull; cjk_utils.py</div>
+    </div>
+    <div class="stage-body">
+      <ul>
+        <li><span class="badge badge-model" style="font-size:0.7rem;">qwen3:14b</span> &nbsp; Sequential translation of each section via Ollama <code>/api/generate</code></li>
+        <li><span class="highlight">CJK detection</span>: <code>has_cjk()</code> checks Unicode ranges U+2E80..U+9FFF, U+F900..U+FAFF, U+20000..U+2FA1F</li>
+        <li>Splits body on image markers &rarr; translates only CJK parts &rarr; preserves <code>[Image N, Page M]</code> blocks as-is</li>
+        <li><code>/no_think</code> prefix disables qwen3 thinking mode; regex strips leaked <code>&lt;think&gt;</code> tags</li>
+      </ul>
+      <div class="config-grid">
+        <div class="config-item"><span class="config-key">Min CJK chars</span><span class="config-val">4</span></div>
+        <div class="config-item"><span class="config-key">Max input length</span><span class="config-val">8,000 chars</span></div>
+        <div class="config-item"><span class="config-key">Timeout</span><span class="config-val">120 s</span></div>
+        <div class="config-item"><span class="config-key">Fallback</span><span class="config-val">original text</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow"><svg viewBox="0 0 24 32"><path d="M12 0 L12 24"/><polygon points="6,22 12,32 18,22"/></svg></div>
+
+  <!-- Stage 5: Chunking -->
+  <div class="stage c5">
+    <div class="stage-header">
+      <div class="stage-num">5</div>
+      <div class="stage-title">Section-Aware Chunking</div>
+      <div class="stage-file">chunker.py</div>
+    </div>
+    <div class="stage-body">
+      <ul>
+        <li><span class="highlight">Hierarchy</span>: paragraphs &rarr; sentences &rarr; words (jieba for CJK, whitespace for English)</li>
+        <li>Normalize: insert <code>\n\n</code> after CJK sentence-end punctuation (<code>&#x3002;&#xFF01;&#xFF1F;</code>)</li>
+        <li>Image marker blocks treated as <span class="highlight">atomic units</span> (never split mid-description)</li>
+        <li>Overlap: last 50 chars carried to next chunk, aligned to word/punctuation boundaries</li>
+      </ul>
+      <div class="config-grid">
+        <div class="config-item"><span class="config-key">Chunk size</span><span class="config-val">500 chars</span></div>
+        <div class="config-item"><span class="config-key">Overlap</span><span class="config-val">50 chars</span></div>
+        <div class="config-item"><span class="config-key">CJK segmenter</span><span class="config-val">jieba</span></div>
+        <div class="config-item"><span class="config-key">Output</span><span class="config-val">ChunkedSection</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow"><svg viewBox="0 0 24 32"><path d="M12 0 L12 24"/><polygon points="6,22 12,32 18,22"/></svg></div>
+
+  <!-- Stage 6: Embedding -->
+  <div class="stage c1">
+    <div class="stage-header">
+      <div class="stage-num">6</div>
+      <div class="stage-title">Embedding Generation</div>
+      <div class="stage-file">embedding.py</div>
+    </div>
+    <div class="stage-body">
+      <ul>
+        <li><span class="badge badge-model" style="font-size:0.7rem;">nomic-embed-text</span> &nbsp; Each chunk &rarr; Ollama <code>/api/embed</code> &rarr; <span class="highlight">768-dimensional</span> float vector</li>
+        <li>Connection pooled via singleton <code>httpx.AsyncClient</code></li>
+        <li>Empty text or network errors &rarr; returns <code>[]</code>, chunk is skipped</li>
+      </ul>
+      <div class="config-grid">
+        <div class="config-item"><span class="config-key">Model</span><span class="config-val">nomic-embed-text</span></div>
+        <div class="config-item"><span class="config-key">Dimensions</span><span class="config-val">768</span></div>
+        <div class="config-item"><span class="config-key">Timeout</span><span class="config-val">30 s</span></div>
+        <div class="config-item"><span class="config-key">VRAM</span><span class="config-val">~261 MB</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow"><svg viewBox="0 0 24 32"><path d="M12 0 L12 24"/><polygon points="6,22 12,32 18,22"/></svg></div>
+
+  <!-- Stage 7: Dedup & Insert -->
+  <div class="stage c2">
+    <div class="stage-header">
+      <div class="stage-num">7</div>
+      <div class="stage-title">Dedup &amp; Insert into Weaviate</div>
+      <div class="stage-file">ingest.py &bull; schema.py</div>
+    </div>
+    <div class="stage-body">
+      <ul>
+        <li><span class="highlight">Checksum</span>: SHA-256 of <code>"{doc_id}:{section_title}:{chunk_text}"</code></li>
+        <li>Query Weaviate by checksum &rarr; skip if already exists (idempotent re-ingestion)</li>
+        <li>Insert: chunk text + 768-dim vector + all metadata properties</li>
+      </ul>
+      <div class="schema-box">
+        <span class="key">text</span>: <span class="type">TEXT</span> <span class="comment">// chunk body (WHITESPACE tokenization)</span><br>
+        <span class="key">doc_id</span>: <span class="type">TEXT</span> <span class="comment">// e.g. "MWS150-A"</span><br>
+        <span class="key">source_type</span>: <span class="type">TEXT</span> <span class="comment">// "manual" | "log" | "other"</span><br>
+        <span class="key">section_title</span>: <span class="type">TEXT</span> <span class="comment">// heading (WORD tokenization)</span><br>
+        <span class="key">vehicle_model</span>: <span class="type">TEXT</span> <span class="comment">// "MWS-150-A"</span><br>
+        <span class="key">chunk_index</span>: <span class="type">INT</span> <span class="comment">// sequential index</span><br>
+        <span class="key">checksum</span>: <span class="type">TEXT</span> <span class="comment">// SHA-256 for dedup</span><br>
+        <span class="key">metadata_json</span>: <span class="type">TEXT</span> <span class="comment">// {"dtc_codes":[], "has_image":false}</span><br>
+        <span class="key">_vector</span>: <span class="type">FLOAT[768]</span> <span class="comment">// nomic-embed-text embedding</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow"><svg viewBox="0 0 24 32"><path d="M12 0 L12 24"/><polygon points="6,22 12,32 18,22"/></svg></div>
+
+  <!-- Stage 8: Retrieval -->
+  <div class="stage c3" style="opacity:0.7; border-style:dashed;">
+    <div class="stage-header">
+      <div class="stage-num">&rarr;</div>
+      <div class="stage-title">Retrieval (query time)</div>
+      <div class="stage-file">retrieve.py</div>
+    </div>
+    <div class="stage-body">
+      <ul>
+        <li>User query &rarr; <code>nomic-embed-text</code> embedding &rarr; <span class="highlight">nearVector</span> search on KnowledgeChunk</li>
+        <li>Returns top-K results with score (<code>1.0 - distance</code>), doc_id, section_title, metadata</li>
+        <li>Results feed into Dify workflow &rarr; qwen3:14b for final diagnostic response</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--accent);"></div> Infrastructure</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--accent2);"></div> Parsing</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--accent3);"></div> Enrichment</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--accent4);"></div> Translation</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--accent5);"></div> Chunking</div>
+  <div class="legend-item" style="margin-left:1rem; padding-left:1rem; border-left:1px solid var(--border);">
+    <span class="badge badge-model" style="font-size:0.65rem;">MODEL</span> Ollama model
+  </div>
+  <div class="legend-item">
+    <span class="badge badge-flag" style="font-size:0.65rem;">FLAG</span> CLI flag required
+  </div>
+</div>
+
+<div style="text-align:center; margin-top:2rem; font-size:0.75rem; color:var(--dim);">
+  STF AI Diagnosis Platform v1 &nbsp;&bull;&nbsp; Local-only deployment &nbsp;&bull;&nbsp; All models via Ollama on RTX 4080 Super (16 GB VRAM)
+</div>
+
+</body>
+</html>
