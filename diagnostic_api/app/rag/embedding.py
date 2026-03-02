@@ -64,12 +64,13 @@ class EmbeddingService:
         client = await self._get_client()
         try:
             response = await client.post(
-                f"{self.base_url}/api/embeddings",
-                json={"model": self.model, "prompt": text},
+                f"{self.base_url}/api/embed",
+                json={"model": self.model, "input": text},
             )
             response.raise_for_status()
             result = response.json()
-            embedding = result.get("embedding", [])
+            embeddings = result.get("embeddings", [])
+            embedding = embeddings[0] if embeddings else []
             if not embedding:
                 logger.warning(
                     "embedding_service.empty_response",

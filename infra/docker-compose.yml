@@ -131,7 +131,7 @@ services:
   # Ollama - Local LLM inference runtime
   # --------------------------------------------------------------------------
   ollama:
-    image: ollama/ollama:${OLLAMA_VERSION:-0.1.26}
+    image: ollama/ollama:0.17.4
     container_name: stf-ollama
     restart: unless-stopped
     networks:
