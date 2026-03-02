@@ -52,7 +52,7 @@ make exec-postgres   # Open PostgreSQL shell
 make exec-redis      # Open Redis CLI
 
 # LLM Management
-make ollama-pull     # Pull default model (llama3:8b)
+make ollama-pull     # Pull default model (qwen3.5:35b-a3b)
 make ollama-list     # List installed models
 
 # Maintenance

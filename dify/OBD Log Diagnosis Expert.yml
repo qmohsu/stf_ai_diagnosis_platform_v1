@@ -377,7 +377,7 @@ workflow:
           completion_params:
             temperature: 0.3
           mode: chat
-          name: llama3:8b
+          name: qwen3.5:35b-a3b
           provider: ollama
         prompt_template:
         - id: system-prompt-obd-diagnosis

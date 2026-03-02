@@ -1,6 +1,6 @@
 """Translation service for converting Chinese manual text to English.
 
-Uses a local Ollama LLM (e.g., llama3:8b) to translate Traditional
+Uses a local Ollama LLM (e.g., qwen3.5:35b-a3b) to translate Traditional
 Chinese section text to English at ingestion time, so the entire
 Weaviate vector store is uniform English.  Follows the same service
 pattern as embedding.py and vision.py (singleton httpx.AsyncClient,
