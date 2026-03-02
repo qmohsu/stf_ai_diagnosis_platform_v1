@@ -3,6 +3,7 @@ import os
 import structlog
 from typing import AsyncIterator, Optional
 from openai import AsyncOpenAI
+from app.config import settings
 from app.expert import prompts, schemas, validate
 
 logger = structlog.get_logger()
@@ -12,9 +13,9 @@ class ExpertLLMClient:
     Client for interacting with the Expert Diagnostic Model (hosted on Ollama).
     """
 
-    def __init__(self, base_url: Optional[str] = None, model: str = "llama3"):
+    def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None):
         self.base_url = base_url or os.getenv("OLLAMA_BASE_URL", "http://ollama:11434/v1")
-        self.model = model
+        self.model = model or settings.llm_model
         self.client = AsyncOpenAI(api_key="ollama", base_url=self.base_url)
         logger.info("initialized_expert_llm_client", base_url=self.base_url, model=self.model)
 
