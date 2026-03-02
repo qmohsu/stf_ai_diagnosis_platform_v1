@@ -31,6 +31,11 @@ from typing import List
 from pydantic import BaseModel
 
 from app.rag.parser import Section
+from app.rag.cjk_utils import (
+    CJK_RANGE as _CJK_RANGE,
+    IMAGE_MARKER as _IMAGE_MARKER,
+    has_cjk as _has_cjk,
+)
 
 # Sentence splitting: English (.!?) followed by whitespace, OR
 # CJK full-stop punctuation (no trailing whitespace required).
@@ -41,27 +46,10 @@ SENTENCE_SPLIT = re.compile(
 # CJK sentence-ending punctuation used for paragraph heuristic
 _CJK_SENTENCE_END = re.compile(r"[。！？]$")
 
-# Detect whether a string contains CJK characters
-_CJK_RANGE = re.compile(
-    r"[\u2E80-\u9FFF\uF900-\uFAFF\U00020000-\U0002FA1F]"
-)
-
 # CJK punctuation suitable as split points for word-level fallback
 _CJK_PUNCT_SPLIT = re.compile(
     r"(?<=[，、；：。！？「」（）『』【】])"
 )
-
-# Markers inserted by pdf_parser (vision + OCR enrichment)
-_IMAGE_MARKER = re.compile(
-    r"\[(?:Image \d+, Page \d+"
-    r"|OCR, Page \d+"
-    r"|Full Page, Page \d+)\]"
-)
-
-
-def _has_cjk(text: str) -> bool:
-    """Return True if *text* contains any CJK characters."""
-    return bool(_CJK_RANGE.search(text))
 
 
 def _jieba_segment(text: str) -> List[str]:

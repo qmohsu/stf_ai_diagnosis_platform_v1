@@ -166,9 +166,7 @@ def ocr_extract_structured(
     }
 
 
-_CJK_RANGE_RE = re.compile(
-    r"[\u2E80-\u9FFF\uF900-\uFAFF\U00020000-\U0002FA1F]"
-)
+from app.rag.cjk_utils import CJK_RANGE as _CJK_RANGE_RE
 
 
 def _tokenize(text: str) -> set[str]:

@@ -9,6 +9,7 @@ Usage:
     python -m app.rag.ingest --dir /app/data --force-recreate
     python -m app.rag.ingest --dir /app/data --chunk-size 600 --overlap 80
     python -m app.rag.ingest --dir /app/data --enable-ocr --enable-page-render
+    python -m app.rag.ingest --dir /app/data --enable-translation
 """
 
 import argparse
@@ -90,8 +91,9 @@ async def process_file(
     describe_images: bool = True,
     enable_ocr: bool = False,
     enable_page_render: bool = False,
+    enable_translation: bool = False,
 ) -> dict:
-    """Process a single file: parse -> chunk -> embed -> insert.
+    """Process a single file: parse -> translate -> chunk -> embed -> insert.
 
     Args:
         file_path: Path to the file to ingest.
@@ -100,6 +102,7 @@ async def process_file(
         describe_images: If True, use vision model to describe PDF images.
         enable_ocr: If True, run OCR on PDF images to extract text.
         enable_page_render: If True, render full PDF pages as images.
+        enable_translation: If True, translate Chinese sections to English.
 
     Returns:
         Dict with inserted and skipped counts.
@@ -133,6 +136,20 @@ async def process_file(
         text = file_path.read_text(encoding="utf-8")
         sections = parse_document(text, file_path.name)
     log.info("ingest.parsed", section_count=len(sections))
+
+    # Translate Chinese sections to English (before chunking)
+    if enable_translation:
+        from .translator import get_translation_service
+        translator = get_translation_service()
+        try:
+            sections = await translator.translate_sections(
+                sections
+            )
+        finally:
+            await translator.close()
+        log.info(
+            "ingest.translated", section_count=len(sections)
+        )
 
     # Chunk sections
     chunks = chunker.chunk_sections(sections)
@@ -231,6 +248,11 @@ async def main():
         action="store_true",
         help="Render full PDF pages as images for OCR/vision processing.",
     )
+    parser.add_argument(
+        "--enable-translation",
+        action="store_true",
+        help="Translate Chinese sections to English before chunking.",
+    )
     args = parser.parse_args()
 
     data_dir = Path(args.dir)
@@ -285,6 +307,7 @@ async def main():
             describe_images=describe_images,
             enable_ocr=args.enable_ocr,
             enable_page_render=args.enable_page_render,
+            enable_translation=args.enable_translation,
         )
         total_inserted += stats["inserted"]
         total_skipped += stats["skipped"]
