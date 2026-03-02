@@ -142,7 +142,7 @@ services:
       - ollama_data:/root/.ollama
     environment:
       OLLAMA_HOST: 0.0.0.0:11434
-      OLLAMA_NUM_GPU: 99
+      OLLAMA_FLASH_ATTENTION: "true"
     # Healthcheck removed: curl not available in minimal image
     # healthcheck:
     #   test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
@@ -374,7 +374,7 @@ services:
 
       # LLM Configuration
       LLM_ENDPOINT: ${OLLAMA_BASE_URL:-http://ollama:11434}
-      LLM_MODEL: ${OLLAMA_DEFAULT_MODEL:-qwen3.5:27b}
+      LLM_MODEL: ${OLLAMA_DEFAULT_MODEL:-qwen3:14b}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
       VISION_MODEL: ${VISION_MODEL:-llava}
 
