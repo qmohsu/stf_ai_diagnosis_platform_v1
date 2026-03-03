@@ -1,6 +1,7 @@
 """Tests for premium AI diagnosis endpoints.
 
 Covers:
+  - GET  /v2/obd/premium/models (200, 403)
   - POST /v2/obd/{session_id}/diagnose/premium (403, 503, 422, caching)
   - POST /v2/obd/{session_id}/feedback/premium_diagnosis (404, snapshot)
   - Per-session regeneration rate limit (429)
@@ -74,6 +75,49 @@ def _mock_db_none():
 
 
 # ---------------------------------------------------------------------------
+# GET /v2/obd/premium/models — model listing
+# ---------------------------------------------------------------------------
+
+
+class TestListPremiumModels:
+    """Tests for the premium model listing endpoint."""
+
+    @patch(
+        "app.api.v2.endpoints.obd_premium.settings",
+    )
+    def test_returns_models_when_enabled(
+        self, mock_settings, client,
+    ):
+        """Returns curated model list when premium is enabled."""
+        mock_settings.premium_llm_enabled = True
+        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4"
+        mock_settings.premium_llm_model_list = [
+            "anthropic/claude-sonnet-4",
+            "openai/gpt-4o",
+        ]
+
+        resp = client.get("/v2/obd/premium/models")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["default"] == "anthropic/claude-sonnet-4"
+        assert "openai/gpt-4o" in body["models"]
+        assert len(body["models"]) == 2
+
+    @patch(
+        "app.api.v2.endpoints.obd_premium.settings",
+    )
+    def test_returns_403_when_disabled(
+        self, mock_settings, client,
+    ):
+        """Returns 403 when premium feature is disabled."""
+        mock_settings.premium_llm_enabled = False
+
+        resp = client.get("/v2/obd/premium/models")
+        assert resp.status_code == 403
+        assert "disabled" in resp.json()["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
 # POST /v2/obd/{session_id}/diagnose/premium — feature gate
 # ---------------------------------------------------------------------------
 
@@ -129,6 +173,10 @@ class TestPremiumDiagnosisCaching:
         """When premium_diagnosis_text exists, return cached SSE event."""
         mock_settings.premium_llm_enabled = True
         mock_settings.premium_llm_api_key = "sk-test"
+        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4"
+        mock_settings.premium_llm_model_list = [
+            "anthropic/claude-sonnet-4",
+        ]
 
         from app.api.v2.endpoints.obd_analysis import SessionData
         mock_get_data.return_value = SessionData(
@@ -155,6 +203,10 @@ class TestPremiumDiagnosisCaching:
         """Returns 422 when session has no parsed summary."""
         mock_settings.premium_llm_enabled = True
         mock_settings.premium_llm_api_key = "sk-test"
+        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4"
+        mock_settings.premium_llm_model_list = [
+            "anthropic/claude-sonnet-4",
+        ]
 
         from app.api.v2.endpoints.obd_analysis import SessionData
         mock_get_data.return_value = SessionData(
@@ -167,6 +219,94 @@ class TestPremiumDiagnosisCaching:
         resp = client.post(f"/v2/obd/{sid}/diagnose/premium")
         assert resp.status_code == 422
         assert "parsed summary" in resp.json()["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
+# POST /v2/obd/{session_id}/diagnose/premium — model parameter
+# ---------------------------------------------------------------------------
+
+
+class TestPremiumModelParam:
+    """Tests for model override via query parameter."""
+
+    @patch(
+        "app.api.v2.endpoints.obd_premium.settings",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium._get_session_data",
+    )
+    def test_accepts_curated_model_query_param(
+        self, mock_get_data, mock_settings, client,
+    ):
+        """Curated model query parameter is accepted."""
+        mock_settings.premium_llm_enabled = True
+        mock_settings.premium_llm_api_key = "sk-test"
+        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4"
+        mock_settings.premium_llm_model_list = [
+            "anthropic/claude-sonnet-4",
+            "openai/gpt-4o",
+        ]
+
+        from app.api.v2.endpoints.obd_analysis import SessionData
+        mock_get_data.return_value = SessionData(
+            parsed_summary=None,
+            diagnosis_text=None,
+            premium_diagnosis_text=None,
+        )
+
+        sid = uuid.uuid4()
+        resp = client.post(
+            f"/v2/obd/{sid}/diagnose/premium"
+            "?model=openai/gpt-4o",
+        )
+        # Should fail with 422 (no parsed summary), not 400
+        # for an invalid model
+        assert resp.status_code == 422
+        assert "parsed summary" in resp.json()["detail"].lower()
+
+    @patch(
+        "app.api.v2.endpoints.obd_premium.settings",
+    )
+    def test_rejects_uncurated_model(
+        self, mock_settings, client,
+    ):
+        """Model not in curated list returns 400."""
+        mock_settings.premium_llm_enabled = True
+        mock_settings.premium_llm_api_key = "sk-test"
+        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4"
+        mock_settings.premium_llm_model_list = [
+            "anthropic/claude-sonnet-4",
+            "openai/gpt-4o",
+        ]
+
+        sid = uuid.uuid4()
+        resp = client.post(
+            f"/v2/obd/{sid}/diagnose/premium"
+            "?model=evil/expensive-model",
+        )
+        assert resp.status_code == 400
+        assert "curated list" in resp.json()["detail"].lower()
+
+    @patch(
+        "app.api.v2.endpoints.obd_premium.settings",
+    )
+    def test_default_model_must_be_in_curated_list(
+        self, mock_settings, client,
+    ):
+        """Default model is validated against curated list."""
+        mock_settings.premium_llm_enabled = True
+        mock_settings.premium_llm_api_key = "sk-test"
+        mock_settings.premium_llm_model = "unknown/bad-default"
+        mock_settings.premium_llm_model_list = [
+            "anthropic/claude-sonnet-4",
+        ]
+
+        sid = uuid.uuid4()
+        resp = client.post(
+            f"/v2/obd/{sid}/diagnose/premium",
+        )
+        assert resp.status_code == 400
+        assert "curated list" in resp.json()["detail"].lower()
 
 
 # ---------------------------------------------------------------------------
@@ -189,6 +329,10 @@ class TestPremiumRateLimit:
         """Force-regeneration blocked after cap is reached."""
         mock_settings.premium_llm_enabled = True
         mock_settings.premium_llm_api_key = "sk-test"
+        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4"
+        mock_settings.premium_llm_model_list = [
+            "anthropic/claude-sonnet-4",
+        ]
 
         from app.api.v2.endpoints.obd_analysis import SessionData
         mock_get_data.return_value = SessionData(

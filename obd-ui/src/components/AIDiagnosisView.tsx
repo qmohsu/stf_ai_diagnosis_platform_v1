@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select } from "@/components/ui/select";
 import { streamDiagnosis, streamPremiumDiagnosis } from "@/lib/api";
 
 interface AIDiagnosisViewProps {
@@ -11,12 +12,28 @@ interface AIDiagnosisViewProps {
   initialDiagnosisText: string | null;
   onDiagnosisGenerated?: (text: string) => void;
   provider?: "local" | "premium";
+  availableModels?: string[];
+  defaultModel?: string;
 }
 
-export function AIDiagnosisView({ sessionId, initialDiagnosisText, onDiagnosisGenerated, provider = "local" }: AIDiagnosisViewProps) {
+export function AIDiagnosisView({
+  sessionId,
+  initialDiagnosisText,
+  onDiagnosisGenerated,
+  provider = "local",
+  availableModels,
+  defaultModel,
+}: AIDiagnosisViewProps) {
   const isPremium = provider === "premium";
-  const streamFn = isPremium ? streamPremiumDiagnosis : streamDiagnosis;
+  const [selectedModel, setSelectedModel] = useState<string>(defaultModel ?? "");
   const [diagnosisText, setDiagnosisText] = useState<string>(initialDiagnosisText ?? "");
+
+  // Sync selectedModel when defaultModel loads asynchronously
+  useEffect(() => {
+    if (defaultModel && !selectedModel) {
+      setSelectedModel(defaultModel);
+    }
+  }, [defaultModel, selectedModel]);
   const [streaming, setStreaming] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [done, setDone] = useState(!!initialDiagnosisText);
@@ -31,30 +48,37 @@ export function AIDiagnosisView({ sessionId, initialDiagnosisText, onDiagnosisGe
     setDiagnosisText("");
     textRef.current = "";
 
+    const onToken = (token: string) => {
+      setStatusMsg(null);
+      textRef.current += token;
+      setDiagnosisText(textRef.current);
+    };
+    const onDone = (fullText: string) => {
+      setStatusMsg(null);
+      setDone(true);
+      setStreaming(false);
+      onDiagnosisGenerated?.(fullText);
+    };
+    const onError = (err: string) => {
+      setStatusMsg(null);
+      setError(err);
+      setStreaming(false);
+    };
+    const onStatus = (status: string) => {
+      setStatusMsg(status);
+    };
+
     try {
-      await streamFn(
-        sessionId,
-        (token) => {
-          setStatusMsg(null);
-          textRef.current += token;
-          setDiagnosisText(textRef.current);
-        },
-        (fullText) => {
-          setStatusMsg(null);
-          setDone(true);
-          setStreaming(false);
-          onDiagnosisGenerated?.(fullText);
-        },
-        (err) => {
-          setStatusMsg(null);
-          setError(err);
-          setStreaming(false);
-        },
-        (status) => {
-          setStatusMsg(status);
-        },
-        force,
-      );
+      if (isPremium) {
+        await streamPremiumDiagnosis(
+          sessionId, onToken, onDone, onError, onStatus,
+          force, selectedModel || undefined,
+        );
+      } else {
+        await streamDiagnosis(
+          sessionId, onToken, onDone, onError, onStatus, force,
+        );
+      }
       // Stream ended (connection closed)
       setStreaming(false);
       if (textRef.current) {
@@ -66,7 +90,7 @@ export function AIDiagnosisView({ sessionId, initialDiagnosisText, onDiagnosisGe
       setStreaming(false);
       setStatusMsg(null);
     }
-  }, [sessionId, streamFn, onDiagnosisGenerated]);
+  }, [sessionId, isPremium, selectedModel, onDiagnosisGenerated]);
 
   // Not started yet — show generate button
   if (!streaming && !diagnosisText) {
@@ -74,22 +98,41 @@ export function AIDiagnosisView({ sessionId, initialDiagnosisText, onDiagnosisGe
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">
-            {isPremium ? "Premium AI Diagnostic Result" : "AI Diagnostic Result"}
+            {isPremium ? "Cloud AI Diagnostic Result" : "AI Diagnostic Result"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
             {isPremium
-              ? "Generate a diagnostic report using the premium cloud LLM (Claude). Cloud API usage fees apply."
+              ? "Generate a diagnostic report using a cloud LLM via OpenRouter. Cloud API usage fees apply."
               : "Generate an AI-powered diagnostic report using the parsed OBD data and retrieved technical context. This may take 1-2 minutes on first generation."}
           </p>
+          {isPremium && availableModels && availableModels.length > 0 && (
+            <div className="space-y-2">
+              <label htmlFor="model-select" className="text-sm font-medium">
+                Model
+              </label>
+              <Select
+                id="model-select"
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="w-full"
+              >
+                {availableModels.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
           <Button onClick={() => handleGenerate()} className="w-full">
-            {isPremium ? "Generate Premium Diagnosis" : "Generate AI Diagnosis"}
+            {isPremium ? "Generate Cloud Diagnosis" : "Generate AI Diagnosis"}
           </Button>
         </CardContent>
       </Card>
@@ -102,7 +145,7 @@ export function AIDiagnosisView({ sessionId, initialDiagnosisText, onDiagnosisGe
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">
-            {isPremium ? "Premium AI Diagnostic Result" : "AI Diagnostic Result"}
+            {isPremium ? "Cloud AI Diagnostic Result" : "AI Diagnostic Result"}
           </CardTitle>
           {streaming && (
             <span className="text-xs text-muted-foreground animate-pulse">
@@ -136,10 +179,31 @@ export function AIDiagnosisView({ sessionId, initialDiagnosisText, onDiagnosisGe
           </pre>
         )}
 
+        {done && isPremium && selectedModel && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Model: {selectedModel}
+          </p>
+        )}
+
         {done && (
-          <Button variant="outline" className="w-full mt-4" onClick={() => handleGenerate(true)}>
-            {isPremium ? "Regenerate Premium Diagnosis" : "Regenerate Diagnosis"}
-          </Button>
+          <div className="flex items-center gap-2 mt-4">
+            {isPremium && availableModels && availableModels.length > 0 && (
+              <Select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="flex-1"
+              >
+                {availableModels.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </Select>
+            )}
+            <Button variant="outline" className={isPremium && availableModels?.length ? "" : "w-full"} onClick={() => handleGenerate(true)}>
+              {isPremium ? "Regenerate" : "Regenerate Diagnosis"}
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>

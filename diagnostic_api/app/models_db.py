@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Column,
     DateTime,
     Float,
@@ -131,6 +132,7 @@ class OBDAnalysisSession(Base):
 
     # Premium AI diagnosis (cloud LLM, opt-in)
     premium_diagnosis_text = Column(Text, nullable=True)
+    premium_diagnosis_model = Column(String(200), nullable=True)
 
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
@@ -141,6 +143,7 @@ class OBDAnalysisSession(Base):
     rag_feedback = relationship("OBDRAGFeedback", back_populates="session", uselist=True)
     ai_diagnosis_feedback = relationship("OBDAIDiagnosisFeedback", back_populates="session", uselist=True)
     premium_diagnosis_feedback = relationship("OBDPremiumDiagnosisFeedback", back_populates="session", uselist=True)
+    diagnosis_history = relationship("DiagnosisHistory", back_populates="session", uselist=True)
 
 
 class _OBDFeedbackMixin:
@@ -216,3 +219,42 @@ class OBDPremiumDiagnosisFeedback(_OBDFeedbackMixin, Base):
     diagnosis_text = Column(Text, nullable=True)
 
     session = relationship("OBDAnalysisSession", back_populates="premium_diagnosis_feedback")
+
+
+class DiagnosisHistory(Base):
+    """Immutable log of every AI diagnosis generation.
+
+    Covers both local (Ollama) and premium (OpenRouter) providers.
+    Each row is an append-only record; the ``diagnosis_text`` and
+    ``premium_diagnosis_text`` columns on ``OBDAnalysisSession``
+    still hold the latest values for quick access.
+    """
+
+    __tablename__ = "diagnosis_history"
+    __table_args__ = (
+        CheckConstraint(
+            "provider IN ('local', 'premium')",
+            name="ck_diagnosis_history_provider",
+        ),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    session_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("obd_analysis_sessions.id"),
+        nullable=False,
+        index=True,
+    )
+    provider = Column(
+        String(20), nullable=False,
+    )  # "local" | "premium"
+    model_name = Column(
+        String(200), nullable=False,
+    )  # e.g. "qwen3:14b", "anthropic/claude-sonnet-4"
+    diagnosis_text = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=_utcnow)
+
+    session = relationship(
+        "OBDAnalysisSession",
+        back_populates="diagnosis_history",
+    )

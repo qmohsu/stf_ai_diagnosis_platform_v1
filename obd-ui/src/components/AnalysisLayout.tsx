@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { LogSummaryV2, ParsedSummary } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,6 +10,7 @@ import { RAGView } from "@/components/RAGView";
 import { AIDiagnosisView } from "@/components/AIDiagnosisView";
 import { FeedbackForm } from "@/components/FeedbackForm";
 import { formatDuration } from "@/lib/utils";
+import { getPremiumModels } from "@/lib/api";
 
 interface AnalysisLayoutProps {
   sessionId: string;
@@ -20,9 +21,31 @@ interface AnalysisLayoutProps {
   premiumLlmEnabled: boolean;
 }
 
-export function AnalysisLayout({ sessionId, data, parsedSummary, diagnosisText: initialDiagnosisText, premiumDiagnosisText: initialPremiumDiagnosisText, premiumLlmEnabled }: AnalysisLayoutProps) {
+export function AnalysisLayout({
+  sessionId,
+  data,
+  parsedSummary,
+  diagnosisText: initialDiagnosisText,
+  premiumDiagnosisText: initialPremiumDiagnosisText,
+  premiumLlmEnabled,
+}: AnalysisLayoutProps) {
   const [diagnosisText, setDiagnosisText] = useState<string | null>(initialDiagnosisText);
   const [premiumDiagnosisText, setPremiumDiagnosisText] = useState<string | null>(initialPremiumDiagnosisText);
+  const [premiumModels, setPremiumModels] = useState<string[]>([]);
+  const [defaultPremiumModel, setDefaultPremiumModel] = useState<string>("");
+
+  useEffect(() => {
+    if (!premiumLlmEnabled) return;
+    getPremiumModels()
+      .then((data) => {
+        setPremiumModels(data.models);
+        setDefaultPremiumModel(data.default);
+      })
+      .catch((err: unknown) => {
+        console.warn("Failed to fetch premium models:", err);
+      });
+  }, [premiumLlmEnabled]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -80,22 +103,39 @@ export function AnalysisLayout({ sessionId, data, parsedSummary, diagnosisText: 
             <Tabs defaultValue="local">
               <TabsList className="mb-4">
                 <TabsTrigger value="local">Local LLM</TabsTrigger>
-                <TabsTrigger value="premium">Premium LLM (Claude)</TabsTrigger>
+                <TabsTrigger value="premium">Cloud LLM (OpenRouter)</TabsTrigger>
               </TabsList>
 
               <TabsContent value="local" forceMount className="space-y-6 data-[state=inactive]:hidden">
-                <AIDiagnosisView sessionId={sessionId} initialDiagnosisText={diagnosisText} onDiagnosisGenerated={setDiagnosisText} provider="local" />
+                <AIDiagnosisView
+                  sessionId={sessionId}
+                  initialDiagnosisText={diagnosisText}
+                  onDiagnosisGenerated={setDiagnosisText}
+                  provider="local"
+                />
                 <FeedbackForm sessionId={sessionId} feedbackTab="ai_diagnosis" />
               </TabsContent>
 
               <TabsContent value="premium" forceMount className="space-y-6 data-[state=inactive]:hidden">
-                <AIDiagnosisView sessionId={sessionId} initialDiagnosisText={premiumDiagnosisText} onDiagnosisGenerated={setPremiumDiagnosisText} provider="premium" />
+                <AIDiagnosisView
+                  sessionId={sessionId}
+                  initialDiagnosisText={premiumDiagnosisText}
+                  onDiagnosisGenerated={setPremiumDiagnosisText}
+                  provider="premium"
+                  availableModels={premiumModels}
+                  defaultModel={defaultPremiumModel}
+                />
                 <FeedbackForm sessionId={sessionId} feedbackTab="premium_diagnosis" />
               </TabsContent>
             </Tabs>
           ) : (
             <>
-              <AIDiagnosisView sessionId={sessionId} initialDiagnosisText={diagnosisText} onDiagnosisGenerated={setDiagnosisText} provider="local" />
+              <AIDiagnosisView
+                sessionId={sessionId}
+                initialDiagnosisText={diagnosisText}
+                onDiagnosisGenerated={setDiagnosisText}
+                provider="local"
+              />
               <FeedbackForm sessionId={sessionId} feedbackTab="ai_diagnosis" />
             </>
           )}

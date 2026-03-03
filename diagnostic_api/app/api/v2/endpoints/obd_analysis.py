@@ -38,6 +38,7 @@ from app.api.v2.schemas import (
 from app.expert.client import ExpertLLMClient
 from app.config import settings
 from app.models_db import (
+    DiagnosisHistory,
     OBDAIDiagnosisFeedback,
     OBDDetailedFeedback,
     OBDPremiumDiagnosisFeedback,
@@ -439,24 +440,32 @@ def _get_session_data(
     )
 
 
-def _store_session_field(
+def _store_diagnosis(
     session_id: uuid.UUID,
-    field_name: str,
-    value: str,
+    provider: str,
+    model_name: str,
+    text: str,
 ) -> None:
-    """Persist a text field on the session row in DB.
+    """Store diagnosis on the session row and append a history record.
 
-    Uses its own DB session so it is safe to call from a streaming
-    generator (where the request-scoped ``Depends(get_db)`` session
-    may already be closed).
+    Updates the latest-diagnosis column on ``OBDAnalysisSession``
+    (``diagnosis_text`` for local, ``premium_diagnosis_text`` for
+    premium) and inserts an immutable row into ``diagnosis_history``.
 
     Args:
         session_id: Target session UUID.
-        field_name: Column attribute name on OBDAnalysisSession
-            (e.g. ``"diagnosis_text"``).
-        value: Text to store (truncated to _MAX_DIAGNOSIS_LENGTH).
+        provider: ``"local"`` or ``"premium"``.
+        model_name: Model identifier that produced the text
+            (e.g. ``"qwen3:14b"``, ``"anthropic/claude-sonnet-4"``).
+        text: Full diagnosis text (truncated to
+            ``_MAX_DIAGNOSIS_LENGTH``).
     """
-    text = value[:_MAX_DIAGNOSIS_LENGTH]
+    text = text[:_MAX_DIAGNOSIS_LENGTH]
+    field = (
+        "premium_diagnosis_text"
+        if provider == "premium"
+        else "diagnosis_text"
+    )
 
     db = SessionLocal()
     try:
@@ -466,10 +475,25 @@ def _store_session_field(
             .first()
         )
         if db_session is not None:
-            setattr(db_session, field_name, text)
+            setattr(db_session, field, text)
+            if provider == "premium":
+                db_session.premium_diagnosis_model = model_name
+            db.add(DiagnosisHistory(
+                session_id=session_id,
+                provider=provider,
+                model_name=model_name,
+                diagnosis_text=text,
+            ))
             db.commit()
     except Exception:
         db.rollback()
+        logger.error(
+            "store_diagnosis_failed",
+            session_id=str(session_id),
+            provider=provider,
+            model_name=model_name,
+            exc_info=True,
+        )
         raise
     finally:
         db.close()
@@ -547,7 +571,10 @@ async def generate_diagnosis(
                 yield _sse_event("token", token)
 
             full_text = "".join(full_text_parts)
-            _store_session_field(session_id, "diagnosis_text", full_text)
+            _store_diagnosis(
+                session_id, "local",
+                settings.llm_model, full_text,
+            )
             logger.info("obd_diagnosis_generated", session_id=str(session_id))
             yield _sse_event("done", full_text)
 

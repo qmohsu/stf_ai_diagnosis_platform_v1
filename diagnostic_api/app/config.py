@@ -44,14 +44,38 @@ class Settings(BaseSettings):
     # Vision Configuration
     vision_model: str = os.getenv("VISION_MODEL", "llava")
 
-    # Premium LLM Configuration (Cloud API — opt-in)
+    # Premium LLM Configuration (OpenRouter Cloud API — opt-in)
     premium_llm_enabled: bool = (
         os.getenv("PREMIUM_LLM_ENABLED", "false").lower() == "true"
     )
     premium_llm_api_key: str = os.getenv("PREMIUM_LLM_API_KEY", "")
-    premium_llm_model: str = os.getenv(
-        "PREMIUM_LLM_MODEL", "claude-opus-4-6"
+    premium_llm_base_url: str = os.getenv(
+        "PREMIUM_LLM_BASE_URL",
+        "https://openrouter.ai/api/v1",
     )
+    premium_llm_model: str = os.getenv(
+        "PREMIUM_LLM_MODEL", "anthropic/claude-sonnet-4"
+    )
+    premium_llm_curated_models: str = os.getenv(
+        "PREMIUM_LLM_CURATED_MODELS",
+        "anthropic/claude-sonnet-4,"
+        "openai/gpt-4o,"
+        "google/gemini-2.5-pro,"
+        "meta-llama/llama-4-maverick",
+    )
+
+    @property
+    def premium_llm_model_list(self) -> list[str]:
+        """Parse curated model list from comma-separated string.
+
+        Returns:
+            List of OpenRouter model ID strings.
+        """
+        return [
+            m.strip()
+            for m in self.premium_llm_curated_models.split(",")
+            if m.strip()
+        ]
 
     # Weaviate Configuration
     weaviate_url: str = os.getenv("WEAVIATE_URL", "http://weaviate:8080")

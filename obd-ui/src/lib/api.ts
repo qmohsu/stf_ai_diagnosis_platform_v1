@@ -146,9 +146,22 @@ export async function streamDiagnosis(
 }
 
 /**
+ * Fetch the admin-curated list of available premium models.
+ */
+export async function getPremiumModels(): Promise<{ models: string[]; default: string }> {
+  const res = await fetch(`${API_URL}/v2/obd/premium/models`);
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
  * Stream premium AI diagnosis via SSE (cloud LLM).
  *
  * Same interface as streamDiagnosis but hits the /premium endpoint.
+ * Accepts an optional model override to select a specific OpenRouter model.
  */
 export async function streamPremiumDiagnosis(
   sessionId: string,
@@ -157,10 +170,13 @@ export async function streamPremiumDiagnosis(
   onError: (error: string) => void,
   onStatus?: (message: string) => void,
   force?: boolean,
+  model?: string,
 ): Promise<void> {
-  const url = force
-    ? `${API_URL}/v2/obd/${sessionId}/diagnose/premium?force=true`
-    : `${API_URL}/v2/obd/${sessionId}/diagnose/premium`;
+  const params = new URLSearchParams();
+  if (force) params.set("force", "true");
+  if (model) params.set("model", model);
+  const qs = params.toString();
+  const url = `${API_URL}/v2/obd/${sessionId}/diagnose/premium${qs ? `?${qs}` : ""}`;
   return streamSSE(url, { onToken, onDone, onError, onStatus });
 }
 

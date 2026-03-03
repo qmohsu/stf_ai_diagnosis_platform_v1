@@ -378,10 +378,12 @@ services:
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
       VISION_MODEL: ${VISION_MODEL:-llava}
 
-      # Premium LLM Configuration (opt-in, requires internet)
+      # Premium LLM Configuration — OpenRouter (opt-in)
       PREMIUM_LLM_ENABLED: ${PREMIUM_LLM_ENABLED:-false}
       PREMIUM_LLM_API_KEY: ${PREMIUM_LLM_API_KEY:-}
-      PREMIUM_LLM_MODEL: ${PREMIUM_LLM_MODEL:-claude-opus-4-6}
+      PREMIUM_LLM_BASE_URL: ${PREMIUM_LLM_BASE_URL:-https://openrouter.ai/api/v1}
+      PREMIUM_LLM_MODEL: ${PREMIUM_LLM_MODEL:-anthropic/claude-sonnet-4}
+      PREMIUM_LLM_CURATED_MODELS: ${PREMIUM_LLM_CURATED_MODELS:-anthropic/claude-sonnet-4,openai/gpt-4o,google/gemini-2.5-pro,meta-llama/llama-4-maverick}
 
       # Weaviate Configuration
       WEAVIATE_URL: http://weaviate:8080

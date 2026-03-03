@@ -1,5 +1,6 @@
-"""Premium AI Diagnosis endpoints (Anthropic Claude — opt-in).
+"""Premium AI Diagnosis endpoints (OpenRouter cloud LLM — opt-in).
 
+GET  /v2/obd/premium/models                        — list available models
 POST /v2/obd/{session_id}/diagnose/premium          — SSE stream
 POST /v2/obd/{session_id}/feedback/premium_diagnosis — expert feedback
 """
@@ -19,7 +20,7 @@ from app.api.deps import get_db
 from app.api.v2.endpoints.obd_analysis import (
     _get_session_data,
     _sse_event,
-    _store_session_field,
+    _store_diagnosis,
     _submit_feedback,
     _MAX_DIAGNOSIS_LENGTH,
 )
@@ -56,38 +57,10 @@ def _get_premium_client():
                 )
                 _premium_client = PremiumLLMClient(
                     api_key=settings.premium_llm_api_key,
+                    base_url=settings.premium_llm_base_url,
                     model=settings.premium_llm_model,
                 )
     return _premium_client
-
-
-# ---------------------------------------------------------------------------
-# Per-session regeneration counter
-# ---------------------------------------------------------------------------
-
-
-def _count_premium_regenerations(
-    session_id: uuid.UUID,
-    db: Session,
-) -> int:
-    """Count how many premium diagnosis feedback rows exist.
-
-    Each successful premium generation stores a feedback-like row,
-    so we count existing premium feedback entries as a proxy for
-    regeneration count.  We also count the presence of a stored
-    premium_diagnosis_text as 1 generation.
-    """
-    from app.models_db import OBDAnalysisSession
-
-    row = (
-        db.query(OBDAnalysisSession.premium_diagnosis_text)
-        .filter(OBDAnalysisSession.id == session_id)
-        .first()
-    )
-    if row is None or row.premium_diagnosis_text is None:
-        return 0
-    # First generation is free; each force=true after that costs 1.
-    return 1
 
 
 # ---------------------------------------------------------------------------
@@ -95,13 +68,40 @@ def _count_premium_regenerations(
 # ---------------------------------------------------------------------------
 
 
+@router.get(
+    "/premium/models",
+    summary="List available premium LLM models",
+)
+async def list_premium_models() -> dict:
+    """Return admin-curated list of available premium models.
+
+    Returns:
+        Dict with ``models`` (list of model ID strings) and
+        ``default`` (the default model ID).
+
+    Raises:
+        HTTPException: 403 if premium LLM is disabled.
+    """
+    if not settings.premium_llm_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Premium LLM feature is disabled.",
+        )
+    return {
+        "models": settings.premium_llm_model_list,
+        "default": settings.premium_llm_model,
+    }
+
+
 @router.post(
     "/{session_id}/diagnose/premium",
-    summary="Generate premium AI diagnosis via cloud LLM (SSE stream)",
+    summary="Generate premium AI diagnosis via cloud LLM "
+            "(SSE stream)",
 )
 async def generate_premium_diagnosis(
     session_id: uuid.UUID,
     force: bool = False,
+    model: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
     """Run AI diagnosis via premium cloud LLM with SSE streaming.
@@ -109,6 +109,13 @@ async def generate_premium_diagnosis(
     Feature-gated by ``PREMIUM_LLM_ENABLED``. Returns 403 when the
     feature is disabled. SSE event types are identical to the local
     ``/diagnose`` endpoint.
+
+    Args:
+        session_id: OBD analysis session UUID.
+        force: Force regeneration even if cached.
+        model: OpenRouter model ID override (e.g.
+            ``"openai/gpt-4o"``). Uses server default if omitted.
+        db: Database session dependency.
 
     Rate-limited to 3 force-regenerations per session.
     """
@@ -127,6 +134,19 @@ async def generate_premium_diagnosis(
             detail=(
                 "Premium LLM API key is not configured. "
                 "Set PREMIUM_LLM_API_KEY in environment."
+            ),
+        )
+
+    effective_model = model or settings.premium_llm_model
+
+    # Validate model against admin-curated list
+    allowed = settings.premium_llm_model_list
+    if effective_model not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Model '{effective_model}' is not in the "
+                f"curated list. Available: {allowed}"
             ),
         )
 
@@ -153,25 +173,26 @@ async def generate_premium_diagnosis(
         regen_count = (
             db.query(OBDPremiumDiagnosisFeedback)
             .filter(
-                OBDPremiumDiagnosisFeedback.session_id == session_id
+                OBDPremiumDiagnosisFeedback.session_id
+                == session_id
             )
             .count()
         )
-        # Allow initial generation + up to _MAX regen (force=true)
         if regen_count >= _MAX_PREMIUM_REGENERATIONS:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=(
-                    f"Maximum {_MAX_PREMIUM_REGENERATIONS} premium "
-                    "re-generations reached for this session."
+                    f"Maximum {_MAX_PREMIUM_REGENERATIONS} "
+                    "premium re-generations reached for this "
+                    "session."
                 ),
             )
 
     if not parsed_summary:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Session has no parsed summary — cannot generate "
-                   "diagnosis.",
+            detail="Session has no parsed summary — cannot "
+                   "generate diagnosis.",
         )
 
     # RAG retrieval
@@ -181,8 +202,8 @@ async def generate_premium_diagnosis(
         try:
             results = await retrieve_context(rag_query, top_k=3)
             context_str = "\n\n".join(
-                f"[{r.source_type} - {r.doc_id} - {r.section_title}]"
-                f"\n{r.text}"
+                f"[{r.source_type} - {r.doc_id} - "
+                f"{r.section_title}]\n{r.text}"
                 for r in results
             )
         except Exception as exc:
@@ -196,25 +217,31 @@ async def generate_premium_diagnosis(
         yield ": " + " " * 2048 + "\n\n"
         yield _sse_event(
             "status",
-            "Connecting to premium LLM (Claude)...",
+            f"Connecting to {effective_model}...",
         )
 
         full_text_parts: list[str] = []
         try:
             client = _get_premium_client()
-            async for token in client.generate_obd_diagnosis_stream(
-                parsed_summary, context_str
+            async for token in (
+                client.generate_obd_diagnosis_stream(
+                    parsed_summary,
+                    context_str,
+                    model_override=effective_model,
+                )
             ):
                 full_text_parts.append(token)
                 yield _sse_event("token", token)
 
             full_text = "".join(full_text_parts)
-            _store_session_field(
-                session_id, "premium_diagnosis_text", full_text,
+            _store_diagnosis(
+                session_id, "premium",
+                effective_model, full_text,
             )
             logger.info(
                 "premium_obd_diagnosis_generated",
                 session_id=str(session_id),
+                model=effective_model,
             )
             yield _sse_event("done", full_text)
 
@@ -225,7 +252,8 @@ async def generate_premium_diagnosis(
                 and settings.premium_llm_api_key in error_msg
             ):
                 error_msg = error_msg.replace(
-                    settings.premium_llm_api_key, "***REDACTED***"
+                    settings.premium_llm_api_key,
+                    "***REDACTED***",
                 )
             logger.error(
                 "premium_obd_diagnosis_stream_error",
@@ -250,7 +278,8 @@ async def generate_premium_diagnosis(
 @router.post(
     "/{session_id}/feedback/premium_diagnosis",
     status_code=status.HTTP_201_CREATED,
-    summary="Submit expert feedback for the premium AI diagnosis view",
+    summary="Submit expert feedback for the premium AI "
+            "diagnosis view",
 )
 async def submit_premium_diagnosis_feedback(
     session_id: uuid.UUID,
