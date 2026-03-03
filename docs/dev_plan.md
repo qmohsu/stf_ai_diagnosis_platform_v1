@@ -1,4 +1,4 @@
-# Development Plan (v1.4 — PDF Image Parsing Pipeline)
+# Development Plan (v1.5 — OpenRouter Multi-Model + Diagnosis History)
 
 ## 1. Scope Boundary
 Scope boundary for this plan (so engineers don’t drift)
@@ -14,7 +14,8 @@ Scope boundary for this plan (so engineers don’t drift)
   diagnosis/maintenance suggestion tables).
 - Pilot OBD edge collector ("obd-agent") + OBD telemetry ingestion endpoints + Pass‑1 (OBD→subsystem+PID shortlist) mapping.
 - OBD Expert Diagnostic Web UI ("obd-ui") — Next.js frontend for experts to submit OBD logs, view analysis results across 4 tabs (Summary, Detailed, RAG, AI Diagnosis), and provide per-tab structured feedback. AI diagnosis powered by SSE streaming via `POST /v2/obd/{session_id}/diagnose`. Persisted analysis sessions via `/v2/obd/*` endpoints with DB-first persistence.
-- Premium LLM comparison — opt-in Anthropic Claude integration for side-by-side diagnosis quality comparison against local Ollama. AI Diagnosis tab contains Local LLM / Premium LLM sub-tabs with independent streaming and feedback. Gated by `PREMIUM_LLM_ENABLED` env var; the only internet-requiring feature.
+- Premium LLM comparison — opt-in cloud LLM integration via **OpenRouter** (OpenAI-compatible gateway) for side-by-side diagnosis quality comparison against local Ollama. Admin-curated multi-model selector (Claude, GPT-4o, Gemini, Llama 4, etc.) configured via `PREMIUM_LLM_CURATED_MODELS` env var. AI Diagnosis tab contains Local LLM / Cloud LLM (OpenRouter) sub-tabs with independent streaming and feedback. Gated by `PREMIUM_LLM_ENABLED` env var; the only internet-requiring feature.
+- Diagnosis history — append-only `diagnosis_history` table tracks every AI diagnosis generation (local + premium) for comparison and traceability. Session columns retain latest text for quick access; history table preserves all prior generations.
 
 ### 1.2 Out of Scope (Phase 1)
 - Full Edge OBU hardware/software (real-time detection), mobile apps, fleet dashboard
@@ -37,7 +38,7 @@ Critical path dependency: DO‑01 → DO‑06 → (APP‑01 + APP‑02B + APP‑
 
 **Summarization Pipeline Path:** APP‑02B → APP‑13 → (APP‑14 + APP‑15) → APP‑16 → APP‑17.
 
-**OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence + feedback endpoints) → APP‑19 (frontend obd-ui) → APP‑20 (AI diagnosis SSE + RAG/AI feedback tables + DB-first session refactoring) → APP‑21 (Premium LLM comparison).
+**OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence + feedback endpoints) → APP‑19 (frontend obd-ui) → APP‑20 (AI diagnosis SSE + RAG/AI feedback tables + DB-first session refactoring) → APP‑21 (Premium LLM comparison) → APP‑23 (OpenRouter multi-model migration + diagnosis history).
 
 **RAG Image Parsing Path:** APP‑03 → APP‑22 (PDF image parsing: OCR + vision + page render + image-aware chunking).
 
@@ -1450,7 +1451,7 @@ obd-ui renders 4 tabs with per-tab feedback ✓
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: APP‑20
-Status: **IN PROGRESS**
+Status: **DONE** (2026-03-03) — Superseded by APP‑23 (OpenRouter migration)
 
 PROMPT (task ticket):
 Title: APP‑21 Add opt-in premium LLM (Anthropic Claude) diagnosis with side-by-side comparison
@@ -1566,6 +1567,69 @@ Image marker blocks treated as atomic units by chunker ✓
 Pre-flight vision check gracefully falls back when model unavailable ✓
 All error paths caught and logged (no silent failures) ✓
 No security issues (injection fence on vision context, no raw PII) ✓
+
+#### APP‑23 — OpenRouter Multi-Model Migration + Diagnosis History
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP‑21
+Status: **DONE** (2026-03-03)
+
+PROMPT (task ticket):
+Title: APP‑23 Migrate premium LLM from Anthropic SDK to OpenRouter + add diagnosis history
+
+Context:
+APP‑21 hardcoded Anthropic Claude via the `anthropic` SDK. Users want to compare multiple cloud LLMs (Claude, GPT-4o, Gemini, Llama 4) from a single API key. Additionally, diagnosis regeneration currently overwrites previous text — we need an audit trail of every generation.
+
+Task:
+This ticket replaces the Anthropic SDK with OpenRouter (OpenAI-compatible gateway) and adds a unified diagnosis history table:
+
+1) **Remove `anthropic` dependency** — Delete from `requirements.txt`. The `openai` SDK (already used for Ollama) is the sole LLM client SDK.
+
+2) **Rewrite `PremiumLLMClient`** — `diagnostic_api/app/expert/premium_client.py` now uses `AsyncOpenAI(base_url=openrouter_url)` with OpenRouter-specific headers (`HTTP-Referer`, `X-Title`). Accepts `model_override` parameter for per-request model selection. Guards against empty `chunk.choices` list in final SSE chunk from OpenRouter.
+
+3) **Admin-curated model list** — New config fields: `PREMIUM_LLM_BASE_URL` (default: `https://openrouter.ai/api/v1`), `PREMIUM_LLM_CURATED_MODELS` (comma-separated list). `config.py` exposes `premium_llm_model_list` property. Default models: `anthropic/claude-sonnet-4`, `openai/gpt-4o`, `google/gemini-2.5-pro`, `meta-llama/llama-4-maverick`.
+
+4) **Model selector API** — New `GET /v2/obd/premium/models` endpoint returns `{models: [...], default: "..."}`. Premium diagnose endpoint accepts `model` query param, validated against curated list (400 if not in list).
+
+5) **Diagnosis history table** — New `diagnosis_history` table: `id` (UUID PK), `session_id` (FK, indexed), `provider` ("local"/"premium", CHECK constraint), `model_name`, `diagnosis_text`, `created_at`. New `premium_diagnosis_model` column on `obd_analysis_sessions`. New `_store_diagnosis()` helper performs dual-write (session latest + history row) with error logging and rollback.
+
+6) **Alembic migrations** — `h9i0_add_diagnosis_history.py` creates table + column. `i0j1_add_provider_check.py` adds CHECK constraint on `provider`.
+
+7) **Frontend model selector** — `AIDiagnosisView.tsx` gains `availableModels`/`defaultModel` props and a `<Select>` dropdown for premium tab. `AnalysisLayout.tsx` fetches models on mount and passes to component. Tab label updated to "Cloud LLM (OpenRouter)".
+
+8) **Infrastructure** — Updated `.env.example` and `docker-compose.yml` with new env vars (`PREMIUM_LLM_BASE_URL`, `PREMIUM_LLM_CURATED_MODELS`). Default `PREMIUM_LLM_MODEL` changed from `claude-opus-4-6` to `anthropic/claude-sonnet-4` (OpenRouter format).
+
+Deliverables:
+
+Rewritten `diagnostic_api/app/expert/premium_client.py` (OpenAI SDK)
+Updated `diagnostic_api/app/api/v2/endpoints/obd_premium.py` (model validation, models endpoint)
+Updated `diagnostic_api/app/api/v2/endpoints/obd_analysis.py` (`_store_diagnosis` helper)
+Updated `diagnostic_api/app/models_db.py` (DiagnosisHistory, CheckConstraint)
+Updated `diagnostic_api/app/config.py` (new fields, model_list property)
+Updated `diagnostic_api/requirements.txt` (removed `anthropic`)
+New `diagnostic_api/alembic/versions/h9i0_add_diagnosis_history.py`
+New `diagnostic_api/alembic/versions/i0j1_add_provider_check.py`
+New `diagnostic_api/tests/test_store_diagnosis.py` (5 tests)
+Updated `diagnostic_api/tests/test_obd_premium.py` (3 new tests)
+Updated `obd-ui/src/components/AIDiagnosisView.tsx` (model selector)
+Updated `obd-ui/src/components/AnalysisLayout.tsx` (fetch models)
+Updated `obd-ui/src/lib/api.ts` (getPremiumModels, model param)
+Updated `infra/.env.example`, `infra/docker-compose.yml`
+Updated `docs/design_doc.md`, `docs/dev_plan.md`
+
+Acceptance Criteria:
+
+`anthropic` SDK fully removed; only `openai` SDK used ✓
+`GET /v2/obd/premium/models` returns curated model list ✓
+Model selector dropdown appears in Cloud LLM tab ✓
+Selecting a model and generating diagnosis streams correctly via OpenRouter ✓
+Invalid model rejected with 400 ✓
+`diagnosis_history` table persists every generation (local + premium) ✓
+CHECK constraint enforces `provider IN ('local', 'premium')` ✓
+Regeneration creates new history row without overwriting previous ✓
+`_store_diagnosis` logs errors with context before re-raising ✓
+All 44 tests pass; `npm run build` succeeds ✓
+Docker containers build and run with new env vars ✓
 
 ### 3.3 Integration and Finalization Tickets
 #### INT‑01 — End-to-end demo script (“one command demo”)
@@ -1698,5 +1762,6 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-03 | v1.5 | Added APP‑23 (OpenRouter multi-model migration + diagnosis history). Migrated premium LLM from Anthropic SDK to OpenRouter. Added admin-curated model selector, `diagnosis_history` table, CHECK constraint, `_store_diagnosis` dual-write helper. Updated APP‑21 status to DONE. Updated scope (§1.1) and critical path (§2.2). |
 | 2026-03-01 | v1.4 | Added APP‑22 (PDF image parsing pipeline: OCR, vision, page render, image-aware chunking). Updated APP‑03 status to DONE. Added RAG Image Parsing Path to critical path. Updated scope to include PDF image parsing. |
 | 2026-02-28 | v1.3 | Added APP‑21 (Premium LLM comparison). |

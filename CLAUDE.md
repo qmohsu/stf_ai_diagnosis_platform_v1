@@ -134,6 +134,14 @@ obd_agent/        # OBD-II edge agent
 - Never commit secrets — use `.env.example` and gitignore real `.env`
 - Prefer deterministic, testable behavior; fail safe when inputs are missing
 
+## Documentation Update Rule (Mandatory)
+
+Every refactor or new feature **must** include updates to both:
+- `docs/dev_plan.md` — Add/update the relevant ticket (APP‑XX), update scope (§1.1) if needed, update critical path (§2.2) if dependencies change, and add a changelog entry.
+- `docs/design_doc.md` — Update architecture descriptions (§7.1 components, §8.3.7 endpoints/tables), update "New in this revision" field, bump version and date in document control.
+
+A PR is not complete until these docs reflect the current state of the system.
+
 ## Memory Management
 
 When you discover something valuable for future sessions — architectural decisions, bug fixes, gotchas, environment quirks — immediately append it to .claude/memory.md

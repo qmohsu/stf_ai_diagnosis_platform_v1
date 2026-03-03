@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v1.5 (PDF image parsing pipeline) |
+| **Status** | Draft v1.6 (OpenRouter multi-model + diagnosis history) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-03-01 |
+| **Last updated** | 2026-03-03 |
 | **Primary pilot stack** | Dify + (Ollama or vLLM OpenAI-compatible server) + diagnostic_api + vector store (Weaviate) |
-| **New in this revision** | PDF image parsing pipeline for RAG: OCR module (easyocr, CJK+English) for extracting text from PDF images (part numbers, torque specs, dimensions); full-page rendering at 150 DPI; vision model health check (`check_model_ready`); image-marker-aware chunking with atomic blocks (`[Image N, Page M]`, `[OCR, Page M]`, `[Full Page, Page M]`); `has_image` metadata on chunks; `--enable-ocr` and `--enable-page-render` CLI flags on ingestion; pre-flight vision model check with graceful fallback. Previous: Premium LLM (Anthropic Claude) comparison via opt-in `POST /v2/obd/{session_id}/diagnose/premium` SSE endpoint; `premium_diagnosis_text` column on sessions table; `obd_premium_diagnosis_feedback` table; AI Diagnosis tab split into Local LLM / Premium LLM sub-tabs; feature-gated by `PREMIUM_LLM_ENABLED` env var. Previous: DB-first session persistence (no in-memory cache); SHA-256 dedup on `/v2/obd/analyze`; 4 feedback tables (summary, detailed, RAG, AI diagnosis) replacing single `obd_analysis_feedback`; multiple feedback per session (up to 10 per tab); `POST /v2/obd/{session_id}/diagnose` SSE-streaming AI diagnosis via Ollama; RAG feedback snapshots retrieved text; AI diagnosis feedback snapshots diagnosis text; `corrected_diagnosis` column dropped; `raw_input_text`, `parsed_summary_payload`, `diagnosis_text` added to sessions table. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001; initial session persistence + single feedback endpoint; Docker integration for frontend service. |
+| **New in this revision** | Migrated premium LLM from Anthropic SDK to **OpenRouter** (OpenAI-compatible gateway). Removed `anthropic` dependency; `openai` SDK is the sole LLM client. Admin-curated multi-model selector (`PREMIUM_LLM_CURATED_MODELS`) with `GET /v2/obd/premium/models` endpoint. Model validated server-side against curated list (400 on invalid). Frontend model selector dropdown in Cloud LLM (OpenRouter) tab. New `diagnosis_history` table (append-only, both local + premium) with CHECK constraint on `provider` column. `premium_diagnosis_model` column on sessions. `_store_diagnosis()` dual-write helper with structured error logging. Previous: PDF image parsing pipeline for RAG: OCR module (easyocr, CJK+English), full-page rendering at 150 DPI, vision model health check, image-marker-aware chunking, `has_image` metadata on chunks, `--enable-ocr` and `--enable-page-render` CLI flags. Previous: Premium LLM (Anthropic Claude) comparison via opt-in SSE endpoint. Previous: DB-first session persistence, SHA-256 dedup, 4 feedback tables, SSE-streaming AI diagnosis via Ollama. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001. |
 
 ## Related project deliverables (from proposal)
 •	Deliverable 1: Database establishment + preprocessing (1–18 months)
@@ -105,8 +105,8 @@ Your materials reference multiple taxonomies (8 system categories; 17-class; 33 
 •	Vector store: Weaviate (Dify default) for SOP/manual chunks and sanitized knowledge. Chunk metadata includes `has_image` flag and `metadata_json` for image-containing chunks.
 •	Postgres/Redis: Dify stack and job queueing.
 •	OBD Agent (edge collector): a separate service/daemon (python‑OBD or equivalent) that reads ELM327 OBD‑II and posts sanitized OBDSnapshot telemetry to diagnostic_api.
-•	**OBD Expert Diagnostic Web UI (`obd-ui`)**: Next.js 15 (TypeScript, Tailwind CSS, shadcn/ui, recharts) on port 3001. Provides experts with a visual interface to submit OBD logs, view analysis results across four tabs (Summary, Detailed, RAG, AI Diagnosis), and submit structured feedback per tab (up to 10 submissions per tab per session). RAG tab displays retrieved context; AI Diagnosis tab contains Local LLM / Premium LLM sub-tabs for side-by-side comparison — local streams via SSE from Ollama, premium streams via SSE from Anthropic Claude (opt-in). Communicates with diagnostic_api via `/v2/obd/*` endpoints. Runs as a standalone Docker service.
-•	**Premium LLM client (opt-in)**: `PremiumLLMClient` using Anthropic Python SDK for cloud-based diagnosis via Claude. Feature-gated (`PREMIUM_LLM_ENABLED=false` by default). The only component that requires internet access. Uses the same prompts and RAG context as the local Ollama client.
+•	**OBD Expert Diagnostic Web UI (`obd-ui`)**: Next.js 15 (TypeScript, Tailwind CSS, shadcn/ui, recharts) on port 3001. Provides experts with a visual interface to submit OBD logs, view analysis results across four tabs (Summary, Detailed, RAG, AI Diagnosis), and submit structured feedback per tab (up to 10 submissions per tab per session). RAG tab displays retrieved context; AI Diagnosis tab contains Local LLM / Cloud LLM (OpenRouter) sub-tabs for side-by-side comparison — local streams via SSE from Ollama, premium streams via SSE from OpenRouter (opt-in, multi-model). Premium sub-tab includes a model selector dropdown populated from admin-curated list. Communicates with diagnostic_api via `/v2/obd/*` endpoints. Runs as a standalone Docker service.
+•	**Premium LLM client (opt-in)**: `PremiumLLMClient` using OpenAI Python SDK (`AsyncOpenAI`) pointing at **OpenRouter** (`base_url=https://openrouter.ai/api/v1`) for cloud-based diagnosis. Supports any model available on OpenRouter; admin-curated model list configured via `PREMIUM_LLM_CURATED_MODELS` env var. Feature-gated (`PREMIUM_LLM_ENABLED=false` by default). The only component that requires internet access. Uses the same prompts and RAG context as the local Ollama client.
 ### 7.2 Deployment principle: local-first and interface invariants
 Interface invariants that must not change across phases:
 •	Dify (or later custom UI) calls the model through an OpenAI-compatible base URL.
@@ -115,7 +115,7 @@ Interface invariants that must not change across phases:
 •	RAG doc_id + section anchors are stable (no silent renumbering). Image markers (`[Image N, Page M]`, `[OCR, Page M]`, `[Full Page, Page M]`) are stable inline references within section bodies.
 
 **Exception — Premium LLM (opt-in internet access):**
-The premium LLM client is the sole exception to the local-only deployment rule. It is disabled by default (`PREMIUM_LLM_ENABLED=false`) and requires an explicit `PREMIUM_LLM_API_KEY`. When enabled, the diagnostic_api container must have outbound internet access to reach the Anthropic API. All other services remain strictly local.
+The premium LLM client is the sole exception to the local-only deployment rule. It is disabled by default (`PREMIUM_LLM_ENABLED=false`) and requires an explicit `PREMIUM_LLM_API_KEY` (OpenRouter API key). When enabled, the diagnostic_api container must have outbound internet access to reach the OpenRouter API (`PREMIUM_LLM_BASE_URL`, default `https://openrouter.ai/api/v1`). All other services remain strictly local.
 ### 7.3 Network flow (reference)
 Dify’s containerized deployment typically splits UI and API services and may include workers, a plugin daemon, a sandbox, and an SSRF proxy. The outbound allow-list should be enforced at the SSRF proxy and/or network layer to restrict calls to internal services only.
 
@@ -302,15 +302,22 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 - **SSE-streaming AI diagnosis** powered by Ollama (local LLM)
 - Streams diagnostic text tokens to the client in real time via Server-Sent Events
 - Stores the final `diagnosis_text` on the session row upon completion
+- Appends a row to `diagnosis_history` table (provider="local")
 - Returns 404 if session not found
 
 **Endpoint:** `POST /v2/obd/{session_id}/diagnose/premium`
-- **SSE-streaming AI diagnosis** via premium cloud LLM (Anthropic Claude)
+- **SSE-streaming AI diagnosis** via premium cloud LLM (OpenRouter, multi-model)
+- Accepts optional `model` query param (e.g., `?model=openai/gpt-4o`); validated against admin-curated list (400 if not in list); defaults to `PREMIUM_LLM_MODEL`
 - Feature-gated: returns 403 if `PREMIUM_LLM_ENABLED=false`; returns 503 if API key is missing
 - Same SSE event format as `/diagnose` (token, done, cached, error, status)
-- Stores `premium_diagnosis_text` on the session row upon completion
+- Stores `premium_diagnosis_text` and `premium_diagnosis_model` on the session row upon completion
+- Appends a row to `diagnosis_history` table (provider="premium")
 - Independent from local diagnosis — both can exist simultaneously on the same session
 - Uses the same prompts and RAG context as the local endpoint
+
+**Endpoint:** `GET /v2/obd/premium/models`
+- Returns `{models: [...], default: "..."}` from admin-curated `PREMIUM_LLM_CURATED_MODELS` config
+- Feature-gated: returns 403 if `PREMIUM_LLM_ENABLED=false`
 
 **Endpoint:** `POST /v2/obd/{session_id}/feedback/{feedback_type}`
 - `feedback_type` is one of: `summary`, `detailed`, `rag`, `ai_diagnosis`, `premium_diagnosis`
@@ -319,7 +326,8 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 - Returns 404 if session not found
 
 **Database tables:**
-- `obd_analysis_sessions`: id (UUID PK), vehicle_id (indexed), status (indexed), input_text_hash (SHA-256, indexed, used for dedup), input_size_bytes, raw_input_text, parsed_summary_payload (JSONB), diagnosis_text, premium_diagnosis_text, result_payload (JSONB), error_message, created_at, updated_at
+- `obd_analysis_sessions`: id (UUID PK), vehicle_id (indexed), status (indexed), input_text_hash (SHA-256, indexed, used for dedup), input_size_bytes, raw_input_text, parsed_summary_payload (JSONB), diagnosis_text, premium_diagnosis_text, premium_diagnosis_model (String(200), latest model used), result_payload (JSONB), error_message, created_at, updated_at
+- `diagnosis_history`: id (UUID PK), session_id (FK, indexed), provider (String(20), CHECK constraint: `'local'`/`'premium'`), model_name (String(200)), diagnosis_text (Text), created_at. Append-only log of every AI diagnosis generation (local + premium). Each regeneration creates a new row; session columns retain only the latest text for quick access.
 - `obd_summary_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, extra_fields (JSONB), created_at
 - `obd_detailed_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, extra_fields (JSONB), created_at
 - `obd_rag_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, retrieved_text (snapshots the RAG-retrieved text at submission time), extra_fields (JSONB), created_at
