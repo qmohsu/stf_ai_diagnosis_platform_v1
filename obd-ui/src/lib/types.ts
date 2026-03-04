@@ -110,3 +110,18 @@ export interface FeedbackResponse {
   status: string;
   feedback_id: string;
 }
+
+export interface DiagnosisHistoryItem {
+  id: string;
+  session_id: string;
+  provider: "local" | "premium";
+  model_name: string;
+  diagnosis_text: string;
+  created_at: string;
+}
+
+export interface DiagnosisHistoryResponse {
+  session_id: string;
+  items: DiagnosisHistoryItem[];
+  total: number;
+}

@@ -2,6 +2,7 @@
 
 POST /v2/obd/analyze                             — accepts raw TSV body
 GET  /v2/obd/{session_id}                       — retrieve session
+GET  /v2/obd/{session_id}/history               — diagnosis history
 POST /v2/obd/{session_id}/diagnose              — local AI diagnosis
 POST /v2/obd/{session_id}/feedback/summary      — feedback on summary
 POST /v2/obd/{session_id}/feedback/detailed     — feedback on detailed
@@ -22,7 +23,14 @@ import uuid
 from typing import Literal, NamedTuple, Optional, Type, Union
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
 from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -31,6 +39,8 @@ from app.api.deps import get_db
 from app.db.session import SessionLocal
 from app.api.v2.endpoints.log_summary import _run_pipeline, _MAX_FILE_SIZE
 from app.api.v2.schemas import (
+    DiagnosisHistoryItem,
+    DiagnosisHistoryResponse,
     LogSummaryV2,
     OBDAnalysisResponse,
     OBDFeedbackRequest,
@@ -257,6 +267,93 @@ async def get_obd_session(
         parsed_summary=db_session.parsed_summary_payload,
         diagnosis_text=db_session.diagnosis_text,
         premium_diagnosis_text=db_session.premium_diagnosis_text,
+    )
+
+
+@router.get(
+    "/{session_id}/history",
+    response_model=DiagnosisHistoryResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Retrieve diagnosis history for a session",
+)
+async def get_diagnosis_history(
+    session_id: uuid.UUID,
+    provider: Optional[Literal["local", "premium"]] = Query(
+        default=None,
+        description="Filter by provider: 'local' or 'premium'.",
+    ),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+) -> DiagnosisHistoryResponse:
+    """Return diagnosis generations for a session (paginated).
+
+    Results are ordered by created_at descending (newest first).
+    Optionally filtered by provider ('local' or 'premium').
+
+    Args:
+        session_id: OBD analysis session UUID.
+        provider: Optional provider filter ('local' or 'premium').
+        limit: Maximum number of items to return (1–200).
+        offset: Number of items to skip before returning.
+        db: Database session dependency.
+
+    Returns:
+        DiagnosisHistoryResponse with list of history items
+        and total count (across all pages).
+
+    Raises:
+        HTTPException: 404 if session not found.
+    """
+    exists = (
+        db.query(OBDAnalysisSession.id)
+        .filter(OBDAnalysisSession.id == session_id)
+        .first()
+    )
+    if not exists:
+        raise HTTPException(
+            status_code=404,
+            detail="OBD analysis session not found",
+        )
+
+    base_query = db.query(DiagnosisHistory).filter(
+        DiagnosisHistory.session_id == session_id,
+    )
+    if provider is not None:
+        base_query = base_query.filter(
+            DiagnosisHistory.provider == provider,
+        )
+
+    total = base_query.count()
+
+    rows = (
+        base_query
+        .order_by(DiagnosisHistory.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
+
+    items = [
+        DiagnosisHistoryItem(
+            id=str(row.id),
+            session_id=str(row.session_id),
+            provider=row.provider,
+            model_name=row.model_name,
+            diagnosis_text=row.diagnosis_text,
+            created_at=(
+                row.created_at.isoformat()
+                if row.created_at
+                else ""
+            ),
+        )
+        for row in rows
+    ]
+
+    return DiagnosisHistoryResponse(
+        session_id=str(session_id),
+        items=items,
+        total=total,
     )
 
 

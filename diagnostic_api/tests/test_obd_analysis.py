@@ -610,3 +610,219 @@ class TestRAGFeedback:
         extra = mock_insert.call_args[0][5]
         assert extra == {"retrieved_text": None}
         mock_retrieve.assert_not_called()
+
+
+# -----------------------------------------------------------
+# GET /v2/obd/{session_id}/history
+# -----------------------------------------------------------
+
+
+class TestDiagnosisHistory:
+    """Tests for the diagnosis history endpoint."""
+
+    def test_unknown_session_returns_404(
+        self, client, app_ref,
+    ):
+        """Returns 404 when session does not exist."""
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = _mock_db_none
+        resp = client.get(
+            f"/v2/obd/{uuid.uuid4()}/history",
+        )
+        assert resp.status_code == 404
+
+    def test_invalid_uuid_returns_422(self, client):
+        """Returns 422 for malformed session_id."""
+        resp = client.get("/v2/obd/not-a-uuid/history")
+        assert resp.status_code == 422
+
+    def test_empty_history_returns_empty_list(
+        self, client, app_ref,
+    ):
+        """Returns empty items when no history rows exist."""
+        sid = uuid.uuid4()
+        mock_db = MagicMock()
+
+        exists_chain = MagicMock()
+        exists_chain.filter.return_value.first.return_value = (
+            sid,
+        )
+        history_chain = MagicMock()
+        filtered = history_chain.filter.return_value
+        filtered.count.return_value = 0
+        filtered.order_by.return_value.limit.return_value \
+            .offset.return_value.all.return_value = []
+        mock_db.query.side_effect = [
+            exists_chain, history_chain,
+        ]
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = (
+            lambda: mock_db
+        )
+
+        resp = client.get(f"/v2/obd/{sid}/history")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["session_id"] == str(sid)
+        assert body["items"] == []
+        assert body["total"] == 0
+
+    def test_returns_history_items_ordered(
+        self, client, app_ref,
+    ):
+        """Returns history items with correct fields."""
+        from datetime import datetime, timezone
+
+        sid = uuid.uuid4()
+        row1 = MagicMock()
+        row1.id = uuid.uuid4()
+        row1.session_id = sid
+        row1.provider = "local"
+        row1.model_name = "qwen3:14b"
+        row1.diagnosis_text = "Local diagnosis text"
+        row1.created_at = datetime(
+            2026, 3, 3, 12, 0, 0, tzinfo=timezone.utc,
+        )
+
+        row2 = MagicMock()
+        row2.id = uuid.uuid4()
+        row2.session_id = sid
+        row2.provider = "premium"
+        row2.model_name = "anthropic/claude-sonnet-4"
+        row2.diagnosis_text = "Premium diagnosis text"
+        row2.created_at = datetime(
+            2026, 3, 3, 11, 0, 0, tzinfo=timezone.utc,
+        )
+
+        mock_db = MagicMock()
+        exists_chain = MagicMock()
+        exists_chain.filter.return_value.first.return_value = (
+            sid,
+        )
+        history_chain = MagicMock()
+        filtered = history_chain.filter.return_value
+        filtered.count.return_value = 2
+        filtered.order_by.return_value.limit.return_value \
+            .offset.return_value.all.return_value = [
+                row1, row2,
+            ]
+        mock_db.query.side_effect = [
+            exists_chain, history_chain,
+        ]
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = (
+            lambda: mock_db
+        )
+
+        resp = client.get(f"/v2/obd/{sid}/history")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 2
+        assert len(body["items"]) == 2
+
+        item0 = body["items"][0]
+        assert item0["provider"] == "local"
+        assert item0["model_name"] == "qwen3:14b"
+        assert item0["diagnosis_text"] == (
+            "Local diagnosis text"
+        )
+        assert item0["session_id"] == str(sid)
+
+        item1 = body["items"][1]
+        assert item1["provider"] == "premium"
+        assert item1["model_name"] == (
+            "anthropic/claude-sonnet-4"
+        )
+
+    def test_invalid_provider_returns_422(
+        self, client, app_ref,
+    ):
+        """Returns 422 for invalid provider filter value."""
+        sid = uuid.uuid4()
+
+        resp = client.get(
+            f"/v2/obd/{sid}/history?provider=invalid",
+        )
+        assert resp.status_code == 422
+
+    def test_provider_filter_local(
+        self, client, app_ref,
+    ):
+        """Returns only local items when provider=local."""
+        from datetime import datetime, timezone
+
+        sid = uuid.uuid4()
+        row = MagicMock()
+        row.id = uuid.uuid4()
+        row.session_id = sid
+        row.provider = "local"
+        row.model_name = "qwen3:14b"
+        row.diagnosis_text = "Local only"
+        row.created_at = datetime(
+            2026, 3, 3, 12, 0, 0, tzinfo=timezone.utc,
+        )
+
+        mock_db = MagicMock()
+        exists_chain = MagicMock()
+        exists_chain.filter.return_value.first.return_value = (
+            sid,
+        )
+        history_chain = MagicMock()
+        # base_query.filter(session_id).filter(provider)
+        filtered_session = history_chain.filter.return_value
+        filtered_provider = (
+            filtered_session.filter.return_value
+        )
+        filtered_provider.count.return_value = 1
+        filtered_provider.order_by.return_value \
+            .limit.return_value.offset.return_value \
+            .all.return_value = [row]
+        mock_db.query.side_effect = [
+            exists_chain, history_chain,
+        ]
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = (
+            lambda: mock_db
+        )
+
+        resp = client.get(
+            f"/v2/obd/{sid}/history?provider=local",
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 1
+        assert len(body["items"]) == 1
+        assert body["items"][0]["provider"] == "local"
+
+    def test_response_schema_has_required_fields(
+        self, client, app_ref,
+    ):
+        """Response contains session_id, items, total."""
+        sid = uuid.uuid4()
+        mock_db = MagicMock()
+        exists_chain = MagicMock()
+        exists_chain.filter.return_value.first.return_value = (
+            sid,
+        )
+        history_chain = MagicMock()
+        filtered = history_chain.filter.return_value
+        filtered.count.return_value = 0
+        filtered.order_by.return_value.limit.return_value \
+            .offset.return_value.all.return_value = []
+        mock_db.query.side_effect = [
+            exists_chain, history_chain,
+        ]
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = (
+            lambda: mock_db
+        )
+
+        resp = client.get(f"/v2/obd/{sid}/history")
+        body = resp.json()
+        assert "session_id" in body
+        assert "items" in body
+        assert "total" in body

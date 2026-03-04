@@ -6,7 +6,7 @@ generate accurate OpenAPI schemas and validate responses automatically.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -160,3 +160,29 @@ class OBDFeedbackRequest(BaseModel):
     rating: int = Field(..., ge=1, le=5)
     is_helpful: bool
     comments: Optional[str] = Field(None, max_length=5000)
+
+
+# ---------------------------------------------------------------------------
+# Diagnosis history
+# ---------------------------------------------------------------------------
+
+
+class DiagnosisHistoryItem(BaseModel):
+    """A single diagnosis generation record."""
+
+    id: str
+    session_id: str
+    provider: Literal["local", "premium"]
+    model_name: str
+    diagnosis_text: str
+    created_at: str
+
+
+class DiagnosisHistoryResponse(BaseModel):
+    """Response for the diagnosis history endpoint."""
+
+    session_id: str
+    items: List[DiagnosisHistoryItem] = Field(
+        default_factory=list,
+    )
+    total: int = 0

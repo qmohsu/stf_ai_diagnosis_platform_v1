@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v1.6 (OpenRouter multi-model + diagnosis history) |
+| **Status** | Draft v1.7 (Diagnosis history tab) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
 | **Last updated** | 2026-03-03 |
 | **Primary pilot stack** | Dify + (Ollama or vLLM OpenAI-compatible server) + diagnostic_api + vector store (Weaviate) |
-| **New in this revision** | Migrated premium LLM from Anthropic SDK to **OpenRouter** (OpenAI-compatible gateway). Removed `anthropic` dependency; `openai` SDK is the sole LLM client. Admin-curated multi-model selector (`PREMIUM_LLM_CURATED_MODELS`) with `GET /v2/obd/premium/models` endpoint. Model validated server-side against curated list (400 on invalid). Frontend model selector dropdown in Cloud LLM (OpenRouter) tab. New `diagnosis_history` table (append-only, both local + premium) with CHECK constraint on `provider` column. `premium_diagnosis_model` column on sessions. `_store_diagnosis()` dual-write helper with structured error logging. Previous: PDF image parsing pipeline for RAG: OCR module (easyocr, CJK+English), full-page rendering at 150 DPI, vision model health check, image-marker-aware chunking, `has_image` metadata on chunks, `--enable-ocr` and `--enable-page-render` CLI flags. Previous: Premium LLM (Anthropic Claude) comparison via opt-in SSE endpoint. Previous: DB-first session persistence, SHA-256 dedup, 4 feedback tables, SSE-streaming AI diagnosis via Ollama. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001. |
+| **New in this revision** | Added "History" tab to OBD Expert Diagnostic Web UI. New `GET /v2/obd/{session_id}/history` endpoint returns all past diagnosis generations (local + premium) ordered by `created_at` descending, with `DiagnosisHistoryItem`/`DiagnosisHistoryResponse` Pydantic schemas. New `DiagnosisHistoryView.tsx` component with provider badge, model name, timestamp, and expandable text. 5th top-level tab in AnalysisLayout. Previous: Migrated premium LLM from Anthropic SDK to OpenRouter (OpenAI-compatible gateway). Admin-curated multi-model selector. `diagnosis_history` table (append-only, both local + premium) with CHECK constraint. Previous: PDF image parsing pipeline for RAG. Previous: Premium LLM comparison via opt-in SSE endpoint. Previous: DB-first session persistence, SHA-256 dedup, feedback tables, SSE-streaming AI diagnosis via Ollama. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001. |
 
 ## Related project deliverables (from proposal)
 •	Deliverable 1: Database establishment + preprocessing (1–18 months)
@@ -105,7 +105,7 @@ Your materials reference multiple taxonomies (8 system categories; 17-class; 33 
 •	Vector store: Weaviate (Dify default) for SOP/manual chunks and sanitized knowledge. Chunk metadata includes `has_image` flag and `metadata_json` for image-containing chunks.
 •	Postgres/Redis: Dify stack and job queueing.
 •	OBD Agent (edge collector): a separate service/daemon (python‑OBD or equivalent) that reads ELM327 OBD‑II and posts sanitized OBDSnapshot telemetry to diagnostic_api.
-•	**OBD Expert Diagnostic Web UI (`obd-ui`)**: Next.js 15 (TypeScript, Tailwind CSS, shadcn/ui, recharts) on port 3001. Provides experts with a visual interface to submit OBD logs, view analysis results across four tabs (Summary, Detailed, RAG, AI Diagnosis), and submit structured feedback per tab (up to 10 submissions per tab per session). RAG tab displays retrieved context; AI Diagnosis tab contains Local LLM / Cloud LLM (OpenRouter) sub-tabs for side-by-side comparison — local streams via SSE from Ollama, premium streams via SSE from OpenRouter (opt-in, multi-model). Premium sub-tab includes a model selector dropdown populated from admin-curated list. Communicates with diagnostic_api via `/v2/obd/*` endpoints. Runs as a standalone Docker service.
+•	**OBD Expert Diagnostic Web UI (`obd-ui`)**: Next.js 15 (TypeScript, Tailwind CSS, shadcn/ui, recharts) on port 3001. Provides experts with a visual interface to submit OBD logs, view analysis results across five tabs (Summary, Detailed, RAG, AI Diagnosis, History), and submit structured feedback per tab (up to 10 submissions per tab per session). History tab displays all past AI diagnosis generations with provider badge, model name, timestamp, and expandable text. RAG tab displays retrieved context; AI Diagnosis tab contains Local LLM / Cloud LLM (OpenRouter) sub-tabs for side-by-side comparison — local streams via SSE from Ollama, premium streams via SSE from OpenRouter (opt-in, multi-model). Premium sub-tab includes a model selector dropdown populated from admin-curated list. Communicates with diagnostic_api via `/v2/obd/*` endpoints. Runs as a standalone Docker service.
 •	**Premium LLM client (opt-in)**: `PremiumLLMClient` using OpenAI Python SDK (`AsyncOpenAI`) pointing at **OpenRouter** (`base_url=https://openrouter.ai/api/v1`) for cloud-based diagnosis. Supports any model available on OpenRouter; admin-curated model list configured via `PREMIUM_LLM_CURATED_MODELS` env var. Feature-gated (`PREMIUM_LLM_ENABLED=false` by default). The only component that requires internet access. Uses the same prompts and RAG context as the local Ollama client.
 ### 7.2 Deployment principle: local-first and interface invariants
 Interface invariants that must not change across phases:
@@ -318,6 +318,12 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 **Endpoint:** `GET /v2/obd/premium/models`
 - Returns `{models: [...], default: "..."}` from admin-curated `PREMIUM_LLM_CURATED_MODELS` config
 - Feature-gated: returns 403 if `PREMIUM_LLM_ENABLED=false`
+
+**Endpoint:** `GET /v2/obd/{session_id}/history`
+- Returns all `diagnosis_history` rows for a session, ordered by `created_at` descending
+- Response: `DiagnosisHistoryResponse` containing `session_id`, `items` (list of `DiagnosisHistoryItem`), and `total` count
+- Each item includes: `id`, `session_id`, `provider` ("local"/"premium"), `model_name`, `diagnosis_text`, `created_at`
+- Returns 404 if session not found; returns 422 for invalid UUID
 
 **Endpoint:** `POST /v2/obd/{session_id}/feedback/{feedback_type}`
 - `feedback_type` is one of: `summary`, `detailed`, `rag`, `ai_diagnosis`, `premium_diagnosis`

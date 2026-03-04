@@ -8,6 +8,7 @@ import { SummaryView } from "@/components/SummaryView";
 import { DetailedView } from "@/components/DetailedView";
 import { RAGView } from "@/components/RAGView";
 import { AIDiagnosisView } from "@/components/AIDiagnosisView";
+import { DiagnosisHistoryView } from "@/components/DiagnosisHistoryView";
 import { FeedbackForm } from "@/components/FeedbackForm";
 import { formatDuration } from "@/lib/utils";
 import { getPremiumModels } from "@/lib/api";
@@ -33,6 +34,7 @@ export function AnalysisLayout({
   const [premiumDiagnosisText, setPremiumDiagnosisText] = useState<string | null>(initialPremiumDiagnosisText);
   const [premiumModels, setPremiumModels] = useState<string[]>([]);
   const [defaultPremiumModel, setDefaultPremiumModel] = useState<string>("");
+  const [activeTab, setActiveTab] = useState("summary");
 
   useEffect(() => {
     if (!premiumLlmEnabled) return;
@@ -75,12 +77,13 @@ export function AnalysisLayout({
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="summary">
+      <Tabs defaultValue="summary" onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="detailed">Detailed</TabsTrigger>
           <TabsTrigger value="rag">RAG</TabsTrigger>
           <TabsTrigger value="ai_diagnosis">AI Diagnostic Result</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
         <TabsContent value="summary" forceMount className="space-y-6 data-[state=inactive]:hidden">
@@ -139,6 +142,31 @@ export function AnalysisLayout({
               <FeedbackForm sessionId={sessionId} feedbackTab="ai_diagnosis" />
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="history" forceMount className="space-y-6 data-[state=inactive]:hidden">
+          <Tabs defaultValue="local_history">
+            <TabsList className="mb-4">
+              <TabsTrigger value="local_history">Local Model</TabsTrigger>
+              <TabsTrigger value="cloud_history">Cloud Model</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="local_history" forceMount className="space-y-6 data-[state=inactive]:hidden">
+              <DiagnosisHistoryView
+                sessionId={sessionId}
+                active={activeTab === "history"}
+                provider="local"
+              />
+            </TabsContent>
+
+            <TabsContent value="cloud_history" forceMount className="space-y-6 data-[state=inactive]:hidden">
+              <DiagnosisHistoryView
+                sessionId={sessionId}
+                active={activeTab === "history"}
+                provider="premium"
+              />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
     </div>

@@ -1,4 +1,4 @@
-# Development Plan (v1.5 — OpenRouter Multi-Model + Diagnosis History)
+# Development Plan (v1.6 — Diagnosis History Tab)
 
 ## 1. Scope Boundary
 Scope boundary for this plan (so engineers don’t drift)
@@ -15,7 +15,7 @@ Scope boundary for this plan (so engineers don’t drift)
 - Pilot OBD edge collector ("obd-agent") + OBD telemetry ingestion endpoints + Pass‑1 (OBD→subsystem+PID shortlist) mapping.
 - OBD Expert Diagnostic Web UI ("obd-ui") — Next.js frontend for experts to submit OBD logs, view analysis results across 4 tabs (Summary, Detailed, RAG, AI Diagnosis), and provide per-tab structured feedback. AI diagnosis powered by SSE streaming via `POST /v2/obd/{session_id}/diagnose`. Persisted analysis sessions via `/v2/obd/*` endpoints with DB-first persistence.
 - Premium LLM comparison — opt-in cloud LLM integration via **OpenRouter** (OpenAI-compatible gateway) for side-by-side diagnosis quality comparison against local Ollama. Admin-curated multi-model selector (Claude, GPT-4o, Gemini, Llama 4, etc.) configured via `PREMIUM_LLM_CURATED_MODELS` env var. AI Diagnosis tab contains Local LLM / Cloud LLM (OpenRouter) sub-tabs with independent streaming and feedback. Gated by `PREMIUM_LLM_ENABLED` env var; the only internet-requiring feature.
-- Diagnosis history — append-only `diagnosis_history` table tracks every AI diagnosis generation (local + premium) for comparison and traceability. Session columns retain latest text for quick access; history table preserves all prior generations.
+- Diagnosis history — append-only `diagnosis_history` table tracks every AI diagnosis generation (local + premium) for comparison and traceability. Session columns retain latest text for quick access; history table preserves all prior generations. History tab in the web UI (`GET /v2/obd/{session_id}/history`) displays all past generations with provider badge, model name, timestamp, and expandable text.
 
 ### 1.2 Out of Scope (Phase 1)
 - Full Edge OBU hardware/software (real-time detection), mobile apps, fleet dashboard
@@ -38,7 +38,7 @@ Critical path dependency: DO‑01 → DO‑06 → (APP‑01 + APP‑02B + APP‑
 
 **Summarization Pipeline Path:** APP‑02B → APP‑13 → (APP‑14 + APP‑15) → APP‑16 → APP‑17.
 
-**OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence + feedback endpoints) → APP‑19 (frontend obd-ui) → APP‑20 (AI diagnosis SSE + RAG/AI feedback tables + DB-first session refactoring) → APP‑21 (Premium LLM comparison) → APP‑23 (OpenRouter multi-model migration + diagnosis history).
+**OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence + feedback endpoints) → APP‑19 (frontend obd-ui) → APP‑20 (AI diagnosis SSE + RAG/AI feedback tables + DB-first session refactoring) → APP‑21 (Premium LLM comparison) → APP‑23 (OpenRouter multi-model migration + diagnosis history) → APP‑24 (Diagnosis history tab).
 
 **RAG Image Parsing Path:** APP‑03 → APP‑22 (PDF image parsing: OCR + vision + page render + image-aware chunking).
 
@@ -1631,6 +1631,53 @@ Regeneration creates new history row without overwriting previous ✓
 All 44 tests pass; `npm run build` succeeds ✓
 Docker containers build and run with new env vars ✓
 
+#### APP‑24 — Diagnosis History Tab
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP‑23
+Status: **DONE** (2026-03-03)
+
+PROMPT (task ticket):
+Title: APP‑24 Add History tab to OBD Expert Diagnostic Web UI
+
+Context:
+The `diagnosis_history` table (added in APP‑23) stores every AI diagnosis generation as immutable rows, but there is no way for users to view past generations in the UI. Users need to browse and compare prior diagnosis results.
+
+Task:
+Add a new "History" top-level tab to the analysis page:
+
+1) **Backend endpoint** — `GET /v2/obd/{session_id}/history` returns all `diagnosis_history` rows for a session, ordered by `created_at` descending. Returns `DiagnosisHistoryResponse` containing `items` list and `total` count. Returns 404 if session not found.
+
+2) **Pydantic schemas** — `DiagnosisHistoryItem` (id, session_id, provider, model_name, diagnosis_text, created_at) and `DiagnosisHistoryResponse` (session_id, items, total).
+
+3) **Frontend types + API** — `DiagnosisHistoryItem` and `DiagnosisHistoryResponse` TypeScript interfaces. `getDiagnosisHistory(sessionId)` API function.
+
+4) **Frontend component** — New `DiagnosisHistoryView.tsx` component: auto-fetches history on mount, displays loading/error/empty states, renders each item with provider badge (Local/Cloud), model name, timestamp, and expandable/collapsible diagnosis text.
+
+5) **Layout integration** — 5th tab "History" added to `AnalysisLayout.tsx` after "AI Diagnostic Result", using same `forceMount` + `data-[state=inactive]:hidden` pattern.
+
+Deliverables:
+
+Updated `diagnostic_api/app/api/v2/schemas.py` (2 new models)
+Updated `diagnostic_api/app/api/v2/endpoints/obd_analysis.py` (history endpoint)
+Updated `diagnostic_api/tests/test_obd_analysis.py` (5 new tests)
+Updated `obd-ui/src/lib/types.ts` (2 new interfaces)
+Updated `obd-ui/src/lib/api.ts` (getDiagnosisHistory function)
+New `obd-ui/src/components/DiagnosisHistoryView.tsx`
+Updated `obd-ui/src/components/AnalysisLayout.tsx` (5th tab)
+Updated `docs/design_doc.md`, `docs/dev_plan.md`
+
+Acceptance Criteria:
+
+`GET /v2/obd/{session_id}/history` returns 200 with correct schema ✓
+Endpoint returns 404 for non-existent sessions ✓
+Endpoint returns 422 for invalid UUIDs ✓
+History tab appears as 5th tab in AnalysisLayout ✓
+Items display provider badge, model name, and timestamp ✓
+Items are collapsed by default; expand/collapse works ✓
+Empty state shown for sessions with no history ✓
+All 200 tests pass; `npm run build` succeeds ✓
+
 ### 3.3 Integration and Finalization Tickets
 #### INT‑01 — End-to-end demo script (“one command demo”)
 
@@ -1762,6 +1809,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-03 | v1.6 | Added APP‑24 (Diagnosis history tab). New `GET /v2/obd/{session_id}/history` endpoint, `DiagnosisHistoryItem`/`DiagnosisHistoryResponse` Pydantic schemas, `DiagnosisHistoryView.tsx` component, 5th "History" tab in AnalysisLayout. 5 new backend tests (200 total). Updated scope (§1.1) and critical path (§2.2). |
 | 2026-03-03 | v1.5 | Added APP‑23 (OpenRouter multi-model migration + diagnosis history). Migrated premium LLM from Anthropic SDK to OpenRouter. Added admin-curated model selector, `diagnosis_history` table, CHECK constraint, `_store_diagnosis` dual-write helper. Updated APP‑21 status to DONE. Updated scope (§1.1) and critical path (§2.2). |
 | 2026-03-01 | v1.4 | Added APP‑22 (PDF image parsing pipeline: OCR, vision, page render, image-aware chunking). Updated APP‑03 status to DONE. Added RAG Image Parsing Path to critical path. Updated scope to include PDF image parsing. |
 | 2026-02-28 | v1.3 | Added APP‑21 (Premium LLM comparison). |
