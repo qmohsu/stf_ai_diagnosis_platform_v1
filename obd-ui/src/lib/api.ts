@@ -1,5 +1,6 @@
 import type {
   DiagnosisHistoryResponse,
+  FeedbackHistoryResponse,
   FeedbackResponse,
   OBDAnalysisResponse,
   OBDFeedbackRequest,
@@ -227,6 +228,39 @@ export async function getDiagnosisHistory(
   const qs = params.toString();
   const res = await fetch(
     `${API_URL}/v2/obd/${sessionId}/history${qs ? `?${qs}` : ""}`,
+  );
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .catch(() => ({ detail: res.statusText }));
+    throw new Error(
+      detail.detail || `HTTP ${res.status}`,
+    );
+  }
+  return res.json();
+}
+
+/**
+ * Fetch feedback history for a session (paginated).
+ *
+ * Returns all feedback across all 5 feedback types
+ * ordered by created_at descending.
+ *
+ * @param sessionId  OBD analysis session UUID.
+ * @param limit      Max items to return (1-200, default 50).
+ * @param offset     Number of items to skip (default 0).
+ */
+export async function getFeedbackHistory(
+  sessionId: string,
+  limit?: number,
+  offset?: number,
+): Promise<FeedbackHistoryResponse> {
+  const params = new URLSearchParams();
+  if (limit !== undefined) params.set("limit", String(limit));
+  if (offset !== undefined) params.set("offset", String(offset));
+  const qs = params.toString();
+  const res = await fetch(
+    `${API_URL}/v2/obd/${sessionId}/feedback${qs ? `?${qs}` : ""}`,
   );
   if (!res.ok) {
     const detail = await res

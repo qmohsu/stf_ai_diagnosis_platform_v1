@@ -9,6 +9,7 @@ import { DetailedView } from "@/components/DetailedView";
 import { RAGView } from "@/components/RAGView";
 import { AIDiagnosisView } from "@/components/AIDiagnosisView";
 import { DiagnosisHistoryView } from "@/components/DiagnosisHistoryView";
+import { FeedbackHistoryView } from "@/components/FeedbackHistoryView";
 import { FeedbackForm } from "@/components/FeedbackForm";
 import { formatDuration } from "@/lib/utils";
 import { getPremiumModels } from "@/lib/api";
@@ -149,6 +150,7 @@ export function AnalysisLayout({
             <TabsList className="mb-4">
               <TabsTrigger value="local_history">Local Model</TabsTrigger>
               <TabsTrigger value="cloud_history">Cloud Model</TabsTrigger>
+              <TabsTrigger value="feedback_history">Feedback</TabsTrigger>
             </TabsList>
 
             <TabsContent value="local_history" forceMount className="space-y-6 data-[state=inactive]:hidden">
@@ -164,6 +166,13 @@ export function AnalysisLayout({
                 sessionId={sessionId}
                 active={activeTab === "history"}
                 provider="premium"
+              />
+            </TabsContent>
+
+            <TabsContent value="feedback_history" forceMount className="space-y-6 data-[state=inactive]:hidden">
+              <FeedbackHistoryView
+                sessionId={sessionId}
+                active={activeTab === "history"}
               />
             </TabsContent>
           </Tabs>

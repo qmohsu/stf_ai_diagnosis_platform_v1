@@ -125,3 +125,24 @@ export interface DiagnosisHistoryResponse {
   items: DiagnosisHistoryItem[];
   total: number;
 }
+
+export interface FeedbackHistoryItem {
+  id: string;
+  session_id: string;
+  tab_name:
+    | "summary"
+    | "detailed"
+    | "rag"
+    | "ai_diagnosis"
+    | "premium_diagnosis";
+  rating: number;
+  is_helpful: boolean;
+  comments: string | null;
+  created_at: string;
+}
+
+export interface FeedbackHistoryResponse {
+  session_id: string;
+  items: FeedbackHistoryItem[];
+  total: number;
+}

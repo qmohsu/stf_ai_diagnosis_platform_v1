@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v1.8 (Qwen3.5-9B model switch) |
+| **Status** | Draft v1.9 (Feedback history sub-tab) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
 | **Last updated** | 2026-03-03 |
 | **Primary pilot stack** | Dify + (Ollama or vLLM OpenAI-compatible server) + diagnostic_api + vector store (Weaviate) |
-| **New in this revision** | Switched default local LLM from Qwen3-14B (`qwen3:14b`) to Qwen3.5-9B (`qwen3.5:9b`). Smaller model reduces VRAM usage and improves inference latency. Updated all config defaults, documentation, and Dify workflow references. Previous: Added "History" tab to OBD Expert Diagnostic Web UI. New `GET /v2/obd/{session_id}/history` endpoint returns all past diagnosis generations (local + premium) ordered by `created_at` descending, with `DiagnosisHistoryItem`/`DiagnosisHistoryResponse` Pydantic schemas. New `DiagnosisHistoryView.tsx` component with provider badge, model name, timestamp, and expandable text. 5th top-level tab in AnalysisLayout. Previous: Migrated premium LLM from Anthropic SDK to OpenRouter (OpenAI-compatible gateway). Admin-curated multi-model selector. `diagnosis_history` table (append-only, both local + premium) with CHECK constraint. Previous: PDF image parsing pipeline for RAG. Previous: Premium LLM comparison via opt-in SSE endpoint. Previous: DB-first session persistence, SHA-256 dedup, feedback tables, SSE-streaming AI diagnosis via Ollama. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001. |
+| **New in this revision** | Added "Feedback" sub-tab under History tab. New `GET /v2/obd/{session_id}/feedback` endpoint merges all 5 feedback tables (summary, detailed, rag, ai_diagnosis, premium_diagnosis) into a unified chronological list with pagination. `FeedbackHistoryItem`/`FeedbackHistoryResponse` schemas. `FeedbackHistoryView.tsx` component with tab badge, star rating, helpful indicator, expandable comments, and pagination (5 per page). History tab now has 3 sub-tabs: Local Model, Cloud Model, Feedback. Previous: Switched default local LLM from Qwen3-14B (`qwen3:14b`) to Qwen3.5-9B (`qwen3.5:9b`). Smaller model reduces VRAM usage and improves inference latency. Updated all config defaults, documentation, and Dify workflow references. Previous: Added "History" tab to OBD Expert Diagnostic Web UI. New `GET /v2/obd/{session_id}/history` endpoint returns all past diagnosis generations (local + premium) ordered by `created_at` descending, with `DiagnosisHistoryItem`/`DiagnosisHistoryResponse` Pydantic schemas. New `DiagnosisHistoryView.tsx` component with provider badge, model name, timestamp, and expandable text. 5th top-level tab in AnalysisLayout. Previous: Migrated premium LLM from Anthropic SDK to OpenRouter (OpenAI-compatible gateway). Admin-curated multi-model selector. `diagnosis_history` table (append-only, both local + premium) with CHECK constraint. Previous: PDF image parsing pipeline for RAG. Previous: Premium LLM comparison via opt-in SSE endpoint. Previous: DB-first session persistence, SHA-256 dedup, feedback tables, SSE-streaming AI diagnosis via Ollama. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001. |
 
 ## Related project deliverables (from proposal)
 •	Deliverable 1: Database establishment + preprocessing (1–18 months)
@@ -323,6 +323,14 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 - Returns all `diagnosis_history` rows for a session, ordered by `created_at` descending
 - Response: `DiagnosisHistoryResponse` containing `session_id`, `items` (list of `DiagnosisHistoryItem`), and `total` count
 - Each item includes: `id`, `session_id`, `provider` ("local"/"premium"), `model_name`, `diagnosis_text`, `created_at`
+- Returns 404 if session not found; returns 422 for invalid UUID
+
+**Endpoint:** `GET /v2/obd/{session_id}/feedback`
+- Returns all feedback rows across 5 feedback tables for a session, ordered by `created_at` descending
+- Response: `FeedbackHistoryResponse` containing `session_id`, `items` (list of `FeedbackHistoryItem`), and `total` count
+- Each item includes: `id`, `session_id`, `tab_name` (one of: summary, detailed, rag, ai_diagnosis, premium_diagnosis), `rating`, `is_helpful`, `comments`, `created_at`
+- Does NOT include snapshot columns (`retrieved_text`, `diagnosis_text`) — those are internal
+- Supports pagination via `limit` (1-200, default 50) and `offset` (>=0, default 0) query parameters
 - Returns 404 if session not found; returns 422 for invalid UUID
 
 **Endpoint:** `POST /v2/obd/{session_id}/feedback/{feedback_type}`

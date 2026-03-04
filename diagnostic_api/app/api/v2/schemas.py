@@ -186,3 +186,33 @@ class DiagnosisHistoryResponse(BaseModel):
         default_factory=list,
     )
     total: int = 0
+
+
+# ---------------------------------------------------------------------------
+# Feedback history
+# ---------------------------------------------------------------------------
+
+
+class FeedbackHistoryItem(BaseModel):
+    """A single feedback record from any feedback table."""
+
+    id: str
+    session_id: str
+    tab_name: Literal[
+        "summary", "detailed", "rag",
+        "ai_diagnosis", "premium_diagnosis",
+    ]
+    rating: int = Field(..., ge=1, le=5)
+    is_helpful: bool
+    comments: Optional[str] = None
+    created_at: str
+
+
+class FeedbackHistoryResponse(BaseModel):
+    """Response for the feedback history endpoint."""
+
+    session_id: str
+    items: List[FeedbackHistoryItem] = Field(
+        default_factory=list,
+    )
+    total: int = 0

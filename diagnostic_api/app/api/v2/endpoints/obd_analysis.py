@@ -3,6 +3,7 @@
 POST /v2/obd/analyze                             — accepts raw TSV body
 GET  /v2/obd/{session_id}                       — retrieve session
 GET  /v2/obd/{session_id}/history               — diagnosis history
+GET  /v2/obd/{session_id}/feedback              — feedback history
 POST /v2/obd/{session_id}/diagnose              — local AI diagnosis
 POST /v2/obd/{session_id}/feedback/summary      — feedback on summary
 POST /v2/obd/{session_id}/feedback/detailed     — feedback on detailed
@@ -20,7 +21,8 @@ import json
 import os
 import tempfile
 import uuid
-from typing import Literal, NamedTuple, Optional, Type, Union
+from datetime import datetime, timezone
+from typing import Any, Literal, NamedTuple, Optional, Type, Union
 
 import structlog
 from fastapi import (
@@ -41,6 +43,8 @@ from app.api.v2.endpoints.log_summary import _run_pipeline, _MAX_FILE_SIZE
 from app.api.v2.schemas import (
     DiagnosisHistoryItem,
     DiagnosisHistoryResponse,
+    FeedbackHistoryItem,
+    FeedbackHistoryResponse,
     LogSummaryV2,
     OBDAnalysisResponse,
     OBDFeedbackRequest,
@@ -351,6 +355,115 @@ async def get_diagnosis_history(
     ]
 
     return DiagnosisHistoryResponse(
+        session_id=str(session_id),
+        items=items,
+        total=total,
+    )
+
+
+_FEEDBACK_TABLES: list[tuple[FeedbackModel, FeedbackType]] = [
+    (OBDSummaryFeedback, "summary"),
+    (OBDDetailedFeedback, "detailed"),
+    (OBDRAGFeedback, "rag"),
+    (OBDAIDiagnosisFeedback, "ai_diagnosis"),
+    (OBDPremiumDiagnosisFeedback, "premium_diagnosis"),
+]
+
+
+@router.get(
+    "/{session_id}/feedback",
+    response_model=FeedbackHistoryResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Retrieve all feedback for a session",
+)
+async def get_feedback_history(
+    session_id: uuid.UUID,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+) -> FeedbackHistoryResponse:
+    """Return all feedback across all 5 tables for a session.
+
+    Results are ordered by created_at descending (newest first).
+    Merges rows from obd_summary_feedback,
+    obd_detailed_feedback, obd_rag_feedback,
+    obd_ai_diagnosis_feedback, and
+    obd_premium_diagnosis_feedback.
+
+    Args:
+        session_id: OBD analysis session UUID.
+        limit: Maximum number of items to return (1-200).
+        offset: Number of items to skip before returning.
+        db: Database session dependency.
+
+    Returns:
+        FeedbackHistoryResponse with list of feedback items
+        and total count (across all pages).
+
+    Raises:
+        HTTPException: 404 if session not found.
+    """
+    exists = (
+        db.query(OBDAnalysisSession.id)
+        .filter(OBDAnalysisSession.id == session_id)
+        .first()
+    )
+    if not exists:
+        raise HTTPException(
+            status_code=404,
+            detail="OBD analysis session not found",
+        )
+
+    # Max 50 rows total (10 per table x 5 tables) due to
+    # _MAX_FEEDBACK_PER_SESSION cap, so in-memory merge
+    # is acceptable.
+    all_rows: list[tuple[FeedbackType, Any]] = []
+    for model_class, tab_name in _FEEDBACK_TABLES:
+        rows = (
+            db.query(
+                model_class.id,
+                model_class.session_id,
+                model_class.rating,
+                model_class.is_helpful,
+                model_class.comments,
+                model_class.created_at,
+            )
+            .filter(model_class.session_id == session_id)
+            .all()
+        )
+        for row in rows:
+            all_rows.append((tab_name, row))
+
+    total = len(all_rows)
+
+    all_rows.sort(
+        key=lambda r: (
+            r[1].created_at
+            or datetime.min.replace(tzinfo=timezone.utc)
+        ),
+        reverse=True,
+    )
+
+    page_rows = all_rows[offset:offset + limit]
+
+    items = [
+        FeedbackHistoryItem(
+            id=str(row.id),
+            session_id=str(row.session_id),
+            tab_name=tab_name,
+            rating=row.rating,
+            is_helpful=row.is_helpful,
+            comments=row.comments,
+            created_at=(
+                row.created_at.isoformat()
+                if row.created_at
+                else ""
+            ),
+        )
+        for tab_name, row in page_rows
+    ]
+
+    return FeedbackHistoryResponse(
         session_id=str(session_id),
         items=items,
         total=total,

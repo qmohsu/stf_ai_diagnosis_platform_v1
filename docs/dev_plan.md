@@ -1,4 +1,4 @@
-# Development Plan (v1.7 — Qwen3.5-9B Model Switch)
+# Development Plan (v1.8 — Feedback History Sub-Tab)
 
 ## 1. Scope Boundary
 Scope boundary for this plan (so engineers don’t drift)
@@ -16,6 +16,7 @@ Scope boundary for this plan (so engineers don’t drift)
 - OBD Expert Diagnostic Web UI ("obd-ui") — Next.js frontend for experts to submit OBD logs, view analysis results across 4 tabs (Summary, Detailed, RAG, AI Diagnosis), and provide per-tab structured feedback. AI diagnosis powered by SSE streaming via `POST /v2/obd/{session_id}/diagnose`. Persisted analysis sessions via `/v2/obd/*` endpoints with DB-first persistence.
 - Premium LLM comparison — opt-in cloud LLM integration via **OpenRouter** (OpenAI-compatible gateway) for side-by-side diagnosis quality comparison against local Ollama. Admin-curated multi-model selector (Claude, GPT-4o, Gemini, Llama 4, etc.) configured via `PREMIUM_LLM_CURATED_MODELS` env var. AI Diagnosis tab contains Local LLM / Cloud LLM (OpenRouter) sub-tabs with independent streaming and feedback. Gated by `PREMIUM_LLM_ENABLED` env var; the only internet-requiring feature.
 - Diagnosis history — append-only `diagnosis_history` table tracks every AI diagnosis generation (local + premium) for comparison and traceability. Session columns retain latest text for quick access; history table preserves all prior generations. History tab in the web UI (`GET /v2/obd/{session_id}/history`) displays all past generations with provider badge, model name, timestamp, and expandable text.
+- Feedback history — `GET /v2/obd/{session_id}/feedback` endpoint merges feedback from all 5 feedback tables into a unified chronological list. "Feedback" sub-tab under the History tab displays all expert feedback for the current session with tab badge, star rating, helpful indicator, comments (expandable), and timestamp. Paginated (5 per page).
 
 ### 1.2 Out of Scope (Phase 1)
 - Full Edge OBU hardware/software (real-time detection), mobile apps, fleet dashboard
@@ -1809,6 +1810,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-03 | v1.8 | Added APP‑25 (Feedback history sub-tab). New `GET /v2/obd/{session_id}/feedback` endpoint merging all 5 feedback tables. `FeedbackHistoryItem`/`FeedbackHistoryResponse` Pydantic schemas. `FeedbackHistoryView.tsx` component. "Feedback" sub-tab under History. 7 new backend tests (40 total). Updated scope (§1.1). |
 | 2026-03-03 | v1.7 | Switched local LLM from Qwen3-14B to Qwen3.5-9B. Updated default model in `config.py`, `docker-compose.yml`, `.env.example`, `Makefile`. Updated all documentation and Dify workflow YAML references. |
 | 2026-03-03 | v1.6 | Added APP‑24 (Diagnosis history tab). New `GET /v2/obd/{session_id}/history` endpoint, `DiagnosisHistoryItem`/`DiagnosisHistoryResponse` Pydantic schemas, `DiagnosisHistoryView.tsx` component, 5th "History" tab in AnalysisLayout. 5 new backend tests (200 total). Updated scope (§1.1) and critical path (§2.2). |
 | 2026-03-03 | v1.5 | Added APP‑23 (OpenRouter multi-model migration + diagnosis history). Migrated premium LLM from Anthropic SDK to OpenRouter. Added admin-curated model selector, `diagnosis_history` table, CHECK constraint, `_store_diagnosis` dual-write helper. Updated APP‑21 status to DONE. Updated scope (§1.1) and critical path (§2.2). |

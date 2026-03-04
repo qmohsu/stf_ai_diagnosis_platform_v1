@@ -5,6 +5,7 @@ Covers:
   - GET  /v2/obd/{session_id} (DB hit, 404)
   - POST /v2/obd/{session_id}/feedback/{tab} (all 4 tabs, 404, 429 cap)
   - POST /v2/obd/{session_id}/feedback/ai_diagnosis (diagnosis text snapshot)
+  - GET  /v2/obd/{session_id}/feedback (feedback history)
   - raw_input_text excluded from API responses (C-1 regression)
 """
 
@@ -826,3 +827,239 @@ class TestDiagnosisHistory:
         assert "session_id" in body
         assert "items" in body
         assert "total" in body
+
+
+# -----------------------------------------------------------------------
+# GET /v2/obd/{session_id}/feedback  (feedback history)
+# -----------------------------------------------------------------------
+
+
+def _mock_feedback_db(
+    session_exists: bool,
+    table_rows: list[list] | None = None,
+):
+    """Build a mock db for the feedback history endpoint.
+
+    The endpoint issues 1 exists query + 5 feedback table
+    queries.  ``table_rows`` is a list of 5 lists, one per
+    feedback table (summary, detailed, rag, ai_diagnosis,
+    premium_diagnosis).  Each inner list contains mock row
+    objects.
+    """
+    mock_db = MagicMock()
+
+    exists_chain = MagicMock()
+    if session_exists:
+        exists_chain.filter.return_value \
+            .first.return_value = (uuid.uuid4(),)
+    else:
+        exists_chain.filter.return_value \
+            .first.return_value = None
+
+    if table_rows is None:
+        table_rows = [[] for _ in range(5)]
+
+    feedback_chains = []
+    for rows in table_rows:
+        chain = MagicMock()
+        chain.filter.return_value.all.return_value = rows
+        feedback_chains.append(chain)
+
+    mock_db.query.side_effect = [
+        exists_chain,
+    ] + feedback_chains
+    return mock_db
+
+
+class TestFeedbackHistory:
+    """Tests for GET /v2/obd/{session_id}/feedback."""
+
+    def test_unknown_session_returns_404(
+        self, client, app_ref,
+    ):
+        """Returns 404 when session does not exist."""
+        mock_db = _mock_feedback_db(session_exists=False)
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = (
+            lambda: mock_db
+        )
+
+        resp = client.get(
+            f"/v2/obd/{uuid.uuid4()}/feedback",
+        )
+        assert resp.status_code == 404
+
+    def test_invalid_uuid_returns_422(self, client):
+        """Returns 422 for malformed session_id."""
+        resp = client.get(
+            "/v2/obd/not-a-uuid/feedback",
+        )
+        assert resp.status_code == 422
+
+    def test_empty_feedback_returns_empty_list(
+        self, client, app_ref,
+    ):
+        """Returns empty items when no feedback exists."""
+        sid = uuid.uuid4()
+        mock_db = _mock_feedback_db(
+            session_exists=True,
+        )
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = (
+            lambda: mock_db
+        )
+
+        resp = client.get(f"/v2/obd/{sid}/feedback")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["items"] == []
+        assert body["total"] == 0
+
+    def test_returns_items_with_tab_name(
+        self, client, app_ref,
+    ):
+        """Returns feedback tagged with correct tab_name."""
+        from datetime import datetime, timezone
+
+        sid = uuid.uuid4()
+        row = MagicMock()
+        row.id = uuid.uuid4()
+        row.session_id = sid
+        row.rating = 4
+        row.is_helpful = True
+        row.comments = "Great summary"
+        row.created_at = datetime(
+            2026, 3, 3, 12, 0, 0, tzinfo=timezone.utc,
+        )
+
+        # Put the row in the first table (summary)
+        mock_db = _mock_feedback_db(
+            session_exists=True,
+            table_rows=[[row], [], [], [], []],
+        )
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = (
+            lambda: mock_db
+        )
+
+        resp = client.get(f"/v2/obd/{sid}/feedback")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 1
+        item = body["items"][0]
+        assert item["tab_name"] == "summary"
+        assert item["rating"] == 4
+        assert item["is_helpful"] is True
+        assert item["comments"] == "Great summary"
+
+    def test_items_ordered_by_created_at_desc(
+        self, client, app_ref,
+    ):
+        """Newest feedback appears first."""
+        from datetime import datetime, timezone
+
+        sid = uuid.uuid4()
+        older = MagicMock()
+        older.id = uuid.uuid4()
+        older.session_id = sid
+        older.rating = 3
+        older.is_helpful = False
+        older.comments = "Older"
+        older.created_at = datetime(
+            2026, 3, 3, 10, 0, 0, tzinfo=timezone.utc,
+        )
+
+        newer = MagicMock()
+        newer.id = uuid.uuid4()
+        newer.session_id = sid
+        newer.rating = 5
+        newer.is_helpful = True
+        newer.comments = "Newer"
+        newer.created_at = datetime(
+            2026, 3, 3, 14, 0, 0, tzinfo=timezone.utc,
+        )
+
+        # Put in different tables to test cross-table
+        # merge ordering.
+        mock_db = _mock_feedback_db(
+            session_exists=True,
+            table_rows=[[older], [newer], [], [], []],
+        )
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = (
+            lambda: mock_db
+        )
+
+        resp = client.get(f"/v2/obd/{sid}/feedback")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 2
+        assert body["items"][0]["comments"] == "Newer"
+        assert body["items"][1]["comments"] == "Older"
+
+    def test_response_schema_has_required_fields(
+        self, client, app_ref,
+    ):
+        """Response contains session_id, items, total."""
+        mock_db = _mock_feedback_db(
+            session_exists=True,
+        )
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = (
+            lambda: mock_db
+        )
+
+        sid = uuid.uuid4()
+        resp = client.get(f"/v2/obd/{sid}/feedback")
+        body = resp.json()
+        assert "session_id" in body
+        assert "items" in body
+        assert "total" in body
+
+    def test_pagination_limit_offset(
+        self, client, app_ref,
+    ):
+        """Offset and limit correctly paginate results."""
+        from datetime import datetime, timezone
+
+        sid = uuid.uuid4()
+        rows = []
+        for i in range(3):
+            row = MagicMock()
+            row.id = uuid.uuid4()
+            row.session_id = sid
+            row.rating = i + 1
+            row.is_helpful = True
+            row.comments = f"Comment {i}"
+            row.created_at = datetime(
+                2026, 3, 3, 10 + i, 0, 0,
+                tzinfo=timezone.utc,
+            )
+            rows.append(row)
+
+        mock_db = _mock_feedback_db(
+            session_exists=True,
+            table_rows=[rows, [], [], [], []],
+        )
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = (
+            lambda: mock_db
+        )
+
+        resp = client.get(
+            f"/v2/obd/{sid}/feedback?limit=1&offset=1",
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 3
+        assert len(body["items"]) == 1
+        # Sorted desc: Comment 2 (12:00), Comment 1
+        # (11:00), Comment 0 (10:00).  offset=1 skips
+        # Comment 2 → returns Comment 1.
+        assert body["items"][0]["comments"] == "Comment 1"
