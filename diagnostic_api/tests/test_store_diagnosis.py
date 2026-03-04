@@ -63,7 +63,7 @@ class TestStoreDiagnosisLocal:
         )
 
         sid = uuid.uuid4()
-        _store_diagnosis(sid, "local", "qwen3:14b", "diag text")
+        _store_diagnosis(sid, "local", "qwen3.5:9b", "diag text")
 
         # Session field updated
         assert mock_db_session.diagnosis_text == "diag text"
@@ -74,7 +74,7 @@ class TestStoreDiagnosisLocal:
         _mock_session_local.add.assert_called_once()
         history_row = _mock_session_local.add.call_args[0][0]
         assert history_row.provider == "local"
-        assert history_row.model_name == "qwen3:14b"
+        assert history_row.model_name == "qwen3.5:9b"
         assert history_row.diagnosis_text == "diag text"
         assert history_row.session_id == sid
 
@@ -101,7 +101,7 @@ class TestStoreDiagnosisPremium:
         sid = uuid.uuid4()
         _store_diagnosis(
             sid, "premium",
-            "anthropic/claude-sonnet-4", "premium text",
+            "anthropic/claude-sonnet-4.6", "premium text",
         )
 
         assert (
@@ -110,13 +110,13 @@ class TestStoreDiagnosisPremium:
         )
         assert (
             mock_db_session.premium_diagnosis_model
-            == "anthropic/claude-sonnet-4"
+            == "anthropic/claude-sonnet-4.6"
         )
 
         history_row = _mock_session_local.add.call_args[0][0]
         assert history_row.provider == "premium"
         assert history_row.model_name == (
-            "anthropic/claude-sonnet-4"
+            "anthropic/claude-sonnet-4.6"
         )
         _mock_session_local.commit.assert_called_once()
 
@@ -140,7 +140,7 @@ class TestStoreDiagnosisEdgeCases:
 
         with pytest.raises(RuntimeError, match="DB error"):
             _store_diagnosis(
-                uuid.uuid4(), "local", "qwen3:14b", "text",
+                uuid.uuid4(), "local", "qwen3.5:9b", "text",
             )
 
         _mock_session_local.rollback.assert_called_once()
@@ -160,7 +160,7 @@ class TestStoreDiagnosisEdgeCases:
 
         long_text = "x" * (_MAX_DIAGNOSIS_LENGTH + 1000)
         _store_diagnosis(
-            uuid.uuid4(), "local", "qwen3:14b", long_text,
+            uuid.uuid4(), "local", "qwen3.5:9b", long_text,
         )
 
         assert (
@@ -185,7 +185,7 @@ class TestStoreDiagnosisEdgeCases:
         )
 
         _store_diagnosis(
-            uuid.uuid4(), "local", "qwen3:14b", "text",
+            uuid.uuid4(), "local", "qwen3.5:9b", "text",
         )
 
         _mock_session_local.add.assert_not_called()

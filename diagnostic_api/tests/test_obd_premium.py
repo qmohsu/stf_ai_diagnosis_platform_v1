@@ -90,17 +90,17 @@ class TestListPremiumModels:
     ):
         """Returns curated model list when premium is enabled."""
         mock_settings.premium_llm_enabled = True
-        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4"
+        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4.6"
         mock_settings.premium_llm_model_list = [
-            "anthropic/claude-sonnet-4",
-            "openai/gpt-4o",
+            "anthropic/claude-sonnet-4.6",
+            "openai/gpt-5.2",
         ]
 
         resp = client.get("/v2/obd/premium/models")
         assert resp.status_code == 200
         body = resp.json()
-        assert body["default"] == "anthropic/claude-sonnet-4"
-        assert "openai/gpt-4o" in body["models"]
+        assert body["default"] == "anthropic/claude-sonnet-4.6"
+        assert "openai/gpt-5.2" in body["models"]
         assert len(body["models"]) == 2
 
     @patch(
@@ -173,9 +173,9 @@ class TestPremiumDiagnosisCaching:
         """When premium_diagnosis_text exists, return cached SSE event."""
         mock_settings.premium_llm_enabled = True
         mock_settings.premium_llm_api_key = "sk-test"
-        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4"
+        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4.6"
         mock_settings.premium_llm_model_list = [
-            "anthropic/claude-sonnet-4",
+            "anthropic/claude-sonnet-4.6",
         ]
 
         from app.api.v2.endpoints.obd_analysis import SessionData
@@ -203,9 +203,9 @@ class TestPremiumDiagnosisCaching:
         """Returns 422 when session has no parsed summary."""
         mock_settings.premium_llm_enabled = True
         mock_settings.premium_llm_api_key = "sk-test"
-        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4"
+        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4.6"
         mock_settings.premium_llm_model_list = [
-            "anthropic/claude-sonnet-4",
+            "anthropic/claude-sonnet-4.6",
         ]
 
         from app.api.v2.endpoints.obd_analysis import SessionData
@@ -241,10 +241,10 @@ class TestPremiumModelParam:
         """Curated model query parameter is accepted."""
         mock_settings.premium_llm_enabled = True
         mock_settings.premium_llm_api_key = "sk-test"
-        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4"
+        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4.6"
         mock_settings.premium_llm_model_list = [
-            "anthropic/claude-sonnet-4",
-            "openai/gpt-4o",
+            "anthropic/claude-sonnet-4.6",
+            "openai/gpt-5.2",
         ]
 
         from app.api.v2.endpoints.obd_analysis import SessionData
@@ -257,7 +257,7 @@ class TestPremiumModelParam:
         sid = uuid.uuid4()
         resp = client.post(
             f"/v2/obd/{sid}/diagnose/premium"
-            "?model=openai/gpt-4o",
+            "?model=openai/gpt-5.2",
         )
         # Should fail with 422 (no parsed summary), not 400
         # for an invalid model
@@ -273,10 +273,10 @@ class TestPremiumModelParam:
         """Model not in curated list returns 400."""
         mock_settings.premium_llm_enabled = True
         mock_settings.premium_llm_api_key = "sk-test"
-        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4"
+        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4.6"
         mock_settings.premium_llm_model_list = [
-            "anthropic/claude-sonnet-4",
-            "openai/gpt-4o",
+            "anthropic/claude-sonnet-4.6",
+            "openai/gpt-5.2",
         ]
 
         sid = uuid.uuid4()
@@ -298,7 +298,7 @@ class TestPremiumModelParam:
         mock_settings.premium_llm_api_key = "sk-test"
         mock_settings.premium_llm_model = "unknown/bad-default"
         mock_settings.premium_llm_model_list = [
-            "anthropic/claude-sonnet-4",
+            "anthropic/claude-sonnet-4.6",
         ]
 
         sid = uuid.uuid4()
@@ -329,9 +329,9 @@ class TestPremiumRateLimit:
         """Force-regeneration blocked after cap is reached."""
         mock_settings.premium_llm_enabled = True
         mock_settings.premium_llm_api_key = "sk-test"
-        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4"
+        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4.6"
         mock_settings.premium_llm_model_list = [
-            "anthropic/claude-sonnet-4",
+            "anthropic/claude-sonnet-4.6",
         ]
 
         from app.api.v2.endpoints.obd_analysis import SessionData

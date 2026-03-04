@@ -1,4 +1,4 @@
-# Development Plan (v1.8 — Feedback History Sub-Tab)
+# Development Plan (v1.9 — Updated Cloud Model List)
 
 ## 1. Scope Boundary
 Scope boundary for this plan (so engineers don’t drift)
@@ -1588,7 +1588,7 @@ This ticket replaces the Anthropic SDK with OpenRouter (OpenAI-compatible gatewa
 
 2) **Rewrite `PremiumLLMClient`** — `diagnostic_api/app/expert/premium_client.py` now uses `AsyncOpenAI(base_url=openrouter_url)` with OpenRouter-specific headers (`HTTP-Referer`, `X-Title`). Accepts `model_override` parameter for per-request model selection. Guards against empty `chunk.choices` list in final SSE chunk from OpenRouter.
 
-3) **Admin-curated model list** — New config fields: `PREMIUM_LLM_BASE_URL` (default: `https://openrouter.ai/api/v1`), `PREMIUM_LLM_CURATED_MODELS` (comma-separated list). `config.py` exposes `premium_llm_model_list` property. Default models: `anthropic/claude-sonnet-4`, `openai/gpt-4o`, `google/gemini-2.5-pro`, `meta-llama/llama-4-maverick`.
+3) **Admin-curated model list** — New config fields: `PREMIUM_LLM_BASE_URL` (default: `https://openrouter.ai/api/v1`), `PREMIUM_LLM_CURATED_MODELS` (comma-separated list). `config.py` exposes `premium_llm_model_list` property. Default models (5 providers × best+fast tiers, 10 total): `anthropic/claude-opus-4.6`, `anthropic/claude-sonnet-4.6`, `google/gemini-3.1-pro-preview`, `google/gemini-3-flash-preview`, `openai/gpt-5.2`, `openai/gpt-5-mini`, `deepseek/deepseek-v3.2`, `deepseek/deepseek-chat`, `qwen/qwen3.5-plus-02-15`, `qwen/qwen3.5-flash-02-23`.
 
 4) **Model selector API** — New `GET /v2/obd/premium/models` endpoint returns `{models: [...], default: "..."}`. Premium diagnose endpoint accepts `model` query param, validated against curated list (400 if not in list).
 
@@ -1598,7 +1598,7 @@ This ticket replaces the Anthropic SDK with OpenRouter (OpenAI-compatible gatewa
 
 7) **Frontend model selector** — `AIDiagnosisView.tsx` gains `availableModels`/`defaultModel` props and a `<Select>` dropdown for premium tab. `AnalysisLayout.tsx` fetches models on mount and passes to component. Tab label updated to "Cloud LLM (OpenRouter)".
 
-8) **Infrastructure** — Updated `.env.example` and `docker-compose.yml` with new env vars (`PREMIUM_LLM_BASE_URL`, `PREMIUM_LLM_CURATED_MODELS`). Default `PREMIUM_LLM_MODEL` changed from `claude-opus-4-6` to `anthropic/claude-sonnet-4` (OpenRouter format).
+8) **Infrastructure** — Updated `.env.example` and `docker-compose.yml` with new env vars (`PREMIUM_LLM_BASE_URL`, `PREMIUM_LLM_CURATED_MODELS`). Default `PREMIUM_LLM_MODEL` changed to `anthropic/claude-sonnet-4.6` (OpenRouter format). Curated list expanded to 10 models (5 providers × best+fast tiers).
 
 Deliverables:
 
@@ -1810,6 +1810,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-03 | v1.9 | Updated premium LLM curated model list from 4 models (4 providers) to 10 models (5 providers × best+fast tiers): Anthropic, Google, OpenAI, DeepSeek, Alibaba/Qwen. Default model updated to `anthropic/claude-sonnet-4.6`. Updated all config, docker-compose, docs, tests, and docstrings. |
 | 2026-03-03 | v1.8 | Added APP‑25 (Feedback history sub-tab). New `GET /v2/obd/{session_id}/feedback` endpoint merging all 5 feedback tables. `FeedbackHistoryItem`/`FeedbackHistoryResponse` Pydantic schemas. `FeedbackHistoryView.tsx` component. "Feedback" sub-tab under History. 7 new backend tests (40 total). Updated scope (§1.1). |
 | 2026-03-03 | v1.7 | Switched local LLM from Qwen3-14B to Qwen3.5-9B. Updated default model in `config.py`, `docker-compose.yml`, `.env.example`, `Makefile`. Updated all documentation and Dify workflow YAML references. |
 | 2026-03-03 | v1.6 | Added APP‑24 (Diagnosis history tab). New `GET /v2/obd/{session_id}/history` endpoint, `DiagnosisHistoryItem`/`DiagnosisHistoryResponse` Pydantic schemas, `DiagnosisHistoryView.tsx` component, 5th "History" tab in AnalysisLayout. 5 new backend tests (200 total). Updated scope (§1.1) and critical path (§2.2). |

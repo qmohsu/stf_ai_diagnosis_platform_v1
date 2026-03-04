@@ -114,7 +114,7 @@ async def generate_premium_diagnosis(
         session_id: OBD analysis session UUID.
         force: Force regeneration even if cached.
         model: OpenRouter model ID override (e.g.
-            ``"openai/gpt-4o"``). Uses server default if omitted.
+            ``"openai/gpt-5.2"``). Uses server default if omitted.
         db: Database session dependency.
 
     Rate-limited to 3 force-regenerations per session.

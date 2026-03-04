@@ -680,7 +680,7 @@ class TestDiagnosisHistory:
         row1.id = uuid.uuid4()
         row1.session_id = sid
         row1.provider = "local"
-        row1.model_name = "qwen3:14b"
+        row1.model_name = "qwen3.5:9b"
         row1.diagnosis_text = "Local diagnosis text"
         row1.created_at = datetime(
             2026, 3, 3, 12, 0, 0, tzinfo=timezone.utc,
@@ -690,7 +690,7 @@ class TestDiagnosisHistory:
         row2.id = uuid.uuid4()
         row2.session_id = sid
         row2.provider = "premium"
-        row2.model_name = "anthropic/claude-sonnet-4"
+        row2.model_name = "anthropic/claude-sonnet-4.6"
         row2.diagnosis_text = "Premium diagnosis text"
         row2.created_at = datetime(
             2026, 3, 3, 11, 0, 0, tzinfo=timezone.utc,
@@ -725,7 +725,7 @@ class TestDiagnosisHistory:
 
         item0 = body["items"][0]
         assert item0["provider"] == "local"
-        assert item0["model_name"] == "qwen3:14b"
+        assert item0["model_name"] == "qwen3.5:9b"
         assert item0["diagnosis_text"] == (
             "Local diagnosis text"
         )
@@ -734,7 +734,7 @@ class TestDiagnosisHistory:
         item1 = body["items"][1]
         assert item1["provider"] == "premium"
         assert item1["model_name"] == (
-            "anthropic/claude-sonnet-4"
+            "anthropic/claude-sonnet-4.6"
         )
 
     def test_invalid_provider_returns_422(
@@ -759,7 +759,7 @@ class TestDiagnosisHistory:
         row.id = uuid.uuid4()
         row.session_id = sid
         row.provider = "local"
-        row.model_name = "qwen3:14b"
+        row.model_name = "qwen3.5:9b"
         row.diagnosis_text = "Local only"
         row.created_at = datetime(
             2026, 3, 3, 12, 0, 0, tzinfo=timezone.utc,

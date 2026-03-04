@@ -54,14 +54,20 @@ class Settings(BaseSettings):
         "https://openrouter.ai/api/v1",
     )
     premium_llm_model: str = os.getenv(
-        "PREMIUM_LLM_MODEL", "anthropic/claude-sonnet-4"
+        "PREMIUM_LLM_MODEL", "anthropic/claude-sonnet-4.6"
     )
     premium_llm_curated_models: str = os.getenv(
         "PREMIUM_LLM_CURATED_MODELS",
-        "anthropic/claude-sonnet-4,"
-        "openai/gpt-4o,"
-        "google/gemini-2.5-pro,"
-        "meta-llama/llama-4-maverick",
+        "anthropic/claude-opus-4.6,"
+        "anthropic/claude-sonnet-4.6,"
+        "google/gemini-3.1-pro-preview,"
+        "google/gemini-3-flash-preview,"
+        "openai/gpt-5.2,"
+        "openai/gpt-5-mini,"
+        "deepseek/deepseek-v3.2,"
+        "deepseek/deepseek-chat,"
+        "qwen/qwen3.5-plus-02-15,"
+        "qwen/qwen3.5-flash-02-23",
     )
 
     @property

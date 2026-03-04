@@ -31,7 +31,7 @@ class PremiumLLMClient:
         self,
         api_key: str,
         base_url: str = "https://openrouter.ai/api/v1",
-        model: str = "anthropic/claude-sonnet-4",
+        model: str = "anthropic/claude-sonnet-4.6",
     ) -> None:
         if not api_key:
             logger.warning("premium_llm_client_no_api_key")
