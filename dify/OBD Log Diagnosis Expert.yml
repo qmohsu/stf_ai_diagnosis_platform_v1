@@ -377,7 +377,7 @@ workflow:
           completion_params:
             temperature: 0.3
           mode: chat
-          name: qwen3:14b
+          name: qwen3.5:9b
           provider: ollama
         prompt_template:
         - id: system-prompt-obd-diagnosis

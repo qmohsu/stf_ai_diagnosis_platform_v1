@@ -1,4 +1,4 @@
-# Development Plan (v1.6 — Diagnosis History Tab)
+# Development Plan (v1.7 — Qwen3.5-9B Model Switch)
 
 ## 1. Scope Boundary
 Scope boundary for this plan (so engineers don’t drift)
@@ -1809,6 +1809,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-03 | v1.7 | Switched local LLM from Qwen3-14B to Qwen3.5-9B. Updated default model in `config.py`, `docker-compose.yml`, `.env.example`, `Makefile`. Updated all documentation and Dify workflow YAML references. |
 | 2026-03-03 | v1.6 | Added APP‑24 (Diagnosis history tab). New `GET /v2/obd/{session_id}/history` endpoint, `DiagnosisHistoryItem`/`DiagnosisHistoryResponse` Pydantic schemas, `DiagnosisHistoryView.tsx` component, 5th "History" tab in AnalysisLayout. 5 new backend tests (200 total). Updated scope (§1.1) and critical path (§2.2). |
 | 2026-03-03 | v1.5 | Added APP‑23 (OpenRouter multi-model migration + diagnosis history). Migrated premium LLM from Anthropic SDK to OpenRouter. Added admin-curated model selector, `diagnosis_history` table, CHECK constraint, `_store_diagnosis` dual-write helper. Updated APP‑21 status to DONE. Updated scope (§1.1) and critical path (§2.2). |
 | 2026-03-01 | v1.4 | Added APP‑22 (PDF image parsing pipeline: OCR, vision, page render, image-aware chunking). Updated APP‑03 status to DONE. Added RAG Image Parsing Path to critical path. Updated scope to include PDF image parsing. |

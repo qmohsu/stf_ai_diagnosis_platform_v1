@@ -167,9 +167,9 @@ shell-api: ## Open shell in diagnostic-api container
 shell-dify: ## Open shell in dify-api container
 	@docker exec -it stf-dify-api /bin/bash
 
-ollama-pull: ## Pull default Ollama model (qwen3:14b)
+ollama-pull: ## Pull default Ollama model (qwen3.5:9b)
 	@echo "$(GREEN)Pulling Ollama model (this may take a while)...$(NC)"
-	@docker exec -it stf-ollama ollama pull $${OLLAMA_DEFAULT_MODEL:-qwen3:14b}
+	@docker exec -it stf-ollama ollama pull $${OLLAMA_DEFAULT_MODEL:-qwen3.5:9b}
 	@echo "$(GREEN)Model pulled successfully$(NC)"
 
 ollama-list: ## List available Ollama models

@@ -362,7 +362,7 @@
     </div>
     <div class="stage-body">
       <ul>
-        <li><span class="badge badge-model" style="font-size:0.7rem;">qwen3:14b</span> &nbsp; Sequential translation of each section via Ollama <code>/api/generate</code></li>
+        <li><span class="badge badge-model" style="font-size:0.7rem;">qwen3.5:9b</span> &nbsp; Sequential translation of each section via Ollama <code>/api/generate</code></li>
         <li><span class="highlight">CJK detection</span>: <code>has_cjk()</code> checks Unicode ranges U+2E80..U+9FFF, U+F900..U+FAFF, U+20000..U+2FA1F</li>
         <li>Splits body on image markers &rarr; translates only CJK parts &rarr; preserves <code>[Image N, Page M]</code> blocks as-is</li>
         <li><code>/no_think</code> prefix disables qwen3 thinking mode; regex strips leaked <code>&lt;think&gt;</code> tags</li>
@@ -467,7 +467,7 @@
       <ul>
         <li>User query &rarr; <code>nomic-embed-text</code> embedding &rarr; <span class="highlight">nearVector</span> search on KnowledgeChunk</li>
         <li>Returns top-K results with score (<code>1.0 - distance</code>), doc_id, section_title, metadata</li>
-        <li>Results feed into Dify workflow &rarr; qwen3:14b for final diagnostic response</li>
+        <li>Results feed into Dify workflow &rarr; qwen3.5:9b for final diagnostic response</li>
       </ul>
     </div>
   </div>
