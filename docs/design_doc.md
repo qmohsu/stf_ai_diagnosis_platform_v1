@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v1.9 (Feedback history sub-tab) |
+| **Status** | Draft v2.0 (Translation performance fix) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-03-03 |
+| **Last updated** | 2026-03-05 |
 | **Primary pilot stack** | Dify + (Ollama or vLLM OpenAI-compatible server) + diagnostic_api + vector store (Weaviate) |
-| **New in this revision** | Updated premium LLM curated model list to 10 models (5 providers × best+fast tiers): Anthropic (Opus 4.6, Sonnet 4.6), Google (Gemini 3.1 Pro, 3 Flash), OpenAI (GPT-5.2, GPT-5 Mini), DeepSeek (V3.2, Chat), Alibaba (Qwen3.5 Plus, Flash). Default model changed to `anthropic/claude-sonnet-4.6`. Previous: Added "Feedback" sub-tab under History tab. New `GET /v2/obd/{session_id}/feedback` endpoint merges all 5 feedback tables (summary, detailed, rag, ai_diagnosis, premium_diagnosis) into a unified chronological list with pagination. `FeedbackHistoryItem`/`FeedbackHistoryResponse` schemas. `FeedbackHistoryView.tsx` component with tab badge, star rating, helpful indicator, expandable comments, and pagination (5 per page). History tab now has 3 sub-tabs: Local Model, Cloud Model, Feedback. Previous: Switched default local LLM from Qwen3-14B (`qwen3:14b`) to Qwen3.5-9B (`qwen3.5:9b`). Smaller model reduces VRAM usage and improves inference latency. Updated all config defaults, documentation, and Dify workflow references. Previous: Added "History" tab to OBD Expert Diagnostic Web UI. New `GET /v2/obd/{session_id}/history` endpoint returns all past diagnosis generations (local + premium) ordered by `created_at` descending, with `DiagnosisHistoryItem`/`DiagnosisHistoryResponse` Pydantic schemas. New `DiagnosisHistoryView.tsx` component with provider badge, model name, timestamp, and expandable text. 5th top-level tab in AnalysisLayout. Previous: Migrated premium LLM from Anthropic SDK to OpenRouter (OpenAI-compatible gateway). Admin-curated multi-model selector. `diagnosis_history` table (append-only, both local + premium) with CHECK constraint. Previous: PDF image parsing pipeline for RAG. Previous: Premium LLM comparison via opt-in SSE endpoint. Previous: DB-first session persistence, SHA-256 dedup, feedback tables, SSE-streaming AI diagnosis via Ollama. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001. |
+| **New in this revision** | Fixed critical translation performance bottleneck: migrated `translator.py` from Ollama `/api/generate` to `/api/chat` with `think: false` to disable hidden reasoning tokens in Qwen3.5 thinking model (80x speedup). Added concurrent translation via `asyncio.Semaphore`, `max_concurrent` validation, and updated tests (29 total). Added `translator.py` module to §10.3.1 modules table. Previous: Updated premium LLM curated model list to 10 models (5 providers × best+fast tiers): Anthropic (Opus 4.6, Sonnet 4.6), Google (Gemini 3.1 Pro, 3 Flash), OpenAI (GPT-5.2, GPT-5 Mini), DeepSeek (V3.2, Chat), Alibaba (Qwen3.5 Plus, Flash). Default model changed to `anthropic/claude-sonnet-4.6`. Previous: Added "Feedback" sub-tab under History tab. New `GET /v2/obd/{session_id}/feedback` endpoint merges all 5 feedback tables (summary, detailed, rag, ai_diagnosis, premium_diagnosis) into a unified chronological list with pagination. `FeedbackHistoryItem`/`FeedbackHistoryResponse` schemas. `FeedbackHistoryView.tsx` component with tab badge, star rating, helpful indicator, expandable comments, and pagination (5 per page). History tab now has 3 sub-tabs: Local Model, Cloud Model, Feedback. Previous: Switched default local LLM from Qwen3-14B (`qwen3:14b`) to Qwen3.5-9B (`qwen3.5:9b`). Smaller model reduces VRAM usage and improves inference latency. Updated all config defaults, documentation, and Dify workflow references. Previous: Added "History" tab to OBD Expert Diagnostic Web UI. New `GET /v2/obd/{session_id}/history` endpoint returns all past diagnosis generations (local + premium) ordered by `created_at` descending, with `DiagnosisHistoryItem`/`DiagnosisHistoryResponse` Pydantic schemas. New `DiagnosisHistoryView.tsx` component with provider badge, model name, timestamp, and expandable text. 5th top-level tab in AnalysisLayout. Previous: Migrated premium LLM from Anthropic SDK to OpenRouter (OpenAI-compatible gateway). Admin-curated multi-model selector. `diagnosis_history` table (append-only, both local + premium) with CHECK constraint. Previous: PDF image parsing pipeline for RAG. Previous: Premium LLM comparison via opt-in SSE endpoint. Previous: DB-first session persistence, SHA-256 dedup, feedback tables, SSE-streaming AI diagnosis via Ollama. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001. |
 
 ## Related project deliverables (from proposal)
 •	Deliverable 1: Database establishment + preprocessing (1–18 months)
@@ -50,7 +50,7 @@ G5 — Phase-ready learning loop: Log pilot interactions so Phase 1.5/2 fine-tun
 •	Dify workflow and UI for technician Q&A (internal pilot).
 •	diagnostic_api (FastAPI) that wraps deep model inference + summary generation (LLM-safe).
 •	OBD Agent (edge collector) + OBDSnapshot telemetry ingestion + Pass‑1 (OBD→subsystem+PID shortlist) mapping.
-•	RAG knowledge ingestion into vector store (SOPs/manuals/checklists; curated excerpts of maintenance reports). Includes PDF image parsing pipeline: OCR (easyocr, CJK+English) for text-in-image extraction, vision model descriptions, full-page rendering, and image-aware chunking.
+•	RAG knowledge ingestion into vector store (SOPs/manuals/checklists; curated excerpts of maintenance reports). Includes PDF image parsing pipeline: OCR (easyocr, CJK+English) for text-in-image extraction, vision model descriptions, full-page rendering, CJK→English translation (Ollama chat API with thinking disabled), and image-aware chunking.
 •	Strict JSON output contract with schema validation + citations per action.
 •	Observability: logs for each interaction (inputs, retrieved chunks, tool outputs, JSON validation, latency).
 •	Security baseline: local-only deployment, RBAC, network allow-listing for outbound calls.
@@ -484,14 +484,17 @@ Real-world service manual PDFs contain critical diagnostic information embedded 
 
 **Vision model pre-flight:** Before processing any PDFs, the ingestion pipeline verifies the vision model is available via the Ollama `/api/tags` endpoint. If unavailable, image description is disabled gracefully and ingestion proceeds with text-only extraction.
 
+**CJK translation** (`--enable-translation`): Chinese/Traditional Chinese section text and titles are translated to English via the local Ollama LLM (qwen3.5:9b) before chunking and embedding, ensuring uniform English in the vector store. Uses the Ollama `/api/chat` endpoint with `"think": false` to disable hidden reasoning tokens in Qwen3 thinking models (critical: without this flag, each translation generates ~2000 wasted tokens of internal reasoning, causing an 80x slowdown). Translation is concurrent with bounded parallelism (`asyncio.Semaphore`). Image marker blocks are preserved as-is (already English). Sections exceeding 8000 characters are skipped. Sections with fewer than 4 CJK characters are skipped.
+
 **Modules:**
 | Module | Role |
 |--------|------|
 | `app/rag/ocr.py` | easyocr wrapper with structured extraction + CJK-aware overlap dedup |
 | `app/rag/pdf_parser.py` | `render_page_image()`, `has_tables_on_page()`, extended `extract_pdf_sections_async()` |
 | `app/rag/vision.py` | `check_model_ready()` health check, image description via Ollama |
+| `app/rag/translator.py` | Chinese→English translation via Ollama `/api/chat` (think disabled), concurrent batch processing |
 | `app/rag/chunker.py` | Image-marker atomic blocks, `has_image` field on `ChunkedSection` |
-| `app/rag/ingest.py` | Pre-flight vision check, `--enable-ocr` / `--enable-page-render` CLI flags |
+| `app/rag/ingest.py` | Pre-flight vision check, `--enable-ocr` / `--enable-page-render` / `--enable-translation` CLI flags |
 ### 10.4 Workflow ('golden workflow')
 1.	Start: inputs = vehicle_id, question, optional time_range.
 2.	HTTP Request → diagnostic_api /v1/vehicle/diagnose (server may auto-attach latest OBDSnapshot-derived Pass‑1 summary if dtc_codes are missing).

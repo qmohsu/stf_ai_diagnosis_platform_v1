@@ -1,4 +1,4 @@
-# Development Plan (v1.9 — Updated Cloud Model List)
+# Development Plan (v2.0 — Translation Performance Fix)
 
 ## 1. Scope Boundary
 Scope boundary for this plan (so engineers don’t drift)
@@ -8,7 +8,8 @@ Scope boundary for this plan (so engineers don’t drift)
   by cloud model upon request").
 - RAG knowledge base for vehicle manuals + maintenance logs used to ground
   recommendations. Includes PDF image parsing pipeline: OCR (easyocr, CJK+English),
-  vision model descriptions, full-page rendering, and image-aware chunking.
+  vision model descriptions, full-page rendering, CJK→English translation
+  (Ollama chat API with thinking disabled), and image-aware chunking.
 - Local LLM inference (Ollama/vLLM) + Dify workflow orchestration.
 - Storage of diagnostic records (PostgreSQL recommended; includes user/vehicle/
   diagnosis/maintenance suggestion tables).
@@ -41,7 +42,7 @@ Critical path dependency: DO‑01 → DO‑06 → (APP‑01 + APP‑02B + APP‑
 
 **OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence + feedback endpoints) → APP‑19 (frontend obd-ui) → APP‑20 (AI diagnosis SSE + RAG/AI feedback tables + DB-first session refactoring) → APP‑21 (Premium LLM comparison) → APP‑23 (OpenRouter multi-model migration + diagnosis history) → APP‑24 (Diagnosis history tab).
 
-**RAG Image Parsing Path:** APP‑03 → APP‑22 (PDF image parsing: OCR + vision + page render + image-aware chunking).
+**RAG Image Parsing Path:** APP‑03 → APP‑22 (PDF image parsing: OCR + vision + page render + CJK translation + image-aware chunking).
 
 ### 2.3 Definition of Done (Applies to Every Ticket)
 A ticket is DONE only if:
@@ -1810,6 +1811,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-05 | v2.0 | Fixed critical translation performance bottleneck in `translator.py`: migrated from Ollama `/api/generate` to `/api/chat` with `think: false` to disable hidden reasoning tokens in Qwen3.5 thinking model (80x speedup, from ~25s to ~0.3s per section). Added concurrent translation via `asyncio.Semaphore`. Added `max_concurrent` input validation. Updated tests to match new `/api/chat` response schema (3 fixed + 3 new tests, 29 total). Successfully ingested MWS150-A service manual: 2,211 chunks with OCR + vision + translation. Updated RAG Image Parsing Path in critical path (§2.2). Updated design_doc.md §10.3.1 with translation service details. |
 | 2026-03-03 | v1.9 | Updated premium LLM curated model list from 4 models (4 providers) to 10 models (5 providers × best+fast tiers): Anthropic, Google, OpenAI, DeepSeek, Alibaba/Qwen. Default model updated to `anthropic/claude-sonnet-4.6`. Updated all config, docker-compose, docs, tests, and docstrings. |
 | 2026-03-03 | v1.8 | Added APP‑25 (Feedback history sub-tab). New `GET /v2/obd/{session_id}/feedback` endpoint merging all 5 feedback tables. `FeedbackHistoryItem`/`FeedbackHistoryResponse` Pydantic schemas. `FeedbackHistoryView.tsx` component. "Feedback" sub-tab under History. 7 new backend tests (40 total). Updated scope (§1.1). |
 | 2026-03-03 | v1.7 | Switched local LLM from Qwen3-14B to Qwen3.5-9B. Updated default model in `config.py`, `docker-compose.yml`, `.env.example`, `Makefile`. Updated all documentation and Dify workflow YAML references. |

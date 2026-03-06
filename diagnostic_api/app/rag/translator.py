@@ -1,12 +1,14 @@
 """Translation service for converting Chinese manual text to English.
 
-Uses a local Ollama LLM (e.g., qwen3:14b) to translate Traditional
+Uses a local Ollama LLM (e.g., qwen3.5:9b) to translate Traditional
 Chinese section text to English at ingestion time, so the entire
-Weaviate vector store is uniform English.  Follows the same service
-pattern as embedding.py and vision.py (singleton httpx.AsyncClient,
-structlog).
+Weaviate vector store is uniform English.  Uses the Ollama ``/api/chat``
+endpoint with ``think: false`` to disable hidden reasoning tokens in
+Qwen3 thinking models.  Follows the same service pattern as embedding.py
+and vision.py (singleton httpx.AsyncClient, structlog).
 """
 
+import asyncio
 import re
 from typing import List
 
@@ -23,26 +25,23 @@ from app.rag.parser import Section
 
 logger = structlog.get_logger(__name__)
 
-_TRANSLATION_PROMPT = (
-    "/no_think "
-    "Translate the following automotive service manual text "
-    "from Chinese to English.\n"
-    "Rules:\n"
-    "- Preserve all part numbers, model numbers, and codes "
-    "exactly as-is\n"
-    "- Preserve all measurement values (torque specs, "
-    "dimensions) exactly as-is\n"
-    "- Use standard automotive terminology\n"
-    "- Translate accurately and completely; do not summarize "
-    "or omit content\n"
-    "- Output ONLY the English translation, no explanations\n"
-    "\nChinese text:\n"
+_SYSTEM_PROMPT = (
+    "You are a professional automotive translator. "
+    "Translate Chinese service manual text to English. "
+    "Rules: preserve all part numbers, model numbers, codes, "
+    "and measurement values exactly as-is. "
+    "Use standard automotive terminology. "
+    "Translate accurately and completely; do not summarize. "
+    "Output ONLY the English translation."
 )
 
-# Strip <think>...</think> blocks from model output (safety net
-# in case /no_think is ignored or only partially effective).
-_THINK_TAG_RE = re.compile(
-    r"<think>.*?</think>\s*", re.DOTALL
+_USER_PROMPT_PREFIX = "Chinese text:\n"
+
+# Extract content after the last </think> tag.  Qwen3.5 models
+# may generate thinking blocks even with /no_think; the actual
+# translation appears *after* the closing tag.
+_THINK_CLOSE_RE = re.compile(
+    r"</think>\s*", re.DOTALL
 )
 
 # Skip translation for very short text (likely just a code)
@@ -73,7 +72,7 @@ class TranslationService:
     async def _get_client(self) -> httpx.AsyncClient:
         """Return a reusable async HTTP client."""
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(timeout=120.0)
+            self._client = httpx.AsyncClient(timeout=300.0)
         return self._client
 
     async def close(self) -> None:
@@ -109,26 +108,50 @@ class TranslationService:
             return text
 
         client = await self._get_client()
-        prompt = _TRANSLATION_PROMPT + sanitized
 
         try:
             response = await client.post(
-                f"{self.base_url}/api/generate",
+                f"{self.base_url}/api/chat",
                 json={
                     "model": self.model,
-                    "prompt": prompt,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": _SYSTEM_PROMPT,
+                        },
+                        {
+                            "role": "user",
+                            "content": (
+                                _USER_PROMPT_PREFIX + sanitized
+                            ),
+                        },
+                    ],
                     "stream": False,
+                    "think": False,
                 },
             )
             response.raise_for_status()
             result = response.json()
-            raw = result.get("response", "")
-            # Strip any <think>...</think> blocks that leaked
-            translated = _THINK_TAG_RE.sub("", raw).strip()
+            msg = result.get("message", {})
+            raw = msg.get("content", "")
+            logger.debug(
+                "translation_service.raw_response",
+                raw_len=len(raw),
+                eval_count=result.get("eval_count", 0),
+                raw_head=raw[:200] if raw else "(empty)",
+                text_len=len(sanitized),
+            )
+            # Extract content after </think> tag if present
+            # (safety net in case think: false is ignored).
+            # re.split always returns a non-empty list; if no
+            # </think> tag exists, parts == [raw].
+            parts = _THINK_CLOSE_RE.split(raw)
+            translated = parts[-1].strip()
 
             if not translated:
                 logger.warning(
                     "translation_service.empty_response",
+                    raw_len=len(raw),
                     text_len=len(sanitized),
                 )
                 return text
@@ -223,47 +246,77 @@ class TranslationService:
     async def translate_sections(
         self,
         sections: List[Section],
+        *,
+        max_concurrent: int = 2,
     ) -> List[Section]:
         """Translate a list of Sections to English.
 
+        Uses bounded concurrency (``asyncio.Semaphore``) to
+        translate multiple sections in parallel while respecting
+        GPU memory limits.
+
         Args:
             sections: Sections with potentially Chinese content.
+            max_concurrent: Maximum parallel translation tasks.
 
         Returns:
-            List of Sections with English content.
+            List of Sections with English content (order preserved).
         """
-        # TODO(18): When multi-GPU / vLLM is available, translate
-        # sections concurrently with asyncio.Semaphore, similar
-        # to TODO(15) in ingest.py for file processing.
-        translated: List[Section] = []
+        if max_concurrent < 1:
+            raise ValueError(
+                "max_concurrent must be >= 1, "
+                f"got {max_concurrent}"
+            )
         total = len(sections)
+        sem = asyncio.Semaphore(max_concurrent)
+        done_count = 0
         skipped = 0
         failed = 0
+        # SAFETY: asyncio is single-threaded; mutations under
+        # this lock are safe because no await occurs while held.
+        lock = asyncio.Lock()
 
-        for idx, section in enumerate(sections):
+        async def _translate_one(
+            idx: int,
+            section: Section,
+        ) -> tuple[int, Section]:
+            nonlocal done_count, skipped, failed
             if not has_cjk(section.body) and not has_cjk(
                 section.title
             ):
-                translated.append(section)
-                skipped += 1
-                continue
+                async with lock:
+                    skipped += 1
+                    done_count += 1
+                return idx, section
 
-            result = await self.translate_section(section)
-            translated.append(result)
+            async with sem:
+                result = await self.translate_section(section)
 
-            # Detect fallback: body still contains CJK after
-            # translation attempt → count as failure.
-            if has_cjk(result.body) and has_cjk(section.body):
-                failed += 1
+            async with lock:
+                done_count += 1
+                if has_cjk(result.body) and has_cjk(
+                    section.body
+                ):
+                    failed += 1
+                if done_count % 20 == 0 or done_count == total:
+                    logger.info(
+                        "translation_service.progress",
+                        done=done_count,
+                        total=total,
+                        skipped=skipped,
+                        failed=failed,
+                    )
 
-            if (idx + 1) % 10 == 0 or idx + 1 == total:
-                logger.info(
-                    "translation_service.progress",
-                    done=idx + 1,
-                    total=total,
-                    skipped=skipped,
-                    failed=failed,
-                )
+            return idx, result
+
+        tasks = [
+            _translate_one(i, s) for i, s in enumerate(sections)
+        ]
+        results = await asyncio.gather(*tasks)
+
+        # Restore original order
+        ordered = sorted(results, key=lambda r: r[0])
+        translated = [section for _, section in ordered]
 
         logger.info(
             "translation_service.complete",
