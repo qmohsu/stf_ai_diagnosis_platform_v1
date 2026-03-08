@@ -8,12 +8,35 @@ import type {
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+const TOKEN_KEY = "stf_auth_token";
 
-export async function analyzeOBDLog(rawText: string): Promise<OBDAnalysisResponse> {
-  const res = await fetch(`${API_URL}/v2/obd/analyze`, {
+// ---------------------------------------------------------------------------
+// Auth helpers
+// ---------------------------------------------------------------------------
+
+function getAuthHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) return {};
+  return { Authorization: `Bearer ${token}` };
+}
+
+function handle401(res: Response): void {
+  if (res.status === 401 && typeof window !== "undefined") {
+    localStorage.removeItem(TOKEN_KEY);
+    window.location.href = "/login";
+  }
+}
+
+export async function loginUser(
+  username: string,
+  password: string,
+): Promise<{ access_token: string; token_type: string }> {
+  const body = new URLSearchParams({ username, password });
+  const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
-    body: rawText,
-    headers: { "Content-Type": "application/octet-stream" },
+    body,
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
   });
   if (!res.ok) {
     const detail = await res.json().catch(() => ({ detail: res.statusText }));
@@ -22,8 +45,48 @@ export async function analyzeOBDLog(rawText: string): Promise<OBDAnalysisRespons
   return res.json();
 }
 
+export async function registerUser(
+  username: string,
+  password: string,
+): Promise<{ message: string; username: string }> {
+  const res = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// OBD endpoints
+// ---------------------------------------------------------------------------
+
+export async function analyzeOBDLog(rawText: string): Promise<OBDAnalysisResponse> {
+  const res = await fetch(`${API_URL}/v2/obd/analyze`, {
+    method: "POST",
+    body: rawText,
+    headers: {
+      "Content-Type": "application/octet-stream",
+      ...getAuthHeaders(),
+    },
+  });
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function getAnalysisSession(sessionId: string): Promise<OBDAnalysisResponse> {
-  const res = await fetch(`${API_URL}/v2/obd/${sessionId}`);
+  const res = await fetch(`${API_URL}/v2/obd/${sessionId}`, {
+    headers: getAuthHeaders(),
+  });
+  handle401(res);
   if (!res.ok) {
     const detail = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(detail.detail || `HTTP ${res.status}`);
@@ -37,9 +100,13 @@ export async function retrieveRAG(
 ): Promise<{ results: RetrievalResult[] }> {
   const res = await fetch(`${API_URL}/v1/rag/retrieve`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify({ query, top_k: topK ?? 5 }),
   });
+  handle401(res);
   if (!res.ok) {
     const detail = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(detail.detail || `HTTP ${res.status}`);
@@ -59,8 +126,13 @@ type SSECallbacks = {
 };
 
 async function streamSSE(url: string, cb: SSECallbacks): Promise<void> {
-  const res = await fetch(url, { method: "POST", cache: "no-store" });
+  const res = await fetch(url, {
+    method: "POST",
+    cache: "no-store",
+    headers: getAuthHeaders(),
+  });
 
+  handle401(res);
   if (!res.ok) {
     const detail = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(detail.detail || `HTTP ${res.status}`);
@@ -156,7 +228,10 @@ export async function streamDiagnosis(
  * Fetch the admin-curated list of available premium models.
  */
 export async function getPremiumModels(): Promise<{ models: string[]; default: string }> {
-  const res = await fetch(`${API_URL}/v2/obd/premium/models`);
+  const res = await fetch(`${API_URL}/v2/obd/premium/models`, {
+    headers: getAuthHeaders(),
+  });
+  handle401(res);
   if (!res.ok) {
     const detail = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(detail.detail || `HTTP ${res.status}`);
@@ -194,9 +269,13 @@ export async function submitFeedback(
 ): Promise<FeedbackResponse> {
   const res = await fetch(`${API_URL}/v2/obd/${sessionId}/feedback/${tab}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(feedback),
   });
+  handle401(res);
   if (!res.ok) {
     const detail = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(detail.detail || `HTTP ${res.status}`);
@@ -211,7 +290,7 @@ export async function submitFeedback(
  * descending.  Optionally filtered by provider.
  *
  * @param sessionId  OBD analysis session UUID.
- * @param limit      Max items to return (1–200, default 50).
+ * @param limit      Max items to return (1-200, default 50).
  * @param offset     Number of items to skip (default 0).
  * @param provider   Optional filter: "local" or "premium".
  */
@@ -228,7 +307,9 @@ export async function getDiagnosisHistory(
   const qs = params.toString();
   const res = await fetch(
     `${API_URL}/v2/obd/${sessionId}/history${qs ? `?${qs}` : ""}`,
+    { headers: getAuthHeaders() },
   );
+  handle401(res);
   if (!res.ok) {
     const detail = await res
       .json()
@@ -261,7 +342,9 @@ export async function getFeedbackHistory(
   const qs = params.toString();
   const res = await fetch(
     `${API_URL}/v2/obd/${sessionId}/feedback${qs ? `?${qs}` : ""}`,
+    { headers: getAuthHeaders() },
   );
+  handle401(res);
   if (!res.ok) {
     const detail = await res
       .json()

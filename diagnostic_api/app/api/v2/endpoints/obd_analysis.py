@@ -38,6 +38,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.auth.security import get_current_user
 from app.db.session import SessionLocal
 from app.api.v2.endpoints.log_summary import _run_pipeline, _MAX_FILE_SIZE
 from app.api.v2.schemas import (
@@ -59,6 +60,7 @@ from app.models_db import (
     OBDRAGFeedback,
     OBDSummaryFeedback,
     OBDAnalysisSession,
+    User,
 )
 from app.rag.retrieve import retrieve_context
 from obd_agent.summary_formatter import format_summary_flat_strings
@@ -96,12 +98,14 @@ router = APIRouter()
 )
 async def analyze_obd_log(
     request: Request,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> OBDAnalysisResponse:
     """Accept raw OBD TSV log text, run the full pipeline, persist the
     session to Postgres, and return session_id + full LogSummaryV2 result.
 
-    Hash-based deduplication prevents duplicate rows for the same input.
+    Per-user hash-based deduplication: same user + same file =
+    same session; different users get separate sessions.
     """
     body_bytes = await request.body()
 
@@ -120,10 +124,11 @@ async def analyze_obd_log(
 
     input_hash = hashlib.sha256(body_bytes).hexdigest()
 
-    # --- deduplication: return existing session if same file was already analyzed ---
+    # --- deduplication: return existing session if same user already analyzed this file ---
     existing = (
         db.query(OBDAnalysisSession)
         .filter(
+            OBDAnalysisSession.user_id == current_user.id,
             OBDAnalysisSession.input_text_hash == input_hash,
             OBDAnalysisSession.status == "COMPLETED",
         )
@@ -165,6 +170,7 @@ async def analyze_obd_log(
         # Persist to DB immediately
         db_session = OBDAnalysisSession(
             id=session_id,
+            user_id=current_user.id,
             status="COMPLETED",
             vehicle_id=result.vehicle_id,
             input_text_hash=input_hash,
@@ -178,11 +184,12 @@ async def analyze_obd_log(
         try:
             db.commit()
         except IntegrityError:
-            # Concurrent insert with same input_text_hash — fetch existing row
+            # Concurrent insert with same user_id + input_text_hash
             db.rollback()
             existing = (
                 db.query(OBDAnalysisSession)
                 .filter(
+                    OBDAnalysisSession.user_id == current_user.id,
                     OBDAnalysisSession.input_text_hash == input_hash,
                     OBDAnalysisSession.status == "COMPLETED",
                 )
@@ -247,16 +254,11 @@ async def analyze_obd_log(
 )
 async def get_obd_session(
     session_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> OBDAnalysisResponse:
     """Retrieve an OBD session from Postgres."""
-    db_session = (
-        db.query(OBDAnalysisSession)
-        .filter(OBDAnalysisSession.id == session_id)
-        .first()
-    )
-    if not db_session:
-        raise HTTPException(status_code=404, detail="OBD analysis session not found")
+    db_session = _get_owned_session(session_id, current_user, db)
 
     result = None
     if db_session.result_payload:
@@ -288,6 +290,7 @@ async def get_diagnosis_history(
     ),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> DiagnosisHistoryResponse:
     """Return diagnosis generations for a session (paginated).
@@ -298,8 +301,9 @@ async def get_diagnosis_history(
     Args:
         session_id: OBD analysis session UUID.
         provider: Optional provider filter ('local' or 'premium').
-        limit: Maximum number of items to return (1–200).
+        limit: Maximum number of items to return (1-200).
         offset: Number of items to skip before returning.
+        current_user: Authenticated user from JWT.
         db: Database session dependency.
 
     Returns:
@@ -309,16 +313,7 @@ async def get_diagnosis_history(
     Raises:
         HTTPException: 404 if session not found.
     """
-    exists = (
-        db.query(OBDAnalysisSession.id)
-        .filter(OBDAnalysisSession.id == session_id)
-        .first()
-    )
-    if not exists:
-        raise HTTPException(
-            status_code=404,
-            detail="OBD analysis session not found",
-        )
+    _get_owned_session(session_id, current_user, db)
 
     base_query = db.query(DiagnosisHistory).filter(
         DiagnosisHistory.session_id == session_id,
@@ -380,6 +375,7 @@ async def get_feedback_history(
     session_id: uuid.UUID,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> FeedbackHistoryResponse:
     """Return all feedback across all 5 tables for a session.
@@ -394,6 +390,7 @@ async def get_feedback_history(
         session_id: OBD analysis session UUID.
         limit: Maximum number of items to return (1-200).
         offset: Number of items to skip before returning.
+        current_user: Authenticated user from JWT.
         db: Database session dependency.
 
     Returns:
@@ -403,16 +400,7 @@ async def get_feedback_history(
     Raises:
         HTTPException: 404 if session not found.
     """
-    exists = (
-        db.query(OBDAnalysisSession.id)
-        .filter(OBDAnalysisSession.id == session_id)
-        .first()
-    )
-    if not exists:
-        raise HTTPException(
-            status_code=404,
-            detail="OBD analysis session not found",
-        )
+    _get_owned_session(session_id, current_user, db)
 
     # Max 50 rows total (10 per table x 5 tables) due to
     # _MAX_FEEDBACK_PER_SESSION cap, so in-memory merge
@@ -520,6 +508,7 @@ def _insert_feedback(
 async def _submit_feedback(
     session_id: uuid.UUID,
     feedback: OBDFeedbackRequest,
+    user: User,
     db: Session,
     model_class: FeedbackModel,
     feedback_type: FeedbackType,
@@ -527,17 +516,12 @@ async def _submit_feedback(
 ) -> dict:
     """Store feedback for an existing DB session.
 
-    Returns 404 if the session is not found in DB.
+    Returns 404 if the session is not found in DB or not
+    owned by the user.
     Returns 429 if the per-session feedback cap has been reached.
     """
-    # Verify the session exists before inserting feedback.
-    exists = (
-        db.query(OBDAnalysisSession.id)
-        .filter(OBDAnalysisSession.id == session_id)
-        .first()
-    )
-    if not exists:
-        raise HTTPException(status_code=404, detail="OBD analysis session not found")
+    # Verify the session exists and is owned by the user.
+    _get_owned_session(session_id, user, db)
 
     # Guard against unbounded feedback submissions.
     existing_count = (
@@ -562,10 +546,12 @@ async def _submit_feedback(
 async def submit_summary_feedback(
     session_id: uuid.UUID,
     feedback: OBDFeedbackRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     return await _submit_feedback(
-        session_id, feedback, db, OBDSummaryFeedback, "summary",
+        session_id, feedback, current_user, db,
+        OBDSummaryFeedback, "summary",
     )
 
 
@@ -577,10 +563,12 @@ async def submit_summary_feedback(
 async def submit_detailed_feedback(
     session_id: uuid.UUID,
     feedback: OBDFeedbackRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     return await _submit_feedback(
-        session_id, feedback, db, OBDDetailedFeedback, "detailed",
+        session_id, feedback, current_user, db,
+        OBDDetailedFeedback, "detailed",
     )
 
 
@@ -592,10 +580,11 @@ async def submit_detailed_feedback(
 async def submit_rag_feedback(
     session_id: uuid.UUID,
     feedback: OBDFeedbackRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     # Snapshot the RAG-retrieved text the user was viewing
-    session_data = _get_session_data(session_id, db)
+    session_data = _get_session_data(session_id, current_user, db)
     retrieved_text: Optional[str] = None
     if session_data.parsed_summary:
         rag_query = session_data.parsed_summary.get("rag_query", "")
@@ -612,7 +601,8 @@ async def submit_rag_feedback(
     if retrieved_text and len(retrieved_text) > _MAX_DIAGNOSIS_LENGTH:
         retrieved_text = retrieved_text[:_MAX_DIAGNOSIS_LENGTH]
     return await _submit_feedback(
-        session_id, feedback, db, OBDRAGFeedback, "rag",
+        session_id, feedback, current_user, db,
+        OBDRAGFeedback, "rag",
         extra_fields={"retrieved_text": retrieved_text},
     )
 
@@ -622,26 +612,60 @@ async def submit_rag_feedback(
 # ---------------------------------------------------------------------------
 
 
+def _get_owned_session(
+    session_id: uuid.UUID,
+    user: User,
+    db: Session,
+) -> OBDAnalysisSession:
+    """Fetch session owned by user or raise 404.
+
+    Returns 404 (not 403) to avoid leaking session
+    existence to unauthorized users.
+
+    Args:
+        session_id: Target session UUID.
+        user: Authenticated user from JWT.
+        db: Database session.
+
+    Returns:
+        The OBDAnalysisSession row.
+
+    Raises:
+        HTTPException: 404 if session not found or not
+            owned by the user.
+    """
+    db_session = (
+        db.query(OBDAnalysisSession)
+        .filter(
+            OBDAnalysisSession.id == session_id,
+            OBDAnalysisSession.user_id == user.id,
+        )
+        .first()
+    )
+    if db_session is None:
+        raise HTTPException(
+            status_code=404,
+            detail="OBD analysis session not found",
+        )
+    return db_session
+
+
 def _get_session_data(
     session_id: uuid.UUID,
+    user: User,
     db: Session,
 ) -> SessionData:
-    """Return SessionData from DB.
+    """Return SessionData from DB for the given user.
 
     Returns:
         SessionData with parsed_summary, diagnosis_text,
         and premium_diagnosis_text.
 
     Raises:
-        HTTPException: 404 if session not found.
+        HTTPException: 404 if session not found or not
+            owned by the user.
     """
-    db_session = (
-        db.query(OBDAnalysisSession)
-        .filter(OBDAnalysisSession.id == session_id)
-        .first()
-    )
-    if db_session is None:
-        raise HTTPException(status_code=404, detail="OBD analysis session not found")
+    db_session = _get_owned_session(session_id, user, db)
 
     return SessionData(
         db_session.parsed_summary_payload,
@@ -716,6 +740,7 @@ def _store_diagnosis(
 async def generate_diagnosis(
     session_id: uuid.UUID,
     force: bool = False,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
     """Run the AI diagnosis workflow with SSE streaming.
@@ -730,7 +755,7 @@ async def generate_diagnosis(
     sent and the stream closes immediately.
     """
     # --- pre-flight checks (run before entering the stream generator) ---
-    session_data = _get_session_data(session_id, db)
+    session_data = _get_session_data(session_id, current_user, db)
     parsed_summary = session_data.parsed_summary
     existing_diagnosis = session_data.diagnosis_text
 
@@ -813,14 +838,18 @@ def _sse_event(event: str, data: str) -> str:
 async def submit_ai_diagnosis_feedback(
     session_id: uuid.UUID,
     feedback: OBDFeedbackRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     # Snapshot the diagnosis text the user is rating
-    session_data = _get_session_data(session_id, db)
+    session_data = _get_session_data(
+        session_id, current_user, db,
+    )
     diag_text = session_data.diagnosis_text
     if diag_text and len(diag_text) > _MAX_DIAGNOSIS_LENGTH:
         diag_text = diag_text[:_MAX_DIAGNOSIS_LENGTH]
     return await _submit_feedback(
-        session_id, feedback, db, OBDAIDiagnosisFeedback, "ai_diagnosis",
+        session_id, feedback, current_user, db,
+        OBDAIDiagnosisFeedback, "ai_diagnosis",
         extra_fields={"diagnosis_text": diag_text},
     )

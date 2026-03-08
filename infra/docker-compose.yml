@@ -186,6 +186,9 @@ services:
       STRICT_MODE: ${DIAGNOSTIC_API_STRICT_MODE:-true}
       REDACT_PII: ${DIAGNOSTIC_API_REDACT_PII:-true}
       ALLOW_EXTERNAL_APIS: ${DIAGNOSTIC_API_ALLOW_EXTERNAL_APIS:-false}
+
+      # Authentication
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
     volumes:
       - diagnostic_api_logs:/app/logs
     # Note: easyocr runs on CPU (pip torch is CPU-only in slim image).
@@ -219,7 +222,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://${BIND_HOST:-127.0.0.1}:${DIAGNOSTIC_API_PORT:-8000}
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001" ]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001" ]
       interval: 10s
       timeout: 5s
       retries: 3

@@ -62,7 +62,14 @@ def app_ref():
 
 @pytest.fixture(autouse=True)
 def clear_overrides(app_ref):
-    """Ensure dependency overrides are cleaned up after each test."""
+    """Set up auth override and clean up after each test."""
+    from app.auth.security import get_current_user
+    from tests.conftest import make_mock_user
+
+    mock_user = make_mock_user()
+    app_ref.dependency_overrides[get_current_user] = (
+        lambda: mock_user
+    )
     yield
     app_ref.dependency_overrides.clear()
 

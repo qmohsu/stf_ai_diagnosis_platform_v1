@@ -24,6 +24,11 @@ weaviate-client==4.4.1
 openai==1.10.0  # OpenAI-compatible client for Ollama + OpenRouter
 httpx==0.26.0
 
+# Authentication
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.1  # passlib 1.7.4 incompatible with bcrypt>=5
+python-jose[cryptography]==3.3.0
+
 # Utilities
 python-dotenv==1.0.0
 python-multipart==0.0.6

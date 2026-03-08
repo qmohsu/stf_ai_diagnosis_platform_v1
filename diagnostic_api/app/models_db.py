@@ -17,6 +17,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.ext.declarative import declared_attr
@@ -30,15 +31,19 @@ def _utcnow() -> datetime:
 
 
 class User(Base):
-    """User table (stub for future auth)."""
+    """User table for local JWT authentication."""
 
     __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     username = Column(String(50), unique=True, index=True, nullable=False)
-    email = Column(String(255), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=_utcnow)
+
+    sessions = relationship(
+        "OBDAnalysisSession", back_populates="user",
+    )
 
 
 class Vehicle(Base):
@@ -105,8 +110,20 @@ class OBDAnalysisSession(Base):
     """OBD analysis session records (separate from DiagnosticSession)."""
 
     __tablename__ = "obd_analysis_sessions"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "input_text_hash",
+            name="uq_user_input_hash",
+        ),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
     vehicle_id = Column(String(50), nullable=True, index=True)
 
     # Status tracking
@@ -138,6 +155,7 @@ class OBDAnalysisSession(Base):
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
     # Relationships
+    user = relationship("User", back_populates="sessions")
     summary_feedback = relationship("OBDSummaryFeedback", back_populates="session", uselist=True)
     detailed_feedback = relationship("OBDDetailedFeedback", back_populates="session", uselist=True)
     rag_feedback = relationship("OBDRAGFeedback", back_populates="session", uselist=True)

@@ -1,11 +1,14 @@
-import type { Config } from "tailwindcss";
+const path = require("path");
 
-const config: Config = {
+const srcDir = path.join(__dirname, "src");
+
+/** @type {import('tailwindcss').Config} */
+module.exports = {
   darkMode: ["class"],
   content: [
-    "./src/components/**/*.{ts,tsx}",
-    "./src/app/**/*.{ts,tsx}",
-    "./src/lib/**/*.{ts,tsx}",
+    path.join(srcDir, "components/**/*.{ts,tsx}"),
+    path.join(srcDir, "app/**/*.{ts,tsx}"),
+    path.join(srcDir, "lib/**/*.{ts,tsx}"),
   ],
   theme: {
     extend: {
@@ -49,5 +52,3 @@ const config: Config = {
   },
   plugins: [require("tailwindcss-animate")],
 };
-
-export default config;

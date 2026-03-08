@@ -15,6 +15,7 @@ dist/
 # misc
 .DS_Store
 *.tgz
+nul
 
 # debug
 npm-debug.log*

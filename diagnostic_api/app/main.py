@@ -81,6 +81,7 @@ async def startup_event() -> None:
     logger.info(f"Weaviate: {settings.weaviate_url}")
     logger.info(f"Strict Mode: {settings.strict_mode}")
     logger.info(f"Redact PII: {settings.redact_pii}")
+    settings.validate_jwt_secret()
     await obd_cache.start_cleanup_loop()
 
 
@@ -250,6 +251,12 @@ async def get_diagnosis_result(
         logger.error(f"Failed to parse stored result: {e}")
         raise HTTPException(status_code=500, detail="Corrupted session data")
 
+
+from app.auth.router import router as auth_router
+
+app.include_router(
+    auth_router, prefix="/auth", tags=["Authentication"],
+)
 
 from app.api.v1.endpoints import rag, diagnose, feedback, tools, log_summary
 

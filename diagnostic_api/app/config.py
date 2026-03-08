@@ -99,6 +99,29 @@ class Settings(BaseSettings):
         os.getenv("ALLOW_EXTERNAL_APIS", "false").lower() == "true"
     )
 
+    # JWT / Authentication
+    jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "")
+    jwt_algorithm: str = os.getenv("JWT_ALGORITHM", "HS256")
+    jwt_access_token_expire_minutes: int = int(
+        os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "1440")
+    )
+
+    def validate_jwt_secret(self) -> None:
+        """Verify JWT_SECRET_KEY is set and strong enough.
+
+        Raises:
+            SystemExit: If secret is missing or shorter than
+                32 characters.
+        """
+        if not self.jwt_secret_key or len(
+            self.jwt_secret_key
+        ) < 32:
+            raise SystemExit(
+                "FATAL: JWT_SECRET_KEY must be set and at "
+                "least 32 characters. Generate one with: "
+                "openssl rand -hex 32"
+            )
+
     @property
     def database_url(self) -> str:
         """Construct database connection URL.

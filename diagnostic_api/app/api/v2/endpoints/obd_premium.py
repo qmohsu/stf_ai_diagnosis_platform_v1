@@ -25,8 +25,9 @@ from app.api.v2.endpoints.obd_analysis import (
     _MAX_DIAGNOSIS_LENGTH,
 )
 from app.api.v2.schemas import OBDFeedbackRequest
+from app.auth.security import get_current_user
 from app.config import settings
-from app.models_db import OBDPremiumDiagnosisFeedback
+from app.models_db import OBDPremiumDiagnosisFeedback, User
 from app.rag.retrieve import retrieve_context
 
 logger = structlog.get_logger()
@@ -72,7 +73,9 @@ def _get_premium_client():
     "/premium/models",
     summary="List available premium LLM models",
 )
-async def list_premium_models() -> dict:
+async def list_premium_models(
+    current_user: User = Depends(get_current_user),
+) -> dict:
     """Return admin-curated list of available premium models.
 
     Returns:
@@ -102,6 +105,7 @@ async def generate_premium_diagnosis(
     session_id: uuid.UUID,
     force: bool = False,
     model: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
     """Run AI diagnosis via premium cloud LLM with SSE streaming.
@@ -151,7 +155,7 @@ async def generate_premium_diagnosis(
         )
 
     # --- pre-flight checks ---
-    session_data = _get_session_data(session_id, db)
+    session_data = _get_session_data(session_id, current_user, db)
     parsed_summary = session_data.parsed_summary
     existing_premium = session_data.premium_diagnosis_text
 
@@ -284,15 +288,18 @@ async def generate_premium_diagnosis(
 async def submit_premium_diagnosis_feedback(
     session_id: uuid.UUID,
     feedback: OBDFeedbackRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     """Store expert feedback on the premium AI diagnosis."""
-    session_data = _get_session_data(session_id, db)
+    session_data = _get_session_data(
+        session_id, current_user, db,
+    )
     diag_text = session_data.premium_diagnosis_text
     if diag_text and len(diag_text) > _MAX_DIAGNOSIS_LENGTH:
         diag_text = diag_text[:_MAX_DIAGNOSIS_LENGTH]
     return await _submit_feedback(
-        session_id, feedback, db,
+        session_id, feedback, current_user, db,
         OBDPremiumDiagnosisFeedback, "premium_diagnosis",
         extra_fields={"diagnosis_text": diag_text},
     )
