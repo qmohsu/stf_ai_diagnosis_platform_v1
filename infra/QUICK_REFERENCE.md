@@ -23,12 +23,11 @@ make health && make smoke-test
 
 | Service | URL | Purpose |
 |---------|-----|---------|
-| **Dify Web UI** | http://127.0.0.1:3000 | Main interface |
+| **OBD UI** | http://127.0.0.1:3001 | Diagnostic interface |
 | **Diagnostic API** | http://127.0.0.1:8000 | Backend API |
 | **API Docs** | http://127.0.0.1:8000/docs | Interactive API docs |
 | **Weaviate** | http://127.0.0.1:8080 | Vector store |
 | **Ollama** | http://127.0.0.1:11434 | LLM inference |
-| **Dify API** | http://127.0.0.1:5001 | Workflow engine |
 
 ---
 
@@ -49,7 +48,6 @@ make smoke-test      # Run comprehensive tests
 
 # Database Access
 make exec-postgres   # Open PostgreSQL shell
-make exec-redis      # Open Redis CLI
 
 # LLM Management
 make ollama-pull     # Pull default model (qwen3.5:9b)
@@ -67,9 +65,7 @@ make reset-volumes   # ⚠️ DELETE ALL DATA (requires confirmation)
 
 ```bash
 POSTGRES_PASSWORD=<strong-password>
-REDIS_PASSWORD=<strong-password>
 WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS=<api-key>
-DIFY_SECRET_KEY=<secret-key>
 APP_DB_PASSWORD=<strong-password>
 ```
 
@@ -112,7 +108,7 @@ curl -X POST http://127.0.0.1:8000/v1/rag/retrieve \
 
 | Issue | Solution |
 |-------|----------|
-| Port already in use | Change port in `.env` (e.g., `DIFY_WEB_PORT=3001`) |
+| Port already in use | Change port in `.env` |
 | Out of memory | Increase Docker resources (Settings → Resources) |
 | Database connection failed | Check `.env` passwords match, run `make restart` |
 | Ollama model not found | Run `make ollama-pull` (takes 10-30 minutes) |
@@ -162,9 +158,8 @@ curl -X POST http://127.0.0.1:8000/v1/rag/retrieve \
 ## 🎯 Next Steps (Phase 1.1)
 
 1. **Ingest RAG data:** Prepare and ingest SOPs/manuals into Weaviate
-2. **Configure Dify workflow:** Create diagnostic workflow in UI
-3. **Implement full diagnostic API:** Connect to Weaviate and Ollama
-4. **End-to-end testing:** Test complete flow from UI to response
+2. **Implement full diagnostic API:** Connect to Weaviate and Ollama
+3. **End-to-end testing:** Test complete flow from UI to response
 
 ---
 

@@ -52,7 +52,7 @@ Return the result in the strict JSON format specified in the system prompt.
 
 
 # ---------------------------------------------------------------------------
-# OBD Diagnosis prompts (free-form markdown, replicating Dify workflow)
+# OBD Diagnosis prompts (free-form markdown)
 # ---------------------------------------------------------------------------
 
 OBD_DIAGNOSIS_SYSTEM_PROMPT = """\

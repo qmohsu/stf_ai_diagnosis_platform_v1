@@ -10,11 +10,7 @@
 | Service | Status | Port | Health |
 |---------|--------|------|--------|
 | Diagnostic API | ✅ Running | 8000 | Healthy |
-| Dify API | ✅ Running | 5001 | Healthy |
-| Dify Web | ✅ Running | 3000 | Responsive |
-| Dify Worker | ✅ Running | - | Healthy |
 | Postgres | ✅ Running | 5432 | Healthy |
-| Redis | ✅ Running | 6379 | Healthy |
 | Weaviate | ✅ Running | 8080 | Healthy |
 | Ollama | ✅ Running | 11434 | Running |
 
@@ -69,10 +65,9 @@ curl -X POST http://127.0.0.1:8000/v1/vehicle/diagnose \
 
 ## Access URLs
 
-- **Dify Web UI:** http://127.0.0.1:3000
+- **OBD UI:** http://127.0.0.1:3001
 - **Diagnostic API:** http://127.0.0.1:8000
 - **Diagnostic API Docs:** http://127.0.0.1:8000/docs
-- **Dify API:** http://127.0.0.1:5001
 - **Weaviate:** http://127.0.0.1:8080
 - **Ollama:** http://127.0.0.1:11434
 
@@ -80,14 +75,14 @@ curl -X POST http://127.0.0.1:8000/v1/vehicle/diagnose \
 
 ## Next Steps
 
-1. **Access Dify UI** at http://127.0.0.1:3000 to configure workflows
+1. **Access OBD UI** at http://127.0.0.1:3001
 2. **Pull LLM Model** (if not already done):
    ```bash
    cd infra
    make ollama-pull
    ```
 3. **Ingest RAG Data** (Phase 1.1): Add SOPs and manuals to Weaviate
-4. **Test End-to-End Flow**: Create a diagnostic workflow in Dify
+4. **Test End-to-End Flow**: Upload OBD log via OBD UI
 
 ---
 

@@ -1,4 +1,4 @@
-# Development Plan (v2.0 — Translation Performance Fix)
+# Development Plan (v2.1 — Remove Dify Dependency)
 
 ## 1. Scope Boundary
 Scope boundary for this plan (so engineers don’t drift)
@@ -10,7 +10,7 @@ Scope boundary for this plan (so engineers don’t drift)
   recommendations. Includes PDF image parsing pipeline: OCR (easyocr, CJK+English),
   vision model descriptions, full-page rendering, CJK→English translation
   (Ollama chat API with thinking disabled), and image-aware chunking.
-- Local LLM inference (Ollama/vLLM) + Dify workflow orchestration.
+- Local LLM inference (Ollama/vLLM) for on-device diagnosis.
 - Storage of diagnostic records (PostgreSQL recommended; includes user/vehicle/
   diagnosis/maintenance suggestion tables).
 - Pilot OBD edge collector ("obd-agent") + OBD telemetry ingestion endpoints + Pass‑1 (OBD→subsystem+PID shortlist) mapping.
@@ -36,7 +36,7 @@ Scope boundary for this plan (so engineers don’t drift)
   logic.
 
 ### 2.2 Critical Path Dependency
-Critical path dependency: DO‑01 → DO‑06 → (APP‑01 + APP‑02B + APP‑03) → APP‑06 → APP‑08 → APP‑11 (Dify integration) → INT‑01 (E2E demo).
+Critical path dependency: DO‑01 → DO‑06 → (APP‑01 + APP‑02B + APP‑03) → APP‑06 → APP‑08 → INT‑01 (E2E demo).
 
 **Summarization Pipeline Path:** APP‑02B → APP‑13 → (APP‑14 + APP‑15) → APP‑16 → APP‑17.
 
@@ -52,7 +52,7 @@ A ticket is DONE only if:
 
 ### 2.4 Deviations and ADRs
 If an engineer deviates from the recommended stack (FastAPI/Pydantic/Weaviate/
-Ollama‑or‑vLLM/Dify), they must add an ADR (Architecture Decision Record)
+Ollama‑or‑vLLM), they must add an ADR (Architecture Decision Record)
 explaining the alternative and why it's worth it.
 
 ## 3. Ticket-Style Prompts (Copy/Paste into Jira/GitHub Issues)
@@ -75,7 +75,7 @@ Title: DO‑01 Bootstrap local diagnosis cloud stack (Compose)
  
 
 Context:
-We are building the diagnosis cloud system using FastAPI + Pydantic + Weaviate + Ollama/vLLM + Dify.
+We are building the diagnosis cloud system using FastAPI + Pydantic + Weaviate + Ollama/vLLM.
 
 The stack must support "cloud model classification upon request" (Step 5) and RAG based on manuals and maintenance logs.
 
@@ -90,11 +90,7 @@ weaviate (vector DB)
 
 ollama OR vLLM (local inference runtime)
 
-dify (+ its required deps, typically Postgres + Redis; if Dify requires its own compose sub-stack, integrate cleanly)
-
-postgres (if not already included by Dify stack)
-
-redis (if not already included by Dify stack)
+postgres (shared database for diagnostic records and sessions)
 
 Requirements:
 
@@ -158,8 +154,6 @@ Bind exposed ports to 127.0.0.1 only (not 0.0.0.0).
 Put internal services on an internal docker network where possible.
 
 Only expose minimal entrypoints to host:
-
-Dify UI (localhost)
 
 diagnostic_api (localhost)
 
@@ -262,8 +256,6 @@ Check: diagnostic_api telemetry endpoint accepts a fixture OBDSnapshot (POST /v1
 Check: Weaviate meta endpoint responds
 
 Check: LLM endpoint responds (or embeddings endpoint)
-
-Check: Dify web UI responds (200 or reachable)
 
 Script returns non-zero on failure and prints actionable error output.
 
@@ -413,7 +405,7 @@ POST /v1/telemetry/obd_snapshot → ingest OBDSnapshot from obd-agent
 
 GET /v1/telemetry/obd_snapshot/latest → fetch latest OBDSnapshot for a vehicle
 
-POST /v1/rag/retrieve → returns top-k knowledge chunks for a query (internal tool for Dify + diagnosis pipeline)
+POST /v1/rag/retrieve → returns top-k knowledge chunks for a query (internal tool for diagnosis pipeline)
 
 Requirements:
 
@@ -965,7 +957,7 @@ Report content can be JSON in Phase 1; PDF is optional.
 
 Requirements:
 
-Run generation asynchronously (FastAPI background tasks or Celery/Redis).
+Run generation asynchronously (FastAPI background tasks).
 
 Report aggregates diagnostic records for that day and produces summary + recommended actions.
 
@@ -981,49 +973,12 @@ Report requests return quickly with report_id
 
 Report can be retrieved later with completed status and content
 
-#### APP‑11 — Dify workflow integration (agentic “front door”)
+#### APP‑11 — ~~Dify workflow integration~~ **[DEPRECATED/REMOVED — APP‑27]**
 
-Owner: Full‑Stack AI Application Engineer
-Depends on: DO‑01, APP‑08
-
- 
-
-PROMPT (task ticket):
-Title: APP‑11 Integrate Dify workflow calling diagnostic_api
-
- 
-
-Context:
-We use Dify for agentic workflows.
-
-
-
-Task:
-Create a documented Dify workflow that:
-
-Takes a technician’s natural-language request (symptoms + context)
-
-Calls diagnostic_api endpoints (either directly or via a tool definition)
-
-Returns a structured diagnostic response and human-readable summary
-
-Requirements:
-
-Document exact Dify configuration steps and required env vars.
-
-If Dify cannot call the local LLM/provider you chose, propose an alternative (e.g., vLLM OpenAI-compatible endpoint) with ADR.
-
-Deliverables:
-
-doc/DIFY_SETUP.md
-
-Exported workflow config if possible (or screenshots + step-by-step)
-
-Sample demo inputs/outputs
-
-Acceptance Criteria:
-
-With stack running, a user can execute the workflow and get a diagnosis result end-to-end.
+**Status: DEPRECATED** — Dify and its Redis dependency have been removed from
+the platform (APP‑27, 2026-03-07). Workflow orchestration is handled directly
+by FastAPI endpoints and the local/premium LLM pipelines. No replacement
+ticket is needed; the diagnostic API itself serves as the “front door”.
 
 #### APP‑12 — Evaluation harness (schema validity + regression tests)
 
@@ -1684,7 +1639,7 @@ All 200 tests pass; `npm run build` succeeds ✓
 #### INT‑01 — End-to-end demo script (“one command demo”)
 
 Owner: DevOps (primary) + AI Engineer (review)
-Depends on: DO‑04, APP‑08, APP‑11
+Depends on: DO‑04, APP‑08
 
  
 
@@ -1775,7 +1730,7 @@ Title: ADR‑001 Propose alternative tool to stack (only if you strongly disagre
  
 
 Task:
-If you believe the recommended tool (FastAPI/Pydantic/Weaviate/Ollama‑or‑vLLM/Dify) should be replaced, write an ADR including:
+If you believe the recommended tool (FastAPI/Pydantic/Weaviate/Ollama‑or‑vLLM) should be replaced, write an ADR including:
 
 Problem statement
 
@@ -1811,10 +1766,11 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-07 | v2.1 | APP‑27: Remove Dify dependency. Dify workflow orchestration and its Redis dependency have been removed from the platform. Diagnostic workflows are now handled directly by FastAPI endpoints and the local/premium LLM pipelines. Marked APP‑11 as DEPRECATED/REMOVED. Removed Dify and Redis from scope (§1.1), component lists (DO‑01), network exposure (DO‑02), smoke tests (DO‑04), critical path (§2.2), INT‑01 dependencies, and ADR stack references (§2.4). |
 | 2026-03-05 | v2.0 | Fixed critical translation performance bottleneck in `translator.py`: migrated from Ollama `/api/generate` to `/api/chat` with `think: false` to disable hidden reasoning tokens in Qwen3.5 thinking model (80x speedup, from ~25s to ~0.3s per section). Added concurrent translation via `asyncio.Semaphore`. Added `max_concurrent` input validation. Updated tests to match new `/api/chat` response schema (3 fixed + 3 new tests, 29 total). Successfully ingested MWS150-A service manual: 2,211 chunks with OCR + vision + translation. Updated RAG Image Parsing Path in critical path (§2.2). Updated design_doc.md §10.3.1 with translation service details. |
 | 2026-03-03 | v1.9 | Updated premium LLM curated model list from 4 models (4 providers) to 10 models (5 providers × best+fast tiers): Anthropic, Google, OpenAI, DeepSeek, Alibaba/Qwen. Default model updated to `anthropic/claude-sonnet-4.6`. Updated all config, docker-compose, docs, tests, and docstrings. |
 | 2026-03-03 | v1.8 | Added APP‑25 (Feedback history sub-tab). New `GET /v2/obd/{session_id}/feedback` endpoint merging all 5 feedback tables. `FeedbackHistoryItem`/`FeedbackHistoryResponse` Pydantic schemas. `FeedbackHistoryView.tsx` component. "Feedback" sub-tab under History. 7 new backend tests (40 total). Updated scope (§1.1). |
-| 2026-03-03 | v1.7 | Switched local LLM from Qwen3-14B to Qwen3.5-9B. Updated default model in `config.py`, `docker-compose.yml`, `.env.example`, `Makefile`. Updated all documentation and Dify workflow YAML references. |
+| 2026-03-03 | v1.7 | Switched local LLM from Qwen3-14B to Qwen3.5-9B. Updated default model in `config.py`, `docker-compose.yml`, `.env.example`, `Makefile`. Updated all documentation references. |
 | 2026-03-03 | v1.6 | Added APP‑24 (Diagnosis history tab). New `GET /v2/obd/{session_id}/history` endpoint, `DiagnosisHistoryItem`/`DiagnosisHistoryResponse` Pydantic schemas, `DiagnosisHistoryView.tsx` component, 5th "History" tab in AnalysisLayout. 5 new backend tests (200 total). Updated scope (§1.1) and critical path (§2.2). |
 | 2026-03-03 | v1.5 | Added APP‑23 (OpenRouter multi-model migration + diagnosis history). Migrated premium LLM from Anthropic SDK to OpenRouter. Added admin-curated model selector, `diagnosis_history` table, CHECK constraint, `_store_diagnosis` dual-write helper. Updated APP‑21 status to DONE. Updated scope (§1.1) and critical path (§2.2). |
 | 2026-03-01 | v1.4 | Added APP‑22 (PDF image parsing pipeline: OCR, vision, page render, image-aware chunking). Updated APP‑03 status to DONE. Added RAG Image Parsing Path to critical path. Updated scope to include PDF image parsing. |

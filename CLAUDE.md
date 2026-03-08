@@ -4,7 +4,7 @@
 
 Phase 1 local-first pilot for AI-assisted vehicle diagnosis.
 
-- **Stack**: FastAPI + Pydantic backend (`diagnostic_api/`), Weaviate vector store, Ollama/vLLM local LLM, Dify workflow orchestration (upstream — do NOT fork), Docker Compose infrastructure
+- **Stack**: FastAPI + Pydantic backend (`diagnostic_api/`), Weaviate vector store, Ollama/vLLM local LLM, Docker Compose infrastructure
 - **Author field**: Li-Ta Hsu
 - **Runtime**: No public internet access. All services run locally (127.0.0.1 only)
 
@@ -90,7 +90,6 @@ diagnostic_api/   # FastAPI backend
   app/rag/        # RAG ingestion, chunking, retrieval
   app/            # API endpoints, models
   tests/          # Unit/integration tests
-dify/             # Dify workflow specs
 infra/            # Docker Compose, env configs, scripts
 docs/             # Architecture docs, setup guides
 obd_agent/        # OBD-II edge agent
@@ -116,10 +115,9 @@ obd_agent/        # OBD-II edge agent
 
 - Local-only deployment (bind ports to 127.0.0.1)
 - Pin all versions in Docker Compose and configs (no `latest`)
-- DO NOT fork Dify — use official Docker deployment pinned to a release tag
 - Use dedicated internal Docker network for app-to-app traffic
-- Only Nginx (or Dify web) handles ingress; do not expose Weaviate/Postgres/Redis/diagnostic_api to LAN
-- Named Docker volumes for persistence (Postgres, Weaviate, Dify storage)
+- Only Nginx handles ingress; do not expose Weaviate/Postgres/diagnostic_api to LAN
+- Named Docker volumes for persistence (Postgres, Weaviate)
 
 ## Structured Logging
 

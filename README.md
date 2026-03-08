@@ -34,7 +34,7 @@ This project strictly follows the **Google Python Style Guide** and uses:
 - **Pydantic** for data validation
 - **Weaviate** for RAG pipelines
 - **Ollama/vLLM** for local LLM inference
-- **Dify** for agentic workflows
+- **OpenRouter** for premium cloud LLM inference (opt-in)
 
 ## Project Structure
 
@@ -83,7 +83,7 @@ The STF AI Diagnosis Platform is now ready for local deployment! 🚀
    make health # Verify
    ```
 5. **Access the platform:**
-   - Dify Web UI: http://127.0.0.1:3000
+   - OBD UI: http://127.0.0.1:3001
    - Diagnostic API: http://127.0.0.1:8000/docs
    - API Health: http://127.0.0.1:8000/health
 
@@ -94,12 +94,12 @@ The STF AI Diagnosis Platform is now ready for local deployment! 🚀
 - [Development Plan](docs/dev_plan.md) - Project roadmap and task breakdown
 
 **What's Included (Phase 1):**
-- ✅ Dify workflow orchestration + UI
 - ✅ Ollama local LLM inference
+- ✅ OpenRouter premium LLM (opt-in)
 - ✅ Weaviate vector store for RAG
-- ✅ FastAPI diagnostic API (stub)
+- ✅ FastAPI diagnostic API
+- ✅ Next.js OBD diagnostic UI
 - ✅ Postgres database
-- ✅ Redis cache and message broker
 - ✅ Docker Compose orchestration
 - ✅ Makefile for easy management
 - ✅ Comprehensive documentation

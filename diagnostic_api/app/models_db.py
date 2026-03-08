@@ -122,7 +122,7 @@ class OBDAnalysisSession(Base):
     # Result stored as JSONB (full LogSummaryV2)
     result_payload = Column(JSONB, nullable=True)
 
-    # Dify-formatted parsed summary (short JSON)
+    # Flat-string parsed summary (short JSON)
     parsed_summary_payload = Column(JSONB, nullable=True)
 
     error_message = Column(Text, nullable=True)

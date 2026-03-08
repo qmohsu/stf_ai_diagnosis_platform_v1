@@ -25,12 +25,10 @@
 
 This guide provides step-by-step instructions to deploy the STF AI Diagnosis Platform on a local laptop for Phase 1 pilot testing. The platform includes:
 
-- **Dify** (workflow orchestration + UI)
 - **Ollama** (local LLM inference)
 - **Weaviate** (vector store for RAG)
 - **Diagnostic API** (FastAPI backend)
 - **Postgres** (database)
-- **Redis** (cache and message broker)
 
 All services run locally with **no external API calls** and are bound to `127.0.0.1` for security.
 
@@ -165,9 +163,7 @@ nano .env  # or use your preferred editor
 ```bash
 # Set strong passwords (replace CHANGE_ME_* values)
 POSTGRES_PASSWORD=your_strong_postgres_password_here
-REDIS_PASSWORD=your_strong_redis_password_here
 WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS=your_weaviate_api_key_here
-DIFY_SECRET_KEY=your_dify_secret_key_here
 APP_DB_PASSWORD=your_app_db_password_here
 ```
 
@@ -182,10 +178,8 @@ make up
 
 # This will start:
 # - Postgres
-# - Redis
 # - Weaviate
 # - Ollama
-# - Dify (api, worker, web)
 # - Diagnostic API
 ```
 
@@ -217,7 +211,7 @@ make ollama-list
 
 Once all services are healthy, access:
 
-- **Dify Web UI:** http://127.0.0.1:3000
+- **OBD UI:** http://127.0.0.1:3001
 - **Diagnostic API:** http://127.0.0.1:8000
 - **API Docs:** http://127.0.0.1:8000/docs
 
@@ -232,8 +226,6 @@ The `.env` file contains all configuration for the stack. Key sections:
 #### Network Configuration
 ```bash
 BIND_HOST=127.0.0.1  # Bind to localhost only (security)
-DIFY_WEB_PORT=3000
-DIFY_API_PORT=5001
 DIAGNOSTIC_API_PORT=8000
 WEAVIATE_PORT=8080
 ```
@@ -241,8 +233,8 @@ WEAVIATE_PORT=8080
 #### Database Configuration
 ```bash
 POSTGRES_VERSION=15.6-alpine
-POSTGRES_DB=dify
-POSTGRES_USER=dify_user
+POSTGRES_DB=stf_diagnosis
+POSTGRES_USER=stf_user
 POSTGRES_PASSWORD=<set-strong-password>
 
 APP_DB_NAME=stf_diagnosis
@@ -264,11 +256,9 @@ Edit `.env` to adjust for your hardware:
 ```bash
 # For low-memory systems (8-16GB RAM)
 POSTGRES_MAX_CONNECTIONS=50
-REDIS_MAXMEMORY=256mb
 
 # For high-memory systems (32GB+ RAM)
 POSTGRES_MAX_CONNECTIONS=200
-REDIS_MAXMEMORY=1gb
 ```
 
 ### Step 3: GPU Support (Linux Only)
@@ -314,11 +304,10 @@ make init
 make up
 
 # Services will start in dependency order:
-# 1. Postgres, Redis
+# 1. Postgres
 # 2. Weaviate
 # 3. Ollama
-# 4. Dify services
-# 5. Diagnostic API
+# 4. Diagnostic API
 ```
 
 ### Step 6: Monitor Startup
@@ -329,7 +318,6 @@ make logs
 
 # Or check specific services
 make logs-api      # Diagnostic API logs
-make logs-dify     # Dify services logs
 make logs-ollama   # Ollama logs
 
 # Check health status
@@ -341,31 +329,14 @@ Expected output:
 Service Health Check:
 
   ✓ postgres: healthy
-  ✓ redis: healthy
   ✓ weaviate: healthy
   ✓ ollama: healthy
-  ✓ dify-api: healthy
-  ✓ dify-worker: healthy
-  ✓ dify-web: healthy
   ✓ diagnostic-api: healthy
 ```
 
 ---
 
 ## Service Access
-
-### Dify Web UI
-
-**URL:** http://127.0.0.1:3000
-
-**First-time Setup:**
-1. Navigate to http://127.0.0.1:3000
-2. Create admin account
-3. Configure LLM provider:
-   - Type: OpenAI-compatible
-   - Endpoint: http://ollama:11434/v1
-   - Model: qwen3.5:9b
-4. Configure vector store (Weaviate already connected)
 
 ### Diagnostic API
 
@@ -412,17 +383,9 @@ curl http://127.0.0.1:11434/api/tags
 make exec-postgres
 
 # Or use psql directly
-PGPASSWORD=<your-password> psql -h 127.0.0.1 -U dify_user -d dify
+PGPASSWORD=<your-password> psql -h 127.0.0.1 -U stf_user -d stf_diagnosis
 ```
 
-**Redis:**
-```bash
-# Connect via docker exec
-make exec-redis
-
-# Or use redis-cli directly
-redis-cli -h 127.0.0.1 -a <your-redis-password>
-```
 
 ---
 
@@ -438,17 +401,11 @@ make test-health
 # Testing Postgres...
 # ✓ Postgres is ready
 #
-# Testing Redis...
-# ✓ Redis is ready
-#
 # Testing Weaviate...
 # ✓ Weaviate is ready
 #
 # Testing Ollama...
 # ✓ Ollama is ready
-#
-# Testing Dify API...
-# ✓ Dify API is ready
 #
 # Testing Diagnostic API...
 # ✓ Diagnostic API is ready
@@ -528,14 +485,9 @@ docker-compose logs -f diagnostic-api
 # Diagnostic API shell
 make shell-api
 
-# Dify API shell
-make shell-dify
-
 # Postgres psql
 make exec-postgres
 
-# Redis CLI
-make exec-redis
 ```
 
 ### Managing Ollama Models
@@ -619,7 +571,7 @@ netstat -ano | findstr :3000
 
 **Solution:** Either stop the conflicting service or change the port in `.env`:
 ```bash
-DIFY_WEB_PORT=3001  # Use different port
+OBD_UI_PORT=3001  # Use different port
 ```
 
 ---
@@ -650,8 +602,7 @@ docker stats
 **Solutions:**
 1. Use a smaller LLM model
 2. Reduce Postgres max_connections
-3. Reduce Redis maxmemory
-4. Stop unused services temporarily
+3. Stop unused services temporarily
 
 ---
 
@@ -734,26 +685,6 @@ docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi
 
 ---
 
-### Issue: Services start but Dify UI shows errors
-
-**Check Dify API logs:**
-```bash
-make logs-dify
-```
-
-**Common causes:**
-- Database migrations pending
-- Secret key mismatch
-- Vector store not configured
-
-**Solution:**
-```bash
-# Recreate Dify containers
-docker-compose up -d --force-recreate dify-api dify-worker dify-web
-```
-
----
-
 ### Getting Help
 
 If you encounter issues not covered here:
@@ -775,21 +706,14 @@ If you encounter issues not covered here:
 
 ## Next Steps
 
-### 1. Configure Dify Workflows
-
-- Create diagnostic workflow in Dify UI
-- Configure LLM prompts
-- Connect to diagnostic API endpoints
-- Test end-to-end flow
-
-### 2. Ingest RAG Data
+### 1. Ingest RAG Data
 
 See the RAG ingestion guide (to be created in Phase 1.1) for:
 - Preparing SOP documents
 - Chunking and embedding
 - Ingesting into Weaviate
 
-### 3. Development Setup
+### 2. Development Setup
 
 For local development of diagnostic_api:
 
@@ -807,7 +731,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8001
 ```
 
-### 4. Review Security Baseline
+### 3. Review Security Baseline
 
 Read `SECURITY_BASELINE.md` for:
 - Network isolation rules
@@ -825,7 +749,6 @@ Read `SECURITY_BASELINE.md` for:
 ✅ `make up` starts all services  
 ✅ `make health` shows all services healthy  
 ✅ Ollama model downloaded  
-✅ Dify UI accessible and admin account created  
 ✅ Diagnostic API returns valid responses  
 ✅ RAG retrieval returns chunks with citations  
 

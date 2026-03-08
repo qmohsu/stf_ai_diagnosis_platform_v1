@@ -27,13 +27,9 @@ networks:
 volumes:
   postgres_data:
     driver: local
-  redis_data:
-    driver: local
   weaviate_data:
     driver: local
   ollama_data:
-    driver: local
-  dify_storage:
     driver: local
   diagnostic_api_logs:
     driver: local
@@ -43,7 +39,7 @@ volumes:
 # ============================================================================
 services:
   # --------------------------------------------------------------------------
-  # Postgres - Primary database for Dify and diagnostic_api
+  # Postgres - Primary database for diagnostic_api
   # --------------------------------------------------------------------------
   postgres:
     image: postgres:${POSTGRES_VERSION:-15.6-alpine}
@@ -54,8 +50,8 @@ services:
     ports:
       - "${BIND_HOST:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-dify}
-      POSTGRES_USER: ${POSTGRES_USER:-dify_user}
+      POSTGRES_DB: ${POSTGRES_DB:-stf_diagnosis}
+      POSTGRES_USER: ${POSTGRES_USER:-stf_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:?APP_DB_PASSWORD must be set}
       PGDATA: /var/lib/postgresql/data/pgdata
@@ -63,37 +59,13 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dify_user} -d ${POSTGRES_DB:-dify}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stf_user} -d ${POSTGRES_DB:-stf_diagnosis}" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
     command: >
       postgres -c max_connections=${POSTGRES_MAX_CONNECTIONS:-100} -c shared_buffers=256MB -c effective_cache_size=1GB -c maintenance_work_mem=64MB -c checkpoint_completion_target=0.9 -c wal_buffers=16MB -c default_statistics_target=100 -c random_page_cost=1.1 -c effective_io_concurrency=200 -c work_mem=2621kB -c min_wal_size=1GB -c max_wal_size=4GB
-
-  # --------------------------------------------------------------------------
-  # Redis - Cache and message broker for Dify and diagnostic_api
-  # --------------------------------------------------------------------------
-  redis:
-    image: redis:${REDIS_VERSION:-7.2.4-alpine}
-    container_name: stf-redis
-    restart: unless-stopped
-    networks:
-      - stf-internal
-    ports:
-      - "${BIND_HOST:-127.0.0.1}:${REDIS_PORT:-6379}:6379"
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
-    volumes:
-      - redis_data:/data
-    command: >
-      redis-server --requirepass ${REDIS_PASSWORD} --maxmemory ${REDIS_MAXMEMORY:-512mb} --maxmemory-policy ${REDIS_MAXMEMORY_POLICY:-allkeys-lru} --appendonly yes --appendfsync everysec
-    healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-      start_period: 20s
 
   # --------------------------------------------------------------------------
   # Weaviate - Vector database for RAG retrieval
@@ -159,192 +131,8 @@ services:
               count: 1
               capabilities: [gpu]
 
-    # --------------------------------------------------------------------------
-    # Dify API - Backend service for Dify workflow orchestration
-    # --------------------------------------------------------------------------
-  dify-api:
-    image: langgenius/dify-api:${DIFY_VERSION:-0.6.13}
-    container_name: stf-dify-api
-    restart: unless-stopped
-    networks:
-      - stf-internal
-    ports:
-      - "${BIND_HOST:-127.0.0.1}:${DIFY_API_PORT:-5001}:5001"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      weaviate:
-        condition: service_healthy
-    environment:
-      # Core Dify settings
-      MODE: api
-      LOG_LEVEL: INFO
-      SECRET_KEY: ${DIFY_SECRET_KEY:?DIFY_SECRET_KEY must be set}
-      CONSOLE_WEB_URL: http://${BIND_HOST:-127.0.0.1}:${DIFY_WEB_PORT:-3000}
-      CONSOLE_API_URL: http://${BIND_HOST:-127.0.0.1}:${DIFY_API_PORT:-5001}
-      SERVICE_API_URL: http://${BIND_HOST:-127.0.0.1}:${DIFY_API_PORT:-5001}
-      APP_WEB_URL: http://${BIND_HOST:-127.0.0.1}:${DIFY_WEB_PORT:-3000}
-
-      # Database
-      DB_USERNAME: ${POSTGRES_USER:-dify_user}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
-      DB_HOST: ${POSTGRES_HOST:-postgres}
-      DB_PORT: ${POSTGRES_PORT:-5432}
-      DB_DATABASE: ${POSTGRES_DB:-dify}
-
-      # Redis
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      REDIS_USE_SSL: ${DIFY_REDIS_USE_SSL:-false}
-      REDIS_DB: 0
-      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/1
-      BROKER_USE_SSL: ${DIFY_REDIS_USE_SSL:-false}
-
-      # Storage
-      STORAGE_TYPE: ${DIFY_STORAGE_TYPE:-local}
-      STORAGE_LOCAL_PATH: ${DIFY_STORAGE_LOCAL_PATH:-/app/storage}
-
-      # Vector Store
-      VECTOR_STORE: ${DIFY_VECTOR_STORE:-weaviate}
-      WEAVIATE_ENDPOINT: ${DIFY_WEAVIATE_ENDPOINT:-http://weaviate:8080}
-      WEAVIATE_API_KEY: ${WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS}
-
-      # Edition
-      EDITION: ${DIFY_EDITION:-SELF_HOSTED}
-      DEPLOY_ENV: ${DIFY_DEPLOY_ENV:-PRODUCTION}
-
-      # Database migration on startup
-      MIGRATION_ENABLED: "true"
-
-      # SSRF Protection
-      SSRF_PROXY_HTTP_URL: ${DIFY_SSRF_PROXY_HTTP_URL:-}
-      SSRF_PROXY_HTTPS_URL: ${DIFY_SSRF_PROXY_HTTPS_URL:-}
-
-      # Sandbox
-      # TODO(17): Replace hardcoded sandbox API key with an env variable
-      CODE_EXECUTION_API_KEY: dify-sandbox
-      CODE_EXECUTION_ENDPOINT: http://sandbox:8194
-    volumes:
-      - dify_storage:/app/storage
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:5001/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
   # --------------------------------------------------------------------------
-  # Dify Worker - Celery worker for background tasks
-  # --------------------------------------------------------------------------
-  dify-worker:
-    image: langgenius/dify-api:${DIFY_VERSION:-0.6.13}
-    container_name: stf-dify-worker
-    restart: unless-stopped
-    networks:
-      - stf-internal
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      # Core Dify settings
-      MODE: worker
-      LOG_LEVEL: INFO
-      SECRET_KEY: ${DIFY_SECRET_KEY}
-
-      # Database
-      DB_USERNAME: ${POSTGRES_USER:-dify_user}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
-      DB_HOST: ${POSTGRES_HOST:-postgres}
-      DB_PORT: ${POSTGRES_PORT:-5432}
-      DB_DATABASE: ${POSTGRES_DB:-dify}
-
-      # Redis
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      REDIS_USE_SSL: ${DIFY_REDIS_USE_SSL:-false}
-      REDIS_DB: 0
-      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/1
-      BROKER_USE_SSL: ${DIFY_REDIS_USE_SSL:-false}
-
-      # Storage
-      STORAGE_TYPE: ${DIFY_STORAGE_TYPE:-local}
-      STORAGE_LOCAL_PATH: ${DIFY_STORAGE_LOCAL_PATH:-/app/storage}
-
-      # Vector Store
-      VECTOR_STORE: ${DIFY_VECTOR_STORE:-weaviate}
-      WEAVIATE_ENDPOINT: ${DIFY_WEAVIATE_ENDPOINT:-http://weaviate:8080}
-      WEAVIATE_API_KEY: ${WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS}
-
-      # Sandbox
-      CODE_EXECUTION_API_KEY: dify-sandbox
-      CODE_EXECUTION_ENDPOINT: http://sandbox:8194
-
-    volumes:
-      - dify_storage:/app/storage
-    healthcheck:
-      test: [ "CMD-SHELL", "celery -A app.celery inspect ping || exit 1" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-  # --------------------------------------------------------------------------
-  # Dify Sandbox - Secure code execution environment
-  # --------------------------------------------------------------------------
-  sandbox:
-    image: langgenius/dify-sandbox:0.2.1
-    container_name: stf-dify-sandbox
-    restart: unless-stopped
-    networks:
-      - stf-internal
-    environment:
-      API_KEY: dify-sandbox
-      GIN_MODE: release
-      worker_timeout: 15
-      ENABLE_NETWORK: "true"
-      HTTP_PROXY: ""
-      HTTPS_PROXY: ""
-      SANDBOX_PORT: 8194
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8194/health" ]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-
-  # --------------------------------------------------------------------------
-  # Dify Web - Frontend UI
-  # --------------------------------------------------------------------------
-  dify-web:
-    image: langgenius/dify-web:${DIFY_VERSION:-0.6.13}
-    container_name: stf-dify-web
-    restart: unless-stopped
-    networks:
-      - stf-internal
-    ports:
-      - "${BIND_HOST:-127.0.0.1}:${DIFY_WEB_PORT:-3000}:3000"
-    depends_on:
-      dify-api:
-        condition: service_healthy
-    environment:
-      CONSOLE_API_URL: http://${BIND_HOST:-127.0.0.1}:${DIFY_API_PORT:-5001}
-      APP_API_URL: http://dify-api:5001
-      EDITION: ${DIFY_EDITION:-SELF_HOSTED}
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:3000" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
-  # --------------------------------------------------------------------------
-  # Diagnostic API - FastAPI backend (stub for Phase 1)
+  # Diagnostic API - FastAPI backend
   # --------------------------------------------------------------------------
   diagnostic-api:
     build:

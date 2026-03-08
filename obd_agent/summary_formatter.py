@@ -1,8 +1,7 @@
-"""Format a LogSummaryV2 dict into flat strings for the Dify workflow.
+"""Format a LogSummaryV2 dict into flat strings for LLM prompt injection.
 
-Direct port of the inline Python code node from the Dify workflow
-(``dify/OBD Log Diagnosis Expert.yml`` lines 199-329), refactored into
-a tested, importable pure function.
+Converts structured pipeline output into 9 human-readable string fields
+suitable for template-based LLM prompts and downstream consumers.
 """
 
 from __future__ import annotations
@@ -23,7 +22,7 @@ _EMPTY: Dict[str, str] = {
 }
 
 
-def format_summary_for_dify(data: dict) -> dict:
+def format_summary_flat_strings(data: dict) -> dict:
     """Convert a ``LogSummaryV2.model_dump()`` dict into 9 flat-string fields.
 
     Returns a dict with keys matching :data:`_EMPTY`.  On any unexpected

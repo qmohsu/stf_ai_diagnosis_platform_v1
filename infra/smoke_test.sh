@@ -102,12 +102,8 @@ echo ""
 print_header "Test 1: Container Status"
 
 test_docker_container "stf-postgres"
-test_docker_container "stf-redis"
 test_docker_container "stf-weaviate"
 test_docker_container "stf-ollama"
-test_docker_container "stf-dify-api"
-test_docker_container "stf-dify-worker"
-test_docker_container "stf-dify-web"
 test_docker_container "stf-diagnostic-api"
 
 # Test 2: Health endpoints
@@ -115,8 +111,6 @@ print_header "Test 2: Health Endpoints"
 
 test_service "Weaviate" "http://127.0.0.1:8080/v1/.well-known/ready"
 test_service "Ollama" "http://127.0.0.1:11434/api/version"
-test_service "Dify Web" "http://127.0.0.1:3000"
-test_service "Dify API" "http://127.0.0.1:5001/health"
 test_service "Diagnostic API" "http://127.0.0.1:8000/health"
 
 # Test 3: JSON response validation
@@ -182,17 +176,10 @@ fi
 print_header "Test 5: Database Connectivity"
 
 print_test "Postgres connectivity"
-if docker exec stf-postgres pg_isready -U dify_user -d dify > /dev/null 2>&1; then
+if docker exec stf-postgres pg_isready -U stf_user -d stf_diagnosis > /dev/null 2>&1; then
     print_pass "Postgres is accepting connections"
 else
     print_fail "Postgres is not accepting connections"
-fi
-
-print_test "Redis connectivity"
-if docker exec stf-redis redis-cli -a "${REDIS_PASSWORD:-testpassword}" ping 2>/dev/null | grep -q "PONG"; then
-    print_pass "Redis is accepting connections"
-else
-    print_fail "Redis is not accepting connections"
 fi
 
 # Test 6: Persistence verification
@@ -201,7 +188,7 @@ print_header "Test 6: Data Persistence"
 print_test "Docker volumes exist"
 volumes_exist=true
 
-for volume in postgres_data redis_data weaviate_data ollama_data dify_storage diagnostic_api_logs; do
+for volume in postgres_data weaviate_data ollama_data diagnostic_api_logs; do
     if docker volume ls | grep -q "stf_$volume"; then
         echo "  ✓ Volume stf_$volume exists"
     else
@@ -222,7 +209,7 @@ print_header "Test 7: Network Isolation"
 print_test "Services bound to localhost only"
 bound_to_localhost=true
 
-for port in 3000 5001 8000 8080 11434; do
+for port in 8000 8080 11434; do
     if netstat -tuln 2>/dev/null | grep ":$port" | grep -q "127.0.0.1"; then
         echo "  ✓ Port $port bound to 127.0.0.1"
     elif lsof -iTCP:$port -sTCP:LISTEN 2>/dev/null | grep -q "127.0.0.1"; then
@@ -252,7 +239,7 @@ if [ $TESTS_FAILED -eq 0 ]; then
     echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
     echo ""
     echo "You can now:"
-    echo "  - Access Dify UI: http://127.0.0.1:3000"
+    echo "  - Access OBD UI: http://127.0.0.1:3001"
     echo "  - View API docs: http://127.0.0.1:8000/docs"
     echo "  - Run 'make logs' to view logs"
     exit 0

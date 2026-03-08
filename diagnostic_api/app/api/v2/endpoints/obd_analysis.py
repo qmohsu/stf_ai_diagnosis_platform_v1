@@ -61,7 +61,7 @@ from app.models_db import (
     OBDAnalysisSession,
 )
 from app.rag.retrieve import retrieve_context
-from obd_agent.summary_formatter import format_summary_for_dify
+from obd_agent.summary_formatter import format_summary_flat_strings
 
 FeedbackModel = Type[Union[
     OBDSummaryFeedback, OBDDetailedFeedback, OBDRAGFeedback,
@@ -160,7 +160,7 @@ async def analyze_obd_log(
         result: LogSummaryV2 = await asyncio.to_thread(_run_pipeline, tmp_path)
 
         result_dict = result.model_dump(mode="json")
-        parsed_dict = format_summary_for_dify(result_dict)
+        parsed_dict = format_summary_flat_strings(result_dict)
 
         # Persist to DB immediately
         db_session = OBDAnalysisSession(
@@ -618,7 +618,7 @@ async def submit_rag_feedback(
 
 
 # ---------------------------------------------------------------------------
-# AI Diagnosis (Dify workflow replication)
+# AI Diagnosis
 # ---------------------------------------------------------------------------
 
 
@@ -718,7 +718,7 @@ async def generate_diagnosis(
     force: bool = False,
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
-    """Run the Dify-style AI diagnosis workflow with SSE streaming.
+    """Run the AI diagnosis workflow with SSE streaming.
 
     SSE event types:
       - ``token``  : incremental text chunk from the LLM

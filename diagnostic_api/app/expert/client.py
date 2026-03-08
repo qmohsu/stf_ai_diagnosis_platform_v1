@@ -92,7 +92,7 @@ class ExpertLLMClient:
         parsed_summary: dict,
         context: str,
     ) -> str:
-        """Generate a free-form markdown OBD diagnosis (Dify workflow style).
+        """Generate a free-form markdown OBD diagnosis.
 
         Returns:
             Raw markdown diagnosis text.

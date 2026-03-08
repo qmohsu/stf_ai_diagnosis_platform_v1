@@ -136,7 +136,7 @@ class TestAnalyzeEndpoint:
         assert resp.status_code == 422
         assert "Failed to parse" in resp.json()["detail"]
 
-    @patch("app.api.v2.endpoints.obd_analysis.format_summary_for_dify")
+    @patch("app.api.v2.endpoints.obd_analysis.format_summary_flat_strings")
     @patch("app.api.v2.endpoints.obd_analysis._run_pipeline")
     def test_successful_analyze_returns_session(
         self, mock_pipeline, mock_format, client, app_ref,
@@ -165,7 +165,7 @@ class TestAnalyzeEndpoint:
         mock_db.add.assert_called_once()
         mock_db.commit.assert_called_once()
 
-    @patch("app.api.v2.endpoints.obd_analysis.format_summary_for_dify")
+    @patch("app.api.v2.endpoints.obd_analysis.format_summary_flat_strings")
     @patch("app.api.v2.endpoints.obd_analysis._run_pipeline")
     def test_response_excludes_raw_input_text(
         self, mock_pipeline, mock_format, client, app_ref,

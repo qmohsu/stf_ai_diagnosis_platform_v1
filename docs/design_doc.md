@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v2.0 (Translation performance fix) |
+| **Status** | Draft v2.1 (Remove Dify dependency; FastAPI-native orchestration) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-03-05 |
-| **Primary pilot stack** | Dify + (Ollama or vLLM OpenAI-compatible server) + diagnostic_api + vector store (Weaviate) |
-| **New in this revision** | Fixed critical translation performance bottleneck: migrated `translator.py` from Ollama `/api/generate` to `/api/chat` with `think: false` to disable hidden reasoning tokens in Qwen3.5 thinking model (80x speedup). Added concurrent translation via `asyncio.Semaphore`, `max_concurrent` validation, and updated tests (29 total). Added `translator.py` module to §10.3.1 modules table. Previous: Updated premium LLM curated model list to 10 models (5 providers × best+fast tiers): Anthropic (Opus 4.6, Sonnet 4.6), Google (Gemini 3.1 Pro, 3 Flash), OpenAI (GPT-5.2, GPT-5 Mini), DeepSeek (V3.2, Chat), Alibaba (Qwen3.5 Plus, Flash). Default model changed to `anthropic/claude-sonnet-4.6`. Previous: Added "Feedback" sub-tab under History tab. New `GET /v2/obd/{session_id}/feedback` endpoint merges all 5 feedback tables (summary, detailed, rag, ai_diagnosis, premium_diagnosis) into a unified chronological list with pagination. `FeedbackHistoryItem`/`FeedbackHistoryResponse` schemas. `FeedbackHistoryView.tsx` component with tab badge, star rating, helpful indicator, expandable comments, and pagination (5 per page). History tab now has 3 sub-tabs: Local Model, Cloud Model, Feedback. Previous: Switched default local LLM from Qwen3-14B (`qwen3:14b`) to Qwen3.5-9B (`qwen3.5:9b`). Smaller model reduces VRAM usage and improves inference latency. Updated all config defaults, documentation, and Dify workflow references. Previous: Added "History" tab to OBD Expert Diagnostic Web UI. New `GET /v2/obd/{session_id}/history` endpoint returns all past diagnosis generations (local + premium) ordered by `created_at` descending, with `DiagnosisHistoryItem`/`DiagnosisHistoryResponse` Pydantic schemas. New `DiagnosisHistoryView.tsx` component with provider badge, model name, timestamp, and expandable text. 5th top-level tab in AnalysisLayout. Previous: Migrated premium LLM from Anthropic SDK to OpenRouter (OpenAI-compatible gateway). Admin-curated multi-model selector. `diagnosis_history` table (append-only, both local + premium) with CHECK constraint. Previous: PDF image parsing pipeline for RAG. Previous: Premium LLM comparison via opt-in SSE endpoint. Previous: DB-first session persistence, SHA-256 dedup, feedback tables, SSE-streaming AI diagnosis via Ollama. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001. |
+| **Last updated** | 2026-03-07 |
+| **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + vector store (Weaviate) |
+| **New in this revision** | Removed Dify dependency: all workflow orchestration is now handled natively by FastAPI (`diagnostic_api`). Web UI is the Next.js app (`obd-ui`) at port 3001. Removed Redis (was only used by Dify). Updated architecture descriptions, deployment notes, and milestones throughout. Previous: Fixed critical translation performance bottleneck: migrated `translator.py` from Ollama `/api/generate` to `/api/chat` with `think: false` to disable hidden reasoning tokens in Qwen3.5 thinking model (80x speedup). Added concurrent translation via `asyncio.Semaphore`, `max_concurrent` validation, and updated tests (29 total). Added `translator.py` module to §10.3.1 modules table. Previous: Updated premium LLM curated model list to 10 models (5 providers x best+fast tiers): Anthropic (Opus 4.6, Sonnet 4.6), Google (Gemini 3.1 Pro, 3 Flash), OpenAI (GPT-5.2, GPT-5 Mini), DeepSeek (V3.2, Chat), Alibaba (Qwen3.5 Plus, Flash). Default model changed to `anthropic/claude-sonnet-4.6`. Previous: Added "Feedback" sub-tab under History tab. New `GET /v2/obd/{session_id}/feedback` endpoint merges all 5 feedback tables (summary, detailed, rag, ai_diagnosis, premium_diagnosis) into a unified chronological list with pagination. `FeedbackHistoryItem`/`FeedbackHistoryResponse` schemas. `FeedbackHistoryView.tsx` component with tab badge, star rating, helpful indicator, expandable comments, and pagination (5 per page). History tab now has 3 sub-tabs: Local Model, Cloud Model, Feedback. Previous: Switched default local LLM from Qwen3-14B (`qwen3:14b`) to Qwen3.5-9B (`qwen3.5:9b`). Smaller model reduces VRAM usage and improves inference latency. Updated all config defaults and documentation. Previous: Added "History" tab to OBD Expert Diagnostic Web UI. New `GET /v2/obd/{session_id}/history` endpoint returns all past diagnosis generations (local + premium) ordered by `created_at` descending, with `DiagnosisHistoryItem`/`DiagnosisHistoryResponse` Pydantic schemas. New `DiagnosisHistoryView.tsx` component with provider badge, model name, timestamp, and expandable text. 5th top-level tab in AnalysisLayout. Previous: Migrated premium LLM from Anthropic SDK to OpenRouter (OpenAI-compatible gateway). Admin-curated multi-model selector. `diagnosis_history` table (append-only, both local + premium) with CHECK constraint. Previous: PDF image parsing pipeline for RAG. Previous: Premium LLM comparison via opt-in SSE endpoint. Previous: DB-first session persistence, SHA-256 dedup, feedback tables, SSE-streaming AI diagnosis via Ollama. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001. |
 
 ## Related project deliverables (from proposal)
 •	Deliverable 1: Database establishment + preprocessing (1–18 months)
@@ -31,7 +31,7 @@ This pilot delivers an “expert model” layer (LLM + retrieval + tool-calling)
 •	Strict JSON that follows a non-negotiable schema (for logging, evaluation, and downstream workflow integration)
 •	A short human-readable summary (derived from JSON) for technicians
 •	Citations per recommended action (or explicit “no supporting doc found”)
-This design intentionally keeps the model interface stable across phases: Dify (or a later custom UI) talks to an OpenAI-compatible model endpoint. Phase 1.5/2 adds LlamaFactory to fine-tune a model on real pilot interactions and then swaps the model endpoint without rewriting workflows, RAG ingestion, or diagnostic API contracts.
+This design intentionally keeps the model interface stable across phases: the web UI (`obd-ui`) and FastAPI backend (`diagnostic_api`) talk to an OpenAI-compatible model endpoint. Phase 1.5/2 adds LlamaFactory to fine-tune a model on real pilot interactions and then swaps the model endpoint without rewriting workflows, RAG ingestion, or diagnostic API contracts.
 ## 2) Problem statement and goals
 ### 2.1 Problem
 Technicians and fleet operators need fast, interpretable guidance, but fault patterns are multi-modal, heterogeneous, and noisy (OBD-II + vibration/acoustic + vision + GNSS/IMU + driver-state). Deep models output probabilities/risk scores, yet field action still depends on SOP-aligned interpretation and consistent documentation.
@@ -44,10 +44,10 @@ G5 — Phase-ready learning loop: Log pilot interactions so Phase 1.5/2 fine-tun
 ### 2.3 Non-goals (pilot)
 •	Training a base LLM from scratch.
 •	Replacing the diagnostic deep learning model.
-•	Full production fleet platform rollout (pilot uses Dify UI; production UI later can integrate with your FastAPI/Vue stack).
+•	Full production fleet platform rollout (pilot uses `obd-ui` Next.js app; production UI later can integrate with your FastAPI/Vue stack).
 ## 3) Scope and deliverables (Phase 1 → 1.5 → 2)
 ### 3.1 Phase 1 (baseline pilot: Prompt + RAG + tool calling)
-•	Dify workflow and UI for technician Q&A (internal pilot).
+•	FastAPI workflow orchestration and Next.js web UI (`obd-ui`) for technician Q&A (internal pilot).
 •	diagnostic_api (FastAPI) that wraps deep model inference + summary generation (LLM-safe).
 •	OBD Agent (edge collector) + OBDSnapshot telemetry ingestion + Pass‑1 (OBD→subsystem+PID shortlist) mapping.
 •	RAG knowledge ingestion into vector store (SOPs/manuals/checklists; curated excerpts of maintenance reports). Includes PDF image parsing pipeline: OCR (easyocr, CJK+English) for text-in-image extraction, vision model descriptions, full-page rendering, CJK→English translation (Ollama chat API with thinking disabled), and image-aware chunking.
@@ -58,7 +58,7 @@ G5 — Phase-ready learning loop: Log pilot interactions so Phase 1.5/2 fine-tun
 •	Convert Phase 1 interaction logs into training examples (“case packages”) with SME corrections as ground truth.
 •	Use LlamaFactory to run parameter-efficient fine-tuning (LoRA/QLoRA) for: schema adherence, safer tool use, SOP-aligned phrasing, and better clarification questions.
 •	Establish an evaluation harness with regression tests (format/citation/tool-call correctness) and an SME review protocol.
-•	Deploy the tuned model behind an OpenAI-compatible endpoint (prefer vLLM/SGLang for server inference) and repoint Dify to it.
+•	Deploy the tuned model behind an OpenAI-compatible endpoint (prefer vLLM/SGLang for server inference) and repoint diagnostic_api to it.
 ### 3.3 Phase 2 (preference optimization + production hardening)
 •	Preference tuning (e.g., DPO/KTO/ORPO) using SME-ranked outputs to reduce hallucinations and improve decision-making under uncertainty.
 •	Hardening: canary deployments, drift detection, rollback strategy, model registry and versioning, and security review for exposed endpoints.
@@ -98,18 +98,17 @@ Pilot constraints include a supporting-party fleet (e.g., 20 vehicles with 5G OB
 Your materials reference multiple taxonomies (8 system categories; 17-class; 33 specific fault types). The pilot should choose a primary taxonomy and include a 'taxonomy' field in API outputs so the expert model remains forward-compatible.
 ## 7) Pilot architecture overview
 ### 7.1 High-level components
-•	Dify: orchestration + UI + workflow nodes (HTTP tool call → retrieval → generation → schema validation).
+•	diagnostic_api (FastAPI): workflow orchestration, REST API, LLM-safe summarization, RAG retrieval, schema validation, and tool-calling logic. Handles the full pipeline natively (HTTP tool call, retrieval, generation, schema validation).
 •	Model server (Phase 1): Ollama (OpenAI-compatible endpoints).
 •	Model server (Phase 1.5/2): tuned model served via vLLM/SGLang (OpenAI-compatible), or Ollama with adapters (if chosen).
-•	diagnostic_api: REST wrapper around deep diagnostic inference and LLM-safe summarization.
-•	Vector store: Weaviate (Dify default) for SOP/manual chunks and sanitized knowledge. Chunk metadata includes `has_image` flag and `metadata_json` for image-containing chunks.
-•	Postgres/Redis: Dify stack and job queueing.
+•	Vector store: Weaviate for SOP/manual chunks and sanitized knowledge. Chunk metadata includes `has_image` flag and `metadata_json` for image-containing chunks.
+•	Postgres: session persistence, diagnosis history, feedback tables, and OBD snapshot storage.
 •	OBD Agent (edge collector): a separate service/daemon (python‑OBD or equivalent) that reads ELM327 OBD‑II and posts sanitized OBDSnapshot telemetry to diagnostic_api.
 •	**OBD Expert Diagnostic Web UI (`obd-ui`)**: Next.js 15 (TypeScript, Tailwind CSS, shadcn/ui, recharts) on port 3001. Provides experts with a visual interface to submit OBD logs, view analysis results across five tabs (Summary, Detailed, RAG, AI Diagnosis, History), and submit structured feedback per tab (up to 10 submissions per tab per session). History tab displays all past AI diagnosis generations with provider badge, model name, timestamp, and expandable text. RAG tab displays retrieved context; AI Diagnosis tab contains Local LLM / Cloud LLM (OpenRouter) sub-tabs for side-by-side comparison — local streams via SSE from Ollama, premium streams via SSE from OpenRouter (opt-in, multi-model). Premium sub-tab includes a model selector dropdown populated from admin-curated list. Communicates with diagnostic_api via `/v2/obd/*` endpoints. Runs as a standalone Docker service.
 •	**Premium LLM client (opt-in)**: `PremiumLLMClient` using OpenAI Python SDK (`AsyncOpenAI`) pointing at **OpenRouter** (`base_url=https://openrouter.ai/api/v1`) for cloud-based diagnosis. Supports any model available on OpenRouter; admin-curated model list configured via `PREMIUM_LLM_CURATED_MODELS` env var. Feature-gated (`PREMIUM_LLM_ENABLED=false` by default). The only component that requires internet access. Uses the same prompts and RAG context as the local Ollama client.
 ### 7.2 Deployment principle: local-first and interface invariants
 Interface invariants that must not change across phases:
-•	Dify (or later custom UI) calls the model through an OpenAI-compatible base URL.
+•	diagnostic_api calls the model through an OpenAI-compatible base URL.
 •	diagnostic_api schema stays stable; new fields are additive.
 •	Expert output JSON schema is versioned and backward compatible.
 •	RAG doc_id + section anchors are stable (no silent renumbering). Image markers (`[Image N, Page M]`, `[OCR, Page M]`, `[Full Page, Page M]`) are stable inline references within section bodies.
@@ -117,10 +116,7 @@ Interface invariants that must not change across phases:
 **Exception — Premium LLM (opt-in internet access):**
 The premium LLM client is the sole exception to the local-only deployment rule. It is disabled by default (`PREMIUM_LLM_ENABLED=false`) and requires an explicit `PREMIUM_LLM_API_KEY` (OpenRouter API key). When enabled, the diagnostic_api container must have outbound internet access to reach the OpenRouter API (`PREMIUM_LLM_BASE_URL`, default `https://openrouter.ai/api/v1`). All other services remain strictly local.
 ### 7.3 Network flow (reference)
-Dify’s containerized deployment typically splits UI and API services and may include workers, a plugin daemon, a sandbox, and an SSRF proxy. The outbound allow-list should be enforced at the SSRF proxy and/or network layer to restrict calls to internal services only.
-
- 
-Figure 1. Reference deployment network flow for a typical Dify stack (UI/API split, workers, sandbox, SSRF proxy).
+The deployment consists of the Next.js web UI (`obd-ui`, port 3001), the FastAPI backend (`diagnostic_api`), Ollama (model server), Weaviate (vector store), and Postgres (database). All services communicate over a dedicated internal Docker network. Only the Nginx reverse proxy handles ingress; backend services are not exposed to the LAN. The outbound allow-list should be enforced at the network layer to restrict calls to internal services only.
 ## 8) Data architecture for the expert model pipeline
 ### 8.1 Data boundaries: what the LLM can and cannot see
 Allowed in LLM context (summaries only):
@@ -289,7 +285,7 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 - Accepts raw OBD TSV text body (same format as `/v2/tools/summarize-log-raw`)
 - **Dedup:** computes SHA-256 hash of the input; if an existing session with the same hash is found in the DB, returns the cached result immediately (no re-analysis)
 - Creates a persisted `OBDAnalysisSession` **immediately in Postgres** (UUID, status, SHA-256 input hash, JSONB result). There is no in-memory cache layer; the DB is the sole source of truth for session lifecycle
-- Stores `raw_input_text` and `parsed_summary_payload` (Dify-formatted parsed summary) on the session row
+- Stores `raw_input_text` and `parsed_summary_payload` (structured parsed summary as JSONB) on the session row
 - Runs `_run_pipeline()` internally (same 5-stage pipeline)
 - Returns `session_id` + full `LogSummaryV2` result
 - On failure, persists error state for debugging
@@ -349,7 +345,7 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 - `obd_premium_diagnosis_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, diagnosis_text (snapshots the premium AI diagnosis at submission time), extra_fields (JSONB), created_at
 ## 9) diagnostic_api design (pilot interface contract)
 ### 9.1 Goals
-•	Stable interface for Dify HTTP Request node.
+•	Stable interface for internal FastAPI workflow orchestration.
 •	Hide internal time-series complexity and inference details.
 •	Enforce privacy boundaries (only send LLM-safe summaries).
 •	Be deterministic and testable (responses validate against an API schema).
@@ -540,17 +536,17 @@ Once you have reliable ratings/corrections, build preference pairs (chosen vs re
 •	Introduce drift detection: rising invalid JSON, missing citations, or changed question distribution.
 ### 11.6 Model serving and 'model swap' procedure
 •	Serve baseline and tuned models behind OpenAI-compatible endpoints.
-•	Keep the Dify workflow unchanged; switch the model provider base URL and model name.
+•	Keep the FastAPI workflow unchanged; switch the model provider base URL and model name.
 •	Maintain a model registry: (model_id, base model, adapter, training data version, evaluation results, deployment date).
 ## 12) Infrastructure and compute (pilot)
 ### 12.1 Compute assets
-Run Dify + vector store + diagnostic_api and the model server on a secured on-prem host. Choose inference hardware based on target latency and concurrency (GPU preferred for interactive use; CPU-only may be acceptable for low volume).
+Run diagnostic_api + obd-ui + vector store and the model server on a secured on-prem host. Choose inference hardware based on target latency and concurrency (GPU preferred for interactive use; CPU-only may be acceptable for low volume).
 ### 12.2 Networking
 Minimum network controls:
 •	Internal-only access (VPN or intranet).
 •	TLS termination at reverse proxy (e.g., nginx) and RBAC at the app layer.
 •	Outbound allow-list: only diagnostic_api, model endpoint, and internal doc store. Deny all other egress by default.
-•	Separate subnets/VLANs for data stores (Postgres/Redis/Weaviate) vs app tier where feasible.
+•	Separate subnets/VLANs for data stores (Postgres/Weaviate) vs app tier where feasible.
 ## 13) Security, privacy, and compliance
 ### 13.1 Data handling commitments
 Honor the project’s privacy posture: restricted access, locked storage, defined retention, and redaction of personal data. The expert layer must not surface sensitive identifiers in prompts or logs.
@@ -576,8 +572,8 @@ Honor the project’s privacy posture: restricted access, locked storage, define
 •	diagnostic_api schema validation (requests/responses).
 •	JSON schema validation for model outputs.
 ### 15.2 Integration tests
-•	End-to-end Dify workflow with mocked diagnostic_api and fixed retrieval set.
-•	SSRF allow-list tests (only allowed targets reachable).
+•	End-to-end FastAPI workflow with mocked diagnostic_api and fixed retrieval set.
+•	Network allow-list tests (only allowed targets reachable).
 •	Model endpoint contract tests (OpenAI-style chat completion).
 ### 15.3 SME acceptance tests
 •	Curated set of ‘gold’ incidents.
@@ -599,7 +595,7 @@ Honor the project’s privacy posture: restricted access, locked storage, define
 | Milestone | Exit criteria |
 |-----------|---------------|
 | M0 | Schemas finalized (diagnostic_api + expert output JSON v1.0) |
-| M1 | Dify workflow works with stub backend; schema validation + citations checks wired |
+| M1 | FastAPI workflow works with stub backend; schema validation + citations checks wired |
 | M2 | diagnostic_api integrated with real diagnostic outputs (LLM-safe summaries) |
 | M2.1 | OBD Agent posts snapshots; diagnostic_api stores OBDSnapshot + exposes latest lookup; Pass‑1 mapper returns subsystem+PID shortlist |
 | M3 | RAG ingestion complete; doc_id/section anchors stable; citation coverage passes. Text extraction done (APP‑03, 2026-02-28); PDF image parsing done (APP‑22, 2026-03-01): OCR + vision + page render + image-aware chunking. |
@@ -656,7 +652,7 @@ Use this checklist to keep Phase 1.5 contained and predictable.
 }
 ```
 ### Appendix C — Deployment notes (Ollama vs vLLM/SGLang)
-•	If Phase 1 uses Ollama, keep Dify configured against its OpenAI-compatible base URL. This makes Phase 1.5 a model swap, not a workflow rewrite.
+•	If Phase 1 uses Ollama, keep diagnostic_api configured against its OpenAI-compatible base URL. This makes Phase 1.5 a model swap, not a workflow rewrite.
 •	For Phase 1.5/2, serving tuned HF weights via vLLM/SGLang typically simplifies server inference and avoids extra conversion steps.
 •	If you must stay on Ollama, prefer adapter-based workflows (LoRA adapters) and treat quantization/export steps as a separate risk item with its own validation.
 — End of document —

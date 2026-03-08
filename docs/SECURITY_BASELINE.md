@@ -93,21 +93,20 @@ This document defines the security baseline for the STF AI Diagnosis Platform Ph
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │  Docker Network: stf-internal (172.28.0.0/16)       │  │
 │  │                                                        │  │
-│  │  ┌─────────┐  ┌─────────┐  ┌──────────┐           │  │
-│  │  │ Postgres│  │  Redis  │  │ Weaviate │           │  │
-│  │  └────┬────┘  └────┬────┘  └─────┬────┘           │  │
-│  │       │            │              │                  │  │
-│  │  ┌────▼────────────▼──────────────▼─────┐          │  │
-│  │  │     Dify API + Worker + Web          │          │  │
-│  │  └────┬─────────────────────────────────┘          │  │
+│  │  ┌─────────┐               ┌──────────┐           │  │
+│  │  │ Postgres│               │ Weaviate │           │  │
+│  │  └────┬────┘               └─────┬────┘           │  │
+│  │       │                          │                  │  │
+│  │  ┌────▼──────────────────────────▼─────┐          │  │
+│  │  │         Diagnostic API              │          │  │
+│  │  └────┬────────────────────────────────┘          │  │
 │  │       │                                              │  │
-│  │  ┌────▼────────────┐    ┌───────────────┐          │  │
-│  │  │ Diagnostic API  │◄───┤    Ollama     │          │  │
-│  │  └─────────────────┘    └───────────────┘          │  │
+│  │  ┌────▼────────────┐                               │  │
+│  │  │     Ollama      │                               │  │
+│  │  └─────────────────┘                               │  │
 │  │                                                        │  │
 │  └────────────────────────────────────────────────────────┘
 │         │                                                   │
-│    127.0.0.1:3000 (Dify Web UI)                          │
 │    127.0.0.1:8000 (Diagnostic API)                       │
 │                                                               │
 └───────────────────────────────────────────────────────────────┘
@@ -125,19 +124,19 @@ All exposed services **MUST** bind to `127.0.0.1` only:
 ```yaml
 # docker-compose.yml
 ports:
-  - "127.0.0.1:3000:3000"  # ✅ Correct
-  - "3000:3000"             # ❌ Wrong (exposes to 0.0.0.0)
+  - "127.0.0.1:8000:8000"  # ✅ Correct
+  - "8000:8000"             # ❌ Wrong (exposes to 0.0.0.0)
 ```
 
 **Verification:**
 ```bash
 # Check listening ports
-netstat -tuln | grep -E ':(3000|5001|8000|8080|11434)'
+netstat -tuln | grep -E ':(8000|8080|11434)'
 
 # Should show:
-# tcp  127.0.0.1:3000  0.0.0.0:*  LISTEN
+# tcp  127.0.0.1:8000  0.0.0.0:*  LISTEN
 # NOT:
-# tcp  0.0.0.0:3000    0.0.0.0:*  LISTEN
+# tcp  0.0.0.0:8000    0.0.0.0:*  LISTEN
 ```
 
 #### 2. Internal Docker Network
@@ -161,10 +160,9 @@ Services communicate via internal Docker network only:
 
 **Blocked at runtime:**
 - Outbound HTTPS to external LLM APIs (OpenAI, Anthropic, etc.)
-- Outbound HTTP to external services (except Dify image pulls on first boot)
+- Outbound HTTP to external services (except Docker image pulls on first boot)
 
 **Implementation:**
-- Dify SSRF proxy configured to allow-list internal services only
 - `ALLOW_EXTERNAL_APIS=false` enforced in diagnostic_api
 
 **Exception:** Initial Docker image pulls require internet access. After initial setup, runtime should be fully air-gapped.
@@ -198,13 +196,8 @@ sudo iptables -I DOCKER-USER -s 172.28.0.0/16 ! -d 172.28.0.0/16 -j DROP
 
 #### Postgres
 
-- **User:** `dify_user` (Dify database), `stf_app_user` (application database)
+- **User:** `stf_user` (application database)
 - **Auth:** Password-based (from `.env`)
-- **Access:** Only accessible from Docker internal network
-
-#### Redis
-
-- **Auth:** Password-based (`REDIS_PASSWORD`)
 - **Access:** Only accessible from Docker internal network
 
 #### Weaviate
@@ -213,15 +206,9 @@ sudo iptables -I DOCKER-USER -s 172.28.0.0/16 ! -d 172.28.0.0/16 -j DROP
 - **Anonymous Access:** Disabled (`WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=false`)
 - **Access:** Only accessible from Docker internal network
 
-#### Dify
-
-- **Admin UI:** Username/password (set on first login)
-- **API:** API key-based (generated in Dify UI)
-- **Access:** Web UI on `127.0.0.1:3000`
-
 #### Diagnostic API
 
-- **Auth:** None (Phase 1; intended for internal Dify use only)
+- **Auth:** None (Phase 1; local single-user access only)
 - **Access:** Only accessible from `127.0.0.1:8000` and Docker internal network
 
 **Phase 2:** Add API key authentication for diagnostic API.
@@ -299,9 +286,8 @@ sudo iptables -I DOCKER-USER -s 172.28.0.0/16 ! -d 172.28.0.0/16 -j DROP
 
 ### Secret Types
 
-1. **Database Passwords:** Postgres, Redis
-2. **API Keys:** Weaviate, Dify
-3. **Secret Keys:** Dify session encryption
+1. **Database Passwords:** Postgres
+2. **API Keys:** Weaviate
 
 ### Storage & Distribution
 
@@ -326,9 +312,6 @@ openssl rand -base64 32
 
 # Generate API key
 openssl rand -hex 32
-
-# Generate Dify secret key
-python -c "import secrets; print(secrets.token_urlsafe(50))"
 ```
 
 ### Secret Rotation
@@ -343,7 +326,7 @@ python -c "import secrets; print(secrets.token_urlsafe(50))"
 3. Update database passwords if changed:
    ```bash
    docker exec stf-postgres psql -U postgres -c \
-     "ALTER USER dify_user WITH PASSWORD 'new_password';"
+     "ALTER USER stf_user WITH PASSWORD 'new_password';"
    ```
 4. Restart services: `make up`
 
@@ -378,7 +361,6 @@ git filter-branch --force --index-filter \
 
 All images **MUST** come from:
 - Official Docker Hub repositories (e.g., `postgres:15.6-alpine`)
-- Verified publishers (e.g., `langgenius/dify-api:0.6.13`)
 - Internal builds (e.g., `stf-diagnostic-api:0.1.0`)
 
 **No third-party unverified images allowed.**
@@ -403,7 +385,7 @@ image: postgres:latest
 ```bash
 # Scan images before deployment
 docker scan postgres:15.6-alpine
-docker scan langgenius/dify-api:0.6.13
+docker scan stf-diagnostic-api:0.1.0
 ```
 
 **Phase 2:** Automated vulnerability scanning in CI/CD pipeline.
@@ -522,11 +504,10 @@ services:
 
 #### What to Backup
 
-1. **Postgres databases:** `dify` and `stf_diagnosis`
+1. **Postgres database:** `stf_diagnosis`
 2. **Weaviate vector store:** RAG corpus
 3. **Ollama models:** Downloaded LLM models
 4. **Configuration:** `.env` file (store securely, separate from code)
-5. **Dify storage:** Uploaded files and workflow configs
 
 #### Backup Frequency
 

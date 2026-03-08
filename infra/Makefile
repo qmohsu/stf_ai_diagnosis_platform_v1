@@ -73,8 +73,7 @@ up: check-env ## Start all services
 	@echo "$(CYAN)Run 'make logs' to view logs$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Access points:$(NC)"
-	@echo "  Dify Web UI:      http://127.0.0.1:3000"
-	@echo "  Dify API:         http://127.0.0.1:5001"
+	@echo "  OBD UI:           http://127.0.0.1:3001"
 	@echo "  Diagnostic API:   http://127.0.0.1:8000"
 	@echo "  Weaviate:         http://127.0.0.1:8080"
 	@echo "  Ollama:           http://127.0.0.1:11434"
@@ -92,9 +91,6 @@ logs: ## Show logs from all services (Ctrl+C to exit)
 logs-api: ## Show logs from diagnostic API only
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) logs -f diagnostic-api
 
-logs-dify: ## Show logs from Dify services
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) logs -f dify-api dify-worker dify-web
-
 logs-ollama: ## Show logs from Ollama
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) logs -f ollama
 
@@ -107,7 +103,7 @@ status: ps ## Alias for ps
 health: ## Check health status of all services
 	@echo "$(CYAN)Service Health Check:$(NC)"
 	@echo ""
-	@for service in postgres redis weaviate ollama dify-api dify-worker dify-web diagnostic-api; do \
+	@for service in postgres weaviate ollama diagnostic-api obd-ui; do \
 		status=$$(docker inspect -f '{{.State.Health.Status}}' stf-$$service 2>/dev/null || echo "no healthcheck"); \
 		if [ "$$status" = "healthy" ]; then \
 			echo "  $(GREEN)✓$(NC) $$service: healthy"; \
@@ -156,16 +152,10 @@ backup: ## Create backup of persistent data
 	echo "$(GREEN)Backup complete: backups/*_$$timestamp.tar.gz$(NC)"
 
 exec-postgres: ## Open psql shell in Postgres container
-	@docker exec -it stf-postgres psql -U $${POSTGRES_USER:-dify_user} -d $${POSTGRES_DB:-dify}
-
-exec-redis: ## Open redis-cli in Redis container
-	@docker exec -it stf-redis redis-cli -a $${REDIS_PASSWORD}
+	@docker exec -it stf-postgres psql -U $${POSTGRES_USER:-stf_user} -d $${POSTGRES_DB:-stf_diagnosis}
 
 shell-api: ## Open shell in diagnostic-api container
 	@docker exec -it stf-diagnostic-api /bin/bash
-
-shell-dify: ## Open shell in dify-api container
-	@docker exec -it stf-dify-api /bin/bash
 
 ollama-pull: ## Pull default Ollama model (qwen3.5:9b)
 	@echo "$(GREEN)Pulling Ollama model (this may take a while)...$(NC)"
@@ -179,12 +169,8 @@ test-health: ## Run health check tests on all endpoints
 	@echo "$(CYAN)Testing service endpoints...$(NC)"
 	@echo ""
 	@echo "Testing Postgres..."
-	@docker exec stf-postgres pg_isready -U $${POSTGRES_USER:-dify_user} && \
+	@docker exec stf-postgres pg_isready -U $${POSTGRES_USER:-stf_user} && \
 		echo "$(GREEN)✓$(NC) Postgres is ready" || echo "$(RED)✗$(NC) Postgres failed"
-	@echo ""
-	@echo "Testing Redis..."
-	@docker exec stf-redis redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG && \
-		echo "$(GREEN)✓$(NC) Redis is ready" || echo "$(RED)✗$(NC) Redis failed"
 	@echo ""
 	@echo "Testing Weaviate..."
 	@curl -sf http://127.0.0.1:8080/v1/.well-known/ready > /dev/null && \
@@ -193,10 +179,6 @@ test-health: ## Run health check tests on all endpoints
 	@echo "Testing Ollama..."
 	@curl -sf http://127.0.0.1:11434/api/version > /dev/null && \
 		echo "$(GREEN)✓$(NC) Ollama is ready" || echo "$(RED)✗$(NC) Ollama failed"
-	@echo ""
-	@echo "Testing Dify API..."
-	@curl -sf http://127.0.0.1:5001/health > /dev/null && \
-		echo "$(GREEN)✓$(NC) Dify API is ready" || echo "$(RED)✗$(NC) Dify API failed"
 	@echo ""
 	@echo "Testing Diagnostic API..."
 	@curl -sf http://127.0.0.1:8000/health > /dev/null && \

@@ -141,10 +141,6 @@ def main():
     step("4. Daily Reporting")
     generate_report()
     
-    step("5. Dify Workflow")
-    log("You can also try the visual workflow at: http://localhost:3000", GREEN)
-    log("Use the 'Auto Diagnosis Expert' app.", GREEN)
-    
     log("\n[DEMO COMPLETE]", GREEN)
 
 if __name__ == "__main__":

@@ -5,7 +5,6 @@
 # Date: January 2026
 # ============================================================================
 # This script creates the application database and user for diagnostic_api
-# Dify database is created automatically by the POSTGRES_DB env var
 # ============================================================================
 set -e
 

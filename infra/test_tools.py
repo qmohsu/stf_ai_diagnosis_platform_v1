@@ -7,7 +7,7 @@ import time
 BASE_URL = "http://localhost:8000"
 
 def test_tools():
-    print(f"Testing Dify Tools against {BASE_URL}...")
+    print(f"Testing API Tools against {BASE_URL}...")
     failures = 0
 
     # 1. Test Redaction

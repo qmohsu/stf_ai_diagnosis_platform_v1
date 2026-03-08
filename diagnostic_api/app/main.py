@@ -264,9 +264,6 @@ app.include_router(log_summary.router, prefix="/v1/tools", tags=["Tools"])
 from app.api.v2.endpoints import log_summary as log_summary_v2
 app.include_router(log_summary_v2.router, prefix="/v2/tools", tags=["Tools v2"])
 
-from app.api.v2.endpoints import parsed_summary as parsed_summary_v2
-app.include_router(parsed_summary_v2.router, prefix="/v2/tools", tags=["Tools v2"])
-
 from app.api.v2.endpoints import obd_analysis as obd_analysis_v2
 app.include_router(obd_analysis_v2.router, prefix="/v2/obd", tags=["OBD Analysis"])
 
