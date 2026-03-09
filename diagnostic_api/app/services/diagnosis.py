@@ -1,7 +1,6 @@
 
 import structlog
 from app.expert.client import ExpertLLMClient
-from app.privacy.redaction import PIIRedactor
 from app.rag.retrieve import RetrievalService
 from app.api.v1.schemas import DiagnosisRequest, DiagnosisResponse
 
@@ -13,26 +12,22 @@ class DiagnosisService:
         self.retrieval_service = RetrievalService()
 
     async def run_diagnosis(self, request: DiagnosisRequest) -> DiagnosisResponse:
-        """
-        Execute the full diagnostic pipeline:
-        1. Privacy Redaction
-        2. RAG Retrieval
-        3. Expert Analysis
+        """Execute the full diagnostic pipeline.
+
+        1. RAG Retrieval
+        2. Expert Analysis
         """
         logger.info("diagnosis_pipeline_start", vehicle_id=request.vehicle_id)
 
-        # 1. Privacy & Redaction
-        # Enforce boundary (drop unsafe fields) - though Schema validation does this mostly, 
-        # this ensures we cleanse the symptoms string itself.
-        redacted_symptoms = PIIRedactor.redact_text(request.symptoms)
+        symptoms = request.symptoms
 
-        # 2. Retrieval
-        # Construct a search query (Vehicle + Redacted Symptoms)
+        # 1. Retrieval
+        # Construct a search query (Vehicle + Symptoms)
         # We include DTC codes in the search query for better precision
-        query = f"{request.year} {request.make} {request.model} {redacted_symptoms}"
+        query = f"{request.year} {request.make} {request.model} {symptoms}"
         if request.dtc_codes:
             query += f" {' '.join(request.dtc_codes)}"
-        
+
         context_results = await self.retrieval_service.retrieve_context(query=query, limit=3)
 
         if context_results:
@@ -44,11 +39,11 @@ class DiagnosisService:
             context_str = "No specific manual sections or logs found for this issue."
             context_used = False
 
-        # 3. Expert Analysis
+        # 2. Expert Analysis
         vehicle_info = request.to_vehicle_string()
-        
-        # Combine redacted symptoms with DTC codes for the LLM prompt
-        full_symptom_description = redacted_symptoms
+
+        # Combine symptoms with DTC codes for the LLM prompt
+        full_symptom_description = symptoms
         if request.dtc_codes:
             full_symptom_description += f"\nActive DTCs: {', '.join(request.dtc_codes)}"
 
@@ -58,12 +53,12 @@ class DiagnosisService:
             context=context_str
         )
 
-        logger.info("diagnosis_pipeline_complete", 
-                    vehicle_id=request.vehicle_id, 
+        logger.info("diagnosis_pipeline_complete",
+                    vehicle_id=request.vehicle_id,
                     risk_count=len(diagnosis.subsystem_risks))
 
         return DiagnosisResponse(
             diagnosis=diagnosis,
-            redacted_symptoms=redacted_symptoms,
+            symptoms=symptoms,
             context_used=context_used
         )

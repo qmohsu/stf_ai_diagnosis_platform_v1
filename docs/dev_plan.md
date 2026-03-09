@@ -37,7 +37,7 @@ Scope boundary for this plan (so engineers don’t drift)
   logic.
 
 ### 2.2 Critical Path Dependency
-Critical path dependency: DO‑01 → DO‑06 → (APP‑01 + APP‑02B + APP‑03) → APP‑06 → APP‑08 → INT‑01 (E2E demo).
+Critical path dependency: DO‑01 → DO‑06 → (APP‑01 + APP‑02B + APP‑03) → APP‑08 → INT‑01 (E2E demo). *(APP‑06 removed for R&D prototype.)*
 
 **Summarization Pipeline Path:** APP‑02B → APP‑13 → (APP‑14 + APP‑15) → APP‑16 → APP‑17.
 
@@ -49,7 +49,7 @@ Critical path dependency: DO‑01 → DO‑06 → (APP‑01 + APP‑02B + APP‑
 A ticket is DONE only if:
 - It’s merged with docs and tests updated.
 - It respects: raw sensor data stays backend, only derived features/summaries to
-  LLM, PII redaction, Docker network isolation.
+  LLM, Docker network isolation.
 
 ### 2.4 Deviations and ADRs
 If an engineer deviates from the recommended stack (FastAPI/Pydantic/Weaviate/
@@ -139,7 +139,7 @@ Title: DO‑02 Enforce local-only access + network isolation baseline
  
 
 Context:
-Privacy/security requirements include: raw sensor data stays backend, only derived features/summaries go to LLM, automated PII redaction, and Docker network isolation enforced.
+Privacy/security requirements include: raw sensor data stays backend, only derived features/summaries go to LLM, and Docker network isolation enforced. (PII redaction removed for R&D prototype.)
 
 
 
@@ -741,57 +741,13 @@ Invalid output fails validation with clear reason
 
 Valid output passes and is ready to be stored/returned
 
-#### APP‑06 — Data boundary enforcement + PII redaction
+#### APP‑06 — Data boundary enforcement + PII redaction *(REMOVED — R&D prototype)*
 
-Owner: Full‑Stack AI Application Engineer
-Depends on: APP‑01
-
- 
-
-PROMPT (task ticket):
-Title: APP‑06 Enforce privacy boundary (derived features only) + implement PII redaction
-
- 
-
-Context:
-Privacy requirements: raw sensor data stays backend; only derived features/summaries go to LLM; PII redaction is implemented.
-
-
-
-Task:
-Implement:
-
-A “derived feature” builder that converts any incoming diagnostic payload into an allowlisted summary format.
-
-A PII redaction step for free-text (symptom descriptions, notes).
-
-Requirements:
-
-Define an allowlist for what may reach the LLM (e.g., DTC codes, aggregate stats, extracted features).
-
-Reject or strip:
-
-raw audio/video
-
-raw time-series arrays beyond safe summary
-
-any obvious personal identifiers in text (phone/email/ID)
-
-Log redaction events (count/type), but do not log raw PII.
-
-Deliverables:
-
-diagnostic_api/privacy/redaction.py
-
-diagnostic_api/privacy/feature_boundary.py
-
-Tests proving raw fields are rejected/stripped
-
-Acceptance Criteria:
-
-LLM call path receives only derived/allowlisted data (prove via unit test)
-
-Redaction masks PII patterns in text inputs
+> **Status: Removed (2026-03-08).** PII redaction (`PIIRedactor`, `FeatureBoundary`) and
+> VIN validation were removed to simplify the R&D prototype. The deleted files were
+> `diagnostic_api/app/privacy/redaction.py`, `feature_boundary.py`, `__init__.py`, and
+> `app/api/v1/endpoints/tools.py` (`/redact`, `/validate-vin` endpoints).
+> Pydantic schema validation and JWT auth remain. Re-introduce for production.
 
 #### APP‑07 — LLM client integration (Ollama/vLLM) with retries + JSON repair
 
@@ -858,7 +814,7 @@ Implement the /v1/vehicle/diagnose endpoint fully (including optional Pass‑1 f
 
 Accept validated request
 
-Build derived feature summary + redact text
+Build derived feature summary
 
 Query RAG retrieval for supporting manual/log chunks
 
@@ -1673,7 +1629,7 @@ A new developer can run the demo and see a diagnosis result without manual setup
 #### SEC‑01 — Threat model + security checks for diagnosis cloud
 
 Owner: DevOps (primary) + AI Engineer (contributor)
-Depends on: DO‑02, APP‑06
+Depends on: DO‑02 *(APP‑06 removed for R&D prototype)*
 
  
 
@@ -1683,7 +1639,7 @@ Title: SEC‑01 Threat model + automated security checks (LLM boundary)
  
 
 Context:
-Privacy & security requires raw sensor data remains backend, only derived features to LLM, PII redaction, docker isolation.
+Privacy & security requires raw sensor data remains backend, only derived features to LLM, docker isolation. (PII redaction removed for R&D prototype.)
 
 
 
@@ -1702,7 +1658,7 @@ Add automated tests that ensure:
 
 requests containing raw sensor blobs are rejected
 
-redaction runs on text before LLM call
+text inputs pass through to LLM (PII redaction removed for R&D prototype)
 
 diagnostic_api cannot reach external network endpoints (if feasible)
 
@@ -1767,6 +1723,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-08 | v2.3 | Removed PII redaction (`PIIRedactor`, `FeatureBoundary`), VIN validation, and `/tools/redact` + `/tools/validate-vin` endpoints for R&D prototype simplification. APP‑06 marked REMOVED. Deleted `app/privacy/` (3 files), `app/api/v1/endpoints/tools.py`, and 5 test files. Renamed `redacted_symptoms` → `symptoms` in v1 schema. Removed `redact_pii` config. Updated CLAUDE.md, README, SECURITY_BASELINE, design_doc. JWT auth preserved. |
 | 2026-03-08 | v2.2 | APP‑28: User authentication and per-user session isolation. JWT auth (username+password, bcrypt, HS256, 24h expiry). `POST /auth/register` and `POST /auth/login` endpoints. All `/v2/*` endpoints protected with `get_current_user` dependency. Per-user session dedup via `UniqueConstraint(user_id, input_text_hash)`. Alembic clean-slate migration (truncate + schema changes). Frontend: login/register pages, `AuthProvider` context, localStorage token, global 401 handler. 28 new tests (86 total). Updated scope (§1.1). |
 | 2026-03-07 | v2.1 | APP‑27: Remove Dify dependency. Dify workflow orchestration and its Redis dependency have been removed from the platform. Diagnostic workflows are now handled directly by FastAPI endpoints and the local/premium LLM pipelines. Marked APP‑11 as DEPRECATED/REMOVED. Removed Dify and Redis from scope (§1.1), component lists (DO‑01), network exposure (DO‑02), smoke tests (DO‑04), critical path (§2.2), INT‑01 dependencies, and ADR stack references (§2.4). |
 | 2026-03-05 | v2.0 | Fixed critical translation performance bottleneck in `translator.py`: migrated from Ollama `/api/generate` to `/api/chat` with `think: false` to disable hidden reasoning tokens in Qwen3.5 thinking model (80x speedup, from ~25s to ~0.3s per section). Added concurrent translation via `asyncio.Semaphore`. Added `max_concurrent` input validation. Updated tests to match new `/api/chat` response schema (3 fixed + 3 new tests, 29 total). Successfully ingested MWS150-A service manual: 2,211 chunks with OCR + vision + translation. Updated RAG Image Parsing Path in critical path (§2.2). Updated design_doc.md §10.3.1 with translation service details. |

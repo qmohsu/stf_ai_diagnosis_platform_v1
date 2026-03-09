@@ -184,7 +184,6 @@ services:
 
       # Security
       STRICT_MODE: ${DIAGNOSTIC_API_STRICT_MODE:-true}
-      REDACT_PII: ${DIAGNOSTIC_API_REDACT_PII:-true}
       ALLOW_EXTERNAL_APIS: ${DIAGNOSTIC_API_ALLOW_EXTERNAL_APIS:-false}
 
       # Authentication

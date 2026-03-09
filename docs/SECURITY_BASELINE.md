@@ -32,7 +32,7 @@ This document defines the security baseline for the STF AI Diagnosis Platform Ph
 
 1. **Privacy First:** No raw sensor data (waveforms, audio, video) leaves the system
 2. **Network Isolation:** All services run locally; no external API calls
-3. **Data Protection:** PII and sensitive data are redacted before logging
+3. **Data Protection:** Sensitive data boundaries enforced via schema validation
 4. **Secret Management:** Secrets stored securely, never committed to version control
 5. **Audit Trail:** All interactions logged for Phase 1.5 training data collection
 
@@ -68,7 +68,7 @@ This document defines the security baseline for the STF AI Diagnosis Platform Ph
 |--------|------------|
 | **Data exfiltration** via LLM API | Network isolation; no external API calls |
 | **Raw sensor data leakage** to LLM | Input validation; explicit data boundaries |
-| **PII in logs** exposed to unauthorized users | Automated PII redaction before logging |
+| **PII in logs** exposed to unauthorized users | Schema validation; automated redaction deferred (R&D prototype) |
 | **Secrets in version control** | Gitignore `.env`; use `.env.example` |
 | **Unauthorized container access** | Internal Docker network; localhost binding |
 | **Data loss** from container failure | Named volumes; backup procedures |
@@ -223,7 +223,7 @@ sudo iptables -I DOCKER-USER -s 172.28.0.0/16 ! -d 172.28.0.0/16 -j DROP
 |-----------|----------------|------------------|------------|
 | Raw sensor data (waveforms, audio, video) | **Sensitive** | NOT stored; not passed to LLM | N/A |
 | Sensor summaries (risk scores, features) | **Internal** | Postgres (interaction_logs) | Encrypted at rest (volume) |
-| User queries (technician input) | **Internal** | Postgres (interaction_logs) | PII redaction |
+| User queries (technician input) | **Internal** | Postgres (interaction_logs) | Schema validation |
 | LLM responses (recommendations) | **Internal** | Postgres (interaction_logs) | Encrypted at rest (volume) |
 | SOPs, manuals (RAG corpus) | **Confidential** | Weaviate (vector store) | Access control |
 | Credentials (passwords, API keys) | **Secret** | `.env` file (gitignored) | Host file permissions |
@@ -236,39 +236,32 @@ sudo iptables -I DOCKER-USER -s 172.28.0.0/16 ! -d 172.28.0.0/16 -j DROP
 - Text summaries (e.g., "vibration amplitude increased by 20%")
 - Risk scores (e.g., "risk_level: 0.75")
 - Fault codes (e.g., "P0171")
-- Manually entered notes (after PII redaction)
+- Manually entered notes
 
 **Prohibited in LLM context:**
 - Raw waveforms (vibration, sound)
 - Audio recordings
 - Video frames
 - Full GNSS tracks (only start/end locations if needed)
-- Unredacted PII (names, phone numbers, addresses)
 
 **Enforcement:**
-- Input validation in `diagnostic_api` (schema validation)
+- Input validation in `diagnostic_api` (Pydantic schema validation)
 - Explicit type constraints in Pydantic models
 - Unit tests to verify data boundaries
 
-### PII Redaction
+### PII Redaction *(Deferred — R&D Prototype)*
 
-**Required before:**
-- Logging to `interaction_logs`
-- Passing user input to LLM
-- Exporting "case packages" for Phase 1.5
+> **Note (2026-03-08):** Automated PII redaction (`PIIRedactor`, `FeatureBoundary`)
+> has been removed for the R&D prototype to reduce complexity. The platform currently
+> relies on Pydantic schema validation and pseudonymous `vehicle_id` values.
+> Re-introduce regex/NER-based redaction before any production or multi-user deployment.
 
-**PII Types:**
+**PII types to address in production:**
 - Names (technician, vehicle owner)
-- Phone numbers
-- Email addresses
-- Precise GPS coordinates (round to nearest km if needed)
+- Phone numbers, email addresses
+- Precise GPS coordinates
 - License plate numbers
-- VIN (use pseudonymous vehicle_id instead)
-
-**Implementation:**
-- Automated redaction in `diagnostic_api` (regex + NER)
-- `REDACT_PII=true` enforced in production
-- Redacted fields replaced with `[REDACTED]` or pseudonymized tokens
+- VIN (currently handled by using pseudonymous vehicle_id)
 
 ### Encryption at Rest
 
@@ -434,7 +427,7 @@ services:
 
 **Diagnostic API:**
 - All API requests (method, endpoint, status code)
-- User input (after PII redaction)
+- User input
 - Retrieved RAG chunks (doc_id, section, score)
 - LLM tool calls and responses
 - Errors and exceptions (with stack traces)
@@ -449,7 +442,6 @@ services:
 #### What NOT to Log
 
 - Raw sensor data (waveforms, audio, video)
-- Unredacted PII (names, phone numbers, emails)
 - Passwords or API keys
 - Full stack traces that might leak secrets
 
@@ -593,7 +585,7 @@ make test-health
 
 ### Privacy Limitations
 
-1. **PII redaction is regex-based:** May miss edge cases (Phase 2: NER)
+1. **PII redaction not active:** Removed for R&D prototype (re-introduce for production)
 2. **No differential privacy:** Interaction logs may reveal patterns
 3. **No consent management:** Single user, implied consent
 
@@ -618,7 +610,7 @@ make test-health
 ### Medium-term (Next 6 months)
 
 1. **TLS/HTTPS:** Enable TLS for all internal services
-2. **Advanced PII Redaction:** NER-based redaction with GPT-4 fallback
+2. **PII Redaction:** Re-introduce regex + NER-based redaction
 3. **Container Hardening:** Seccomp profiles, AppArmor, read-only filesystems
 4. **Vulnerability Scanning:** Automated image scanning in CI/CD
 5. **Monitoring & Alerting:** Prometheus + Grafana + PagerDuty integration

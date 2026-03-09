@@ -1,5 +1,5 @@
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from pydantic import BaseModel, Field
 from app.expert.schemas import LLMDiagnosisResponse
 
@@ -24,7 +24,7 @@ class DiagnosisResponse(BaseModel):
     Final response returned to the client.
     """
     diagnosis: LLMDiagnosisResponse
-    redacted_symptoms: str = Field(..., description="The symptom description AFTER PII redaction")
+    symptoms: str = Field(..., description="The symptom description sent for diagnosis")
     context_used: bool = Field(..., description="Whether RAG context was successfully retrieved and used")
 
 class FeedbackRequest(BaseModel):
@@ -37,23 +37,3 @@ class FeedbackRequest(BaseModel):
     comments: Optional[str] = Field(None, description="Free text comments")
     corrected_diagnosis: Optional[str] = Field(None, description="Actual correct diagnosis if AI was wrong")
 
-class RedactRequest(BaseModel):
-    text: str = Field(..., description="Text to redact PII from")
-
-class RedactResponse(BaseModel):
-    original_text: str
-    redacted_text: str
-    redacted_count: int
-
-class VinValidateRequest(BaseModel):
-    vin: str = Field(
-        ...,
-        min_length=1,
-        max_length=50,
-        description="Vehicle Identification Number",
-    )
-
-class VinValidateResponse(BaseModel):
-    vin: str
-    is_valid: bool
-    details: Optional[Dict[str, Any]] = None

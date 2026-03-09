@@ -12,7 +12,6 @@ Phase 1 local-first pilot for AI-assisted vehicle diagnosis.
 
 - NEVER send raw sensor data to the LLM (no vibration waveforms, audio frames, video frames, full GNSS tracks)
 - LLM context may contain ONLY summaries, risk scores, and text snippets
-- Redact PII (names, phone numbers, unredacted location details) before passing to the LLM or writing training-ready logs
 - All raw sensor data stays in the backend; only derived features and summaries are LLM-safe
 
 ## Python Coding Standards (Google Style)
@@ -81,7 +80,7 @@ def diagnose_vehicle(vehicle_id: str, time_range: dict) -> dict:
 - Every test function must have a docstring explaining intent
 - Arrange / Act / Assert pattern
 - No external network calls in unit tests
-- Validate: schema correctness, redaction behavior, error handling
+- Validate: schema correctness, error handling
 
 ## Repo Structure
 

@@ -19,16 +19,21 @@ async def create_diagnosis(
     request: DiagnosisRequest,
     service: DiagnosisService = Depends(get_diagnosis_service)
 ):
-    """
-    Generate a comprehensive vehicle diagnosis.
-    
-    1. **Redacts PII** from symptoms.
-    2. **Retrieves relevant context** from manuals/logs.
-    3. **Analyzes data** using the Expert AI Model.
+    """Generate a comprehensive vehicle diagnosis.
+
+    1. **Retrieves relevant context** from manuals/logs.
+    2. **Analyzes data** using the Expert AI Model.
     """
     try:
         response = await service.run_diagnosis(request)
         return response
     except Exception as e:
-        logger.error("diagnosis_endpoint_error", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "diagnosis_endpoint_error",
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Internal diagnostic error. Check server logs.",
+        )

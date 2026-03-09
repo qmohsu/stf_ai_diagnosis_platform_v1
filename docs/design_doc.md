@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v2.2 (User auth + per-user session isolation) |
+| **Status** | Draft v2.3 (PII redaction removed for R&D prototype) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
 | **Last updated** | 2026-03-08 |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + vector store (Weaviate) |
-| **New in this revision** | Added JWT-based user authentication (username+password, bcrypt, HS256, 24h expiry) and per-user session isolation. `POST /auth/register` and `POST /auth/login` endpoints. All `/v2/*` endpoints protected via `get_current_user` FastAPI dependency. `OBDAnalysisSession` now has `user_id` FK and `UniqueConstraint(user_id, input_text_hash)` for per-user dedup. Frontend: login/register pages, `AuthProvider` React context, localStorage token, global 401 handler. Alembic clean-slate migration. 28 new tests (86 total). Previous: Removed Dify dependency: all workflow orchestration is now handled natively by FastAPI (`diagnostic_api`). Web UI is the Next.js app (`obd-ui`) at port 3001. Removed Redis (was only used by Dify). Updated architecture descriptions, deployment notes, and milestones throughout. Previous: Fixed critical translation performance bottleneck: migrated `translator.py` from Ollama `/api/generate` to `/api/chat` with `think: false` to disable hidden reasoning tokens in Qwen3.5 thinking model (80x speedup). Added concurrent translation via `asyncio.Semaphore`, `max_concurrent` validation, and updated tests (29 total). Added `translator.py` module to §10.3.1 modules table. Previous: Updated premium LLM curated model list to 10 models (5 providers x best+fast tiers): Anthropic (Opus 4.6, Sonnet 4.6), Google (Gemini 3.1 Pro, 3 Flash), OpenAI (GPT-5.2, GPT-5 Mini), DeepSeek (V3.2, Chat), Alibaba (Qwen3.5 Plus, Flash). Default model changed to `anthropic/claude-sonnet-4.6`. Previous: Added "Feedback" sub-tab under History tab. New `GET /v2/obd/{session_id}/feedback` endpoint merges all 5 feedback tables (summary, detailed, rag, ai_diagnosis, premium_diagnosis) into a unified chronological list with pagination. `FeedbackHistoryItem`/`FeedbackHistoryResponse` schemas. `FeedbackHistoryView.tsx` component with tab badge, star rating, helpful indicator, expandable comments, and pagination (5 per page). History tab now has 3 sub-tabs: Local Model, Cloud Model, Feedback. Previous: Switched default local LLM from Qwen3-14B (`qwen3:14b`) to Qwen3.5-9B (`qwen3.5:9b`). Smaller model reduces VRAM usage and improves inference latency. Updated all config defaults and documentation. Previous: Added "History" tab to OBD Expert Diagnostic Web UI. New `GET /v2/obd/{session_id}/history` endpoint returns all past diagnosis generations (local + premium) ordered by `created_at` descending, with `DiagnosisHistoryItem`/`DiagnosisHistoryResponse` Pydantic schemas. New `DiagnosisHistoryView.tsx` component with provider badge, model name, timestamp, and expandable text. 5th top-level tab in AnalysisLayout. Previous: Migrated premium LLM from Anthropic SDK to OpenRouter (OpenAI-compatible gateway). Admin-curated multi-model selector. `diagnosis_history` table (append-only, both local + premium) with CHECK constraint. Previous: PDF image parsing pipeline for RAG. Previous: Premium LLM comparison via opt-in SSE endpoint. Previous: DB-first session persistence, SHA-256 dedup, feedback tables, SSE-streaming AI diagnosis via Ollama. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001. |
+| **New in this revision** | Removed PII redaction (`PIIRedactor`, `FeatureBoundary`) and VIN validation for R&D prototype. Deleted `app/privacy/` module and `/tools/redact`, `/tools/validate-vin` endpoints. Data boundaries now enforced via Pydantic schema validation only. JWT auth preserved. Previous: Added JWT-based user authentication (username+password, bcrypt, HS256, 24h expiry) and per-user session isolation. `POST /auth/register` and `POST /auth/login` endpoints. All `/v2/*` endpoints protected via `get_current_user` FastAPI dependency. `OBDAnalysisSession` now has `user_id` FK and `UniqueConstraint(user_id, input_text_hash)` for per-user dedup. Frontend: login/register pages, `AuthProvider` React context, localStorage token, global 401 handler. Alembic clean-slate migration. 28 new tests (86 total). Previous: Removed Dify dependency: all workflow orchestration is now handled natively by FastAPI (`diagnostic_api`). Web UI is the Next.js app (`obd-ui`) at port 3001. Removed Redis (was only used by Dify). Updated architecture descriptions, deployment notes, and milestones throughout. Previous: Fixed critical translation performance bottleneck: migrated `translator.py` from Ollama `/api/generate` to `/api/chat` with `think: false` to disable hidden reasoning tokens in Qwen3.5 thinking model (80x speedup). Added concurrent translation via `asyncio.Semaphore`, `max_concurrent` validation, and updated tests (29 total). Added `translator.py` module to §10.3.1 modules table. Previous: Updated premium LLM curated model list to 10 models (5 providers x best+fast tiers): Anthropic (Opus 4.6, Sonnet 4.6), Google (Gemini 3.1 Pro, 3 Flash), OpenAI (GPT-5.2, GPT-5 Mini), DeepSeek (V3.2, Chat), Alibaba (Qwen3.5 Plus, Flash). Default model changed to `anthropic/claude-sonnet-4.6`. Previous: Added "Feedback" sub-tab under History tab. New `GET /v2/obd/{session_id}/feedback` endpoint merges all 5 feedback tables (summary, detailed, rag, ai_diagnosis, premium_diagnosis) into a unified chronological list with pagination. `FeedbackHistoryItem`/`FeedbackHistoryResponse` schemas. `FeedbackHistoryView.tsx` component with tab badge, star rating, helpful indicator, expandable comments, and pagination (5 per page). History tab now has 3 sub-tabs: Local Model, Cloud Model, Feedback. Previous: Switched default local LLM from Qwen3-14B (`qwen3:14b`) to Qwen3.5-9B (`qwen3.5:9b`). Smaller model reduces VRAM usage and improves inference latency. Updated all config defaults and documentation. Previous: Added "History" tab to OBD Expert Diagnostic Web UI. New `GET /v2/obd/{session_id}/history` endpoint returns all past diagnosis generations (local + premium) ordered by `created_at` descending, with `DiagnosisHistoryItem`/`DiagnosisHistoryResponse` Pydantic schemas. New `DiagnosisHistoryView.tsx` component with provider badge, model name, timestamp, and expandable text. 5th top-level tab in AnalysisLayout. Previous: Migrated premium LLM from Anthropic SDK to OpenRouter (OpenAI-compatible gateway). Admin-curated multi-model selector. `diagnosis_history` table (append-only, both local + premium) with CHECK constraint. Previous: PDF image parsing pipeline for RAG. Previous: Premium LLM comparison via opt-in SSE endpoint. Previous: DB-first session persistence, SHA-256 dedup, feedback tables, SSE-streaming AI diagnosis via Ollama. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001. |
 
 ## Related project deliverables (from proposal)
 •	Deliverable 1: Database establishment + preprocessing (1–18 months)
@@ -83,7 +83,7 @@ These are acceptance gates; Phase 1 must pass before Phase 1.5 tuning, and Phase
 - **Workshop SMEs / technicians:** Provide labeling ground truth; review recommendations; approve safety-sensitive outputs.
 - **ML team:** Maintain diagnostic deep model outputs; add explainable summary fields; support evaluation.
 - **Data engineering:** Build ingestion + preprocessing for multi-modal streams and maintenance logs.
-- **Backend:** Provide diagnostic_api wrapper for inference and summary retrieval; enforce privacy boundaries.
+- **Backend:** Provide diagnostic_api wrapper for inference and summary retrieval; enforce data boundaries via schema validation.
 - **DevOps/Security:** Local deployment; secrets management; network policy; vulnerability review; SRAA readiness.
 ## 6) System context and constraints
 ### 6.1 Data sources and modalities (existing project truth)
@@ -127,7 +127,7 @@ Allowed in LLM context (summaries only):
 •	retrieved SOP/manual snippets (with doc_id + section anchors)
 Not allowed in LLM context (keep in backend):
 •	raw audio/video frames, vibration waveforms, and full GNSS tracks
-•	any personal data (faces, voice) and unredacted location details
+•	any personal data (faces, voice) and raw location details
 •	direct identifiers beyond what the workflow needs (names, phone, plate numbers, etc.)
 
 ### 8.1.1 OBDSnapshot contract (edge → cloud)
@@ -347,7 +347,7 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 ### 9.1 Goals
 •	Stable interface for internal FastAPI workflow orchestration.
 •	Hide internal time-series complexity and inference details.
-•	Enforce privacy boundaries (only send LLM-safe summaries).
+•	Enforce data boundaries via schema validation (only send LLM-safe summaries).
 •	Be deterministic and testable (responses validate against an API schema).
 ### 9.2 Required endpoints (minimum)
 •	GET /health
@@ -507,8 +507,8 @@ Goal: prove the workflow, RAG grounding, tool-calling reliability, and strict JS
 Fine-tuning primarily improves behavior (format discipline, safe tool use, consistent triage language, better clarification questions). It does not replace grounding; factuality still depends on diagnostic outputs + RAG sources.
 ### 11.3 Data to log in Phase 1 (mandatory for Phase 1.5/2)
 •	User input: question, role, vehicle context flags, time_range.
-•	diagnostic_api request/response (redacted; include evidence_ids and limitations).
-•	OBD telemetry (redacted): snapshot_id(s) used, Pass‑1 outputs (subsystems + candidate PIDs + highlights), and supported PID list summary.
+•	diagnostic_api request/response (include evidence_ids and limitations).
+•	OBD telemetry: snapshot_id(s) used, Pass‑1 outputs (subsystems + candidate PIDs + highlights), and supported PID list summary.
 •	Retrieved chunks: doc_id, section, chunk_id, and snippet hash (for traceability).
 •	Assistant output JSON + validation result; retry count; latency breakdown.
 •	Human feedback: rating, correction, and ‘ground truth’ maintenance outcome if available.
@@ -549,7 +549,7 @@ Minimum network controls:
 •	Separate subnets/VLANs for data stores (Postgres/Weaviate) vs app tier where feasible.
 ## 13) Security, privacy, and compliance
 ### 13.1 Data handling commitments
-Honor the project’s privacy posture: restricted access, locked storage, defined retention, and redaction of personal data. The expert layer must not surface sensitive identifiers in prompts or logs.
+Honor the project’s privacy posture: restricted access, locked storage, and defined retention. The expert layer should avoid surfacing sensitive identifiers in prompts or logs. (Note: automated PII redaction removed for R&D prototype; re-introduce for production.)
 ### 13.2 Endpoint security for model-serving and tuning tools
 •	Do not expose tuning or model-management endpoints to the public internet.
 •	Pin versions and track upstream security advisories; run vulnerability scans as part of CI/CD.
@@ -564,7 +564,7 @@ Honor the project’s privacy posture: restricted access, locked storage, define
 •	Per-user session isolation: `OBDAnalysisSession.user_id` FK with `UniqueConstraint(user_id, input_text_hash)`. `_get_owned_session` returns 404 (not 403) to prevent session-ID enumeration.
 ## 14) Observability and monitoring
 ### 14.1 What to log (mandatory)
-•	diagnostic_api requests/responses (redacted).
+•	diagnostic_api requests/responses.
 •	retrieval results (doc IDs, chunk IDs, similarity scores).
 •	LLM output JSON + schema validation result + citation check result.
 •	latency breakdown (API call / retrieval / generation / retries).
@@ -618,7 +618,7 @@ Honor the project’s privacy posture: restricted access, locked storage, define
 •	Final dataset volume for extension vehicles (application vs deck mismatches).
 •	Base LLM choice (language requirements, context length, latency on available GPUs).
 •	Evidence requirements per recommendation (strict citations vs allow diagnostic output-only actions).
-•	PII redaction policy for maintenance logs used in RAG/training.
+•	PII redaction policy for maintenance logs used in RAG/training (deferred; not implemented in R&D prototype).
 •	Who signs off on SME acceptance and safety review.
 •	Phase 1.5/2 serving choice: stay on Ollama with adapters vs move to vLLM/SGLang for tuned weights.
 ## 18) Appendices
@@ -627,7 +627,7 @@ Honor the project’s privacy posture: restricted access, locked storage, define
 Use this checklist to keep Phase 1.5 contained and predictable.
 •	Freeze Phase 1 interfaces: output JSON schema v1.0, diagnostic_api contract, and doc_id/section anchors.
 •	Export Phase 1 logs weekly into an immutable ‘training snapshot’ (versioned by date).
-•	Redact/strip PII from logs before any training step; keep raw logs in restricted storage.
+•	Strip sensitive data from logs before any training step; keep raw logs in restricted storage. (Automated PII redaction deferred for R&D prototype.)
 •	Build SFT dataset: (question + diagnostic_api JSON + top-k retrieved snippets) → (gold JSON output).
 •	Start LoRA/QLoRA with conservative settings (small rank, short training, early stopping); keep a baseline model for comparison.
 •	Run offline regression suite (format/citation/tool-use checks) before any deployment.

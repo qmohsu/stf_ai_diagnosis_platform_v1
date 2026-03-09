@@ -8,14 +8,14 @@ BASE_URL = "http://localhost:8000"
 def test_end_to_end_diagnosis():
     print(f"Testing End-to-End Diagnosis against {BASE_URL}...")
     
-    # Payload with PII to test redaction + symptoms that match our manual chunks
+    # Payload with symptoms that match our manual chunks
     payload = {
         "vehicle_id": "TEST-VIN-12345",
         "make": "Ford",
         "model": "F-150",
         "year": 2015,
         "mileage": 120000,
-        "symptoms": "Customer called 555-0199 reporting rough idle and blinking check engine light. P0300 code present.",
+        "symptoms": "Rough idle and blinking check engine light. P0300 code present.",
         "dtc_codes": ["P0300"]
     }
 
@@ -34,11 +34,12 @@ def test_end_to_end_diagnosis():
             data = response.json()
             print("\n[SUCCESS] Diagnosis Generated!")
             
-            # Verify Redaction
-            print(f"Redacted Symptoms: {data['redacted_symptoms']}")
-            assert "555-0199" not in data['redacted_symptoms'], "PII was not redacted!"
-            assert "[PHONE_REDACTED]" in data['redacted_symptoms'], "Redaction marker missing!"
-            
+            # Verify Symptoms
+            print(f"Symptoms: {data['symptoms']}")
+            assert data['symptoms'] == payload['symptoms'], (
+                f"Symptoms mismatch: {data['symptoms']}"
+            )
+
             # Verify Context Usage
             print(f"Context Used: {data['context_used']}")
             

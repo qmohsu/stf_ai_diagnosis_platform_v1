@@ -80,7 +80,6 @@ async def startup_event() -> None:
     logger.info(f"LLM Endpoint: {settings.llm_endpoint}")
     logger.info(f"Weaviate: {settings.weaviate_url}")
     logger.info(f"Strict Mode: {settings.strict_mode}")
-    logger.info(f"Redact PII: {settings.redact_pii}")
     settings.validate_jwt_secret()
     await obd_cache.start_cleanup_loop()
 
@@ -258,14 +257,13 @@ app.include_router(
     auth_router, prefix="/auth", tags=["Authentication"],
 )
 
-from app.api.v1.endpoints import rag, diagnose, feedback, tools, log_summary
+from app.api.v1.endpoints import rag, diagnose, feedback, log_summary
 
 # Include routers
 app.include_router(rag.router, prefix="/v1/rag", tags=["RAG"])
 app.include_router(diagnose.router, prefix="/v1/diagnose", tags=["Diagnostics"])
 app.include_router(feedback.router, prefix="/v1/feedback", tags=["Feedback"])
-# /v1/tools owns: tools → /redact, /validate-vin; log_summary → /summarize-log
-app.include_router(tools.router, prefix="/v1/tools", tags=["Tools"])
+# /v1/tools owns: log_summary → /summarize-log, /summarize-log-raw
 app.include_router(log_summary.router, prefix="/v1/tools", tags=["Tools"])
 
 from app.api.v2.endpoints import log_summary as log_summary_v2

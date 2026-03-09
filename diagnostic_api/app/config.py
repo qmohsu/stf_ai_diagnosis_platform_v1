@@ -94,7 +94,6 @@ class Settings(BaseSettings):
 
     # Security Configuration
     strict_mode: bool = os.getenv("STRICT_MODE", "true").lower() == "true"
-    redact_pii: bool = os.getenv("REDACT_PII", "true").lower() == "true"
     allow_external_apis: bool = (
         os.getenv("ALLOW_EXTERNAL_APIS", "false").lower() == "true"
     )

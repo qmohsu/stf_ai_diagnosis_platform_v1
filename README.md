@@ -108,8 +108,8 @@ The STF AI Diagnosis Platform is now ready for local deployment! 🚀
 
 - All raw sensor data remains in the backend
 - Only derived features and summaries are processed by LLMs
-- Automated PII redaction implemented
 - Docker network isolation enforced
+- JWT authentication with per-user session isolation
 
 ## License
 
