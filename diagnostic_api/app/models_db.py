@@ -12,7 +12,6 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     DateTime,
-    Float,
     ForeignKey,
     Integer,
     String,
@@ -46,68 +45,8 @@ class User(Base):
     )
 
 
-class Vehicle(Base):
-    """Vehicle registry."""
-
-    __tablename__ = "vehicles"
-
-    id = Column(String(50), primary_key=True, index=True)  # VIN or internal ID
-    make = Column(String(50), nullable=True)
-    model = Column(String(50), nullable=True)
-    year = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=_utcnow)
-    
-    # Relationships
-    diagnostic_sessions = relationship("DiagnosticSession", back_populates="vehicle")
-
-
-class DiagnosticSession(Base):
-    """Diagnostic session records."""
-
-    __tablename__ = "diagnostic_sessions"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    vehicle_id = Column(String(50), ForeignKey("vehicles.id"), nullable=False, index=True)
-    
-    # Status tracking
-    status = Column(String(20), default="PENDING", index=True)  # PENDING, COMPLETED, FAILED
-    
-    # Request/Response payloads stored as JSONB for flexibility
-    request_payload = Column(JSONB, nullable=False)
-    result_payload = Column(JSONB, nullable=True)
-    
-    # Extracted fields for efficient querying without parsing JSONB
-    risk_score = Column(Float, nullable=True)
-    
-    created_at = Column(DateTime, default=_utcnow)
-    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
-    
-    # Relationships
-    vehicle = relationship("Vehicle", back_populates="diagnostic_sessions")
-    feedback = relationship("DiagnosticFeedback", back_populates="session", uselist=False)
-
-
-class DiagnosticFeedback(Base):
-    """Feedback from technicians on diagnostic sessions."""
-
-    __tablename__ = "diagnostic_feedback"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    session_id = Column(UUID(as_uuid=True), ForeignKey("diagnostic_sessions.id"), nullable=False, unique=True)
-    
-    rating = Column(Integer, nullable=False)  # 1-5
-    is_helpful = Column(Boolean, nullable=False)
-    comments = Column(Text, nullable=True)
-    corrected_diagnosis = Column(Text, nullable=True)
-    
-    created_at = Column(DateTime, default=_utcnow)
-    
-    # Relationships
-    session = relationship("DiagnosticSession", back_populates="feedback")
-
-
 class OBDAnalysisSession(Base):
-    """OBD analysis session records (separate from DiagnosticSession)."""
+    """OBD analysis session records."""
 
     __tablename__ = "obd_analysis_sessions"
     __table_args__ = (

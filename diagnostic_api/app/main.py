@@ -3,35 +3,24 @@
 Author: Li-Ta Hsu
 Date: January 2026
 
-This is a Phase 1 stub implementation that provides:
+Provides:
 - Health check endpoint
-- Placeholder diagnostic endpoint (with Postgres persistence)
-- Placeholder RAG retrieval endpoint
-
-Full implementation will be completed in subsequent phases.
+- V1 RAG retrieval endpoint
+- V2 OBD analysis, diagnosis, feedback, and premium endpoints
+- JWT authentication
 """
 
 import logging
-import uuid
-from datetime import datetime
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import Dict
 
-from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db.session import SessionLocal, engine
-from app.db import base
-from app import crud
-from app.models import (
-    DiagnosticRequest,
-    DiagnosticResponse,
-    HealthResponse,
-    SubsystemRisk,
-)
-from app.api.deps import get_db
-from app import models_db
+from app.models import HealthResponse
 from app.cache import obd_cache
 
 # Configure logging
@@ -41,6 +30,33 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Application lifespan handler.
+
+    Manages startup and shutdown tasks:
+    - Startup: log config, validate JWT secret, start cache cleanup
+    - Shutdown: stop cache cleanup, log shutdown
+    """
+    # --- Startup ---
+    logger.info(
+        f"Starting {settings.app_name} v{settings.app_version}"
+    )
+    logger.info(f"Database: {settings.db_host}:{settings.db_port}")
+    logger.info(f"LLM Endpoint: {settings.llm_endpoint}")
+    logger.info(f"Weaviate: {settings.weaviate_url}")
+    logger.info(f"Strict Mode: {settings.strict_mode}")
+    settings.validate_jwt_secret()
+    await obd_cache.start_cleanup_loop()
+
+    yield
+
+    # --- Shutdown ---
+    await obd_cache.stop_cleanup_loop()
+    logger.info(f"Shutting down {settings.app_name}")
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title=settings.app_name,
@@ -48,6 +64,7 @@ app = FastAPI(
     description="STF AI Diagnosis Platform - Diagnostic API",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # Configure CORS (localhost only for Phase 1)
@@ -63,36 +80,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Application startup handler.
-
-    Performs initialization tasks:
-    - Log startup message
-    - Verify connectivity to dependencies
-    """
-    logger.info(
-        f"Starting {settings.app_name} v{settings.app_version}"
-    )
-    logger.info(f"Database: {settings.db_host}:{settings.db_port}")
-    logger.info(f"LLM Endpoint: {settings.llm_endpoint}")
-    logger.info(f"Weaviate: {settings.weaviate_url}")
-    logger.info(f"Strict Mode: {settings.strict_mode}")
-    settings.validate_jwt_secret()
-    await obd_cache.start_cleanup_loop()
-
-
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    """Application shutdown handler.
-
-    Performs cleanup tasks:
-    - Log shutdown message
-    """
-    await obd_cache.stop_cleanup_loop()
-    logger.info(f"Shutting down {settings.app_name}")
 
 
 @app.get("/", tags=["Root"])
@@ -127,167 +114,51 @@ async def health_check() -> HealthResponse:
     """
     services_status = {
         "api": "healthy",
-        "database": "healthy",  # TODO: Add real DB check
-        "weaviate": "healthy",  # TODO: Add real Weaviate check
-        "llm": "healthy",  # TODO: Add real LLM check
+        "database": "healthy",  # TODO(APP-29): real DB check
+        "weaviate": "healthy",  # TODO(APP-29): real Weaviate check
+        "llm": "healthy",  # TODO(APP-29): real LLM check
     }
 
     # Check if any critical service is unhealthy
     all_healthy = all(
-        status == "healthy" for status in services_status.values()
+        s == "healthy" for s in services_status.values()
     )
 
     return HealthResponse(
         status="healthy" if all_healthy else "degraded",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         version=settings.app_version,
         services=services_status,
     )
 
 
-@app.post(
-    "/v1/vehicle/diagnose",
-    response_model=DiagnosticResponse,
-    tags=["Diagnostics"],
-    status_code=status.HTTP_200_OK,
-)
-async def diagnose_vehicle(
-    request: DiagnosticRequest,
-    db: Session = Depends(get_db),
-) -> DiagnosticResponse:
-    """Perform vehicle diagnostics.
-
-    This is a Phase 1.5 implementation that:
-    1. Persists the request to Postgres (PENDING)
-    2. Runs stub logic (returning mock data)
-    3. Persists the result to Postgres (COMPLETED)
-
-    Args:
-        request: Diagnostic request with vehicle ID and time range
-        db: Database session
-
-    Returns:
-        Diagnostic response with risk assessments and recommendations
-    """
-    logger.info(
-        f"Diagnostic request for vehicle: {request.vehicle_id}"
-    )
-
-    # 1. Persist Request (PENDING)
-    db_session = crud.create_diagnostic_session(db, request)
-
-    # 2. Run Diagnosis (Logic Placeholder)
-    # Phase 2 will integrate LLM/RAG here.
-    
-    # Mock subsystem risk assessment
-    subsystem_risks = [
-        SubsystemRisk(
-            subsystem_name="powertrain",
-            risk_level=0.25,
-            confidence=0.80,
-            predicted_faults=["P0171", "P0174"],
-        ),
-        SubsystemRisk(
-            subsystem_name="braking",
-            risk_level=0.10,
-            confidence=0.90,
-            predicted_faults=[],
-        ),
-    ]
-
-    # Mock recommendations
-    recommendations = [
-        "Check fuel system for lean condition (P0171/P0174)",
-        "Inspect MAF sensor and air intake system",
-        "Schedule follow-up inspection in 1000 km",
-    ]
-
-    # Mock limitations
-    limitations = [
-        "Limited sensor data available for time range",
-        "Phase 1 stub - using mock data",
-    ]
-    
-    response = DiagnosticResponse(
-        session_id=db_session.id,
-        vehicle_id=request.vehicle_id,
-        timestamp=datetime.utcnow(),
-        subsystem_risks=subsystem_risks,
-        recommendations=recommendations,
-        key_evidence=[],
-        limitations=limitations,
-        confidence=0.75,
-    )
-
-    # 3. Persist Result (COMPLETED)
-    crud.update_diagnostic_result(db, db_session.id, response)
-
-    return response
-
-
-@app.get(
-    "/v1/vehicle/diagnose/{session_id}",
-    response_model=DiagnosticResponse,
-    tags=["Diagnostics"],
-    status_code=status.HTTP_200_OK,
-)
-async def get_diagnosis_result(
-    session_id: uuid.UUID,
-    db: Session = Depends(get_db),
-) -> DiagnosticResponse:
-    """Retrieve a past diagnosis result by session ID."""
-    db_session = crud.get_diagnostic_session(db, session_id)
-    if not db_session:
-        raise HTTPException(status_code=404, detail="Diagnosis session not found")
-        
-    if db_session.status != "COMPLETED" or not db_session.result_payload:
-         raise HTTPException(status_code=400, detail="Diagnosis processing not complete")
-         
-    # Reconstruct Pydantic model from stored JSON
-    try:
-        return DiagnosticResponse(**db_session.result_payload)
-    except Exception as e:
-        logger.error(f"Failed to parse stored result: {e}")
-        raise HTTPException(status_code=500, detail="Corrupted session data")
-
-
+# --- Authentication ---
 from app.auth.router import router as auth_router
 
 app.include_router(
     auth_router, prefix="/auth", tags=["Authentication"],
 )
 
-from app.api.v1.endpoints import rag, diagnose, feedback, log_summary
+# --- V1 Endpoints (RAG only) ---
+from app.api.v1.endpoints import rag
 
-# Include routers
 app.include_router(rag.router, prefix="/v1/rag", tags=["RAG"])
-app.include_router(diagnose.router, prefix="/v1/diagnose", tags=["Diagnostics"])
-app.include_router(feedback.router, prefix="/v1/feedback", tags=["Feedback"])
-# /v1/tools owns: log_summary → /summarize-log, /summarize-log-raw
-app.include_router(log_summary.router, prefix="/v1/tools", tags=["Tools"])
 
+# --- V2 Endpoints ---
 from app.api.v2.endpoints import log_summary as log_summary_v2
-app.include_router(log_summary_v2.router, prefix="/v2/tools", tags=["Tools v2"])
+app.include_router(
+    log_summary_v2.router, prefix="/v2/tools", tags=["Tools v2"],
+)
 
 from app.api.v2.endpoints import obd_analysis as obd_analysis_v2
-app.include_router(obd_analysis_v2.router, prefix="/v2/obd", tags=["OBD Analysis"])
+app.include_router(
+    obd_analysis_v2.router, prefix="/v2/obd", tags=["OBD Analysis"],
+)
 
 from app.api.v2.endpoints import obd_premium as obd_premium_v2
-app.include_router(obd_premium_v2.router, prefix="/v2/obd", tags=["OBD Premium"])
-
-
-@app.get("/v1/models", tags=["LLM"])
-async def list_models() -> Dict[str, str]:
-    """List available LLM models.
-
-    Returns:
-        Available models and current default model
-    """
-    return {
-        "default_model": settings.llm_model,
-        "endpoint": settings.llm_endpoint,
-        "status": "stub - Phase 1",
-    }
+app.include_router(
+    obd_premium_v2.router, prefix="/v2/obd", tags=["OBD Premium"],
+)
 
 
 if __name__ == "__main__":
@@ -295,7 +166,7 @@ if __name__ == "__main__":
 
     uvicorn.run(
         app,
-        host="0.0.0.0",
+        host="127.0.0.1",
         port=8000,
         log_level=settings.log_level.lower(),
     )

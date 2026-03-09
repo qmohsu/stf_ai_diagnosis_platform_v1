@@ -37,7 +37,7 @@ Scope boundary for this plan (so engineers don’t drift)
   logic.
 
 ### 2.2 Critical Path Dependency
-Critical path dependency: DO‑01 → DO‑06 → (APP‑01 + APP‑02B + APP‑03) → APP‑08 → INT‑01 (E2E demo). *(APP‑06 removed for R&D prototype.)*
+Critical path dependency: DO‑01 → DO‑06 → (APP‑02B + APP‑03) → INT‑01 (E2E demo). *(APP‑01, APP‑06, APP‑08, APP‑09, APP‑10 removed for R&D prototype — V1 API layer replaced by V2 OBD endpoints.)*
 
 **Summarization Pipeline Path:** APP‑02B → APP‑13 → (APP‑14 + APP‑15) → APP‑16 → APP‑17.
 
@@ -372,10 +372,12 @@ Acceptance Criteria:
 Running the script returns 200 and the response includes a snapshot_id.
 
 ### 3.2 Full-Stack AI Application Engineer Tickets
-#### APP‑01 — API skeleton with OpenAPI + strict request/response schemas
+#### APP‑01 — ~~API skeleton with OpenAPI + strict request/response schemas~~ REMOVED — R&D prototype
 
-Owner: Full‑Stack AI Application Engineer
-Depends on: DO‑01 (so you know service URLs), but you can start locally in parallel.
+**Status: REMOVED** — V1 API stubs (`/v1/vehicle/diagnose`, `/v1/models`, CRUD layer, `DiagnosticRequest`/`DiagnosticResponse` Pydantic models, `Vehicle`/`DiagnosticSession`/`DiagnosticFeedback` DB models) deleted. Replaced by V2 OBD endpoints (`/v2/obd/*`). Only `/v1/rag/retrieve` preserved.
+
+~~Owner: Full‑Stack AI Application Engineer~~
+~~Depends on: DO‑01 (so you know service URLs), but you can start locally in parallel.~~
 
  
 
@@ -398,15 +400,15 @@ Required endpoints (minimum):
 
 GET /health → {status, version, dependencies}
 
-POST /v1/vehicle/diagnose → creates a diagnosis session and returns structured output (Phase 1 pilot)
+POST /v1/rag/retrieve → returns top-k knowledge chunks for a query
 
-GET /v1/vehicle/diagnose/{session_id} → fetch stored session/result
+POST /v2/obd/analyze → submit OBD log for analysis (auth required)
 
-POST /v1/telemetry/obd_snapshot → ingest OBDSnapshot from obd-agent
+POST /v2/obd/{session_id}/diagnose → stream local LLM diagnosis (auth required)
 
-GET /v1/telemetry/obd_snapshot/latest → fetch latest OBDSnapshot for a vehicle
+POST /v2/obd/{session_id}/diagnose/premium → stream premium LLM diagnosis (auth required)
 
-POST /v1/rag/retrieve → returns top-k knowledge chunks for a query (internal tool for diagnosis pipeline)
+~~POST /v1/vehicle/diagnose~~ *(REMOVED — replaced by V2 OBD endpoints)*
 
 Requirements:
 
@@ -482,9 +484,9 @@ Acceptance Criteria:
 
 alembic upgrade head works on a clean DB
 
-/v1/vehicle/diagnose persists a record and returns a session_id
+~~`/v1/vehicle/diagnose` persists a record~~ *(REMOVED — replaced by `/v2/obd/analyze`)*
 
-/v1/vehicle/diagnose/{session_id} returns the stored record
+~~`/v1/vehicle/diagnose/{session_id}` returns the stored record~~ *(REMOVED — replaced by `GET /v2/obd/{session_id}`)*
 
 #### APP‑02B — OBD snapshot persistence + telemetry endpoints
 
@@ -790,7 +792,11 @@ Invalid LLM output does not crash the service
 
 Responses are always either valid schema output or explicit “review required” envelope
 
-#### APP‑08 — Diagnosis pipeline (“Step 5 on request”) end-to-end
+#### APP‑08 — ~~Diagnosis pipeline (“Step 5 on request”) end-to-end~~ REMOVED — R&D prototype
+
+**Status: REMOVED** — V1 diagnosis pipeline (`DiagnosisService`, `ExpertLLMClient` V1 integration, `/v1/diagnose/` endpoint) deleted. Replaced by V2 OBD diagnosis streaming at `/v2/obd/{session_id}/diagnose` (local + premium).
+
+~~APP‑08 — Diagnosis pipeline (“Step 5 on request”) end-to-end~~
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: APP‑02, APP‑04, APP‑05, APP‑07
@@ -848,7 +854,11 @@ rag_references
 
 Record is persisted and retrievable by ID
 
-#### APP‑09 — Technician feedback endpoint (continuous improvement hook)
+#### APP‑09 — ~~Technician feedback endpoint~~ REMOVED — R&D prototype
+
+**Status: REMOVED** — V1 feedback (`/v1/feedback/`, `FeedbackRequest` schema, `DiagnosticFeedback` DB model) deleted. Replaced by V2 per-tab feedback at `/v2/obd/{session_id}/feedback/{tab}`.
+
+~~APP‑09 — Technician feedback endpoint (continuous improvement hook)~~
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: APP‑02
@@ -886,7 +896,11 @@ Feedback can be submitted and is persisted
 
 Diagnostic record fetch shows feedback status
 
-#### APP‑10 — Daily report generation (minimal cloud report, not UI)
+#### APP‑10 — ~~Daily report generation~~ REMOVED — R&D prototype
+
+**Status: REMOVED** — `DailyReporter` service, `generate_daily_report.py` script, and `demo_flow.py` deleted. Depended on V1 `DiagnosticSession`/`DiagnosticFeedback` DB models which are removed.
+
+~~APP‑10 — Daily report generation (minimal cloud report, not UI)~~
 
 Owner: Full‑Stack AI Application Engineer
 Depends on: APP‑02, APP‑08
@@ -1723,6 +1737,8 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-09 | v2.5 | APP-29: Code review cleanup — Alembic migration to drop orphaned V1 tables (`vehicles`, `diagnostic_sessions`, `diagnostic_feedback`); migrated `main.py` from `@app.on_event` to `lifespan` context manager; replaced `print()` with `logging` in `rag.py`, `validate.py`, `retrieve.py`; fixed `datetime.utcnow()` deprecation; removed unused `engine_from_config` import; deleted empty `services/` and `scripts/` directories; fixed error info leakage in `/v1/rag/retrieve`; bound dev server to `127.0.0.1`. |
+| 2026-03-08 | v2.4 | Removed entire V1 API layer (unused by OBD UI). Deleted: V1 endpoints (`/v1/diagnose`, `/v1/feedback`, `/v1/tools/summarize-log*`, `/v1/vehicle/diagnose`, `/v1/models`), `DiagnosisService`, `DailyReporter`, `generate_daily_report.py`, `crud.py`, V1 schemas, V1 DB models (`Vehicle`, `DiagnosticSession`, `DiagnosticFeedback`), 4 test/demo files. Only `/v1/rag/retrieve` preserved (used by frontend). APP‑01, APP‑08, APP‑09, APP‑10 marked REMOVED. |
 | 2026-03-08 | v2.3 | Removed PII redaction (`PIIRedactor`, `FeatureBoundary`), VIN validation, and `/tools/redact` + `/tools/validate-vin` endpoints for R&D prototype simplification. APP‑06 marked REMOVED. Deleted `app/privacy/` (3 files), `app/api/v1/endpoints/tools.py`, and 5 test files. Renamed `redacted_symptoms` → `symptoms` in v1 schema. Removed `redact_pii` config. Updated CLAUDE.md, README, SECURITY_BASELINE, design_doc. JWT auth preserved. |
 | 2026-03-08 | v2.2 | APP‑28: User authentication and per-user session isolation. JWT auth (username+password, bcrypt, HS256, 24h expiry). `POST /auth/register` and `POST /auth/login` endpoints. All `/v2/*` endpoints protected with `get_current_user` dependency. Per-user session dedup via `UniqueConstraint(user_id, input_text_hash)`. Alembic clean-slate migration (truncate + schema changes). Frontend: login/register pages, `AuthProvider` context, localStorage token, global 401 handler. 28 new tests (86 total). Updated scope (§1.1). |
 | 2026-03-07 | v2.1 | APP‑27: Remove Dify dependency. Dify workflow orchestration and its Redis dependency have been removed from the platform. Diagnostic workflows are now handled directly by FastAPI endpoints and the local/premium LLM pipelines. Marked APP‑11 as DEPRECATED/REMOVED. Removed Dify and Redis from scope (§1.1), component lists (DO‑01), network exposure (DO‑02), smoke tests (DO‑04), critical path (§2.2), INT‑01 dependencies, and ADR stack references (§2.4). |

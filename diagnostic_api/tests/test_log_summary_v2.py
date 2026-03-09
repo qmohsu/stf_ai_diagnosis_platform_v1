@@ -1,4 +1,9 @@
-"""Tests for POST /v2/tools/summarize-log-raw endpoint."""
+"""Tests for POST /v2/tools/summarize-log-raw endpoint.
+
+Note: V1 endpoint tests (test_v1_endpoint_still_works) were removed
+because the entire V1 API layer was deleted in the V1 cleanup refactor
+(2026-03-08).  Only /v1/rag/retrieve is preserved.
+"""
 
 from __future__ import annotations
 
@@ -95,24 +100,6 @@ class TestV2SummarizeLogRawIntegration:
         assert isinstance(body["diagnostic_clues"], list)
 
         assert isinstance(body["clue_details"], list)
-
-    @pytest.mark.skipif(
-        not FIXTURE_LOG.exists(),
-        reason="fixture file not found",
-    )
-    def test_v1_endpoint_still_works(self, client):
-        """v1 endpoint must not be broken by v2 addition."""
-        fixture_bytes = FIXTURE_LOG.read_bytes()
-        resp = client.post(
-            "/v1/tools/summarize-log-raw",
-            content=fixture_bytes,
-        )
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["vehicle_id"] == "V-38615C39"
-        assert "pid_summary" in body
-        # v1 must NOT have v2 fields
-        assert "value_statistics" not in body
 
 
 # ---------------------------------------------------------------------------

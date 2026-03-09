@@ -8,12 +8,23 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v2.3 (PII redaction removed for R&D prototype) |
+| **Status** | Draft v2.4 (code review cleanup) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-03-08 |
+| **Last updated** | 2026-03-09 |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + vector store (Weaviate) |
-| **New in this revision** | Removed PII redaction (`PIIRedactor`, `FeatureBoundary`) and VIN validation for R&D prototype. Deleted `app/privacy/` module and `/tools/redact`, `/tools/validate-vin` endpoints. Data boundaries now enforced via Pydantic schema validation only. JWT auth preserved. Previous: Added JWT-based user authentication (username+password, bcrypt, HS256, 24h expiry) and per-user session isolation. `POST /auth/register` and `POST /auth/login` endpoints. All `/v2/*` endpoints protected via `get_current_user` FastAPI dependency. `OBDAnalysisSession` now has `user_id` FK and `UniqueConstraint(user_id, input_text_hash)` for per-user dedup. Frontend: login/register pages, `AuthProvider` React context, localStorage token, global 401 handler. Alembic clean-slate migration. 28 new tests (86 total). Previous: Removed Dify dependency: all workflow orchestration is now handled natively by FastAPI (`diagnostic_api`). Web UI is the Next.js app (`obd-ui`) at port 3001. Removed Redis (was only used by Dify). Updated architecture descriptions, deployment notes, and milestones throughout. Previous: Fixed critical translation performance bottleneck: migrated `translator.py` from Ollama `/api/generate` to `/api/chat` with `think: false` to disable hidden reasoning tokens in Qwen3.5 thinking model (80x speedup). Added concurrent translation via `asyncio.Semaphore`, `max_concurrent` validation, and updated tests (29 total). Added `translator.py` module to §10.3.1 modules table. Previous: Updated premium LLM curated model list to 10 models (5 providers x best+fast tiers): Anthropic (Opus 4.6, Sonnet 4.6), Google (Gemini 3.1 Pro, 3 Flash), OpenAI (GPT-5.2, GPT-5 Mini), DeepSeek (V3.2, Chat), Alibaba (Qwen3.5 Plus, Flash). Default model changed to `anthropic/claude-sonnet-4.6`. Previous: Added "Feedback" sub-tab under History tab. New `GET /v2/obd/{session_id}/feedback` endpoint merges all 5 feedback tables (summary, detailed, rag, ai_diagnosis, premium_diagnosis) into a unified chronological list with pagination. `FeedbackHistoryItem`/`FeedbackHistoryResponse` schemas. `FeedbackHistoryView.tsx` component with tab badge, star rating, helpful indicator, expandable comments, and pagination (5 per page). History tab now has 3 sub-tabs: Local Model, Cloud Model, Feedback. Previous: Switched default local LLM from Qwen3-14B (`qwen3:14b`) to Qwen3.5-9B (`qwen3.5:9b`). Smaller model reduces VRAM usage and improves inference latency. Updated all config defaults and documentation. Previous: Added "History" tab to OBD Expert Diagnostic Web UI. New `GET /v2/obd/{session_id}/history` endpoint returns all past diagnosis generations (local + premium) ordered by `created_at` descending, with `DiagnosisHistoryItem`/`DiagnosisHistoryResponse` Pydantic schemas. New `DiagnosisHistoryView.tsx` component with provider badge, model name, timestamp, and expandable text. 5th top-level tab in AnalysisLayout. Previous: Migrated premium LLM from Anthropic SDK to OpenRouter (OpenAI-compatible gateway). Admin-curated multi-model selector. `diagnosis_history` table (append-only, both local + premium) with CHECK constraint. Previous: PDF image parsing pipeline for RAG. Previous: Premium LLM comparison via opt-in SSE endpoint. Previous: DB-first session persistence, SHA-256 dedup, feedback tables, SSE-streaming AI diagnosis via Ollama. Previous: OBD Expert Diagnostic Web UI (`obd-ui`) on port 3001. |
+| **New in this revision** | APP-29: Code review cleanup — added Alembic migration to drop orphaned V1 tables (`vehicles`, `diagnostic_sessions`, `diagnostic_feedback`); migrated `main.py` from deprecated `@app.on_event` to `lifespan` context manager; replaced all `print()` with `logging` in `rag.py`, `validate.py`, `retrieve.py`; fixed `datetime.utcnow()` deprecation (now `datetime.now(timezone.utc)`); removed unused `engine_from_config` import; deleted empty `services/` and `scripts/` directories; fixed error info leakage in `/v1/rag/retrieve`; changed dev server bind from `0.0.0.0` to `127.0.0.1`. |
+
+### Revision history
+
+| Version | Date | Summary |
+|---------|------|---------|
+| v2.4 | 2026-03-09 | Code review cleanup (APP-29): drop V1 tables migration, lifespan migration, print→logging, datetime fix, error leakage fix, dev bind fix |
+| v2.3 | 2026-03-08 | Removed V1 API layer, PII redaction, VIN validation for R&D prototype |
+| v2.2 | 2026-03-08 | JWT auth + per-user session isolation (APP-28) |
+| v2.1 | 2026-03-07 | Removed Dify dependency |
+| v2.0 | 2026-03-05 | Translation performance fix (80x speedup), premium LLM model list update |
+| v1.x | 2026-01–03 | Initial pilot: OBD UI, DB persistence, feedback, AI diagnosis, premium LLM, history, RAG image parsing |
 
 ## Related project deliverables (from proposal)
 •	Deliverable 1: Database establishment + preprocessing (1–18 months)
@@ -351,16 +362,19 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 •	Be deterministic and testable (responses validate against an API schema).
 ### 9.2 Required endpoints (minimum)
 •	GET /health
-•	POST /v1/vehicle/diagnose
-•	POST /v1/vehicle/latest
-•	POST /v1/telemetry/obd_snapshot
-•	GET /v1/telemetry/obd_snapshot/latest
+•	POST /v1/rag/retrieve
+•	POST /v2/obd/analyze (auth required)
+•	POST /v2/obd/{session_id}/diagnose (auth required, SSE streaming)
+•	POST /v2/obd/{session_id}/diagnose/premium (auth required, SSE streaming)
+
+*(V1 endpoints `/v1/vehicle/diagnose`, `/v1/diagnose/`, `/v1/feedback/`, `/v1/tools/summarize-log*`, `/v1/models` removed — replaced by V2 OBD endpoints.)*
+
 Example request/response (illustrative):
 
 **Request:**
 
 ```http
-POST /v1/vehicle/diagnose
+POST /v2/obd/analyze
 ```
 
 ```json
@@ -493,7 +507,7 @@ Real-world service manual PDFs contain critical diagnostic information embedded 
 | `app/rag/ingest.py` | Pre-flight vision check, `--enable-ocr` / `--enable-page-render` / `--enable-translation` CLI flags |
 ### 10.4 Workflow ('golden workflow')
 1.	Start: inputs = vehicle_id, question, optional time_range.
-2.	HTTP Request → diagnostic_api /v1/vehicle/diagnose (server may auto-attach latest OBDSnapshot-derived Pass‑1 summary if dtc_codes are missing).
+2.	HTTP Request → diagnostic_api `/v2/obd/analyze` (submit raw OBD log) then `/v2/obd/{session_id}/diagnose` (stream AI diagnosis).
 3.	Knowledge Retrieval query = question + predicted fault keywords + DTCs + subsystem.
 4.	LLM generation (system prompt enforces: use only diagnostic_api output + retrieved docs; produce schema-valid JSON).
 5.	Schema validation + citation checks; if invalid, retry with repair prompt; else return output + short summary.

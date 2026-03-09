@@ -1,7 +1,6 @@
 from logging.config import fileConfig
 
 from sqlalchemy import create_engine
-from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
@@ -15,8 +14,9 @@ from app.config import settings
 from app.db.base import Base
 # Import models so they are registered with Base metadata
 from app.models_db import (
-    User, Vehicle, DiagnosticSession, DiagnosticFeedback,
+    User,
     OBDAnalysisSession, OBDSummaryFeedback, OBDDetailedFeedback, OBDRAGFeedback,
+    OBDAIDiagnosisFeedback, OBDPremiumDiagnosisFeedback, DiagnosisHistory,
 )
 
 # this is the Alembic Config object, which provides
