@@ -21,7 +21,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.models import HealthResponse
-from app.cache import obd_cache
 
 # Configure logging
 logging.basicConfig(
@@ -36,8 +35,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan handler.
 
     Manages startup and shutdown tasks:
-    - Startup: log config, validate JWT secret, start cache cleanup
-    - Shutdown: stop cache cleanup, log shutdown
+    - Startup: log config, validate JWT secret
+    - Shutdown: log shutdown
     """
     # --- Startup ---
     logger.info(
@@ -48,12 +47,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info(f"Weaviate: {settings.weaviate_url}")
     logger.info(f"Strict Mode: {settings.strict_mode}")
     settings.validate_jwt_secret()
-    await obd_cache.start_cleanup_loop()
 
     yield
 
     # --- Shutdown ---
-    await obd_cache.stop_cleanup_loop()
     logger.info(f"Shutting down {settings.app_name}")
 
 

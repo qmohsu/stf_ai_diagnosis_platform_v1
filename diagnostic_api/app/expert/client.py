@@ -1,10 +1,18 @@
+"""Local Expert LLM client for on-premise diagnosis via Ollama.
+
+Connects to an Ollama instance via its OpenAI-compatible API endpoint.
+Only streaming diagnosis generation is supported.
+
+Author: Li-Ta Hsu
+Date: January 2026
+"""
 
 import os
 import structlog
 from typing import AsyncIterator, Optional
 from openai import AsyncOpenAI
 from app.config import settings
-from app.expert import prompts, schemas, validate
+from app.expert import prompts
 
 logger = structlog.get_logger()
 
@@ -18,54 +26,6 @@ class ExpertLLMClient:
         self.model = model or settings.llm_model
         self.client = AsyncOpenAI(api_key="ollama", base_url=self.base_url)
         logger.info("initialized_expert_llm_client", base_url=self.base_url, model=self.model)
-
-    async def generate_diagnosis(
-        self, 
-        vehicle_info: str, 
-        symptoms: str, 
-        context: str
-    ) -> schemas.LLMDiagnosisResponse:
-        """
-        Orchestrate the diagnosis generation process:
-        1. Build Prompts
-        2. Call LLM
-        3. Validate & Parse Output
-        """
-        
-        # 1. Build Prompt
-        system_prompt = prompts.SYSTEM_PROMPT
-        user_prompt = prompts.USER_PROMPT_TEMPLATE.format(
-            vehicle_info=vehicle_info,
-            symptoms=symptoms,
-            context=context
-        )
-
-        logger.info("generating_diagnosis_start", vehicle_info=vehicle_info)
-
-        try:
-            # 2. Call LLM
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.1, # Low temp for deterministic JSON
-                response_format={"type": "json_object"} # Force JSON mode if supported
-            )
-
-            raw_content = response.choices[0].message.content
-            logger.info("llm_response_received", raw_content_length=len(raw_content))
-
-            # 3. Validate & Parse
-            diagnosis = validate.validate_llm_output(raw_content)
-            if not diagnosis:
-                raise ValueError("Failed to validate LLM output")
-            return diagnosis
-
-        except Exception as e:
-            logger.error("diagnosis_generation_failed", error=str(e))
-            raise
 
     def _build_obd_diagnosis_messages(
         self,
@@ -86,34 +46,6 @@ class ExpertLLMClient:
             {"role": "system", "content": prompts.OBD_DIAGNOSIS_SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ]
-
-    async def generate_obd_diagnosis(
-        self,
-        parsed_summary: dict,
-        context: str,
-    ) -> str:
-        """Generate a free-form markdown OBD diagnosis.
-
-        Returns:
-            Raw markdown diagnosis text.
-        """
-        messages = self._build_obd_diagnosis_messages(parsed_summary, context)
-        logger.info("obd_diagnosis_start", vehicle_id=parsed_summary.get("vehicle_id"))
-
-        try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=0.3,
-            )
-
-            content = response.choices[0].message.content
-            logger.info("obd_diagnosis_completed", length=len(content))
-            return content
-
-        except Exception as e:
-            logger.error("obd_diagnosis_failed", error=str(e))
-            raise
 
     async def generate_obd_diagnosis_stream(
         self,
@@ -137,6 +69,8 @@ class ExpertLLMClient:
             )
 
             async for chunk in stream:
+                if not chunk.choices:
+                    continue
                 delta = chunk.choices[0].delta
                 if delta.content:
                     yield delta.content

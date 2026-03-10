@@ -8,17 +8,18 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v2.4 (code review cleanup) |
+| **Status** | Draft v2.6 (dead code removal) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
 | **Last updated** | 2026-03-09 |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + vector store (Weaviate) |
-| **New in this revision** | APP-29: Code review cleanup — added Alembic migration to drop orphaned V1 tables (`vehicles`, `diagnostic_sessions`, `diagnostic_feedback`); migrated `main.py` from deprecated `@app.on_event` to `lifespan` context manager; replaced all `print()` with `logging` in `rag.py`, `validate.py`, `retrieve.py`; fixed `datetime.utcnow()` deprecation (now `datetime.now(timezone.utc)`); removed unused `engine_from_config` import; deleted empty `services/` and `scripts/` directories; fixed error info leakage in `/v1/rag/retrieve`; changed dev server bind from `0.0.0.0` to `127.0.0.1`. |
+| **New in this revision** | APP-30: Dead code removal — deleted unused `app/cache/` module (OBDSessionCache), `app/expert/validate.py`, `infra/test_llm_client.py`; removed dead methods from `ExpertLLMClient`; removed cache lifecycle hooks from `main.py`. ~350 LOC removed, zero production impact. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v2.6 | 2026-03-09 | Dead code removal (APP-30): deleted unused cache module, validate.py, schemas.py, dead client methods, orphaned test script (~380 LOC) |
 | v2.4 | 2026-03-09 | Code review cleanup (APP-29): drop V1 tables migration, lifespan migration, print→logging, datetime fix, error leakage fix, dev bind fix |
 | v2.3 | 2026-03-08 | Removed V1 API layer, PII redaction, VIN validation for R&D prototype |
 | v2.2 | 2026-03-08 | JWT auth + per-user session isolation (APP-28) |
