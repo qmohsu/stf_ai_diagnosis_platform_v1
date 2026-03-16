@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -12,6 +13,7 @@ interface RAGViewProps {
 }
 
 export function RAGView({ ragQuery }: RAGViewProps) {
+  const { t } = useTranslation();
   const [results, setResults] = useState<RetrievalResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,9 +25,10 @@ export function RAGView({ ragQuery }: RAGViewProps) {
     retrieveRAG(ragQuery, 5)
       .then((data) => setResults(data.results))
       .catch((err) =>
-        setError(err instanceof Error ? err.message : "Failed to retrieve RAG results"),
+        setError(err instanceof Error ? err.message : "RAG_RETRIEVE_FAILED"),
       )
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ragQuery]);
 
   return (
@@ -33,13 +36,13 @@ export function RAGView({ ragQuery }: RAGViewProps) {
       {/* RAG Query Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">RAG Query</CardTitle>
+          <CardTitle className="text-lg">{t("rag.query")}</CardTitle>
         </CardHeader>
         <CardContent>
           {ragQuery ? (
             <p className="text-sm whitespace-pre-wrap">{ragQuery}</p>
           ) : (
-            <p className="text-sm text-muted-foreground">No RAG query generated for this session.</p>
+            <p className="text-sm text-muted-foreground">{t("rag.noQuery")}</p>
           )}
         </CardContent>
       </Card>
@@ -47,7 +50,7 @@ export function RAGView({ ragQuery }: RAGViewProps) {
       {/* Retrieval Results Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Retrieval Results</CardTitle>
+          <CardTitle className="text-lg">{t("rag.results")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {loading && (
@@ -60,13 +63,15 @@ export function RAGView({ ragQuery }: RAGViewProps) {
 
           {error && (
             <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>
+                {error === "RAG_RETRIEVE_FAILED" ? t("rag.retrieveFailed") : error}
+              </AlertDescription>
             </Alert>
           )}
 
           {!loading && !error && results.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              {ragQuery ? "No retrieval results found." : "No RAG query available to retrieve results."}
+              {ragQuery ? t("rag.noResults") : t("rag.noQueryAvailable")}
             </p>
           )}
 
@@ -76,10 +81,10 @@ export function RAGView({ ragQuery }: RAGViewProps) {
                 <CardContent className="p-4 space-y-2">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <h4 className="font-medium text-sm">
-                      {result.section_title || `Chunk ${result.chunk_index}`}
+                      {result.section_title || t("rag.chunk", { index: result.chunk_index })}
                     </h4>
                     <Badge variant="secondary" className="text-xs">
-                      {(result.score * 100).toFixed(1)}% relevance
+                      {t("rag.relevance", { score: (result.score * 100).toFixed(1) })}
                     </Badge>
                   </div>
                   <div className="flex gap-2 flex-wrap">

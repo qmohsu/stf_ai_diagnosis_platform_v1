@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import type { LogSummaryV2 } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ValueStatisticsPanel } from "@/components/ValueStatisticsPanel";
@@ -12,20 +13,22 @@ interface DetailedViewProps {
 }
 
 export function DetailedView({ data }: DetailedViewProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-8">
       {/* Value Statistics Section */}
       <section>
-        <h2 className="mb-4 text-xl font-semibold">Value Statistics</h2>
+        <h2 className="mb-4 text-xl font-semibold">{t("detailed.valueStatistics")}</h2>
         <ValueStatisticsPanel valueStatistics={data.value_statistics} />
       </section>
 
       {/* Anomaly Detection Section */}
       <section>
-        <h2 className="mb-4 text-xl font-semibold">Anomaly Detection</h2>
+        <h2 className="mb-4 text-xl font-semibold">{t("detailed.anomalyDetection")}</h2>
         <Card className="mb-4">
           <CardHeader>
-            <CardTitle className="text-lg">Anomaly Timeline</CardTitle>
+            <CardTitle className="text-lg">{t("detailed.anomalyTimeline")}</CardTitle>
           </CardHeader>
           <CardContent>
             <AnomalyTimeline events={data.anomaly_events} />
@@ -34,7 +37,7 @@ export function DetailedView({ data }: DetailedViewProps) {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">
-              Anomaly Events ({data.anomaly_events.length})
+              {t("detailed.anomalyEvents", { count: data.anomaly_events.length })}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -45,11 +48,11 @@ export function DetailedView({ data }: DetailedViewProps) {
 
       {/* Clue Details Section */}
       <section>
-        <h2 className="mb-4 text-xl font-semibold">Clue Details</h2>
+        <h2 className="mb-4 text-xl font-semibold">{t("detailed.clueDetails")}</h2>
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">
-              Diagnostic Clue Details ({data.clue_details.length})
+              {t("detailed.diagnosticClueDetails", { count: data.clue_details.length })}
             </CardTitle>
           </CardHeader>
           <CardContent>

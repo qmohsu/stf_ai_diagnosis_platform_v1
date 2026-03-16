@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AnalysisLayout } from "@/components/AnalysisLayout";
 import { getAnalysisSession } from "@/lib/api";
@@ -10,6 +11,7 @@ import type { OBDAnalysisResponse } from "@/lib/types";
 export default function AnalysisPage() {
   const params = useParams();
   const sessionId = params.sessionId as string;
+  const { t } = useTranslation();
   const [data, setData] = useState<OBDAnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -19,9 +21,9 @@ export default function AnalysisPage() {
     setLoading(true);
     getAnalysisSession(sessionId)
       .then(setData)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load session"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("analysis.loadFailed")))
       .finally(() => setLoading(false));
-  }, [sessionId]);
+  }, [sessionId, t]);
 
   if (loading) {
     return <AnalysisLoadingSkeleton />;
@@ -30,7 +32,7 @@ export default function AnalysisPage() {
   if (error) {
     return (
       <Alert variant="destructive" className="mx-auto max-w-2xl mt-8">
-        <AlertTitle>Error</AlertTitle>
+        <AlertTitle>{t("analysis.error")}</AlertTitle>
         <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
@@ -39,9 +41,9 @@ export default function AnalysisPage() {
   if (!data || data.status === "FAILED") {
     return (
       <Alert variant="destructive" className="mx-auto max-w-2xl mt-8">
-        <AlertTitle>Analysis Failed</AlertTitle>
+        <AlertTitle>{t("analysis.failed")}</AlertTitle>
         <AlertDescription>
-          {data?.error_message || "The analysis session failed to complete."}
+          {data?.error_message || t("analysis.failedDescription")}
         </AlertDescription>
       </Alert>
     );
@@ -50,8 +52,8 @@ export default function AnalysisPage() {
   if (!data.result) {
     return (
       <Alert className="mx-auto max-w-2xl mt-8">
-        <AlertTitle>Processing</AlertTitle>
-        <AlertDescription>Analysis is still in progress.</AlertDescription>
+        <AlertTitle>{t("analysis.processing")}</AlertTitle>
+        <AlertDescription>{t("analysis.processingDescription")}</AlertDescription>
       </Alert>
     );
   }

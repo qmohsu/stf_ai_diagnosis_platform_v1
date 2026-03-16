@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  :lang(zh-CN), :lang(zh-TW) {
+    line-height: 1.75;
+  }
+
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;

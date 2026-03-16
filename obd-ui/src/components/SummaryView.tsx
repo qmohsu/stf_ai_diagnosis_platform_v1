@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import type { LogSummaryV2 } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,12 +12,14 @@ interface SummaryViewProps {
 }
 
 export function SummaryView({ data }: SummaryViewProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-6">
       {/* PID Summary */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">PID Summary</CardTitle>
+          <CardTitle className="text-lg">{t("summary.pidSummary")}</CardTitle>
         </CardHeader>
         <CardContent>
           <PIDSummaryTable pidSummary={data.pid_summary} />
@@ -26,7 +29,7 @@ export function SummaryView({ data }: SummaryViewProps) {
       {/* DTC Codes */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">DTC Codes</CardTitle>
+          <CardTitle className="text-lg">{t("summary.dtcCodes")}</CardTitle>
         </CardHeader>
         <CardContent>
           {data.dtc_codes.length > 0 ? (
@@ -38,7 +41,7 @@ export function SummaryView({ data }: SummaryViewProps) {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No DTC codes detected.</p>
+            <p className="text-sm text-muted-foreground">{t("summary.noDtc")}</p>
           )}
         </CardContent>
       </Card>
@@ -46,7 +49,7 @@ export function SummaryView({ data }: SummaryViewProps) {
       {/* Diagnostic Clues */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Diagnostic Clues</CardTitle>
+          <CardTitle className="text-lg">{t("summary.diagnosticClues")}</CardTitle>
         </CardHeader>
         <CardContent>
           <DiagnosticCluesList clues={data.diagnostic_clues} />

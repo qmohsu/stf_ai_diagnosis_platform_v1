@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import type { DiagnosticClue } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +19,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export function ClueDetailCard({ clue }: ClueDetailCardProps) {
+  const { t } = useTranslation();
+
   return (
     <Card>
       <CardContent className="p-4 space-y-2">
@@ -35,7 +38,7 @@ export function ClueDetailCard({ clue }: ClueDetailCardProps) {
         <p className="text-sm">{clue.clue}</p>
         {clue.evidence.length > 0 && (
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">Evidence:</p>
+            <p className="text-xs font-medium text-muted-foreground">{t("clues.evidence")}</p>
             <ul className="list-disc list-inside text-xs text-muted-foreground space-y-0.5">
               {clue.evidence.map((ev, i) => (
                 <li key={i}>{ev}</li>

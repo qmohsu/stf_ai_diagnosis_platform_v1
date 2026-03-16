@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -24,6 +25,7 @@ export function AIDiagnosisView({
   availableModels,
   defaultModel,
 }: AIDiagnosisViewProps) {
+  const { t } = useTranslation();
   const isPremium = provider === "premium";
   const [selectedModel, setSelectedModel] = useState<string>(defaultModel ?? "");
   const [diagnosisText, setDiagnosisText] = useState<string>(initialDiagnosisText ?? "");
@@ -44,7 +46,7 @@ export function AIDiagnosisView({
     setStreaming(true);
     setDone(false);
     setError(null);
-    setStatusMsg("Connecting...");
+    setStatusMsg(t("diagnosis.connecting"));
     setDiagnosisText("");
     textRef.current = "";
 
@@ -86,11 +88,11 @@ export function AIDiagnosisView({
         onDiagnosisGenerated?.(textRef.current);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate diagnosis");
+      setError(err instanceof Error ? err.message : t("diagnosis.generateFailed"));
       setStreaming(false);
       setStatusMsg(null);
     }
-  }, [sessionId, isPremium, selectedModel, onDiagnosisGenerated]);
+  }, [sessionId, isPremium, selectedModel, onDiagnosisGenerated, t]);
 
   // Not started yet — show generate button
   if (!streaming && !diagnosisText) {
@@ -98,19 +100,17 @@ export function AIDiagnosisView({
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">
-            {isPremium ? "Cloud AI Diagnostic Result" : "AI Diagnostic Result"}
+            {isPremium ? t("diagnosis.cloudTitle") : t("diagnosis.title")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            {isPremium
-              ? "Generate a diagnostic report using a cloud LLM via OpenRouter. Cloud API usage fees apply."
-              : "Generate an AI-powered diagnostic report using the parsed OBD data and retrieved technical context. This may take 1-2 minutes on first generation."}
+            {isPremium ? t("diagnosis.cloudDescription") : t("diagnosis.localDescription")}
           </p>
           {isPremium && availableModels && availableModels.length > 0 && (
             <div className="space-y-2">
               <label htmlFor="model-select" className="text-sm font-medium">
-                Model
+                {t("diagnosis.model")}
               </label>
               <Select
                 id="model-select"
@@ -132,7 +132,7 @@ export function AIDiagnosisView({
             </Alert>
           )}
           <Button onClick={() => handleGenerate()} className="w-full">
-            {isPremium ? "Generate Cloud Diagnosis" : "Generate AI Diagnosis"}
+            {isPremium ? t("diagnosis.generateCloud") : t("diagnosis.generateLocal")}
           </Button>
         </CardContent>
       </Card>
@@ -145,11 +145,11 @@ export function AIDiagnosisView({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">
-            {isPremium ? "Cloud AI Diagnostic Result" : "AI Diagnostic Result"}
+            {isPremium ? t("diagnosis.cloudTitle") : t("diagnosis.title")}
           </CardTitle>
           {streaming && (
             <span className="text-xs text-muted-foreground animate-pulse">
-              Generating...
+              {t("diagnosis.generating")}
             </span>
           )}
         </div>
@@ -181,7 +181,7 @@ export function AIDiagnosisView({
 
         {done && isPremium && selectedModel && (
           <p className="text-xs text-muted-foreground mt-2">
-            Model: {selectedModel}
+            {t("diagnosis.modelUsed", { model: selectedModel })}
           </p>
         )}
 
@@ -201,7 +201,7 @@ export function AIDiagnosisView({
               </Select>
             )}
             <Button variant="outline" className={isPremium && availableModels?.length ? "" : "w-full"} onClick={() => handleGenerate(true)}>
-              {isPremium ? "Regenerate" : "Regenerate Diagnosis"}
+              {isPremium ? t("diagnosis.regenerateShort") : t("diagnosis.regenerate")}
             </Button>
           </div>
         )}

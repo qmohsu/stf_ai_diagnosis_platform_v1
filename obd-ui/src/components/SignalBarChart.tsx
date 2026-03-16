@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   BarChart,
   Bar,
@@ -20,6 +21,7 @@ interface SignalBarChartProps {
 }
 
 export function SignalBarChart({ valueStatistics }: SignalBarChartProps) {
+  const { t } = useTranslation();
   const unitGroups = useMemo(
     () => groupSignalsByUnit(valueStatistics.column_units),
     [valueStatistics.column_units],
@@ -45,7 +47,7 @@ export function SignalBarChart({ valueStatistics }: SignalBarChartProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium">Unit group:</label>
+        <label className="text-sm font-medium">{t("statistics.unitGroup")}</label>
         <Select
           value={selectedUnit}
           onChange={(e) => setSelectedUnit(e.target.value)}
@@ -53,7 +55,7 @@ export function SignalBarChart({ valueStatistics }: SignalBarChartProps) {
         >
           {unitOptions.map((unit) => (
             <option key={unit} value={unit}>
-              {unit} ({unitGroups[unit].length} signals)
+              {t("statistics.signalsCount", { unit, count: unitGroups[unit].length })}
             </option>
           ))}
         </Select>
@@ -73,9 +75,9 @@ export function SignalBarChart({ valueStatistics }: SignalBarChartProps) {
           <YAxis tick={{ fontSize: 11 }} />
           <Tooltip />
           <Legend />
-          <Bar dataKey="min" fill="#93c5fd" name="Min" />
-          <Bar dataKey="mean" fill="#3b82f6" name="Mean" />
-          <Bar dataKey="max" fill="#1d4ed8" name="Max" />
+          <Bar dataKey="min" fill="#93c5fd" name={t("statistics.min")} />
+          <Bar dataKey="mean" fill="#3b82f6" name={t("statistics.mean")} />
+          <Bar dataKey="max" fill="#1d4ed8" name={t("statistics.max")} />
         </BarChart>
       </ResponsiveContainer>
     </div>

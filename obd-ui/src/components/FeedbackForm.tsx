@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,7 @@ interface FeedbackFormProps {
 }
 
 export function FeedbackForm({ sessionId, feedbackTab }: FeedbackFormProps) {
+  const { t } = useTranslation();
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [isHelpful, setIsHelpful] = useState<boolean | null>(null);
@@ -35,7 +37,7 @@ export function FeedbackForm({ sessionId, feedbackTab }: FeedbackFormProps) {
       }, feedbackTab);
       setSubmitted(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit feedback");
+      setError(err instanceof Error ? err.message : t("feedbackForm.submitFailed"));
     } finally {
       setLoading(false);
     }
@@ -55,34 +57,36 @@ export function FeedbackForm({ sessionId, feedbackTab }: FeedbackFormProps) {
         <CardContent className="p-6 space-y-4">
           <Alert>
             <AlertDescription>
-              Feedback submitted successfully. Thank you!
+              {t("feedbackForm.submitted")}
             </AlertDescription>
           </Alert>
           <Button variant="outline" className="w-full" onClick={handleReset}>
-            Submit Another Feedback
+            {t("feedbackForm.submitAnother")}
           </Button>
         </CardContent>
       </Card>
     );
   }
 
+  const viewName = t(`feedbackForm.view.${feedbackTab}`);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">
-          Expert Feedback — {feedbackTab === "summary" ? "Summary" : feedbackTab === "detailed" ? "Detailed" : feedbackTab === "rag" ? "RAG" : feedbackTab === "premium_diagnosis" ? "Premium AI Diagnosis" : "AI Diagnosis"} View
+          {t("feedbackForm.title", { view: viewName })}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Star Rating */}
         <div className="space-y-2">
-          <label htmlFor={`rating-${feedbackTab}`} className="text-sm font-medium">Rating</label>
+          <label htmlFor={`rating-${feedbackTab}`} className="text-sm font-medium">{t("feedbackForm.rating")}</label>
           <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map((star) => (
               <button
                 key={star}
                 type="button"
-                aria-label={`Rate ${star} out of 5`}
+                aria-label={t("feedbackForm.rateOutOf5", { n: star })}
                 onMouseEnter={() => setHoverRating(star)}
                 onMouseLeave={() => setHoverRating(0)}
                 onClick={() => setRating(star)}
@@ -103,31 +107,31 @@ export function FeedbackForm({ sessionId, feedbackTab }: FeedbackFormProps) {
 
         {/* Helpful Toggle */}
         <div className="space-y-2">
-          <label htmlFor={`helpful-${feedbackTab}`} className="text-sm font-medium">Was this analysis helpful?</label>
+          <label htmlFor={`helpful-${feedbackTab}`} className="text-sm font-medium">{t("feedbackForm.wasHelpful")}</label>
           <div className="flex gap-2">
             <Button
               variant={isHelpful === true ? "default" : "outline"}
               size="sm"
               onClick={() => setIsHelpful(true)}
             >
-              Yes
+              {t("feedbackForm.yes")}
             </Button>
             <Button
               variant={isHelpful === false ? "default" : "outline"}
               size="sm"
               onClick={() => setIsHelpful(false)}
             >
-              No
+              {t("feedbackForm.no")}
             </Button>
           </div>
         </div>
 
         {/* Comments */}
         <div className="space-y-2">
-          <label htmlFor={`comments-${feedbackTab}`} className="text-sm font-medium">Comments (optional)</label>
+          <label htmlFor={`comments-${feedbackTab}`} className="text-sm font-medium">{t("feedbackForm.commentsOptional")}</label>
           <Textarea
             id={`comments-${feedbackTab}`}
-            placeholder="Any additional comments..."
+            placeholder={t("feedbackForm.commentsPlaceholder")}
             value={comments}
             onChange={(e) => setComments(e.target.value)}
             className="min-h-[80px]"
@@ -145,7 +149,7 @@ export function FeedbackForm({ sessionId, feedbackTab }: FeedbackFormProps) {
           disabled={rating === 0 || isHelpful === null || loading}
           className="w-full"
         >
-          {loading ? "Submitting..." : "Submit Feedback"}
+          {loading ? t("feedbackForm.submitting") : t("feedbackForm.submit")}
         </Button>
       </CardContent>
     </Card>

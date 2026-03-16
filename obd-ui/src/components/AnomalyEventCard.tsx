@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { AnomalyEvent } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,7 @@ interface AnomalyEventCardProps {
 }
 
 export function AnomalyEventCard({ event }: AnomalyEventCardProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -28,7 +30,7 @@ export function AnomalyEventCard({ event }: AnomalyEventCardProps) {
               <Badge variant="outline">{event.detector}</Badge>
               <Badge variant="secondary">{event.context}</Badge>
               <span className="text-xs text-muted-foreground">
-                Score: {event.score.toFixed(3)}
+                {t("anomaly.scoreValue", { value: event.score.toFixed(3) })}
               </span>
             </div>
             <p className="text-sm">
@@ -44,7 +46,7 @@ export function AnomalyEventCard({ event }: AnomalyEventCardProps) {
           </div>
           <button
             type="button"
-            aria-label={expanded ? "Collapse details" : "Expand details"}
+            aria-label={expanded ? t("anomaly.collapseDetails") : t("anomaly.expandDetails")}
             onClick={() => setExpanded(!expanded)}
             className="p-1 text-muted-foreground hover:text-foreground"
           >
