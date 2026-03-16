@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import type { PIDStat } from "@/lib/types";
 import { formatNumber, signalDisplayName } from "@/lib/utils";
 import {
@@ -16,21 +17,22 @@ interface PIDSummaryTableProps {
 }
 
 export function PIDSummaryTable({ pidSummary }: PIDSummaryTableProps) {
+  const { t } = useTranslation();
   const entries = Object.entries(pidSummary);
   if (entries.length === 0) {
-    return <p className="text-sm text-muted-foreground">No PID data available.</p>;
+    return <p className="text-sm text-muted-foreground">{t("summary.noPidData")}</p>;
   }
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Signal</TableHead>
-          <TableHead className="text-right">Min</TableHead>
-          <TableHead className="text-right">Max</TableHead>
-          <TableHead className="text-right">Mean</TableHead>
-          <TableHead className="text-right">Latest</TableHead>
-          <TableHead>Unit</TableHead>
+          <TableHead>{t("pidTable.signal")}</TableHead>
+          <TableHead className="text-right">{t("pidTable.min")}</TableHead>
+          <TableHead className="text-right">{t("pidTable.max")}</TableHead>
+          <TableHead className="text-right">{t("pidTable.mean")}</TableHead>
+          <TableHead className="text-right">{t("pidTable.latest")}</TableHead>
+          <TableHead>{t("pidTable.unit")}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

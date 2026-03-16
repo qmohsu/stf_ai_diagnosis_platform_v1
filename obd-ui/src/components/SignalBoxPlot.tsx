@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ComposedChart,
   Bar,
@@ -20,6 +21,7 @@ interface SignalBoxPlotProps {
 }
 
 export function SignalBoxPlot({ valueStatistics }: SignalBoxPlotProps) {
+  const { t } = useTranslation();
   const unitGroups = useMemo(
     () => groupSignalsByUnit(valueStatistics.column_units),
     [valueStatistics.column_units],
@@ -55,7 +57,7 @@ export function SignalBoxPlot({ valueStatistics }: SignalBoxPlotProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium">Unit group:</label>
+        <label className="text-sm font-medium">{t("statistics.unitGroup")}</label>
         <Select
           value={selectedUnit}
           onChange={(e) => setSelectedUnit(e.target.value)}
@@ -63,7 +65,7 @@ export function SignalBoxPlot({ valueStatistics }: SignalBoxPlotProps) {
         >
           {unitOptions.map((unit) => (
             <option key={unit} value={unit}>
-              {unit} ({unitGroups[unit].length} signals)
+              {t("statistics.signalsCount", { unit, count: unitGroups[unit].length })}
             </option>
           ))}
         </Select>
@@ -106,7 +108,7 @@ export function SignalBoxPlot({ valueStatistics }: SignalBoxPlotProps) {
         </ComposedChart>
       </ResponsiveContainer>
       <p className="text-xs text-muted-foreground">
-        Box: P25-P75 (IQR). Whiskers: P5-P95 range.
+        {t("statistics.boxDescription")}
       </p>
     </div>
   );

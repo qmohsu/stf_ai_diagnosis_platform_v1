@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,6 +35,7 @@ export function DiagnosisHistoryView({
   active = true,
   provider,
 }: DiagnosisHistoryViewProps) {
+  const { t } = useTranslation();
   const [items, setItems] = useState<
     DiagnosisHistoryItem[]
   >([]);
@@ -67,12 +69,13 @@ export function DiagnosisHistoryView({
         setError(
           err instanceof Error
             ? err.message
-            : "Failed to load history",
+            : "HISTORY_LOAD_FAILED",
         );
       } finally {
         setLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [sessionId, provider],
   );
 
@@ -128,7 +131,7 @@ export function DiagnosisHistoryView({
         <CardContent className="p-6">
           <div className="flex items-center gap-3 justify-center text-sm text-muted-foreground py-8">
             <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Loading diagnosis history...</span>
+            <span>{t("history.loading")}</span>
           </div>
         </CardContent>
       </Card>
@@ -140,14 +143,16 @@ export function DiagnosisHistoryView({
       <Card>
         <CardContent className="p-6 space-y-4">
           <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>
+              {error === "HISTORY_LOAD_FAILED" ? t("history.loadFailed") : error}
+            </AlertDescription>
           </Alert>
           <Button
             variant="outline"
             className="w-full"
             onClick={() => fetchPage(page)}
           >
-            Retry
+            {t("history.retry")}
           </Button>
         </CardContent>
       </Card>
@@ -159,14 +164,12 @@ export function DiagnosisHistoryView({
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">
-            Diagnosis History
+            {t("history.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            No {provider === "premium" ? "cloud" : provider === "local" ? "local" : ""} diagnosis
-            generations yet. Generate a diagnosis from the
-            &quot;AI Diagnostic Result&quot; tab first.
+            {provider === "premium" ? t("history.emptyCloud") : t("history.emptyLocal")}
           </p>
         </CardContent>
       </Card>
@@ -178,14 +181,11 @@ export function DiagnosisHistoryView({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">
-            Diagnosis History
+            {t("history.title")}
           </CardTitle>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">
-              {total}{" "}
-              {total === 1
-                ? "generation"
-                : "generations"}
+              {t("history.generationCount", { count: total })}
             </span>
             <Button
               variant="ghost"
@@ -196,7 +196,7 @@ export function DiagnosisHistoryView({
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                "Refresh"
+                t("history.refresh")
               )}
             </Button>
           </div>
@@ -224,8 +224,8 @@ export function DiagnosisHistoryView({
                   }
                 >
                   {item.provider === "premium"
-                    ? "Cloud"
-                    : "Local"}
+                    ? t("history.cloud")
+                    : t("history.local")}
                 </Badge>
                 <span className="text-sm font-mono text-muted-foreground">
                   {item.model_name}
@@ -245,7 +245,7 @@ export function DiagnosisHistoryView({
                     size="sm"
                     onClick={() => toggleExpand(item.id)}
                   >
-                    Collapse
+                    {t("history.collapse")}
                   </Button>
                 </div>
               ) : (
@@ -258,7 +258,7 @@ export function DiagnosisHistoryView({
                     size="sm"
                     onClick={() => toggleExpand(item.id)}
                   >
-                    Show full text
+                    {t("history.showFull")}
                   </Button>
                 </div>
               )}
@@ -276,10 +276,10 @@ export function DiagnosisHistoryView({
               disabled={page === 0 || loading}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
+              {t("history.previous")}
             </Button>
             <span className="text-sm text-muted-foreground">
-              Page {page + 1} of {totalPages}
+              {t("history.pageOf", { current: page + 1, total: totalPages })}
             </span>
             <Button
               variant="outline"
@@ -289,7 +289,7 @@ export function DiagnosisHistoryView({
                 page >= totalPages - 1 || loading
               }
             >
-              Next
+              {t("history.next")}
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>

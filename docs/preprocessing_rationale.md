@@ -2,7 +2,7 @@
 
 > **Document owner:** Li-Ta Hsu
 > **Created:** 2026-03-16
-> **Tracks:** GitHub Issue #6 / APP-32
+> **Tracks:** GitHub Issue #6 / APP-33
 
 This document traces every hard-coded threshold, algorithm choice, and
 heuristic in the OBD log pre-processing pipeline back to its source —
