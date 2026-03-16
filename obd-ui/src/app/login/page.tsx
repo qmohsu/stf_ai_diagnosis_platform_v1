@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/AuthProvider";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { t } = useTranslation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -18,7 +20,7 @@ export default function LoginPage() {
     try {
       await login(username, password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : t("auth.loginFailed"));
     } finally {
       setLoading(false);
     }
@@ -28,16 +30,16 @@ export default function LoginPage() {
     <div className="flex min-h-[60vh] items-center justify-center">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h2 className="text-2xl font-bold">Login</h2>
+          <h2 className="text-2xl font-bold">{t("auth.login")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Sign in to your account
+            {t("auth.signInDescription")}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="username" className="block text-sm font-medium">
-              Username
+              {t("auth.username")}
             </label>
             <input
               id="username"
@@ -52,7 +54,7 @@ export default function LoginPage() {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium">
-              Password
+              {t("auth.password")}
             </label>
             <input
               id="password"
@@ -73,14 +75,14 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {loading ? "Signing in..." : "Sign in"}
+            {loading ? t("auth.signingIn") : t("auth.signIn")}
           </button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
+          {t("auth.noAccount")}{" "}
           <Link href="/register" className="text-primary hover:underline">
-            Register
+            {t("auth.register")}
           </Link>
         </p>
       </div>

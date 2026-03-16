@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { LogSummaryV2, ParsedSummary } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,6 +32,7 @@ export function AnalysisLayout({
   premiumDiagnosisText: initialPremiumDiagnosisText,
   premiumLlmEnabled,
 }: AnalysisLayoutProps) {
+  const { t } = useTranslation();
   const [diagnosisText, setDiagnosisText] = useState<string | null>(initialDiagnosisText);
   const [premiumDiagnosisText, setPremiumDiagnosisText] = useState<string | null>(initialPremiumDiagnosisText);
   const [premiumModels, setPremiumModels] = useState<string[]>([]);
@@ -54,7 +56,7 @@ export function AnalysisLayout({
       {/* Header */}
       <div className="space-y-2">
         <div className="flex items-center gap-3 flex-wrap">
-          <h2 className="text-2xl font-bold">Analysis Results</h2>
+          <h2 className="text-2xl font-bold">{t("analysis.results")}</h2>
           <Badge variant="secondary" className="font-mono">
             {data.vehicle_id}
           </Badge>
@@ -63,8 +65,8 @@ export function AnalysisLayout({
           <span>
             {data.time_range.start} — {data.time_range.end}
           </span>
-          <span>Duration: {formatDuration(data.time_range.duration_seconds)}</span>
-          <span>{data.time_range.sample_count} samples</span>
+          <span>{t("analysis.duration", { duration: formatDuration(data.time_range.duration_seconds) })}</span>
+          <span>{t("analysis.samples", { count: data.time_range.sample_count })}</span>
           {data.dtc_codes.length > 0 && (
             <div className="flex gap-1">
               {data.dtc_codes.map((code) => (
@@ -80,11 +82,11 @@ export function AnalysisLayout({
       {/* Tabs */}
       <Tabs defaultValue="summary" onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="summary">Summary</TabsTrigger>
-          <TabsTrigger value="detailed">Detailed</TabsTrigger>
-          <TabsTrigger value="rag">RAG</TabsTrigger>
-          <TabsTrigger value="ai_diagnosis">AI Diagnostic Result</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="summary">{t("tabs.summary")}</TabsTrigger>
+          <TabsTrigger value="detailed">{t("tabs.detailed")}</TabsTrigger>
+          <TabsTrigger value="rag">{t("tabs.rag")}</TabsTrigger>
+          <TabsTrigger value="ai_diagnosis">{t("tabs.aiDiagnosis")}</TabsTrigger>
+          <TabsTrigger value="history">{t("tabs.history")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="summary" forceMount className="space-y-6 data-[state=inactive]:hidden">
@@ -106,8 +108,8 @@ export function AnalysisLayout({
           {premiumLlmEnabled ? (
             <Tabs defaultValue="local">
               <TabsList className="mb-4">
-                <TabsTrigger value="local">Local LLM</TabsTrigger>
-                <TabsTrigger value="premium">Cloud LLM (OpenRouter)</TabsTrigger>
+                <TabsTrigger value="local">{t("tabs.localLlm")}</TabsTrigger>
+                <TabsTrigger value="premium">{t("tabs.cloudLlm")}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="local" forceMount className="space-y-6 data-[state=inactive]:hidden">
@@ -148,9 +150,9 @@ export function AnalysisLayout({
         <TabsContent value="history" forceMount className="space-y-6 data-[state=inactive]:hidden">
           <Tabs defaultValue="local_history">
             <TabsList className="mb-4">
-              <TabsTrigger value="local_history">Local Model</TabsTrigger>
-              <TabsTrigger value="cloud_history">Cloud Model</TabsTrigger>
-              <TabsTrigger value="feedback_history">Feedback</TabsTrigger>
+              <TabsTrigger value="local_history">{t("tabs.localModel")}</TabsTrigger>
+              <TabsTrigger value="cloud_history">{t("tabs.cloudModel")}</TabsTrigger>
+              <TabsTrigger value="feedback_history">{t("tabs.feedback")}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="local_history" forceMount className="space-y-6 data-[state=inactive]:hidden">

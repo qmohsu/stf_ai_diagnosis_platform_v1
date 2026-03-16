@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +11,7 @@ interface FileDropZoneProps {
 }
 
 export function FileDropZone({ onFileContent, maxSizeMB = 10 }: FileDropZoneProps) {
+  const { t } = useTranslation();
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,7 +19,7 @@ export function FileDropZone({ onFileContent, maxSizeMB = 10 }: FileDropZoneProp
     (file: File) => {
       setError(null);
       if (file.size > maxSizeMB * 1024 * 1024) {
-        setError(`File exceeds ${maxSizeMB} MB limit`);
+        setError(t("fileUpload.exceedsLimit", { size: maxSizeMB }));
         return;
       }
       const reader = new FileReader();
@@ -27,10 +29,10 @@ export function FileDropZone({ onFileContent, maxSizeMB = 10 }: FileDropZoneProp
           onFileContent(text);
         }
       };
-      reader.onerror = () => setError("Failed to read file");
+      reader.onerror = () => setError(t("fileUpload.readFailed"));
       reader.readAsText(file);
     },
-    [onFileContent, maxSizeMB],
+    [onFileContent, maxSizeMB, t],
   );
 
   const handleDrop = useCallback(
@@ -64,9 +66,9 @@ export function FileDropZone({ onFileContent, maxSizeMB = 10 }: FileDropZoneProp
     >
       <Upload className="mb-2 h-8 w-8 text-muted-foreground" />
       <p className="text-sm text-muted-foreground">
-        Drag and drop a .txt file here, or click to browse
+        {t("fileUpload.dropzone")}
       </p>
-      <p className="mt-1 text-xs text-muted-foreground">Max {maxSizeMB} MB</p>
+      <p className="mt-1 text-xs text-muted-foreground">{t("fileUpload.maxSize", { size: maxSizeMB })}</p>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       <input
         id="file-input"

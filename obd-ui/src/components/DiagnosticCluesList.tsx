@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -8,10 +9,12 @@ interface DiagnosticCluesListProps {
 }
 
 export function DiagnosticCluesList({ clues }: DiagnosticCluesListProps) {
+  const { t } = useTranslation();
+
   if (clues.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No diagnostic clues generated.
+        {t("summary.noClues")}
       </p>
     );
   }

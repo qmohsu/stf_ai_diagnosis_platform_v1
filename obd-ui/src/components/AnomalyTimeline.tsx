@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ScatterChart,
   Scatter,
@@ -26,6 +27,8 @@ const SEVERITY_COLORS: Record<string, string> = {
 };
 
 export function AnomalyTimeline({ events, onEventClick }: AnomalyTimelineProps) {
+  const { t } = useTranslation();
+
   const chartData = useMemo(() => {
     return events.map((ev, idx) => ({
       x: new Date(ev.time_window[0]).getTime(),
@@ -49,7 +52,7 @@ export function AnomalyTimeline({ events, onEventClick }: AnomalyTimelineProps) 
   }, [chartData]);
 
   if (events.length === 0) {
-    return <p className="text-sm text-muted-foreground">No anomaly events detected.</p>;
+    return <p className="text-sm text-muted-foreground">{t("anomaly.noEvents")}</p>;
   }
 
   return (
@@ -62,15 +65,15 @@ export function AnomalyTimeline({ events, onEventClick }: AnomalyTimelineProps) 
             type="number"
             domain={["dataMin", "dataMax"]}
             tickFormatter={(v) => formatTimestamp(new Date(v).toISOString())}
-            name="Time"
+            name={t("anomaly.time")}
             tick={{ fontSize: 11 }}
           />
           <YAxis
             dataKey="y"
-            name="Score"
+            name={t("anomaly.score")}
             domain={[0, 1]}
             tick={{ fontSize: 11 }}
-            label={{ value: "Score", angle: -90, position: "insideLeft", style: { fontSize: 11 } }}
+            label={{ value: t("anomaly.score"), angle: -90, position: "insideLeft", style: { fontSize: 11 } }}
           />
           <ZAxis dataKey="z" range={[40, 400]} name="Signals" />
           <Tooltip
@@ -81,11 +84,11 @@ export function AnomalyTimeline({ events, onEventClick }: AnomalyTimelineProps) 
               return (
                 <div className="rounded border bg-white p-2 text-xs shadow max-w-xs">
                   <p className="font-semibold">{d.label}</p>
-                  <p>Score: {ev.score.toFixed(3)}</p>
-                  <p>Severity: {ev.severity}</p>
-                  <p>Detector: {ev.detector}</p>
-                  <p>Context: {ev.context}</p>
-                  <p>Signals: {ev.signals.join(", ")}</p>
+                  <p>{t("anomaly.scoreValue", { value: ev.score.toFixed(3) })}</p>
+                  <p>{t("anomaly.severityValue", { value: ev.severity })}</p>
+                  <p>{t("anomaly.detector", { value: ev.detector })}</p>
+                  <p>{t("anomaly.context", { value: ev.context })}</p>
+                  <p>{t("anomaly.signals", { value: ev.signals.join(", ") })}</p>
                 </div>
               );
             }}
@@ -110,15 +113,15 @@ export function AnomalyTimeline({ events, onEventClick }: AnomalyTimelineProps) 
       </ResponsiveContainer>
       <div className="mt-2 flex gap-4 text-xs">
         <span className="flex items-center gap-1">
-          <span className="inline-block h-3 w-3 rounded-full bg-red-500" /> High
+          <span className="inline-block h-3 w-3 rounded-full bg-red-500" /> {t("anomaly.high")}
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block h-3 w-3 rounded-full bg-amber-500" /> Medium
+          <span className="inline-block h-3 w-3 rounded-full bg-amber-500" /> {t("anomaly.medium")}
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block h-3 w-3 rounded-full bg-blue-500" /> Low
+          <span className="inline-block h-3 w-3 rounded-full bg-blue-500" /> {t("anomaly.low")}
         </span>
-        <span className="text-muted-foreground">Point size = signal count</span>
+        <span className="text-muted-foreground">{t("anomaly.pointSize")}</span>
       </div>
     </div>
   );

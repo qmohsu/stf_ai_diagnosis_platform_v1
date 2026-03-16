@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/AuthProvider";
 
 export default function RegisterPage() {
   const { register } = useAuth();
+  const { t } = useTranslation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -17,19 +19,19 @@ export default function RegisterPage() {
     setError("");
 
     if (username.length < 3 || username.length > 50) {
-      setError("Username must be 3-50 characters.");
+      setError(t("auth.usernameLength"));
       return;
     }
     if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
-      setError("Username may only contain letters, digits, underscores, and hyphens.");
+      setError(t("auth.usernameChars"));
       return;
     }
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError(t("auth.passwordLength"));
       return;
     }
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t("auth.passwordMismatch"));
       return;
     }
 
@@ -37,7 +39,7 @@ export default function RegisterPage() {
     try {
       await register(username, password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(err instanceof Error ? err.message : t("auth.registrationFailed"));
     } finally {
       setLoading(false);
     }
@@ -47,16 +49,16 @@ export default function RegisterPage() {
     <div className="flex min-h-[60vh] items-center justify-center">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h2 className="text-2xl font-bold">Register</h2>
+          <h2 className="text-2xl font-bold">{t("auth.register")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create a new account
+            {t("auth.createAccountDescription")}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="username" className="block text-sm font-medium">
-              Username
+              {t("auth.username")}
             </label>
             <input
               id="username"
@@ -71,7 +73,7 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium">
-              Password
+              {t("auth.password")}
             </label>
             <input
               id="password"
@@ -85,7 +87,7 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="confirm-password" className="block text-sm font-medium">
-              Confirm Password
+              {t("auth.confirmPassword")}
             </label>
             <input
               id="confirm-password"
@@ -106,14 +108,14 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {loading ? "Creating account..." : "Create account"}
+            {loading ? t("auth.creatingAccount") : t("auth.createAccount")}
           </button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
+          {t("auth.hasAccount")}{" "}
           <Link href="/login" className="text-primary hover:underline">
-            Login
+            {t("auth.login")}
           </Link>
         </p>
       </div>

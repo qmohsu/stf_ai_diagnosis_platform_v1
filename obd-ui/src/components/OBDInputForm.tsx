@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { analyzeOBDLog } from "@/lib/api";
 
 export function OBDInputForm() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [text, setText] = useState("");
   const [mode, setMode] = useState<"paste" | "file">("paste");
   const [loading, setLoading] = useState(false);
@@ -25,7 +27,7 @@ export function OBDInputForm() {
       const response = await analyzeOBDLog(text);
       router.push(`/analysis/${response.session_id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Analysis failed");
+      setError(err instanceof Error ? err.message : t("input.analysisFailed"));
     } finally {
       setLoading(false);
     }
@@ -34,9 +36,9 @@ export function OBDInputForm() {
   return (
     <Card className="mx-auto max-w-4xl">
       <CardHeader>
-        <CardTitle>OBD Log Analysis</CardTitle>
+        <CardTitle>{t("input.title")}</CardTitle>
         <CardDescription>
-          Paste raw OBD TSV log data or upload a file to run the full diagnostic pipeline.
+          {t("input.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -46,20 +48,20 @@ export function OBDInputForm() {
             size="sm"
             onClick={() => setMode("paste")}
           >
-            Paste Text
+            {t("input.pasteText")}
           </Button>
           <Button
             variant={mode === "file" ? "default" : "outline"}
             size="sm"
             onClick={() => setMode("file")}
           >
-            Upload File
+            {t("input.uploadFile")}
           </Button>
         </div>
 
         {mode === "paste" ? (
           <Textarea
-            placeholder="Paste OBD TSV log data here..."
+            placeholder={t("input.placeholder")}
             className="min-h-[300px] font-mono text-xs"
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -70,7 +72,7 @@ export function OBDInputForm() {
 
         {text && (
           <p className="text-xs text-muted-foreground">
-            {text.length.toLocaleString()} characters, ~{Math.ceil(text.split("\n").length)} lines
+            {t("input.charCount", { length: text.length.toLocaleString(), lines: Math.ceil(text.split("\n").length) })}
           </p>
         )}
 
@@ -89,10 +91,10 @@ export function OBDInputForm() {
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Analyzing...
+              {t("input.analyzing")}
             </>
           ) : (
-            "Analyze Log"
+            t("input.analyze")
           )}
         </Button>
       </CardContent>

@@ -2,9 +2,19 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
+import { I18nProvider } from "@/components/I18nProvider";
 import { HeaderAuth } from "@/components/HeaderAuth";
+import { HeaderTitle } from "@/components/HeaderTitle";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  fallback: [
+    "PingFang SC", "PingFang TC",
+    "Microsoft YaHei", "Microsoft JhengHei",
+    "Noto Sans CJK SC", "Noto Sans CJK TC",
+    "sans-serif",
+  ],
+});
 
 export const metadata: Metadata = {
   title: "OBD Expert Diagnostic",
@@ -19,22 +29,19 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AuthProvider>
-          <div className="min-h-screen bg-background">
-            <header className="border-b bg-card">
-              <div className="container mx-auto flex h-14 items-center px-4">
-                <h1 className="text-lg font-semibold">
-                  OBD Expert Diagnostic
-                </h1>
-                <span className="ml-2 text-xs text-muted-foreground">
-                  STF AI Diagnosis Platform
-                </span>
-                <HeaderAuth />
-              </div>
-            </header>
-            <main className="container mx-auto px-4 py-6">{children}</main>
-          </div>
-        </AuthProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <div className="min-h-screen bg-background">
+              <header className="border-b bg-card">
+                <div className="container mx-auto flex h-14 items-center px-4">
+                  <HeaderTitle />
+                  <HeaderAuth />
+                </div>
+              </header>
+              <main className="container mx-auto px-4 py-6">{children}</main>
+            </div>
+          </AuthProvider>
+        </I18nProvider>
       </body>
     </html>
   );

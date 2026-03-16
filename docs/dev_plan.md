@@ -14,7 +14,7 @@ Scope boundary for this plan (so engineers don’t drift)
 - Storage of diagnostic records (PostgreSQL recommended; includes user/vehicle/
   diagnosis/maintenance suggestion tables).
 - Pilot OBD edge collector ("obd-agent") + OBD telemetry ingestion endpoints + Pass‑1 (OBD→subsystem+PID shortlist) mapping.
-- OBD Expert Diagnostic Web UI ("obd-ui") — Next.js frontend for experts to submit OBD logs, view analysis results across 4 tabs (Summary, Detailed, RAG, AI Diagnosis), and provide per-tab structured feedback. AI diagnosis powered by SSE streaming via `POST /v2/obd/{session_id}/diagnose`. Persisted analysis sessions via `/v2/obd/*` endpoints with DB-first persistence.
+- OBD Expert Diagnostic Web UI ("obd-ui") — Next.js frontend for experts to submit OBD logs, view analysis results across 4 tabs (Summary, Detailed, RAG, AI Diagnosis), and provide per-tab structured feedback. AI diagnosis powered by SSE streaming via `POST /v2/obd/{session_id}/diagnose`. Persisted analysis sessions via `/v2/obd/*` endpoints with DB-first persistence. Internationalized (i18n) with English, Simplified Chinese (zh-CN), and Traditional Chinese (zh-TW) via react-i18next. Language switcher in header; preference persisted to localStorage.
 - Premium LLM comparison — opt-in cloud LLM integration via **OpenRouter** (OpenAI-compatible gateway) for side-by-side diagnosis quality comparison against local Ollama. Admin-curated multi-model selector (Claude, GPT-4o, Gemini, Llama 4, etc.) configured via `PREMIUM_LLM_CURATED_MODELS` env var. AI Diagnosis tab contains Local LLM / Cloud LLM (OpenRouter) sub-tabs with independent streaming and feedback. Gated by `PREMIUM_LLM_ENABLED` env var; the only internet-requiring feature.
 - Diagnosis history — append-only `diagnosis_history` table tracks every AI diagnosis generation (local + premium) for comparison and traceability. Session columns retain latest text for quick access; history table preserves all prior generations. History tab in the web UI (`GET /v2/obd/{session_id}/history`) displays all past generations with provider badge, model name, timestamp, and expandable text.
 - Feedback history — `GET /v2/obd/{session_id}/feedback` endpoint merges feedback from all 5 feedback tables into a unified chronological list. "Feedback" sub-tab under the History tab displays all expert feedback for the current session with tab badge, star rating, helpful indicator, comments (expandable), and timestamp. Paginated (5 per page).
@@ -41,7 +41,7 @@ Critical path dependency: DO‑01 → DO‑06 → (APP‑02B + APP‑03) → INT
 
 **Summarization Pipeline Path:** APP‑02B → APP‑13 → (APP‑14 + APP‑15) → APP‑16 → APP‑17.
 
-**OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence + feedback endpoints) → APP‑19 (frontend obd-ui) → APP‑20 (AI diagnosis SSE + RAG/AI feedback tables + DB-first session refactoring) → APP‑21 (Premium LLM comparison) → APP‑23 (OpenRouter multi-model migration + diagnosis history) → APP‑24 (Diagnosis history tab).
+**OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence + feedback endpoints) → APP‑19 (frontend obd-ui) → APP‑20 (AI diagnosis SSE + RAG/AI feedback tables + DB-first session refactoring) → APP‑21 (Premium LLM comparison) → APP‑23 (OpenRouter multi-model migration + diagnosis history) → APP‑24 (Diagnosis history tab) → APP‑32 (i18n: EN / zh-CN / zh-TW).
 
 **RAG Image Parsing Path:** APP‑03 → APP‑22 (PDF image parsing: OCR + vision + page render + CJK translation + image-aware chunking).
 
@@ -1606,6 +1606,55 @@ Items are collapsed by default; expand/collapse works ✓
 Empty state shown for sessions with no history ✓
 All 200 tests pass; `npm run build` succeeds ✓
 
+#### APP‑32 — i18n: Simplified & Traditional Chinese Support for Web UI
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP‑24
+Status: **DONE** (2026-03-16)
+
+PROMPT (task ticket):
+Title: APP‑32 Add i18n support (EN / zh-CN / zh-TW) to OBD Expert Diagnostic Web UI
+
+Context:
+The primary end users are vehicle maintenance technicians who are native Chinese speakers.
+The Web UI is English-only, creating a usability barrier. Supporting both Simplified and
+Traditional Chinese covers the two major Chinese writing systems.
+
+Task:
+1) **i18n framework** — Integrate `react-i18next` + `i18next` + `i18next-browser-languagedetector`.
+2) **Locale files** — `src/locales/en.json`, `src/locales/zh-CN.json`, `src/locales/zh-TW.json`
+   containing 150+ translation keys organized by component namespace.
+3) **i18n config** — `src/lib/i18n.ts` initializes i18next with language detector + localStorage persistence.
+4) **I18nProvider** — Client component wrapping the app; updates `document.documentElement.lang`.
+5) **LanguageSwitcher** — Dropdown in the header (EN / 简体中文 / 繁體中文).
+6) **HeaderTitle** — Extracted from layout.tsx (server component) into a client component for t() access.
+7) **Replace hardcoded strings** — All 27 component/page files updated to use `useTranslation()` + `t()`.
+8) **CJK typography** — Added CJK fallback fonts (PingFang, YaHei, Noto Sans CJK) to Inter config;
+   added `:lang(zh-CN/zh-TW)` CSS rule for increased line-height.
+
+Deliverables:
+
+New `obd-ui/src/locales/en.json` (English translations)
+New `obd-ui/src/locales/zh-CN.json` (Simplified Chinese translations)
+New `obd-ui/src/locales/zh-TW.json` (Traditional Chinese translations)
+New `obd-ui/src/lib/i18n.ts` (i18next initialization)
+New `obd-ui/src/components/I18nProvider.tsx`
+New `obd-ui/src/components/LanguageSwitcher.tsx`
+New `obd-ui/src/components/HeaderTitle.tsx`
+Updated `obd-ui/src/app/layout.tsx` (I18nProvider + CJK fonts)
+Updated `obd-ui/src/app/globals.css` (CJK line-height)
+Updated all 23 custom components + 4 pages (useTranslation)
+Updated `docs/dev_plan.md`, `docs/design_doc.md`
+
+Acceptance Criteria:
+
+Language switcher available in header with EN / 简体中文 / 繁體中文 ✓
+All static UI text renders correctly in all three languages ✓
+Language preference persists across page reloads (localStorage) ✓
+CJK characters display with proper fonts and line spacing ✓
+No layout breakage when switching languages ✓
+Zero new TypeScript errors introduced ✓
+
 ### 3.3 Integration and Finalization Tickets
 #### INT‑01 — End-to-end demo script (“one command demo”)
 
@@ -1737,6 +1786,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-16 | v2.7 | APP-32: i18n support (EN / zh-CN / zh-TW) for OBD Expert Diagnostic Web UI. Integrated react-i18next + i18next-browser-languagedetector. Created 3 locale files (150+ keys each). Added LanguageSwitcher dropdown in header, I18nProvider, HeaderTitle client component. Replaced hardcoded strings in 27 files with t() calls. Added CJK fallback fonts and line-height CSS. Language preference persisted to localStorage. |
 | 2026-03-09 | v2.6 | APP-30: Dead code removal — deleted unused `app/cache/` module (OBDSessionCache instantiated but never called), `app/expert/validate.py` (validate_llm_output never invoked in production), `infra/test_llm_client.py` (orphaned demo script). Removed dead methods `generate_diagnosis()` and `generate_obd_diagnosis()` from `ExpertLLMClient`. Removed cache startup/shutdown hooks from `main.py`. Cleaned `test_expert_prompts.py` imports. ~350 LOC removed, zero production impact. |
 | 2026-03-09 | v2.5 | APP-29: Code review cleanup — Alembic migration to drop orphaned V1 tables (`vehicles`, `diagnostic_sessions`, `diagnostic_feedback`); migrated `main.py` from `@app.on_event` to `lifespan` context manager; replaced `print()` with `logging` in `rag.py`, `validate.py`, `retrieve.py`; fixed `datetime.utcnow()` deprecation; removed unused `engine_from_config` import; deleted empty `services/` and `scripts/` directories; fixed error info leakage in `/v1/rag/retrieve`; bound dev server to `127.0.0.1`. |
 | 2026-03-08 | v2.4 | Removed entire V1 API layer (unused by OBD UI). Deleted: V1 endpoints (`/v1/diagnose`, `/v1/feedback`, `/v1/tools/summarize-log*`, `/v1/vehicle/diagnose`, `/v1/models`), `DiagnosisService`, `DailyReporter`, `generate_daily_report.py`, `crud.py`, V1 schemas, V1 DB models (`Vehicle`, `DiagnosticSession`, `DiagnosticFeedback`), 4 test/demo files. Only `/v1/rag/retrieve` preserved (used by frontend). APP‑01, APP‑08, APP‑09, APP‑10 marked REMOVED. |
