@@ -31,6 +31,7 @@ class ExpertLLMClient:
         self,
         parsed_summary: dict,
         context: str,
+        locale: str = "en",
     ) -> list[dict]:
         """Build the message list for OBD diagnosis prompts."""
         user_prompt = prompts.OBD_DIAGNOSIS_USER_TEMPLATE.format(
@@ -41,6 +42,7 @@ class ExpertLLMClient:
             anomaly_events=parsed_summary.get("anomaly_events", "None"),
             diagnostic_clues=parsed_summary.get("diagnostic_clues", "None"),
             context=context or "No additional context retrieved.",
+            language_instruction=prompts.get_language_instruction(locale),
         )
         return [
             {"role": "system", "content": prompts.OBD_DIAGNOSIS_SYSTEM_PROMPT},
@@ -51,13 +53,16 @@ class ExpertLLMClient:
         self,
         parsed_summary: dict,
         context: str,
+        locale: str = "en",
     ) -> AsyncIterator[str]:
         """Stream OBD diagnosis token-by-token.
 
         Yields:
             Text chunks as the LLM generates them.
         """
-        messages = self._build_obd_diagnosis_messages(parsed_summary, context)
+        messages = self._build_obd_diagnosis_messages(
+            parsed_summary, context, locale
+        )
         logger.info("obd_diagnosis_stream_start", vehicle_id=parsed_summary.get("vehicle_id"))
 
         try:

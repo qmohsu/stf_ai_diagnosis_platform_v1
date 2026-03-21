@@ -101,4 +101,35 @@ Diagnose the following vehicle based on its OBD-II log data.
 
 ---
 
-Provide your expert diagnosis following the required structure."""
+Provide your expert diagnosis following the required structure.
+
+{language_instruction}"""
+
+
+# ---------------------------------------------------------------------------
+# Locale → language instruction mapping
+# ---------------------------------------------------------------------------
+
+_LANGUAGE_INSTRUCTIONS: dict[str, str] = {
+    "zh-CN": (
+        "IMPORTANT: Write your entire response in Simplified Chinese "
+        "(简体中文). Keep citation markers like [1], [2] as-is."
+    ),
+    "zh-TW": (
+        "IMPORTANT: Write your entire response in Traditional Chinese "
+        "(繁體中文). Keep citation markers like [1], [2] as-is."
+    ),
+}
+
+
+def get_language_instruction(locale: str) -> str:
+    """Return LLM language directive for the given UI locale.
+
+    Args:
+        locale: UI locale code (e.g. 'en', 'zh-CN', 'zh-TW').
+
+    Returns:
+        Instruction string to append to the user prompt, or
+        empty string for English (default).
+    """
+    return _LANGUAGE_INSTRUCTIONS.get(locale, "")

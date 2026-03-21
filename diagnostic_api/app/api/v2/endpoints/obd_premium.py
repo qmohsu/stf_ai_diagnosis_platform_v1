@@ -105,6 +105,7 @@ async def generate_premium_diagnosis(
     session_id: uuid.UUID,
     force: bool = False,
     model: Optional[str] = None,
+    locale: str = "en",
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
@@ -232,6 +233,7 @@ async def generate_premium_diagnosis(
                     parsed_summary,
                     context_str,
                     model_override=effective_model,
+                    locale=locale,
                 )
             ):
                 full_text_parts.append(token)

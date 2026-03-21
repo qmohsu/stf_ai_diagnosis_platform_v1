@@ -25,7 +25,7 @@ export function AIDiagnosisView({
   availableModels,
   defaultModel,
 }: AIDiagnosisViewProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isPremium = provider === "premium";
   const [selectedModel, setSelectedModel] = useState<string>(defaultModel ?? "");
   const [diagnosisText, setDiagnosisText] = useState<string>(initialDiagnosisText ?? "");
@@ -74,11 +74,12 @@ export function AIDiagnosisView({
       if (isPremium) {
         await streamPremiumDiagnosis(
           sessionId, onToken, onDone, onError, onStatus,
-          force, selectedModel || undefined,
+          force, selectedModel || undefined, i18n.language,
         );
       } else {
         await streamDiagnosis(
-          sessionId, onToken, onDone, onError, onStatus, force,
+          sessionId, onToken, onDone, onError, onStatus,
+          force, i18n.language,
         );
       }
       // Stream ended (connection closed)
@@ -92,7 +93,7 @@ export function AIDiagnosisView({
       setStreaming(false);
       setStatusMsg(null);
     }
-  }, [sessionId, isPremium, selectedModel, onDiagnosisGenerated, t]);
+  }, [sessionId, isPremium, selectedModel, onDiagnosisGenerated, t, i18n.language]);
 
   // Not started yet — show generate button
   if (!streaming && !diagnosisText) {

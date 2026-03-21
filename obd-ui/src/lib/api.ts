@@ -217,10 +217,13 @@ export async function streamDiagnosis(
   onError: (error: string) => void,
   onStatus?: (message: string) => void,
   force?: boolean,
+  locale?: string,
 ): Promise<void> {
-  const url = force
-    ? `${API_URL}/v2/obd/${sessionId}/diagnose?force=true`
-    : `${API_URL}/v2/obd/${sessionId}/diagnose`;
+  const params = new URLSearchParams();
+  if (force) params.set("force", "true");
+  if (locale) params.set("locale", locale);
+  const qs = params.toString();
+  const url = `${API_URL}/v2/obd/${sessionId}/diagnose${qs ? `?${qs}` : ""}`;
   return streamSSE(url, { onToken, onDone, onError, onStatus });
 }
 
@@ -253,10 +256,12 @@ export async function streamPremiumDiagnosis(
   onStatus?: (message: string) => void,
   force?: boolean,
   model?: string,
+  locale?: string,
 ): Promise<void> {
   const params = new URLSearchParams();
   if (force) params.set("force", "true");
   if (model) params.set("model", model);
+  if (locale) params.set("locale", locale);
   const qs = params.toString();
   const url = `${API_URL}/v2/obd/${sessionId}/diagnose/premium${qs ? `?${qs}` : ""}`;
   return streamSSE(url, { onToken, onDone, onError, onStatus });

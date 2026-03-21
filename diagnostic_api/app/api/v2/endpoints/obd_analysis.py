@@ -740,6 +740,7 @@ def _store_diagnosis(
 async def generate_diagnosis(
     session_id: uuid.UUID,
     force: bool = False,
+    locale: str = "en",
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
@@ -800,7 +801,7 @@ async def generate_diagnosis(
         full_text_parts: list[str] = []
         try:
             async for token in _expert_client.generate_obd_diagnosis_stream(
-                parsed_summary, context_str
+                parsed_summary, context_str, locale=locale
             ):
                 full_text_parts.append(token)
                 yield _sse_event("token", token)

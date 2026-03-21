@@ -55,6 +55,7 @@ class PremiumLLMClient:
         self,
         parsed_summary: dict,
         context: str,
+        locale: str = "en",
     ) -> list[dict]:
         """Build message list for OBD diagnosis.
 
@@ -81,6 +82,9 @@ class PremiumLLMClient:
             ),
             context=context
             or "No additional context retrieved.",
+            language_instruction=prompts.get_language_instruction(
+                locale
+            ),
         )
         return [
             {
@@ -95,6 +99,7 @@ class PremiumLLMClient:
         parsed_summary: dict,
         context: str,
         model_override: Optional[str] = None,
+        locale: str = "en",
     ) -> AsyncIterator[str]:
         """Stream OBD diagnosis token-by-token via OpenRouter.
 
@@ -118,7 +123,7 @@ class PremiumLLMClient:
 
         effective_model = model_override or self.model
         messages = self._build_obd_diagnosis_messages(
-            parsed_summary, context
+            parsed_summary, context, locale
         )
         logger.info(
             "premium_obd_diagnosis_stream_start",
