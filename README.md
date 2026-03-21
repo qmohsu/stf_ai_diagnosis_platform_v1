@@ -40,7 +40,6 @@ This project strictly follows the **Google Python Style Guide** and uses:
 
 ```
 stf_ai_diagnosis_platform_v1/
-├── .cursor/              # Cursor IDE rules and configurations
 ├── docs/                 # Design documents and specifications
 ├── docs/                 # Security baseline and operational docs
 ├── diagnostic_api/       # FastAPI backend (Phase 1 stub)
