@@ -9,14 +9,14 @@ const LANGUAGES = [
 ] as const;
 
 export function LanguageSwitcher() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   return (
     <select
       value={i18n.language}
       onChange={(e) => i18n.changeLanguage(e.target.value)}
       className="rounded border bg-background px-2 py-1 text-xs text-foreground hover:bg-muted cursor-pointer"
-      aria-label="Select language"
+      aria-label={t("language.selectLabel")}
     >
       {LANGUAGES.map(({ code, label }) => (
         <option key={code} value={code}>
