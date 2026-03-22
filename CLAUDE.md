@@ -139,6 +139,22 @@ Every refactor or new feature **must** include updates to both:
 
 A PR is not complete until these docs reflect the current state of the system.
 
+## Server Deployment (PolyU GPU Server)
+
+When the user says **"deploy to server"** or **"update the server"**, follow this procedure:
+
+1. **Pre-flight check**: Run `git status` and `git log origin/main..HEAD` locally to verify all changes are committed and pushed to `origin/main`. If there are unpushed commits or uncommitted changes, warn the user and do NOT proceed until everything is pushed.
+2. **Pull on server**: `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1 && git pull origin main"`
+3. **Rebuild & restart**: `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1/infra && ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d --build"`
+4. **Health checks**: Verify all 5 services are healthy:
+   - `curl -sf http://127.0.0.1:11434/api/version` (Ollama)
+   - `curl -sf http://127.0.0.1:8001/health` (Diagnostic API)
+   - `curl -sf http://127.0.0.1:3001` (OBD UI)
+   - `curl -sf http://127.0.0.1:8080/health` (Nginx gateway)
+   - `podman ps --format 'table {{.Names}} {{.Status}}'`
+
+**Server details**: Podman 3.4 (rootless), host networking, API on port 8001, Nginx on port 8080, `runtime: nvidia` for Ollama GPU.
+
 ## Memory Management
 
 When you discover something valuable for future sessions — architectural decisions, bug fixes, gotchas, environment quirks — immediately append it to .claude/memory.md
