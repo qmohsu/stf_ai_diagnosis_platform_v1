@@ -10,6 +10,8 @@ POST /v2/obd/{session_id}/feedback/summary      — feedback on summary
 POST /v2/obd/{session_id}/feedback/detailed     — feedback on detailed
 POST /v2/obd/{session_id}/feedback/rag          — feedback on RAG
 POST /v2/obd/{session_id}/feedback/ai_diagnosis — feedback on AI diag
+POST /v2/obd/audio/upload                       — upload audio recording
+GET  /v2/obd/audio/{feedback_id}                — stream audio playback
 
 Premium endpoints live in ``obd_premium.py``.
 """
@@ -17,9 +19,11 @@ Premium endpoints live in ``obd_premium.py``.
 from __future__ import annotations
 
 import asyncio
+import glob
 import hashlib
 import json
 import os
+import shutil
 import tempfile
 import uuid
 from datetime import datetime, timezone
@@ -29,12 +33,14 @@ import structlog
 from fastapi import (
     APIRouter,
     Depends,
+    File,
     HTTPException,
     Query,
     Request,
+    UploadFile,
     status,
 )
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -81,7 +87,41 @@ _MAX_FEEDBACK_PER_SESSION: int = 10
 _MAX_DIAGNOSIS_LENGTH: int = 50_000
 _ALLOWED_EXTRA_FIELDS = frozenset({
     "diagnosis_text", "retrieved_text", "diagnosis_history_id",
+    "audio_file_path", "audio_duration_seconds", "audio_size_bytes",
 })
+
+_MIME_TO_EXT: dict[str, str] = {
+    "audio/webm": "webm",
+    "audio/ogg": "ogg",
+    "audio/mp4": "m4a",
+    "audio/wav": "wav",
+}
+
+# Magic byte signatures for accepted audio container formats.
+_AUDIO_SIGNATURES: list[tuple[bytes, int, str]] = [
+    # (signature, offset, format)
+    (b"\x1a\x45\xdf\xa3", 0, "webm"),   # WebM / Matroska
+    (b"OggS", 0, "ogg"),                 # OGG container
+    (b"RIFF", 0, "wav"),                 # WAV (RIFF header)
+    (b"ftyp", 4, "m4a"),                 # MP4/M4A (ftyp box)
+]
+
+
+def _has_valid_audio_signature(data: bytes) -> bool:
+    """Check file magic bytes against known audio signatures.
+
+    Args:
+        data: Raw file bytes (at least first 12 bytes).
+
+    Returns:
+        True if the file starts with a recognised audio
+        container signature.
+    """
+    for sig, offset, _ in _AUDIO_SIGNATURES:
+        end = offset + len(sig)
+        if len(data) >= end and data[offset:end] == sig:
+            return True
+    return False
 _expert_client = ExpertLLMClient()
 
 
@@ -169,6 +209,193 @@ def _build_session_list_query(
 
 
 router = APIRouter()
+
+
+# -------------------------------------------------------------------
+# Audio upload & playback
+# -------------------------------------------------------------------
+
+
+@router.post(
+    "/audio/upload",
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload audio recording for feedback",
+)
+async def upload_audio(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Accept an audio file and return a short-lived token.
+
+    The token is included in a subsequent feedback submission
+    to link the audio to the feedback row.  Files are stored
+    in a staging directory until committed.
+
+    Args:
+        file: Audio file (WebM, OGG, MP4, or WAV).
+        current_user: Authenticated user from JWT.
+
+    Returns:
+        Dict with ``audio_token`` and ``size_bytes``.
+
+    Raises:
+        HTTPException: 415 if MIME type not allowed.
+        HTTPException: 413 if file exceeds size limit.
+    """
+    content_type = (file.content_type or "").split(";")[0]
+    allowed = settings.audio_allowed_mime_type_list
+    if content_type not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=(
+                f"Unsupported audio type '{content_type}'. "
+                f"Allowed: {', '.join(allowed)}"
+            ),
+        )
+
+    # Read in chunks to avoid unbounded memory usage.
+    max_bytes = settings.audio_max_file_size_bytes
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(65_536)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=(
+                    status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+                ),
+                detail=(
+                    f"Audio file too large. "
+                    f"Max: {max_bytes} bytes."
+                ),
+            )
+        chunks.append(chunk)
+    data = b"".join(chunks)
+
+    # Validate magic bytes to prevent arbitrary file uploads.
+    if not _has_valid_audio_signature(data):
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=(
+                "File content does not match a "
+                "recognised audio format."
+            ),
+        )
+
+    ext = _MIME_TO_EXT.get(content_type, "webm")
+    audio_token = str(uuid.uuid4())
+    user_prefix = str(current_user.id)
+    staging_dir = os.path.join(
+        settings.audio_storage_path, "staging",
+    )
+    staging_path = os.path.join(
+        staging_dir, f"{user_prefix}_{audio_token}.{ext}",
+    )
+
+    with open(staging_path, "wb") as f:
+        f.write(data)
+
+    logger.info(
+        "audio_uploaded",
+        audio_token=audio_token,
+        size_bytes=len(data),
+        content_type=content_type,
+        user_id=str(current_user.id),
+    )
+
+    return {
+        "audio_token": audio_token,
+        "size_bytes": len(data),
+    }
+
+
+@router.get(
+    "/audio/{feedback_id}",
+    summary="Stream audio recording for a feedback entry",
+)
+async def get_audio(
+    feedback_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> FileResponse:
+    """Return the audio file attached to a feedback row.
+
+    Searches all five feedback tables to locate the row,
+    verifies session ownership, and streams the file.
+
+    Args:
+        feedback_id: UUID of the feedback entry.
+        current_user: Authenticated user from JWT.
+        db: Database session dependency.
+
+    Returns:
+        FileResponse with the audio file.
+
+    Raises:
+        HTTPException: 404 if feedback or audio not found.
+    """
+    for model_class, _ in _FEEDBACK_TABLES:
+        row = (
+            db.query(
+                model_class.session_id,
+                model_class.audio_file_path,
+            )
+            .filter(model_class.id == feedback_id)
+            .first()
+        )
+        if row is not None:
+            break
+    else:
+        raise HTTPException(
+            status_code=404,
+            detail="Feedback entry not found.",
+        )
+
+    # Verify session ownership.
+    _get_owned_session(row.session_id, current_user, db)
+
+    if not row.audio_file_path:
+        raise HTTPException(
+            status_code=404,
+            detail="No audio attached to this feedback.",
+        )
+
+    full_path = os.path.realpath(
+        os.path.join(
+            settings.audio_storage_path,
+            row.audio_file_path,
+        ),
+    )
+    storage_root = os.path.realpath(
+        settings.audio_storage_path,
+    )
+    if not full_path.startswith(storage_root + os.sep):
+        raise HTTPException(
+            status_code=404,
+            detail="Audio file not found on disk.",
+        )
+    if not os.path.isfile(full_path):
+        raise HTTPException(
+            status_code=404,
+            detail="Audio file not found on disk.",
+        )
+
+    ext = os.path.splitext(full_path)[1].lstrip(".")
+    ext_to_mime = {v: k for k, v in _MIME_TO_EXT.items()}
+    media_type = ext_to_mime.get(
+        ext, "application/octet-stream",
+    )
+
+    return FileResponse(
+        full_path,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": "inline",
+        },
+    )
 
 
 @router.get(
@@ -632,6 +859,10 @@ def _build_feedback_items(
         diag_created = None
         if hist_id and hist_id in hist_map:
             model_name, diag_created = hist_map[hist_id]
+        audio_path = getattr(row, "audio_file_path", None)
+        audio_dur = getattr(
+            row, "audio_duration_seconds", None,
+        )
         items.append(FeedbackHistoryItem(
             id=str(row.id),
             session_id=str(row.session_id),
@@ -653,6 +884,8 @@ def _build_feedback_items(
                 if diag_created
                 else None
             ),
+            has_audio=bool(audio_path),
+            audio_duration_seconds=audio_dur,
         ))
     return items
 
@@ -713,6 +946,8 @@ async def get_feedback_history(
             model_class.is_helpful,
             model_class.comments,
             model_class.created_at,
+            model_class.audio_file_path,
+            model_class.audio_duration_seconds,
         ]
         if has_history:
             columns.append(model_class.diagnosis_history_id)
@@ -747,6 +982,80 @@ async def get_feedback_history(
     )
 
 
+def _link_audio_to_feedback(
+    audio_token: str,
+    audio_duration_seconds: Optional[int],
+    session_id: uuid.UUID,
+    feedback_id: uuid.UUID,
+    db_feedback: Any,
+    db: Session,
+) -> None:
+    """Move staged audio file to permanent storage and update row.
+
+    Args:
+        audio_token: UUID token from ``upload_audio``.
+        audio_duration_seconds: Duration reported by client.
+        session_id: Owning session UUID.
+        feedback_id: Feedback row UUID (used as filename).
+        db_feedback: SQLAlchemy feedback model instance.
+        db: Database session.
+
+    Raises:
+        HTTPException: 400 if token references no staged file.
+    """
+    staging_dir = os.path.join(
+        settings.audio_storage_path, "staging",
+    )
+    matches = glob.glob(
+        os.path.join(staging_dir, f"*_{audio_token}.*"),
+    )
+    if not matches:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid audio_token — no staged file.",
+        )
+    staging_path = matches[0]
+
+    # Defence-in-depth: ensure resolved path is inside staging.
+    resolved = os.path.realpath(staging_path)
+    real_staging = os.path.realpath(staging_dir)
+    if not resolved.startswith(real_staging + os.sep):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid audio_token.",
+        )
+
+    ext = os.path.splitext(staging_path)[1]
+
+    # Permanent path: {session_id}/{feedback_id}.{ext}
+    session_dir = os.path.join(
+        settings.audio_storage_path, str(session_id),
+    )
+    os.makedirs(session_dir, exist_ok=True)
+    relative_path = os.path.join(
+        str(session_id), f"{feedback_id}{ext}",
+    )
+    dest_path = os.path.join(
+        settings.audio_storage_path, relative_path,
+    )
+    shutil.move(staging_path, dest_path)
+
+    size_bytes = os.path.getsize(dest_path)
+    db_feedback.audio_file_path = relative_path
+    db_feedback.audio_duration_seconds = (
+        audio_duration_seconds
+    )
+    db_feedback.audio_size_bytes = size_bytes
+    db.commit()
+
+    logger.info(
+        "audio_linked_to_feedback",
+        feedback_id=str(feedback_id),
+        audio_path=relative_path,
+        size_bytes=size_bytes,
+    )
+
+
 def _insert_feedback(
     session_id: uuid.UUID,
     feedback: OBDFeedbackRequest,
@@ -763,8 +1072,9 @@ def _insert_feedback(
         if invalid:
             raise ValueError(f"Unexpected extra_fields: {invalid}")
 
+    feedback_id = uuid.uuid4()
     db_feedback = model_class(
-        id=uuid.uuid4(),
+        id=feedback_id,
         session_id=session_id,
         rating=feedback.rating,
         is_helpful=feedback.is_helpful,
@@ -784,14 +1094,26 @@ def _insert_feedback(
         )
         raise
 
+    # Link audio file if an audio_token was provided.
+    if feedback.audio_token:
+        _link_audio_to_feedback(
+            feedback.audio_token,
+            feedback.audio_duration_seconds,
+            session_id,
+            feedback_id,
+            db_feedback,
+            db,
+        )
+
     logger.info(
         "obd_feedback_submitted",
         session_id=sid,
         rating=feedback.rating,
         is_helpful=feedback.is_helpful,
         feedback_type=feedback_type,
+        has_audio=bool(feedback.audio_token),
     )
-    return {"status": "ok", "feedback_id": str(db_feedback.id)}
+    return {"status": "ok", "feedback_id": str(feedback_id)}
 
 
 async def _submit_feedback(

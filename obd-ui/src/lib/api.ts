@@ -392,3 +392,60 @@ export async function getFeedbackHistory(
   }
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Audio feedback
+// ---------------------------------------------------------------------------
+
+/**
+ * Upload an audio recording to staging storage.
+ *
+ * Returns a short-lived audio_token to include in the subsequent
+ * feedback submission.
+ */
+export async function uploadAudio(
+  blob: Blob,
+): Promise<{ audio_token: string; size_bytes: number }> {
+  const formData = new FormData();
+  formData.append("file", blob, "recording.webm");
+  const headers = getAuthHeaders();
+  // Do NOT set Content-Type — let the browser set the
+  // multipart boundary automatically.
+  const res = await fetch(`${API_URL}/v2/obd/audio/upload`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .catch(() => ({ detail: res.statusText }));
+    throw new Error(
+      detail.detail || `HTTP ${res.status}`,
+    );
+  }
+  return res.json();
+}
+
+/**
+ * Fetch audio blob for a feedback entry (with auth).
+ *
+ * The backend audio endpoint requires a Bearer token which
+ * cannot be set via ``<audio src>``.  This helper fetches the
+ * binary via JS and returns a Blob suitable for
+ * ``URL.createObjectURL()``.
+ */
+export async function fetchAudioBlob(
+  feedbackId: string,
+): Promise<Blob> {
+  const res = await fetch(
+    `${API_URL}/v2/obd/audio/${feedbackId}`,
+    { headers: getAuthHeaders() },
+  );
+  handle401(res);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch audio: HTTP ${res.status}`);
+  }
+  return res.blob();
+}

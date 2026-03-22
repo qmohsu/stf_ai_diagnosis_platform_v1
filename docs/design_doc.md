@@ -8,17 +8,18 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v3.2 (PolyU server deployment) |
+| **Status** | Draft v3.3 (Audio feedback recording) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-03-21 (v3.2) |
+| **Last updated** | 2026-03-22 (v3.3) |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | DO-07: PolyU GPU server deployment (GitHub Issue #21). Podman compose override with CDI GPU passthrough. Nginx reverse proxy as sole external gateway. Automated setup and deploy scripts. Comprehensive deployment guide. |
+| **New in this revision** | APP-37: Audio feedback recording (GitHub Issue #12). Optional voice recording on all feedback forms via browser MediaRecorder API. Two-step upload flow (staging + token linking). Audio files stored on disk with Docker named volume. Playback via JWT-authed endpoint with Blob URL in frontend. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v3.3 | 2026-03-22 | Audio feedback recording (APP-37, GitHub Issue #12): Optional voice recording on all 5 feedback forms via browser MediaRecorder API (WebM/Opus, max 120s/5 MB). Two-step upload: `POST /v2/obd/audio/upload` stages file and returns token; feedback JSON includes token to link audio. `GET /v2/obd/audio/{feedback_id}` streams playback with JWT auth. Audio stored on disk (`/app/data/audio/`) via Docker named volume. 3 new columns on `_OBDFeedbackMixin`. New `AudioRecorder.tsx` component. `FeedbackHistoryView` inline audio player with auth Blob URLs. Startup cleanup of stale staging files. i18n (EN/zh-CN/zh-TW). 12 new tests. |
 | v3.2 | 2026-03-21 | PolyU GPU server deployment (DO-07): Podman compose override (`docker-compose.polyu.yml`) with CDI GPU passthrough for Ollama. Nginx reverse proxy (`nginx/nginx.conf`) as sole external gateway on port 80, proxying frontend (`/`) and API (`/v1/`, `/v2/`, `/auth/`, `/health`, `/docs`) with SSE streaming support. Server-specific env template (`.env.polyu.example`). Automated setup (`polyu-setup.sh`) and deploy (`polyu-deploy.sh`) scripts. Comprehensive deployment guide with backup, monitoring, troubleshooting, and multi-user GPU etiquette (GitHub Issue #21) |
 | v3.1 | 2026-03-21 | Feedback-diagnosis link (APP-36): `diagnosis_history_id` FK on AI/premium feedback tables, SSE `done`/`cached` emit generation ID, feedback retrieval returns model name + generation timestamp, frontend threads history ID through components (GitHub Issue #9) |
 | v3.0 | 2026-03-21 | Session dashboard (APP-35): `GET /v2/obd/sessions` paginated listing endpoint, `/sessions` page in obd-ui, navigation links, i18n (GitHub Issue #10) |

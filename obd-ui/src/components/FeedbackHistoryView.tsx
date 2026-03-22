@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,12 +18,89 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Mic,
   Star,
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
-import { getFeedbackHistory } from "@/lib/api";
+import { fetchAudioBlob, getFeedbackHistory } from "@/lib/api";
 import type { FeedbackHistoryItem } from "@/lib/types";
+
+/**
+ * Fetch audio with auth headers and return an object URL.
+ *
+ * Caches the URL to avoid re-fetching on re-renders.
+ */
+function useAuthAudio(
+  feedbackId: string,
+  hasAudio: boolean,
+): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  const urlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!hasAudio) return;
+    let cancelled = false;
+    fetchAudioBlob(feedbackId)
+      .then((blob) => {
+        if (cancelled) return;
+        const objectUrl = URL.createObjectURL(blob);
+        urlRef.current = objectUrl;
+        setUrl(objectUrl);
+      })
+      .catch(() => {
+        /* audio fetch failed — silently skip */
+      });
+    return () => {
+      cancelled = true;
+      if (urlRef.current) {
+        URL.revokeObjectURL(urlRef.current);
+        urlRef.current = null;
+      }
+    };
+  }, [feedbackId, hasAudio]);
+
+  return url;
+}
+
+function AudioPlayer({
+  feedbackId,
+  hasAudio,
+  durationSeconds,
+}: {
+  feedbackId: string;
+  hasAudio: boolean;
+  durationSeconds: number | null;
+}) {
+  const { t } = useTranslation();
+  const audioUrl = useAuthAudio(feedbackId, hasAudio);
+
+  if (!hasAudio) return null;
+
+  return (
+    <div className="flex items-center gap-2 mt-2">
+      <Mic className="h-3 w-3 text-muted-foreground" />
+      {audioUrl ? (
+        /* eslint-disable-next-line jsx-a11y/media-has-caption */
+        <audio
+          controls
+          preload="metadata"
+          src={audioUrl}
+          className="h-8"
+        />
+      ) : (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      )}
+      {durationSeconds != null && (
+        <span className="text-xs text-muted-foreground">
+          {t("feedbackHistory.audioDuration", {
+            seconds: durationSeconds,
+          })}
+        </span>
+      )}
+    </div>
+  );
+}
 
 const PAGE_SIZE = 5;
 
@@ -293,6 +370,13 @@ export function FeedbackHistoryView({
                   )}
                 </>
               )}
+
+              {/* Audio playback */}
+              <AudioPlayer
+                feedbackId={item.id}
+                hasAudio={item.has_audio}
+                durationSeconds={item.audio_duration_seconds}
+              />
             </div>
           );
         })}

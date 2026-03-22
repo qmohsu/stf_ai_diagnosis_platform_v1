@@ -11,6 +11,8 @@ Provides:
 """
 
 import logging
+import os
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -30,6 +32,40 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _cleanup_stale_staging(
+    staging_dir: str,
+    max_age_seconds: int = 3600,
+) -> None:
+    """Remove staging audio files older than *max_age_seconds*.
+
+    Called at startup to clean up uploads that were never
+    linked to a feedback submission.
+
+    Args:
+        staging_dir: Path to the staging directory.
+        max_age_seconds: Maximum file age in seconds.
+    """
+    now = time.time()
+    removed = 0
+    try:
+        for name in os.listdir(staging_dir):
+            path = os.path.join(staging_dir, name)
+            if not os.path.isfile(path):
+                continue
+            if now - os.path.getmtime(path) > max_age_seconds:
+                os.unlink(path)
+                removed += 1
+    except OSError as exc:
+        logger.warning(
+            "audio_staging_cleanup_error", error=str(exc),
+        )
+    if removed:
+        logger.info(
+            "audio_staging_cleanup",
+            removed_count=removed,
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan handler.
@@ -46,6 +82,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info(f"LLM Endpoint: {settings.llm_endpoint}")
     logger.info(f"Strict Mode: {settings.strict_mode}")
     settings.validate_jwt_secret()
+
+    # Ensure audio storage directories exist.
+    os.makedirs(settings.audio_storage_path, exist_ok=True)
+    staging_dir = os.path.join(
+        settings.audio_storage_path, "staging",
+    )
+    os.makedirs(staging_dir, exist_ok=True)
+
+    # Cleanup stale staging files (older than 1 hour).
+    _cleanup_stale_staging(staging_dir, max_age_seconds=3600)
 
     yield
 

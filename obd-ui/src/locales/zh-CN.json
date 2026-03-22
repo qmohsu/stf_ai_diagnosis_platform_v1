@@ -209,7 +209,15 @@
     "submitting": "提交中...",
     "submitted": "反馈提交成功。感谢您的反馈！",
     "submitAnother": "提交其他反馈",
-    "submitFailed": "提交反馈失败"
+    "submitFailed": "提交反馈失败",
+    "audioRecording": "语音录制（可选）",
+    "startRecording": "录音",
+    "stopRecording": "停止",
+    "deleteRecording": "删除",
+    "maxDuration": "最长 {{seconds}} 秒",
+    "uploadingAudio": "上传录音中...",
+    "audioUploadFailed": "录音上传失败",
+    "micPermissionDenied": "麦克风权限被拒绝。请在浏览器中允许麦克风访问。"
   },
   "feedbackHistory": {
     "title": "反馈历史",
@@ -234,7 +242,8 @@
     "retry": "重试",
     "refresh": "刷新",
     "loadFailed": "加载反馈失败",
-    "generatedAt": "生成时间: {{time}}"
+    "generatedAt": "生成时间: {{time}}",
+    "audioDuration": "{{seconds}} 秒录音"
   },
   "sessions": {
     "title": "我的会话",

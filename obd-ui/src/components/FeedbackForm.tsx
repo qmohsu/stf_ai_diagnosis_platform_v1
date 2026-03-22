@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { submitFeedback } from "@/lib/api";
+import { submitFeedback, uploadAudio } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { AudioRecorder } from "./AudioRecorder";
 
 interface FeedbackFormProps {
   sessionId: string;
@@ -26,11 +27,35 @@ export function FeedbackForm({ sessionId, feedbackTab, diagnosisHistoryId }: Fee
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Audio recording state
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioDuration, setAudioDuration] = useState(0);
+
+  const handleRecordingComplete = useCallback(
+    (blob: Blob, duration: number) => {
+      setAudioBlob(blob);
+      setAudioDuration(duration);
+    },
+    [],
+  );
+
+  const handleRecordingCleared = useCallback(() => {
+    setAudioBlob(null);
+    setAudioDuration(0);
+  }, []);
+
   const handleSubmit = async () => {
     if (rating === 0 || isHelpful === null) return;
     setLoading(true);
     setError(null);
     try {
+      // Upload audio first if present.
+      let audioToken: string | undefined;
+      if (audioBlob) {
+        const uploadResult = await uploadAudio(audioBlob);
+        audioToken = uploadResult.audio_token;
+      }
+
       await submitFeedback(sessionId, {
         rating,
         is_helpful: isHelpful,
@@ -39,6 +64,8 @@ export function FeedbackForm({ sessionId, feedbackTab, diagnosisHistoryId }: Fee
           (feedbackTab === "ai_diagnosis" || feedbackTab === "premium_diagnosis")
             ? (diagnosisHistoryId ?? undefined)
             : undefined,
+        audio_token: audioToken,
+        audio_duration_seconds: audioToken ? audioDuration : undefined,
       }, feedbackTab);
       setSubmitted(true);
     } catch (err) {
@@ -54,6 +81,8 @@ export function FeedbackForm({ sessionId, feedbackTab, diagnosisHistoryId }: Fee
     setComments("");
     setSubmitted(false);
     setError(null);
+    setAudioBlob(null);
+    setAudioDuration(0);
   };
 
   if (submitted) {
@@ -143,6 +172,13 @@ export function FeedbackForm({ sessionId, feedbackTab, diagnosisHistoryId }: Fee
           />
         </div>
 
+        {/* Audio Recording */}
+        <AudioRecorder
+          onRecordingComplete={handleRecordingComplete}
+          onRecordingCleared={handleRecordingCleared}
+          disabled={loading}
+        />
+
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
@@ -154,7 +190,11 @@ export function FeedbackForm({ sessionId, feedbackTab, diagnosisHistoryId }: Fee
           disabled={rating === 0 || isHelpful === null || loading}
           className="w-full"
         >
-          {loading ? t("feedbackForm.submitting") : t("feedbackForm.submit")}
+          {loading
+            ? (audioBlob
+              ? t("feedbackForm.uploadingAudio")
+              : t("feedbackForm.submitting"))
+            : t("feedbackForm.submit")}
         </Button>
       </CardContent>
     </Card>

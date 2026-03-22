@@ -107,6 +107,8 @@ export interface OBDFeedbackRequest {
   is_helpful: boolean;
   comments?: string;
   diagnosis_history_id?: string;
+  audio_token?: string;
+  audio_duration_seconds?: number;
 }
 
 export interface FeedbackResponse {
@@ -145,6 +147,8 @@ export interface FeedbackHistoryItem {
   diagnosis_history_id: string | null;
   diagnosis_model_name: string | null;
   diagnosis_created_at: string | null;
+  has_audio: boolean;
+  audio_duration_seconds: number | null;
 }
 
 export interface FeedbackHistoryResponse {

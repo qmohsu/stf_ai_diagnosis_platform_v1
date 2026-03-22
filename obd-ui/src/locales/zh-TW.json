@@ -209,7 +209,15 @@
     "submitting": "提交中...",
     "submitted": "回饋提交成功。感謝您的回饋！",
     "submitAnother": "提交其他回饋",
-    "submitFailed": "提交回饋失敗"
+    "submitFailed": "提交回饋失敗",
+    "audioRecording": "語音錄製（可選）",
+    "startRecording": "錄音",
+    "stopRecording": "停止",
+    "deleteRecording": "刪除",
+    "maxDuration": "最長 {{seconds}} 秒",
+    "uploadingAudio": "上傳錄音中...",
+    "audioUploadFailed": "錄音上傳失敗",
+    "micPermissionDenied": "麥克風權限被拒絕。請在瀏覽器中允許麥克風存取。"
   },
   "feedbackHistory": {
     "title": "回饋歷史",
@@ -234,7 +242,8 @@
     "retry": "重試",
     "refresh": "重新整理",
     "loadFailed": "載入回饋失敗",
-    "generatedAt": "生成時間: {{time}}"
+    "generatedAt": "生成時間: {{time}}",
+    "audioDuration": "{{seconds}} 秒錄音"
   },
   "sessions": {
     "title": "我的工作階段",

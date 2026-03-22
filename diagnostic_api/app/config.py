@@ -100,6 +100,34 @@ class Settings(BaseSettings):
         os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "1440")
     )
 
+    # Audio Feedback Storage
+    audio_storage_path: str = os.getenv(
+        "AUDIO_STORAGE_PATH", "/app/data/audio",
+    )
+    audio_max_file_size_bytes: int = int(
+        os.getenv("AUDIO_MAX_FILE_SIZE_BYTES", "5242880"),
+    )  # 5 MB
+    audio_max_duration_seconds: int = int(
+        os.getenv("AUDIO_MAX_DURATION_SECONDS", "120"),
+    )
+    audio_allowed_mime_types: str = os.getenv(
+        "AUDIO_ALLOWED_MIME_TYPES",
+        "audio/webm,audio/ogg,audio/mp4,audio/wav",
+    )
+
+    @property
+    def audio_allowed_mime_type_list(self) -> list[str]:
+        """Parse allowed audio MIME types from config string.
+
+        Returns:
+            List of MIME type strings.
+        """
+        return [
+            m.strip()
+            for m in self.audio_allowed_mime_types.split(",")
+            if m.strip()
+        ]
+
     def validate_jwt_secret(self) -> None:
         """Verify JWT_SECRET_KEY is set and strong enough.
 

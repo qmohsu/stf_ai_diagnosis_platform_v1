@@ -153,6 +153,17 @@ class OBDFeedbackRequest(BaseModel):
     diagnosis_history_id: Optional[str] = Field(
         None, max_length=36,
     )
+    audio_token: Optional[str] = Field(
+        None,
+        max_length=36,
+        pattern=(
+            r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}"
+            r"-[0-9a-f]{4}-[0-9a-f]{12}$"
+        ),
+    )
+    audio_duration_seconds: Optional[int] = Field(
+        None, ge=0, le=120,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -202,6 +213,8 @@ class FeedbackHistoryItem(BaseModel):
     diagnosis_history_id: Optional[str] = None
     diagnosis_model_name: Optional[str] = None
     diagnosis_created_at: Optional[str] = None
+    has_audio: bool = False
+    audio_duration_seconds: Optional[int] = None
 
 
 class FeedbackHistoryResponse(BaseModel):

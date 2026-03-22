@@ -127,6 +127,11 @@ class _OBDFeedbackMixin:
     is_helpful = Column(Boolean, nullable=False)
     comments = Column(Text, nullable=True)
 
+    # Optional audio recording attached to feedback
+    audio_file_path = Column(String(500), nullable=True)
+    audio_duration_seconds = Column(Integer, nullable=True)
+    audio_size_bytes = Column(Integer, nullable=True)
+
     created_at = Column(DateTime, default=_utcnow)
 
 

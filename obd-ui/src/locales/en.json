@@ -209,7 +209,15 @@
     "submitting": "Submitting...",
     "submitted": "Feedback submitted successfully. Thank you!",
     "submitAnother": "Submit Another Feedback",
-    "submitFailed": "Failed to submit feedback"
+    "submitFailed": "Failed to submit feedback",
+    "audioRecording": "Voice Recording (optional)",
+    "startRecording": "Record",
+    "stopRecording": "Stop",
+    "deleteRecording": "Delete",
+    "maxDuration": "Max {{seconds}}s",
+    "uploadingAudio": "Uploading audio...",
+    "audioUploadFailed": "Audio upload failed",
+    "micPermissionDenied": "Microphone access denied. Please allow microphone permission in your browser."
   },
   "feedbackHistory": {
     "title": "Feedback History",
@@ -234,7 +242,8 @@
     "retry": "Retry",
     "refresh": "Refresh",
     "loadFailed": "Failed to load feedback",
-    "generatedAt": "Generated: {{time}}"
+    "generatedAt": "Generated: {{time}}",
+    "audioDuration": "{{seconds}}s audio"
   },
   "sessions": {
     "title": "My Sessions",
