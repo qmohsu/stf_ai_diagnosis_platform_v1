@@ -1,0 +1,51 @@
+# =============================================================================
+# Root .dockerignore — used by diagnostic-api (context: ..)
+# Dramatically reduces build context size for faster rebuilds.
+# =============================================================================
+
+# Version control
+.git/
+.gitignore
+
+# Documentation & config (not needed in containers)
+docs/
+*.md
+!diagnostic_api/requirements.txt
+LICENSE
+CLAUDE.md
+.claude/
+
+# Node.js / obd-ui artifacts (obd-ui has its own build context)
+obd-ui/node_modules/
+obd-ui/.next/
+obd-ui/.env.local
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+.eggs/
+dist/
+build/
+venv/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Infrastructure (not needed inside app containers)
+infra/
+.env
+.env.*
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+Thumbs.db
+.DS_Store
