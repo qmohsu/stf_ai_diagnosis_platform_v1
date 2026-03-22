@@ -22,7 +22,7 @@ class ExpertLLMClient:
     """
 
     def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None):
-        self.base_url = base_url or os.getenv("OLLAMA_BASE_URL", "http://ollama:11434/v1")
+        self.base_url = base_url or f"{settings.llm_endpoint}/v1"
         self.model = model or settings.llm_model
         self.client = AsyncOpenAI(api_key="ollama", base_url=self.base_url)
         logger.info("initialized_expert_llm_client", base_url=self.base_url, model=self.model)
