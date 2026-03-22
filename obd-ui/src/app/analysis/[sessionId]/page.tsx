@@ -92,6 +92,8 @@ export default function AnalysisPage() {
         diagnosisText={data.diagnosis_text}
         premiumDiagnosisText={data.premium_diagnosis_text}
         premiumLlmEnabled={data.premium_llm_enabled}
+        initialDiagnosisHistoryId={data.diagnosis_history_id}
+        initialPremiumDiagnosisHistoryId={data.premium_diagnosis_history_id}
       />
     </div>
   );

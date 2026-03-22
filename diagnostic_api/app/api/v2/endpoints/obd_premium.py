@@ -22,12 +22,17 @@ from app.api.v2.endpoints.obd_analysis import (
     _sse_event,
     _store_diagnosis,
     _submit_feedback,
+    _validate_diagnosis_history_id,
     _MAX_DIAGNOSIS_LENGTH,
 )
 from app.api.v2.schemas import OBDFeedbackRequest
 from app.auth.security import get_current_user
 from app.config import settings
-from app.models_db import OBDPremiumDiagnosisFeedback, User
+from app.models_db import (
+    DiagnosisHistory,
+    OBDPremiumDiagnosisFeedback,
+    User,
+)
 from app.rag.retrieve import retrieve_context
 
 logger = structlog.get_logger()
@@ -112,8 +117,9 @@ async def generate_premium_diagnosis(
     """Run AI diagnosis via premium cloud LLM with SSE streaming.
 
     Feature-gated by ``PREMIUM_LLM_ENABLED``. Returns 403 when the
-    feature is disabled. SSE event types are identical to the local
-    ``/diagnose`` endpoint.
+    feature is disabled.  SSE event types: ``token`` (string),
+    ``done``/``cached`` (JSON with ``text`` and
+    ``diagnosis_history_id``), ``error`` (string).
 
     Args:
         session_id: OBD analysis session UUID.
@@ -161,8 +167,24 @@ async def generate_premium_diagnosis(
     existing_premium = session_data.premium_diagnosis_text
 
     if existing_premium and not force:
+        latest_hist = (
+            db.query(DiagnosisHistory.id)
+            .filter(
+                DiagnosisHistory.session_id == session_id,
+                DiagnosisHistory.provider == "premium",
+            )
+            .order_by(DiagnosisHistory.created_at.desc())
+            .first()
+        )
+        cached_hist_id = (
+            str(latest_hist.id) if latest_hist else None
+        )
+
         async def _cached_stream():
-            yield _sse_event("cached", existing_premium)
+            yield _sse_event("cached", {
+                "text": existing_premium,
+                "diagnosis_history_id": cached_hist_id,
+            })
 
         return StreamingResponse(
             _cached_stream(),
@@ -240,7 +262,7 @@ async def generate_premium_diagnosis(
                 yield _sse_event("token", token)
 
             full_text = "".join(full_text_parts)
-            _store_diagnosis(
+            history_id = _store_diagnosis(
                 session_id, "premium",
                 effective_model, full_text,
             )
@@ -249,7 +271,12 @@ async def generate_premium_diagnosis(
                 session_id=str(session_id),
                 model=effective_model,
             )
-            yield _sse_event("done", full_text)
+            yield _sse_event("done", {
+                "text": full_text,
+                "diagnosis_history_id": (
+                    str(history_id) if history_id else None
+                ),
+            })
 
         except Exception as exc:
             error_msg = str(exc)
@@ -294,14 +321,23 @@ async def submit_premium_diagnosis_feedback(
     db: Session = Depends(get_db),
 ) -> dict:
     """Store expert feedback on the premium AI diagnosis."""
+    # Ownership check FIRST — prevents information disclosure.
     session_data = _get_session_data(
         session_id, current_user, db,
+    )
+    # Validate optional link to a specific generation.
+    hist_id = _validate_diagnosis_history_id(
+        feedback.diagnosis_history_id,
+        session_id, "premium", db,
     )
     diag_text = session_data.premium_diagnosis_text
     if diag_text and len(diag_text) > _MAX_DIAGNOSIS_LENGTH:
         diag_text = diag_text[:_MAX_DIAGNOSIS_LENGTH]
+    extra: dict = {"diagnosis_text": diag_text}
+    if hist_id is not None:
+        extra["diagnosis_history_id"] = hist_id
     return await _submit_feedback(
         session_id, feedback, current_user, db,
         OBDPremiumDiagnosisFeedback, "premium_diagnosis",
-        extra_fields={"diagnosis_text": diag_text},
+        extra_fields=extra,
     )

@@ -233,7 +233,8 @@
     "next": "Next",
     "retry": "Retry",
     "refresh": "Refresh",
-    "loadFailed": "Failed to load feedback"
+    "loadFailed": "Failed to load feedback",
+    "generatedAt": "Generated: {{time}}"
   },
   "sessions": {
     "title": "My Sessions",

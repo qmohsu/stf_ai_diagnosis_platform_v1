@@ -175,7 +175,7 @@ class TestPremiumDiagnosisCaching:
         "app.api.v2.endpoints.obd_premium._get_session_data",
     )
     def test_returns_cached_when_existing(
-        self, mock_get_data, mock_settings, client,
+        self, mock_get_data, mock_settings, client, app_ref,
     ):
         """When premium_diagnosis_text exists, return cached SSE event."""
         mock_settings.premium_llm_enabled = True
@@ -191,6 +191,15 @@ class TestPremiumDiagnosisCaching:
             diagnosis_text="local diag",
             premium_diagnosis_text="cached premium text",
         )
+
+        # The cached path now queries DiagnosisHistory — mock get_db.
+        mock_db = MagicMock()
+        mock_hist = MagicMock()
+        mock_hist.id = uuid.uuid4()
+        mock_db.query.return_value.filter.return_value \
+            .order_by.return_value.first.return_value = mock_hist
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
 
         sid = uuid.uuid4()
         resp = client.post(f"/v2/obd/{sid}/diagnose/premium")

@@ -118,6 +118,8 @@ class OBDAnalysisResponse(BaseModel):
     diagnosis_text: Optional[str] = None
     premium_diagnosis_text: Optional[str] = None
     premium_llm_enabled: bool = False
+    diagnosis_history_id: Optional[str] = None
+    premium_diagnosis_history_id: Optional[str] = None
 
 
 class OBDSessionSummary(BaseModel):
@@ -148,6 +150,9 @@ class OBDFeedbackRequest(BaseModel):
     rating: int = Field(..., ge=1, le=5)
     is_helpful: bool
     comments: Optional[str] = Field(None, max_length=5000)
+    diagnosis_history_id: Optional[str] = Field(
+        None, max_length=36,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -194,6 +199,9 @@ class FeedbackHistoryItem(BaseModel):
     is_helpful: bool
     comments: Optional[str] = None
     created_at: str
+    diagnosis_history_id: Optional[str] = None
+    diagnosis_model_name: Optional[str] = None
+    diagnosis_created_at: Optional[str] = None
 
 
 class FeedbackHistoryResponse(BaseModel):

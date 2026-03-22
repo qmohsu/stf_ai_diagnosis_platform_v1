@@ -22,6 +22,8 @@ interface AnalysisLayoutProps {
   diagnosisText: string | null;
   premiumDiagnosisText: string | null;
   premiumLlmEnabled: boolean;
+  initialDiagnosisHistoryId?: string | null;
+  initialPremiumDiagnosisHistoryId?: string | null;
 }
 
 export function AnalysisLayout({
@@ -31,10 +33,14 @@ export function AnalysisLayout({
   diagnosisText: initialDiagnosisText,
   premiumDiagnosisText: initialPremiumDiagnosisText,
   premiumLlmEnabled,
+  initialDiagnosisHistoryId,
+  initialPremiumDiagnosisHistoryId,
 }: AnalysisLayoutProps) {
   const { t } = useTranslation();
   const [diagnosisText, setDiagnosisText] = useState<string | null>(initialDiagnosisText);
   const [premiumDiagnosisText, setPremiumDiagnosisText] = useState<string | null>(initialPremiumDiagnosisText);
+  const [diagnosisHistoryId, setDiagnosisHistoryId] = useState<string | null>(initialDiagnosisHistoryId ?? null);
+  const [premiumDiagnosisHistoryId, setPremiumDiagnosisHistoryId] = useState<string | null>(initialPremiumDiagnosisHistoryId ?? null);
   const [premiumModels, setPremiumModels] = useState<string[]>([]);
   const [defaultPremiumModel, setDefaultPremiumModel] = useState<string>("");
   const [activeTab, setActiveTab] = useState("summary");
@@ -117,9 +123,10 @@ export function AnalysisLayout({
                   sessionId={sessionId}
                   initialDiagnosisText={diagnosisText}
                   onDiagnosisGenerated={setDiagnosisText}
+                  onDiagnosisHistoryIdChanged={setDiagnosisHistoryId}
                   provider="local"
                 />
-                <FeedbackForm sessionId={sessionId} feedbackTab="ai_diagnosis" />
+                <FeedbackForm sessionId={sessionId} feedbackTab="ai_diagnosis" diagnosisHistoryId={diagnosisHistoryId} />
               </TabsContent>
 
               <TabsContent value="premium" forceMount className="space-y-6 data-[state=inactive]:hidden">
@@ -127,11 +134,12 @@ export function AnalysisLayout({
                   sessionId={sessionId}
                   initialDiagnosisText={premiumDiagnosisText}
                   onDiagnosisGenerated={setPremiumDiagnosisText}
+                  onDiagnosisHistoryIdChanged={setPremiumDiagnosisHistoryId}
                   provider="premium"
                   availableModels={premiumModels}
                   defaultModel={defaultPremiumModel}
                 />
-                <FeedbackForm sessionId={sessionId} feedbackTab="premium_diagnosis" />
+                <FeedbackForm sessionId={sessionId} feedbackTab="premium_diagnosis" diagnosisHistoryId={premiumDiagnosisHistoryId} />
               </TabsContent>
             </Tabs>
           ) : (
@@ -140,9 +148,10 @@ export function AnalysisLayout({
                 sessionId={sessionId}
                 initialDiagnosisText={diagnosisText}
                 onDiagnosisGenerated={setDiagnosisText}
+                onDiagnosisHistoryIdChanged={setDiagnosisHistoryId}
                 provider="local"
               />
-              <FeedbackForm sessionId={sessionId} feedbackTab="ai_diagnosis" />
+              <FeedbackForm sessionId={sessionId} feedbackTab="ai_diagnosis" diagnosisHistoryId={diagnosisHistoryId} />
             </>
           )}
         </TabsContent>

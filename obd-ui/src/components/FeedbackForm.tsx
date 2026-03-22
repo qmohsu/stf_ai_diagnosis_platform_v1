@@ -13,9 +13,10 @@ import { cn } from "@/lib/utils";
 interface FeedbackFormProps {
   sessionId: string;
   feedbackTab: "summary" | "detailed" | "rag" | "ai_diagnosis" | "premium_diagnosis";
+  diagnosisHistoryId?: string | null;
 }
 
-export function FeedbackForm({ sessionId, feedbackTab }: FeedbackFormProps) {
+export function FeedbackForm({ sessionId, feedbackTab, diagnosisHistoryId }: FeedbackFormProps) {
   const { t } = useTranslation();
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -34,6 +35,10 @@ export function FeedbackForm({ sessionId, feedbackTab }: FeedbackFormProps) {
         rating,
         is_helpful: isHelpful,
         comments: comments || undefined,
+        diagnosis_history_id:
+          (feedbackTab === "ai_diagnosis" || feedbackTab === "premium_diagnosis")
+            ? (diagnosisHistoryId ?? undefined)
+            : undefined,
       }, feedbackTab);
       setSubmitted(true);
     } catch (err) {

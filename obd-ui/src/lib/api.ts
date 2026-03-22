@@ -146,7 +146,7 @@ export async function retrieveRAG(
 
 type SSECallbacks = {
   onToken: (token: string) => void;
-  onDone: (fullText: string) => void;
+  onDone: (fullText: string, diagnosisHistoryId: string | null) => void;
   onError: (error: string) => void;
   onStatus?: (message: string) => void;
 };
@@ -201,8 +201,8 @@ async function streamSSE(url: string, cb: SSECallbacks): Promise<void> {
 
       if (!data) continue;
 
-      // data is JSON-encoded string
-      let parsed: string;
+      // data is JSON-encoded (string or object)
+      let parsed: unknown;
       try {
         parsed = JSON.parse(data);
       } catch {
@@ -211,17 +211,23 @@ async function streamSSE(url: string, cb: SSECallbacks): Promise<void> {
 
       switch (event) {
         case "token":
-          cb.onToken(parsed);
+          cb.onToken(parsed as string);
           break;
         case "cached":
         case "done":
-          cb.onDone(parsed);
+          if (typeof parsed === "object" && parsed !== null && "text" in parsed) {
+            const obj = parsed as { text: string; diagnosis_history_id?: string | null };
+            cb.onDone(obj.text, obj.diagnosis_history_id ?? null);
+          } else {
+            // Backward compatibility: plain string payload
+            cb.onDone(parsed as string, null);
+          }
           break;
         case "error":
-          cb.onError(parsed);
+          cb.onError(parsed as string);
           break;
         case "status":
-          cb.onStatus?.(parsed);
+          cb.onStatus?.(parsed as string);
           break;
       }
     }
@@ -239,7 +245,7 @@ async function streamSSE(url: string, cb: SSECallbacks): Promise<void> {
 export async function streamDiagnosis(
   sessionId: string,
   onToken: (token: string) => void,
-  onDone: (fullText: string) => void,
+  onDone: (fullText: string, diagnosisHistoryId: string | null) => void,
   onError: (error: string) => void,
   onStatus?: (message: string) => void,
   force?: boolean,
@@ -277,7 +283,7 @@ export async function getPremiumModels(): Promise<{ models: string[]; default: s
 export async function streamPremiumDiagnosis(
   sessionId: string,
   onToken: (token: string) => void,
-  onDone: (fullText: string) => void,
+  onDone: (fullText: string, diagnosisHistoryId: string | null) => void,
   onError: (error: string) => void,
   onStatus?: (message: string) => void,
   force?: boolean,

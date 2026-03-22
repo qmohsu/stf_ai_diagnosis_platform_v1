@@ -242,6 +242,21 @@ export function FeedbackHistoryView({
                 </span>
               </div>
 
+              {/* Diagnosis generation info */}
+              {(item.tab_name === "ai_diagnosis" || item.tab_name === "premium_diagnosis") &&
+                item.diagnosis_model_name && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="font-mono">{item.diagnosis_model_name}</span>
+                  {item.diagnosis_created_at && (
+                    <span>
+                      {t("feedbackHistory.generatedAt", {
+                        time: formatTimestamp(item.diagnosis_created_at),
+                      })}
+                    </span>
+                  )}
+                </div>
+              )}
+
               {/* Comments */}
               {hasComments && (
                 <>

@@ -165,7 +165,19 @@ class OBDAIDiagnosisFeedback(_OBDFeedbackMixin, Base):
     # Snapshot of the diagnosis text the user was rating
     diagnosis_text = Column(Text, nullable=True)
 
+    # Optional link to the specific diagnosis generation
+    diagnosis_history_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("diagnosis_history.id"),
+        nullable=True,
+        index=True,
+    )
+
     session = relationship("OBDAnalysisSession", back_populates="ai_diagnosis_feedback")
+    diagnosis_history = relationship(
+        "DiagnosisHistory",
+        foreign_keys=[diagnosis_history_id],
+    )
 
 
 class OBDPremiumDiagnosisFeedback(_OBDFeedbackMixin, Base):
@@ -176,7 +188,19 @@ class OBDPremiumDiagnosisFeedback(_OBDFeedbackMixin, Base):
     # Snapshot of the premium diagnosis text the user was rating
     diagnosis_text = Column(Text, nullable=True)
 
+    # Optional link to the specific diagnosis generation
+    diagnosis_history_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("diagnosis_history.id"),
+        nullable=True,
+        index=True,
+    )
+
     session = relationship("OBDAnalysisSession", back_populates="premium_diagnosis_feedback")
+    diagnosis_history = relationship(
+        "DiagnosisHistory",
+        foreign_keys=[diagnosis_history_id],
+    )
 
 
 class DiagnosisHistory(Base):

@@ -12,6 +12,7 @@ interface AIDiagnosisViewProps {
   sessionId: string;
   initialDiagnosisText: string | null;
   onDiagnosisGenerated?: (text: string) => void;
+  onDiagnosisHistoryIdChanged?: (id: string | null) => void;
   provider?: "local" | "premium";
   availableModels?: string[];
   defaultModel?: string;
@@ -21,6 +22,7 @@ export function AIDiagnosisView({
   sessionId,
   initialDiagnosisText,
   onDiagnosisGenerated,
+  onDiagnosisHistoryIdChanged,
   provider = "local",
   availableModels,
   defaultModel,
@@ -41,6 +43,7 @@ export function AIDiagnosisView({
   const [done, setDone] = useState(!!initialDiagnosisText);
   const [error, setError] = useState<string | null>(null);
   const textRef = useRef("");
+  const historyIdRef = useRef<string | null>(null);
 
   const handleGenerate = useCallback(async (force?: boolean) => {
     setStreaming(true);
@@ -49,17 +52,20 @@ export function AIDiagnosisView({
     setStatusMsg(t("diagnosis.connecting"));
     setDiagnosisText("");
     textRef.current = "";
+    historyIdRef.current = null;
 
     const onToken = (token: string) => {
       setStatusMsg(null);
       textRef.current += token;
       setDiagnosisText(textRef.current);
     };
-    const onDone = (fullText: string) => {
+    const onDone = (fullText: string, historyId: string | null) => {
+      historyIdRef.current = historyId;
       setStatusMsg(null);
       setDone(true);
       setStreaming(false);
       onDiagnosisGenerated?.(fullText);
+      onDiagnosisHistoryIdChanged?.(historyId);
     };
     const onError = (err: string) => {
       setStatusMsg(null);
@@ -87,13 +93,14 @@ export function AIDiagnosisView({
       if (textRef.current) {
         setDone(true);
         onDiagnosisGenerated?.(textRef.current);
+        onDiagnosisHistoryIdChanged?.(historyIdRef.current);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("diagnosis.generateFailed"));
       setStreaming(false);
       setStatusMsg(null);
     }
-  }, [sessionId, isPremium, selectedModel, onDiagnosisGenerated, t, i18n.language]);
+  }, [sessionId, isPremium, selectedModel, onDiagnosisGenerated, onDiagnosisHistoryIdChanged, t, i18n.language]);
 
   // Not started yet — show generate button
   if (!streaming && !diagnosisText) {

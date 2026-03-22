@@ -98,12 +98,15 @@ export interface OBDAnalysisResponse {
   diagnosis_text: string | null;
   premium_diagnosis_text: string | null;
   premium_llm_enabled: boolean;
+  diagnosis_history_id: string | null;
+  premium_diagnosis_history_id: string | null;
 }
 
 export interface OBDFeedbackRequest {
   rating: number;
   is_helpful: boolean;
   comments?: string;
+  diagnosis_history_id?: string;
 }
 
 export interface FeedbackResponse {
@@ -139,6 +142,9 @@ export interface FeedbackHistoryItem {
   is_helpful: boolean;
   comments: string | null;
   created_at: string;
+  diagnosis_history_id: string | null;
+  diagnosis_model_name: string | null;
+  diagnosis_created_at: string | null;
 }
 
 export interface FeedbackHistoryResponse {

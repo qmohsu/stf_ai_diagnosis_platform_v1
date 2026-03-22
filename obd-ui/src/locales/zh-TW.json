@@ -233,7 +233,8 @@
     "next": "下一頁",
     "retry": "重試",
     "refresh": "重新整理",
-    "loadFailed": "載入回饋失敗"
+    "loadFailed": "載入回饋失敗",
+    "generatedAt": "生成時間: {{time}}"
   },
   "sessions": {
     "title": "我的工作階段",

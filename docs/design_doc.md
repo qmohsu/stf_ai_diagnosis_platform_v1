@@ -8,17 +8,18 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v3.0 (Session dashboard) |
+| **Status** | Draft v3.1 (Feedback-diagnosis link) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
 | **Last updated** | 2026-03-21 |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | APP-35: Session dashboard for browsing past analysis sessions (GitHub Issue #10). New `GET /v2/obd/sessions` endpoint with paginated listing, status/vehicle_id/date filters, and `has_diagnosis`/`has_premium_diagnosis` booleans. New `/sessions` page in obd-ui. Navigation links in header, upload page, and analysis page. i18n for all 3 locales. |
+| **New in this revision** | APP-36: Link AI Diagnosis feedback to specific diagnosis generation (GitHub Issue #9). Added `diagnosis_history_id` FK on feedback tables. SSE events emit generation ID. Feedback history shows model name and generation timestamp. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v3.1 | 2026-03-21 | Feedback-diagnosis link (APP-36): `diagnosis_history_id` FK on AI/premium feedback tables, SSE `done`/`cached` emit generation ID, feedback retrieval returns model name + generation timestamp, frontend threads history ID through components (GitHub Issue #9) |
 | v3.0 | 2026-03-21 | Session dashboard (APP-35): `GET /v2/obd/sessions` paginated listing endpoint, `/sessions` page in obd-ui, navigation links, i18n (GitHub Issue #10) |
 | v2.9 | 2026-03-21 | Weaviate → pgvector migration (APP-34): eliminated Weaviate Docker service, consolidated vector storage into PostgreSQL via pgvector extension, HNSW index for cosine similarity |
 | v2.8 | 2026-03-16 | OBD threshold rationale docs (APP-33): `docs/preprocessing_rationale.md` — sources and rationale for all pre-processing thresholds |
@@ -349,14 +350,14 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 **Endpoint:** `GET /v2/obd/{session_id}/feedback`
 - Returns all feedback rows across 5 feedback tables for a session, ordered by `created_at` descending
 - Response: `FeedbackHistoryResponse` containing `session_id`, `items` (list of `FeedbackHistoryItem`), and `total` count
-- Each item includes: `id`, `session_id`, `tab_name` (one of: summary, detailed, rag, ai_diagnosis, premium_diagnosis), `rating`, `is_helpful`, `comments`, `created_at`
+- Each item includes: `id`, `session_id`, `tab_name` (one of: summary, detailed, rag, ai_diagnosis, premium_diagnosis), `rating`, `is_helpful`, `comments`, `created_at`, `diagnosis_history_id` (nullable), `diagnosis_model_name` (nullable), `diagnosis_created_at` (nullable)
 - Does NOT include snapshot columns (`retrieved_text`, `diagnosis_text`) — those are internal
 - Supports pagination via `limit` (1-200, default 50) and `offset` (>=0, default 0) query parameters
 - Returns 404 if session not found; returns 422 for invalid UUID
 
 **Endpoint:** `POST /v2/obd/{session_id}/feedback/{feedback_type}`
 - `feedback_type` is one of: `summary`, `detailed`, `rag`, `ai_diagnosis`, `premium_diagnosis`
-- Accepts expert feedback: rating (1-5), is_helpful (bool), optional comments, plus type-specific fields (see table details below)
+- Accepts expert feedback: rating (1-5), is_helpful (bool), optional comments, optional `diagnosis_history_id` (for ai_diagnosis/premium_diagnosis only — validated against session + provider), plus type-specific fields (see table details below)
 - **Multiple feedback per session allowed** (up to 10 per feedback type per session); returns 429 when the cap is reached
 - Returns 404 if session not found
 
@@ -366,8 +367,8 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 - `obd_summary_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, extra_fields (JSONB), created_at
 - `obd_detailed_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, extra_fields (JSONB), created_at
 - `obd_rag_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, retrieved_text (snapshots the RAG-retrieved text at submission time), extra_fields (JSONB), created_at
-- `obd_ai_diagnosis_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, diagnosis_text (snapshots the AI diagnosis at submission time), extra_fields (JSONB), created_at
-- `obd_premium_diagnosis_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, diagnosis_text (snapshots the premium AI diagnosis at submission time), extra_fields (JSONB), created_at
+- `obd_ai_diagnosis_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, diagnosis_text (snapshots the AI diagnosis at submission time), diagnosis_history_id (nullable FK to `diagnosis_history.id`, links feedback to specific generation), created_at
+- `obd_premium_diagnosis_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, diagnosis_text (snapshots the premium AI diagnosis at submission time), diagnosis_history_id (nullable FK to `diagnosis_history.id`, links feedback to specific generation), created_at
 ## 9) diagnostic_api design (pilot interface contract)
 ### 9.1 Goals
 •	Stable interface for internal FastAPI workflow orchestration.

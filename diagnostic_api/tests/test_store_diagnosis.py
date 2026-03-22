@@ -4,6 +4,8 @@ Covers:
   - Local diagnosis updates diagnosis_text and inserts history row
   - Premium diagnosis updates premium_diagnosis_text,
     premium_diagnosis_model, and inserts history row
+  - Returns the newly created DiagnosisHistory UUID
+  - Returns None when the session is not found
   - Rollback on commit error
   - Text truncation to _MAX_DIAGNOSIS_LENGTH
 """
@@ -63,7 +65,10 @@ class TestStoreDiagnosisLocal:
         )
 
         sid = uuid.uuid4()
-        _store_diagnosis(sid, "local", "qwen3.5:9b", "diag text")
+        result = _store_diagnosis(sid, "local", "qwen3.5:9b", "diag text")
+
+        # Returns a UUID (the history row ID)
+        assert isinstance(result, uuid.UUID)
 
         # Session field updated
         assert mock_db_session.diagnosis_text == "diag text"
@@ -176,7 +181,8 @@ class TestStoreDiagnosisEdgeCases:
     def test_noop_when_session_not_found(
         self, _mock_session_local,
     ):
-        """No error and no commit when session row is missing."""
+        """No error, no commit, and returns None when session is
+        missing."""
         _mock_session_local.query.return_value.filter \
             .return_value.first.return_value = None
 
@@ -184,10 +190,11 @@ class TestStoreDiagnosisEdgeCases:
             _store_diagnosis,
         )
 
-        _store_diagnosis(
+        result = _store_diagnosis(
             uuid.uuid4(), "local", "qwen3.5:9b", "text",
         )
 
+        assert result is None
         _mock_session_local.add.assert_not_called()
         _mock_session_local.commit.assert_not_called()
         _mock_session_local.close.assert_called_once()

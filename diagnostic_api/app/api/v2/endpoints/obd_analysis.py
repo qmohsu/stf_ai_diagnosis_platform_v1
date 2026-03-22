@@ -79,7 +79,9 @@ FeedbackType = Literal[
 
 _MAX_FEEDBACK_PER_SESSION: int = 10
 _MAX_DIAGNOSIS_LENGTH: int = 50_000
-_ALLOWED_EXTRA_FIELDS = frozenset({"diagnosis_text", "retrieved_text"})
+_ALLOWED_EXTRA_FIELDS = frozenset({
+    "diagnosis_text", "retrieved_text", "diagnosis_history_id",
+})
 _expert_client = ExpertLLMClient()
 
 
@@ -455,6 +457,26 @@ async def get_obd_session(
     if db_session.result_payload:
         result = LogSummaryV2(**db_session.result_payload)
 
+    # Look up latest diagnosis_history IDs for each provider.
+    local_hist = (
+        db.query(DiagnosisHistory.id)
+        .filter(
+            DiagnosisHistory.session_id == session_id,
+            DiagnosisHistory.provider == "local",
+        )
+        .order_by(DiagnosisHistory.created_at.desc())
+        .first()
+    )
+    premium_hist = (
+        db.query(DiagnosisHistory.id)
+        .filter(
+            DiagnosisHistory.session_id == session_id,
+            DiagnosisHistory.provider == "premium",
+        )
+        .order_by(DiagnosisHistory.created_at.desc())
+        .first()
+    )
+
     return OBDAnalysisResponse(
         premium_llm_enabled=settings.premium_llm_enabled,
         session_id=str(db_session.id),
@@ -464,6 +486,12 @@ async def get_obd_session(
         parsed_summary=db_session.parsed_summary_payload,
         diagnosis_text=db_session.diagnosis_text,
         premium_diagnosis_text=db_session.premium_diagnosis_text,
+        diagnosis_history_id=(
+            str(local_hist.id) if local_hist else None
+        ),
+        premium_diagnosis_history_id=(
+            str(premium_hist.id) if premium_hist else None
+        ),
     )
 
 
@@ -555,6 +583,79 @@ _FEEDBACK_TABLES: list[tuple[FeedbackModel, FeedbackType]] = [
     (OBDPremiumDiagnosisFeedback, "premium_diagnosis"),
 ]
 
+_FEEDBACK_TABLES_WITH_HISTORY: frozenset[FeedbackModel] = frozenset({
+    OBDAIDiagnosisFeedback, OBDPremiumDiagnosisFeedback,
+})
+
+
+def _build_feedback_items(
+    page_rows: list[
+        tuple[FeedbackType, Any, Optional[uuid.UUID]]
+    ],
+    db: Session,
+) -> list[FeedbackHistoryItem]:
+    """Batch-fetch diagnosis history metadata and build items.
+
+    For feedback rows linked to a ``DiagnosisHistory`` entry,
+    resolves ``model_name`` and ``created_at`` via a single
+    ``IN`` query, then constructs ``FeedbackHistoryItem`` objects.
+
+    Args:
+        page_rows: List of (tab_name, row, hist_id) tuples.
+        db: Database session.
+
+    Returns:
+        List of ``FeedbackHistoryItem`` Pydantic objects.
+    """
+    hist_ids = [
+        h for _, _, h in page_rows if h is not None
+    ]
+    hist_map: dict[uuid.UUID, tuple[str, datetime]] = {}
+    if hist_ids:
+        hist_rows = (
+            db.query(
+                DiagnosisHistory.id,
+                DiagnosisHistory.model_name,
+                DiagnosisHistory.created_at,
+            )
+            .filter(DiagnosisHistory.id.in_(hist_ids))
+            .all()
+        )
+        hist_map = {
+            r.id: (r.model_name, r.created_at)
+            for r in hist_rows
+        }
+
+    items: list[FeedbackHistoryItem] = []
+    for tab_name, row, hist_id in page_rows:
+        model_name = None
+        diag_created = None
+        if hist_id and hist_id in hist_map:
+            model_name, diag_created = hist_map[hist_id]
+        items.append(FeedbackHistoryItem(
+            id=str(row.id),
+            session_id=str(row.session_id),
+            tab_name=tab_name,
+            rating=row.rating,
+            is_helpful=row.is_helpful,
+            comments=row.comments,
+            created_at=(
+                row.created_at.isoformat()
+                if row.created_at
+                else ""
+            ),
+            diagnosis_history_id=(
+                str(hist_id) if hist_id else None
+            ),
+            diagnosis_model_name=model_name,
+            diagnosis_created_at=(
+                diag_created.isoformat()
+                if diag_created
+                else None
+            ),
+        ))
+    return items
+
 
 @router.get(
     "/{session_id}/feedback",
@@ -596,22 +697,35 @@ async def get_feedback_history(
     # Max 50 rows total (10 per table x 5 tables) due to
     # _MAX_FEEDBACK_PER_SESSION cap, so in-memory merge
     # is acceptable.
-    all_rows: list[tuple[FeedbackType, Any]] = []
+    #
+    # Each entry is (tab_name, row, diagnosis_history_id|None).
+    all_rows: list[
+        tuple[FeedbackType, Any, Optional[uuid.UUID]]
+    ] = []
     for model_class, tab_name in _FEEDBACK_TABLES:
+        has_history = (
+            model_class in _FEEDBACK_TABLES_WITH_HISTORY
+        )
+        columns = [
+            model_class.id,
+            model_class.session_id,
+            model_class.rating,
+            model_class.is_helpful,
+            model_class.comments,
+            model_class.created_at,
+        ]
+        if has_history:
+            columns.append(model_class.diagnosis_history_id)
         rows = (
-            db.query(
-                model_class.id,
-                model_class.session_id,
-                model_class.rating,
-                model_class.is_helpful,
-                model_class.comments,
-                model_class.created_at,
-            )
+            db.query(*columns)
             .filter(model_class.session_id == session_id)
             .all()
         )
         for row in rows:
-            all_rows.append((tab_name, row))
+            hist_id = (
+                row.diagnosis_history_id if has_history else None
+            )
+            all_rows.append((tab_name, row, hist_id))
 
     total = len(all_rows)
 
@@ -624,23 +738,7 @@ async def get_feedback_history(
     )
 
     page_rows = all_rows[offset:offset + limit]
-
-    items = [
-        FeedbackHistoryItem(
-            id=str(row.id),
-            session_id=str(row.session_id),
-            tab_name=tab_name,
-            rating=row.rating,
-            is_helpful=row.is_helpful,
-            comments=row.comments,
-            created_at=(
-                row.created_at.isoformat()
-                if row.created_at
-                else ""
-            ),
-        )
-        for tab_name, row in page_rows
-    ]
+    items = _build_feedback_items(page_rows, db)
 
     return FeedbackHistoryResponse(
         session_id=str(session_id),
@@ -841,6 +939,67 @@ def _get_owned_session(
     return db_session
 
 
+def _validate_diagnosis_history_id(
+    diagnosis_history_id: Optional[str],
+    session_id: uuid.UUID,
+    expected_provider: str,
+    db: Session,
+) -> Optional[uuid.UUID]:
+    """Validate an optional diagnosis_history_id string.
+
+    Returns the parsed UUID if the input is valid and the
+    referenced row belongs to ``session_id`` with the correct
+    ``provider``.  Returns ``None`` when the input is ``None``.
+
+    Args:
+        diagnosis_history_id: Client-supplied string (may be None).
+        session_id: The session the feedback is being submitted for.
+        expected_provider: ``"local"`` or ``"premium"``.
+        db: Database session.
+
+    Returns:
+        Validated UUID or None.
+
+    Raises:
+        HTTPException: 400 on format / ownership / provider errors.
+    """
+    if not diagnosis_history_id:
+        return None
+    try:
+        hist_uuid = uuid.UUID(diagnosis_history_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid diagnosis_history_id format.",
+        )
+    row = (
+        db.query(DiagnosisHistory)
+        .filter(DiagnosisHistory.id == hist_uuid)
+        .first()
+    )
+    if row is None:
+        raise HTTPException(
+            status_code=400,
+            detail="diagnosis_history_id not found.",
+        )
+    if row.session_id != session_id:
+        raise HTTPException(
+            status_code=400,
+            detail="diagnosis_history_id does not belong "
+                   "to this session.",
+        )
+    if row.provider != expected_provider:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"diagnosis_history_id provider mismatch: "
+                f"expected '{expected_provider}', "
+                f"got '{row.provider}'."
+            ),
+        )
+    return hist_uuid
+
+
 def _get_session_data(
     session_id: uuid.UUID,
     user: User,
@@ -870,7 +1029,7 @@ def _store_diagnosis(
     provider: str,
     model_name: str,
     text: str,
-) -> None:
+) -> Optional[uuid.UUID]:
     """Store diagnosis on the session row and append a history record.
 
     Updates the latest-diagnosis column on ``OBDAnalysisSession``
@@ -884,6 +1043,10 @@ def _store_diagnosis(
             (e.g. ``"qwen3.5:9b"``, ``"anthropic/claude-sonnet-4.6"``).
         text: Full diagnosis text (truncated to
             ``_MAX_DIAGNOSIS_LENGTH``).
+
+    Returns:
+        The UUID of the newly created ``DiagnosisHistory`` row,
+        or ``None`` if the session was not found.
     """
     text = text[:_MAX_DIAGNOSIS_LENGTH]
     field = (
@@ -892,6 +1055,7 @@ def _store_diagnosis(
         else "diagnosis_text"
     )
 
+    history_id = uuid.uuid4()
     db = SessionLocal()
     try:
         db_session = (
@@ -904,12 +1068,15 @@ def _store_diagnosis(
             if provider == "premium":
                 db_session.premium_diagnosis_model = model_name
             db.add(DiagnosisHistory(
+                id=history_id,
                 session_id=session_id,
                 provider=provider,
                 model_name=model_name,
                 diagnosis_text=text,
             ))
             db.commit()
+            return history_id
+        return None
     except Exception:
         db.rollback()
         logger.error(
@@ -938,13 +1105,17 @@ async def generate_diagnosis(
     """Run the AI diagnosis workflow with SSE streaming.
 
     SSE event types:
-      - ``token``  : incremental text chunk from the LLM
-      - ``done``   : final event; ``data`` contains the full diagnosis text
-      - ``error``  : generation failed; ``data`` contains error message
-      - ``cached`` : diagnosis was already generated; ``data`` contains full text
+      - ``token``  : incremental text chunk (string)
+      - ``done``   : final event; ``data`` is a JSON object with
+                     ``text`` (full diagnosis) and
+                     ``diagnosis_history_id`` (UUID string or null)
+      - ``error``  : generation failed; ``data`` contains error
+                     message (string)
+      - ``cached`` : diagnosis was already generated; same JSON
+                     format as ``done``
 
-    If the diagnosis was previously generated, a single ``cached`` event is
-    sent and the stream closes immediately.
+    If the diagnosis was previously generated, a single ``cached``
+    event is sent and the stream closes immediately.
     """
     # --- pre-flight checks (run before entering the stream generator) ---
     session_data = _get_session_data(session_id, current_user, db)
@@ -952,8 +1123,25 @@ async def generate_diagnosis(
     existing_diagnosis = session_data.diagnosis_text
 
     if existing_diagnosis and not force:
+        # Look up the latest history row for this session.
+        latest_hist = (
+            db.query(DiagnosisHistory.id)
+            .filter(
+                DiagnosisHistory.session_id == session_id,
+                DiagnosisHistory.provider == "local",
+            )
+            .order_by(DiagnosisHistory.created_at.desc())
+            .first()
+        )
+        cached_hist_id = (
+            str(latest_hist.id) if latest_hist else None
+        )
+
         async def _cached_stream():
-            yield _sse_event("cached", existing_diagnosis)
+            yield _sse_event("cached", {
+                "text": existing_diagnosis,
+                "diagnosis_history_id": cached_hist_id,
+            })
 
         return StreamingResponse(
             _cached_stream(),
@@ -998,12 +1186,17 @@ async def generate_diagnosis(
                 yield _sse_event("token", token)
 
             full_text = "".join(full_text_parts)
-            _store_diagnosis(
+            history_id = _store_diagnosis(
                 session_id, "local",
                 settings.llm_model, full_text,
             )
             logger.info("obd_diagnosis_generated", session_id=str(session_id))
-            yield _sse_event("done", full_text)
+            yield _sse_event("done", {
+                "text": full_text,
+                "diagnosis_history_id": (
+                    str(history_id) if history_id else None
+                ),
+            })
 
         except Exception as exc:
             logger.error("obd_diagnosis_stream_error", error=str(exc))
@@ -1016,8 +1209,14 @@ async def generate_diagnosis(
     )
 
 
-def _sse_event(event: str, data: str) -> str:
-    """Format a single SSE event frame."""
+def _sse_event(event: str, data: Union[str, dict]) -> str:
+    """Format a single SSE event frame.
+
+    Args:
+        event: SSE event type (e.g. ``"token"``, ``"done"``).
+        data: Payload — a string or a dict.  Both are
+            JSON-serialised into the ``data:`` field.
+    """
     escaped = json.dumps(data)
     return f"event: {event}\ndata: {escaped}\n\n"
 
@@ -1033,15 +1232,23 @@ async def submit_ai_diagnosis_feedback(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    # Snapshot the diagnosis text the user is rating
+    """Store expert feedback on the local AI diagnosis."""
+    # Ownership check FIRST — prevents information disclosure.
     session_data = _get_session_data(
         session_id, current_user, db,
+    )
+    # Validate optional link to a specific generation.
+    hist_id = _validate_diagnosis_history_id(
+        feedback.diagnosis_history_id, session_id, "local", db,
     )
     diag_text = session_data.diagnosis_text
     if diag_text and len(diag_text) > _MAX_DIAGNOSIS_LENGTH:
         diag_text = diag_text[:_MAX_DIAGNOSIS_LENGTH]
+    extra: dict[str, Any] = {"diagnosis_text": diag_text}
+    if hist_id is not None:
+        extra["diagnosis_history_id"] = hist_id
     return await _submit_feedback(
         session_id, feedback, current_user, db,
         OBDAIDiagnosisFeedback, "ai_diagnosis",
-        extra_fields={"diagnosis_text": diag_text},
+        extra_fields=extra,
     )
