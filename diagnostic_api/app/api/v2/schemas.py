@@ -129,6 +129,17 @@ class OBDSessionSummary(BaseModel):
     input_size_bytes: int
     created_at: str
     updated_at: str
+    has_diagnosis: bool = False
+    has_premium_diagnosis: bool = False
+
+
+class SessionListResponse(BaseModel):
+    """Paginated list of OBD analysis sessions."""
+
+    items: List[OBDSessionSummary] = Field(
+        default_factory=list,
+    )
+    total: int = 0
 
 
 class OBDFeedbackRequest(BaseModel):

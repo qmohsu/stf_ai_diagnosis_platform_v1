@@ -8,17 +8,18 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v2.9 (Weaviate → pgvector migration) |
+| **Status** | Draft v3.0 (Session dashboard) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
 | **Last updated** | 2026-03-21 |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | APP-34: Migrated vector store from Weaviate to pgvector (PostgreSQL). Eliminated Weaviate Docker service. Added `RagChunk` model with HNSW-indexed `Vector(768)` column. Rewrote retrieval and ingestion to use SQLAlchemy. See GitHub Issue #15. |
+| **New in this revision** | APP-35: Session dashboard for browsing past analysis sessions (GitHub Issue #10). New `GET /v2/obd/sessions` endpoint with paginated listing, status/vehicle_id/date filters, and `has_diagnosis`/`has_premium_diagnosis` booleans. New `/sessions` page in obd-ui. Navigation links in header, upload page, and analysis page. i18n for all 3 locales. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v3.0 | 2026-03-21 | Session dashboard (APP-35): `GET /v2/obd/sessions` paginated listing endpoint, `/sessions` page in obd-ui, navigation links, i18n (GitHub Issue #10) |
 | v2.9 | 2026-03-21 | Weaviate → pgvector migration (APP-34): eliminated Weaviate Docker service, consolidated vector storage into PostgreSQL via pgvector extension, HNSW index for cosine similarity |
 | v2.8 | 2026-03-16 | OBD threshold rationale docs (APP-33): `docs/preprocessing_rationale.md` — sources and rationale for all pre-processing thresholds |
 | v2.7 | 2026-03-16 | i18n support (APP-32): EN/zh-CN/zh-TW via react-i18next, LanguageSwitcher, 150+ keys per locale, CJK fonts |
@@ -119,7 +120,7 @@ Your materials reference multiple taxonomies (8 system categories; 17-class; 33 
 •	Vector store: pgvector (PostgreSQL extension) for SOP/manual chunks and sanitized knowledge. Chunk metadata includes `has_image` flag and `metadata_json` (JSONB) for image-containing chunks.
 •	Postgres: session persistence, diagnosis history, feedback tables, and OBD snapshot storage.
 •	OBD Agent (edge collector): a separate service/daemon (python‑OBD or equivalent) that reads ELM327 OBD‑II and posts sanitized OBDSnapshot telemetry to diagnostic_api.
-•	**OBD Expert Diagnostic Web UI (`obd-ui`)**: Next.js 15 (TypeScript, Tailwind CSS, shadcn/ui, recharts) on port 3001. Provides experts with a visual interface to submit OBD logs, view analysis results across five tabs (Summary, Detailed, RAG, AI Diagnosis, History), and submit structured feedback per tab (up to 10 submissions per tab per session). History tab displays all past AI diagnosis generations with provider badge, model name, timestamp, and expandable text. RAG tab displays retrieved context; AI Diagnosis tab contains Local LLM / Cloud LLM (OpenRouter) sub-tabs for side-by-side comparison — local streams via SSE from Ollama, premium streams via SSE from OpenRouter (opt-in, multi-model). Premium sub-tab includes a model selector dropdown populated from admin-curated list. Communicates with diagnostic_api via `/v2/obd/*` endpoints. Runs as a standalone Docker service.
+•	**OBD Expert Diagnostic Web UI (`obd-ui`)**: Next.js 15 (TypeScript, Tailwind CSS, shadcn/ui, recharts) on port 3001. Provides experts with a visual interface to submit OBD logs, view analysis results across five tabs (Summary, Detailed, RAG, AI Diagnosis, History), and submit structured feedback per tab (up to 10 submissions per tab per session). Session dashboard (`/sessions`) lists all past analysis sessions with status filter, pagination, and diagnosis indicators (`has_diagnosis`, `has_premium_diagnosis`). History tab displays all past AI diagnosis generations with provider badge, model name, timestamp, and expandable text. RAG tab displays retrieved context; AI Diagnosis tab contains Local LLM / Cloud LLM (OpenRouter) sub-tabs for side-by-side comparison — local streams via SSE from Ollama, premium streams via SSE from OpenRouter (opt-in, multi-model). Premium sub-tab includes a model selector dropdown populated from admin-curated list. Communicates with diagnostic_api via `/v2/obd/*` endpoints. Runs as a standalone Docker service.
 •	**Premium LLM client (opt-in)**: `PremiumLLMClient` using OpenAI Python SDK (`AsyncOpenAI`) pointing at **OpenRouter** (`base_url=https://openrouter.ai/api/v1`) for cloud-based diagnosis. Supports any model available on OpenRouter; admin-curated model list configured via `PREMIUM_LLM_CURATED_MODELS` env var. Feature-gated (`PREMIUM_LLM_ENABLED=false` by default). The only component that requires internet access. Uses the same prompts and RAG context as the local Ollama client.
 ### 7.2 Deployment principle: local-first and interface invariants
 Interface invariants that must not change across phases:
@@ -296,6 +297,15 @@ The v2 endpoint accepts raw OBD TSV text and returns the full structured summary
 
 These endpoints wrap the summarization pipeline with session persistence and expert feedback collection, serving the `obd-ui` frontend.
 
+**Endpoint:** `GET /v2/obd/sessions`
+- Returns a paginated list of `OBDSessionSummary` items for the authenticated user, sorted by `created_at` descending (newest first)
+- Response: `SessionListResponse` containing `items` (list of `OBDSessionSummary`) and `total` count
+- Each item includes: `session_id`, `vehicle_id`, `status`, `input_size_bytes`, `created_at`, `updated_at`, `has_diagnosis` (bool), `has_premium_diagnosis` (bool)
+- `has_diagnosis` is `True` when the session's `diagnosis_text` is non-null; `has_premium_diagnosis` is `True` when `premium_diagnosis_text` is non-null
+- Supports query filters: `status` (PENDING/COMPLETED/FAILED), `vehicle_id` (exact match), `created_after` (ISO 8601 lower bound), `created_before` (ISO 8601 upper bound)
+- Supports pagination via `limit` (1-200, default 50) and `offset` (>=0, default 0)
+- Scoped to the authenticated user (only returns sessions owned by the current JWT user)
+
 **Endpoint:** `POST /v2/obd/analyze`
 - Accepts raw OBD TSV text body (same format as `/v2/tools/summarize-log-raw`)
 - **Dedup:** computes SHA-256 hash of the input; if an existing session with the same hash is found in the DB, returns the cached result immediately (no re-analysis)
@@ -367,6 +377,7 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 ### 9.2 Required endpoints (minimum)
 •	GET /health
 •	POST /v1/rag/retrieve
+•	GET /v2/obd/sessions (auth required, paginated)
 •	POST /v2/obd/analyze (auth required)
 •	POST /v2/obd/{session_id}/diagnose (auth required, SSE streaming)
 •	POST /v2/obd/{session_id}/diagnose/premium (auth required, SSE streaming)

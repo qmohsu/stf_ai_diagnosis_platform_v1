@@ -19,6 +19,7 @@ Scope boundary for this plan (so engineers don’t drift)
 - Diagnosis history — append-only `diagnosis_history` table tracks every AI diagnosis generation (local + premium) for comparison and traceability. Session columns retain latest text for quick access; history table preserves all prior generations. History tab in the web UI (`GET /v2/obd/{session_id}/history`) displays all past generations with provider badge, model name, timestamp, and expandable text.
 - Feedback history — `GET /v2/obd/{session_id}/feedback` endpoint merges feedback from all 5 feedback tables into a unified chronological list. "Feedback" sub-tab under the History tab displays all expert feedback for the current session with tab badge, star rating, helpful indicator, comments (expandable), and timestamp. Paginated (5 per page).
 - User authentication and per-user session isolation — JWT-based authentication (username + password, bcrypt, HS256 JWT with 24h expiry). Self-registration via `POST /auth/register`. All `/v2/*` endpoints require Bearer token. Per-user session dedup via `UniqueConstraint(user_id, input_text_hash)` — same file uploaded by different users creates separate sessions. Frontend: login/register pages, `AuthProvider` React context, localStorage token, global 401 handler.
+- Session dashboard — `GET /v2/obd/sessions` endpoint returns paginated session list with filters (status, vehicle_id, date range). `/sessions` page in obd-ui displays session table with status filter, pagination, and `has_diagnosis`/`has_premium_diagnosis` indicators. Navigation links in header ("My Sessions"), upload page ("View Past Sessions"), and analysis page ("Back to Sessions"). Fully internationalized (EN / zh-CN / zh-TW). GitHub Issue #10.
 
 ### 1.2 Out of Scope (Phase 1)
 - Full Edge OBU hardware/software (real-time detection), mobile apps, fleet dashboard
@@ -41,7 +42,7 @@ Critical path dependency: DO‑01 → DO‑06 → (APP‑02B + APP‑03) → INT
 
 **Summarization Pipeline Path:** APP‑02B → APP‑13 → (APP‑14 + APP‑15) → APP‑16 → APP‑17.
 
-**OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence + feedback endpoints) → APP‑19 (frontend obd-ui) → APP‑20 (AI diagnosis SSE + RAG/AI feedback tables + DB-first session refactoring) → APP‑21 (Premium LLM comparison) → APP‑23 (OpenRouter multi-model migration + diagnosis history) → APP‑24 (Diagnosis history tab) → APP‑32 (i18n: EN / zh-CN / zh-TW).
+**OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence + feedback endpoints) → APP‑19 (frontend obd-ui) → APP‑20 (AI diagnosis SSE + RAG/AI feedback tables + DB-first session refactoring) → APP‑21 (Premium LLM comparison) → APP‑23 (OpenRouter multi-model migration + diagnosis history) → APP‑24 (Diagnosis history tab) → APP‑32 (i18n: EN / zh-CN / zh-TW) → APP‑35 (Session dashboard).
 
 **RAG Image Parsing Path:** APP‑03 → APP‑22 (PDF image parsing: OCR + vision + page render + CJK translation + image-aware chunking).
 
@@ -1653,6 +1654,58 @@ CJK characters display with proper fonts and line spacing ✓
 No layout breakage when switching languages ✓
 Zero new TypeScript errors introduced ✓
 
+#### APP‑35 — Session Dashboard for Browsing Past Analysis Sessions
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: APP‑32
+Status: **DONE** (2026-03-21)
+
+PROMPT (task ticket):
+Title: APP‑35 Add session dashboard for browsing past OBD analysis sessions
+
+Context:
+Experts accumulate many OBD analysis sessions over time but have no way to browse,
+filter, or revisit past sessions without knowing the direct URL. A session dashboard
+provides a central view of all past sessions with filtering and pagination.
+
+Task:
+1) **Backend endpoint** — `GET /v2/obd/sessions` returning paginated session list
+   with `OBDSessionSummary` items (session_id, vehicle_id, status, input_size_bytes,
+   created_at, updated_at, has_diagnosis, has_premium_diagnosis). Supports query
+   filters: `status` (PENDING/COMPLETED/FAILED), `vehicle_id` (exact match),
+   `created_after` / `created_before` (ISO 8601 timestamps), `limit` (1-200,
+   default 50), `offset` (>=0, default 0). Scoped to current authenticated user.
+2) **Pydantic schemas** — `OBDSessionSummary` and `SessionListResponse` in v2 schemas.
+3) **Frontend session page** — `/sessions` page with sortable table, status filter
+   dropdown, and pagination controls.
+4) **Navigation links** — "My Sessions" link in header, "View Past Sessions" link
+   on upload page, "Back to Sessions" breadcrumb on analysis page.
+5) **i18n** — All new UI strings added to all 3 locale files (en, zh-CN, zh-TW).
+6) **Tests** — `tests/test_session_list.py` with 9 tests covering pagination,
+   filtering, auth scoping, empty states, and boolean diagnosis flags.
+
+Deliverables:
+
+Updated `diagnostic_api/app/api/v2/endpoints/obd_analysis.py` (new list_sessions endpoint)
+Updated `diagnostic_api/app/api/v2/schemas.py` (OBDSessionSummary, SessionListResponse)
+New `diagnostic_api/tests/test_session_list.py` (9 tests)
+New `obd-ui/src/app/sessions/page.tsx` (session dashboard page)
+Updated `obd-ui/src/components/HeaderTitle.tsx` ("My Sessions" nav link)
+Updated `obd-ui/src/app/page.tsx` ("View Past Sessions" link)
+Updated `obd-ui/src/components/AnalysisLayout.tsx` ("Back to Sessions" breadcrumb)
+Updated `obd-ui/src/locales/en.json`, `zh-CN.json`, `zh-TW.json` (session dashboard keys)
+Updated `docs/dev_plan.md`, `docs/design_doc.md`
+
+Acceptance Criteria:
+
+GET /v2/obd/sessions returns paginated session list scoped to auth user ✓
+Status, vehicle_id, and date range filters work correctly ✓
+has_diagnosis and has_premium_diagnosis booleans reflect session state ✓
+/sessions page displays session table with status filter and pagination ✓
+Navigation links present in header, upload page, and analysis page ✓
+All UI strings translated to EN, zh-CN, zh-TW ✓
+9 tests passing ✓
+
 ### 3.3 Integration and Finalization Tickets
 #### INT‑01 — End-to-end demo script (“one command demo”)
 
@@ -1784,6 +1837,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-21 | v3.0 | APP-35: Session dashboard for browsing past analysis sessions (GitHub Issue #10). New `GET /v2/obd/sessions` endpoint with paginated listing, status/vehicle_id/date filters, and `has_diagnosis`/`has_premium_diagnosis` booleans. New `/sessions` page in obd-ui with table, status filter, and pagination. Navigation links added to header, upload page, and analysis page. All new strings i18n'd (EN/zh-CN/zh-TW). 9 new tests. |
 | 2026-03-21 | v2.9 | APP-34: Migrated vector store from Weaviate to pgvector (PostgreSQL). Deleted Weaviate Docker service, `client.py`, `schema.py`. Added `RagChunk` SQLAlchemy model with `Vector(768)` column + HNSW index. Rewrote `retrieve.py` (pgvector cosine distance via `run_in_executor`) and `ingest.py` (SQLAlchemy session, batch checksum dedup). Switched Postgres image to `pgvector/pgvector:0.7.4-pg15`. Alembic migration `l3m4`. Removed `weaviate-client`, added `pgvector==0.3.6`. Updated all infra, docs, tests. GitHub Issue #15. |
 | 2026-03-16 | v2.8 | APP-33: Added `docs/preprocessing_rationale.md` — documents the source and rationale for every hard-coded threshold in the OBD pre-processing pipeline (PID operating ranges, anomaly detection parameters, diagnostic clue thresholds, signal processing constants, agent config defaults). Each value traced to its source: SAE J1979/J2012 standards, library documentation, empirical tuning, or domain-expert knowledge. Values needing broader-fleet validation flagged in appendix. GitHub Issue #6. |
 | 2026-03-16 | v2.7 | APP-32: i18n support (EN / zh-CN / zh-TW) for OBD Expert Diagnostic Web UI. Integrated react-i18next + i18next-browser-languagedetector. Created 3 locale files (150+ keys each). Added LanguageSwitcher dropdown in header, I18nProvider, HeaderTitle client component. Replaced hardcoded strings in 27 files with t() calls. Added CJK fallback fonts and line-height CSS. Language preference persisted to localStorage. |

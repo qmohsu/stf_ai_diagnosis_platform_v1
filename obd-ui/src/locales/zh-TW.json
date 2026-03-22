@@ -2,7 +2,8 @@
   "header": {
     "title": "OBD 專家診斷",
     "subtitle": "STF AI 診斷平台",
-    "logout": "登出"
+    "logout": "登出",
+    "mySessions": "我的工作階段"
   },
   "language": {
     "en": "EN",
@@ -40,7 +41,8 @@
     "charCount": "{{length}} 個字元，約 {{lines}} 行",
     "analyze": "分析日誌",
     "analyzing": "分析中...",
-    "analysisFailed": "分析失敗"
+    "analysisFailed": "分析失敗",
+    "viewPastSessions": "檢視歷史工作階段"
   },
   "fileUpload": {
     "dropzone": "拖放 .txt 檔案至此處，或點擊瀏覽",
@@ -232,5 +234,34 @@
     "retry": "重試",
     "refresh": "重新整理",
     "loadFailed": "載入回饋失敗"
+  },
+  "sessions": {
+    "title": "我的工作階段",
+    "loading": "載入工作階段中...",
+    "empty": "暫無分析工作階段。上傳 OBD 日誌以建立您的第一個工作階段。",
+    "loadFailed": "載入工作階段失敗",
+    "retry": "重試",
+    "refresh": "重新整理",
+    "sessionCount_one": "{{count}} 個工作階段",
+    "sessionCount_other": "{{count}} 個工作階段",
+    "filterStatus": "狀態",
+    "filterAll": "全部",
+    "completed": "已完成",
+    "pending": "處理中",
+    "failed": "失敗",
+    "vehicleId": "車輛",
+    "inputSize": "輸入大小",
+    "createdAt": "建立時間",
+    "diagnosis": "診斷",
+    "premiumDiagnosis": "進階",
+    "yes": "是",
+    "no": "否",
+    "viewSession": "檢視",
+    "previous": "上一頁",
+    "pageOf": "第 {{current}} 頁 / 共 {{total}} 頁",
+    "next": "下一頁",
+    "backToSessions": "返回工作階段列表",
+    "backToUpload": "返回上傳",
+    "noVehicle": "N/A"
   }
 }

@@ -2,7 +2,8 @@
   "header": {
     "title": "OBD Expert Diagnostic",
     "subtitle": "STF AI Diagnosis Platform",
-    "logout": "Logout"
+    "logout": "Logout",
+    "mySessions": "My Sessions"
   },
   "language": {
     "en": "EN",
@@ -40,7 +41,8 @@
     "charCount": "{{length}} characters, ~{{lines}} lines",
     "analyze": "Analyze Log",
     "analyzing": "Analyzing...",
-    "analysisFailed": "Analysis failed"
+    "analysisFailed": "Analysis failed",
+    "viewPastSessions": "View Past Sessions"
   },
   "fileUpload": {
     "dropzone": "Drag and drop a .txt file here, or click to browse",
@@ -232,5 +234,34 @@
     "retry": "Retry",
     "refresh": "Refresh",
     "loadFailed": "Failed to load feedback"
+  },
+  "sessions": {
+    "title": "My Sessions",
+    "loading": "Loading sessions...",
+    "empty": "No analysis sessions yet. Upload an OBD log to create your first session.",
+    "loadFailed": "Failed to load sessions",
+    "retry": "Retry",
+    "refresh": "Refresh",
+    "sessionCount_one": "{{count}} session",
+    "sessionCount_other": "{{count}} sessions",
+    "filterStatus": "Status",
+    "filterAll": "All",
+    "completed": "Completed",
+    "pending": "Pending",
+    "failed": "Failed",
+    "vehicleId": "Vehicle",
+    "inputSize": "Input Size",
+    "createdAt": "Created",
+    "diagnosis": "Diagnosis",
+    "premiumDiagnosis": "Premium",
+    "yes": "Yes",
+    "no": "No",
+    "viewSession": "View",
+    "previous": "Previous",
+    "pageOf": "Page {{current}} of {{total}}",
+    "next": "Next",
+    "backToSessions": "Back to Sessions",
+    "backToUpload": "Back to Upload",
+    "noVehicle": "N/A"
   }
 }

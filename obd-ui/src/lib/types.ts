@@ -146,3 +146,19 @@ export interface FeedbackHistoryResponse {
   items: FeedbackHistoryItem[];
   total: number;
 }
+
+export interface SessionListItem {
+  session_id: string;
+  vehicle_id: string | null;
+  status: "PENDING" | "COMPLETED" | "FAILED";
+  input_size_bytes: number;
+  created_at: string;
+  updated_at: string;
+  has_diagnosis: boolean;
+  has_premium_diagnosis: boolean;
+}
+
+export interface SessionListResponse {
+  items: SessionListItem[];
+  total: number;
+}

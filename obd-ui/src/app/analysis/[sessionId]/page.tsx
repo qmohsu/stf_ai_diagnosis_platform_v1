@@ -2,11 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
+import { ArrowLeft } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AnalysisLayout } from "@/components/AnalysisLayout";
 import { getAnalysisSession } from "@/lib/api";
 import type { OBDAnalysisResponse } from "@/lib/types";
+
+function BackToSessions() {
+  const { t } = useTranslation();
+  return (
+    <Link
+      href="/sessions"
+      className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+    >
+      <ArrowLeft className="h-4 w-4" />
+      {t("sessions.backToSessions")}
+    </Link>
+  );
+}
 
 export default function AnalysisPage() {
   const params = useParams();
@@ -31,34 +46,55 @@ export default function AnalysisPage() {
 
   if (error) {
     return (
-      <Alert variant="destructive" className="mx-auto max-w-2xl mt-8">
-        <AlertTitle>{t("analysis.error")}</AlertTitle>
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
+      <div className="mx-auto max-w-2xl mt-8 space-y-4">
+        <BackToSessions />
+        <Alert variant="destructive">
+          <AlertTitle>{t("analysis.error")}</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   if (!data || data.status === "FAILED") {
     return (
-      <Alert variant="destructive" className="mx-auto max-w-2xl mt-8">
-        <AlertTitle>{t("analysis.failed")}</AlertTitle>
-        <AlertDescription>
-          {data?.error_message || t("analysis.failedDescription")}
-        </AlertDescription>
-      </Alert>
+      <div className="mx-auto max-w-2xl mt-8 space-y-4">
+        <BackToSessions />
+        <Alert variant="destructive">
+          <AlertTitle>{t("analysis.failed")}</AlertTitle>
+          <AlertDescription>
+            {data?.error_message || t("analysis.failedDescription")}
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   if (!data.result) {
     return (
-      <Alert className="mx-auto max-w-2xl mt-8">
-        <AlertTitle>{t("analysis.processing")}</AlertTitle>
-        <AlertDescription>{t("analysis.processingDescription")}</AlertDescription>
-      </Alert>
+      <div className="mx-auto max-w-2xl mt-8 space-y-4">
+        <BackToSessions />
+        <Alert>
+          <AlertTitle>{t("analysis.processing")}</AlertTitle>
+          <AlertDescription>{t("analysis.processingDescription")}</AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
-  return <AnalysisLayout sessionId={sessionId} data={data.result} parsedSummary={data.parsed_summary} diagnosisText={data.diagnosis_text} premiumDiagnosisText={data.premium_diagnosis_text} premiumLlmEnabled={data.premium_llm_enabled} />;
+  return (
+    <div className="space-y-4">
+      <BackToSessions />
+      <AnalysisLayout
+        sessionId={sessionId}
+        data={data.result}
+        parsedSummary={data.parsed_summary}
+        diagnosisText={data.diagnosis_text}
+        premiumDiagnosisText={data.premium_diagnosis_text}
+        premiumLlmEnabled={data.premium_llm_enabled}
+      />
+    </div>
+  );
 }
 
 function AnalysisLoadingSkeleton() {

@@ -1,5 +1,6 @@
 """OBD Analysis endpoints — analyze, retrieve, and provide feedback.
 
+GET  /v2/obd/sessions                           — list user sessions
 POST /v2/obd/analyze                             — accepts raw TSV body
 GET  /v2/obd/{session_id}                       — retrieve session
 GET  /v2/obd/{session_id}/history               — diagnosis history
@@ -49,6 +50,8 @@ from app.api.v2.schemas import (
     LogSummaryV2,
     OBDAnalysisResponse,
     OBDFeedbackRequest,
+    OBDSessionSummary,
+    SessionListResponse,
 )
 from app.expert.client import ExpertLLMClient
 from app.config import settings
@@ -87,7 +90,195 @@ class SessionData(NamedTuple):
 
 logger = structlog.get_logger()
 
+def _build_session_list_query(
+    db: Session,
+    user_id: uuid.UUID,
+    status_filter: Optional[str],
+    vehicle_id: Optional[str],
+    created_after: Optional[str],
+    created_before: Optional[str],
+):
+    """Build a filtered query for session listing.
+
+    Args:
+        db: Database session.
+        user_id: Authenticated user UUID.
+        status_filter: Optional status filter.
+        vehicle_id: Optional vehicle ID filter.
+        created_after: ISO timestamp lower bound.
+        created_before: ISO timestamp upper bound.
+
+    Returns:
+        SQLAlchemy query filtered by the given params.
+
+    Raises:
+        HTTPException: 422 if date filters are invalid.
+    """
+    base_query = db.query(OBDAnalysisSession).filter(
+        OBDAnalysisSession.user_id == user_id,
+    )
+
+    if status_filter is not None:
+        base_query = base_query.filter(
+            OBDAnalysisSession.status == status_filter,
+        )
+    if vehicle_id is not None:
+        base_query = base_query.filter(
+            OBDAnalysisSession.vehicle_id == vehicle_id,
+        )
+    if created_after is not None:
+        try:
+            dt_after = datetime.fromisoformat(
+                created_after,
+            )
+        except ValueError:
+            raise HTTPException(
+                status_code=(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY
+                ),
+                detail=(
+                    "Invalid created_after timestamp. "
+                    "Use ISO 8601 format."
+                ),
+            )
+        base_query = base_query.filter(
+            OBDAnalysisSession.created_at >= dt_after,
+        )
+    if created_before is not None:
+        try:
+            dt_before = datetime.fromisoformat(
+                created_before,
+            )
+        except ValueError:
+            raise HTTPException(
+                status_code=(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY
+                ),
+                detail=(
+                    "Invalid created_before timestamp. "
+                    "Use ISO 8601 format."
+                ),
+            )
+        base_query = base_query.filter(
+            OBDAnalysisSession.created_at <= dt_before,
+        )
+
+    return base_query
+
+
 router = APIRouter()
+
+
+@router.get(
+    "/sessions",
+    response_model=SessionListResponse,
+    status_code=status.HTTP_200_OK,
+    summary="List current user's OBD analysis sessions",
+)
+async def list_sessions(
+    status_filter: Optional[
+        Literal["PENDING", "COMPLETED", "FAILED"]
+    ] = Query(
+        default=None,
+        alias="status",
+        description=(
+            "Filter by session status: "
+            "'PENDING', 'COMPLETED', or 'FAILED'."
+        ),
+    ),
+    vehicle_id: Optional[str] = Query(
+        default=None,
+        description="Filter by vehicle ID (exact match).",
+    ),
+    created_after: Optional[str] = Query(
+        default=None,
+        description=(
+            "Filter sessions created on or after "
+            "this ISO 8601 timestamp."
+        ),
+    ),
+    created_before: Optional[str] = Query(
+        default=None,
+        description=(
+            "Filter sessions created on or before "
+            "this ISO 8601 timestamp."
+        ),
+    ),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SessionListResponse:
+    """List OBD analysis sessions for the current user.
+
+    Returns a paginated list of session metadata sorted by
+    created_at descending (newest first).  Supports optional
+    filters by status, vehicle_id, and date range.
+
+    Args:
+        status_filter: Optional status filter.
+        vehicle_id: Optional vehicle ID filter.
+        created_after: ISO timestamp lower bound.
+        created_before: ISO timestamp upper bound.
+        limit: Maximum items per page (1-200).
+        offset: Number of items to skip.
+        current_user: Authenticated user from JWT.
+        db: Database session dependency.
+
+    Returns:
+        SessionListResponse with items and total count.
+    """
+    base_query = _build_session_list_query(
+        db, current_user.id,
+        status_filter, vehicle_id,
+        created_after, created_before,
+    )
+
+    total = base_query.count()
+
+    rows = (
+        base_query
+        .order_by(OBDAnalysisSession.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
+
+    items = [
+        OBDSessionSummary(
+            session_id=str(row.id),
+            vehicle_id=row.vehicle_id,
+            status=row.status,
+            input_size_bytes=row.input_size_bytes or 0,
+            created_at=(
+                row.created_at.isoformat()
+                if row.created_at
+                else ""
+            ),
+            updated_at=(
+                row.updated_at.isoformat()
+                if row.updated_at
+                else ""
+            ),
+            has_diagnosis=(
+                row.diagnosis_text is not None
+            ),
+            has_premium_diagnosis=(
+                row.premium_diagnosis_text is not None
+            ),
+        )
+        for row in rows
+    ]
+
+    logger.info(
+        "sessions_listed",
+        user_id=str(current_user.id),
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+    return SessionListResponse(items=items, total=total)
 
 
 @router.post(

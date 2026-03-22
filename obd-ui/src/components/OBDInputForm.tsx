@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,10 +11,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { FileDropZone } from "@/components/FileDropZone";
 import { analyzeOBDLog } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
 
 export function OBDInputForm() {
   const router = useRouter();
   const { t } = useTranslation();
+  const { username, isLoading: authLoading } = useAuth();
   const [text, setText] = useState("");
   const [mode, setMode] = useState<"paste" | "file">("paste");
   const [loading, setLoading] = useState(false);
@@ -97,6 +100,17 @@ export function OBDInputForm() {
             t("input.analyze")
           )}
         </Button>
+
+        {!authLoading && username && (
+          <div className="text-center">
+            <Link
+              href="/sessions"
+              className="text-sm text-muted-foreground hover:text-primary hover:underline"
+            >
+              {t("input.viewPastSessions")}
+            </Link>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

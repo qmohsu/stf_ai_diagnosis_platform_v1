@@ -5,6 +5,7 @@ import type {
   OBDAnalysisResponse,
   OBDFeedbackRequest,
   RetrievalResult,
+  SessionListResponse,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -86,6 +87,31 @@ export async function getAnalysisSession(sessionId: string): Promise<OBDAnalysis
   const res = await fetch(`${API_URL}/v2/obd/${sessionId}`, {
     headers: getAuthHeaders(),
   });
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * List the current user's OBD analysis sessions (paginated).
+ */
+export async function listSessions(
+  limit?: number,
+  offset?: number,
+  status?: string,
+): Promise<SessionListResponse> {
+  const params = new URLSearchParams();
+  if (limit !== undefined) params.set("limit", String(limit));
+  if (offset !== undefined) params.set("offset", String(offset));
+  if (status) params.set("status", status);
+  const qs = params.toString();
+  const res = await fetch(
+    `${API_URL}/v2/obd/sessions${qs ? `?${qs}` : ""}`,
+    { headers: getAuthHeaders() },
+  );
   handle401(res);
   if (!res.ok) {
     const detail = await res.json().catch(() => ({ detail: res.statusText }));

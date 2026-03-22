@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "./AuthProvider";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -10,6 +11,14 @@ export function HeaderAuth() {
 
   return (
     <div className="ml-auto flex items-center gap-3">
+      {!isLoading && username && (
+        <Link
+          href="/sessions"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          {t("header.mySessions")}
+        </Link>
+      )}
       <LanguageSwitcher />
       {!isLoading && username && (
         <>
