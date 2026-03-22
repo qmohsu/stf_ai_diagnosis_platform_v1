@@ -37,6 +37,7 @@ services:
   # Ollama - GPU passthrough via direct device mapping
   # --------------------------------------------------------------------------
   ollama:
+    runtime: nvidia
     network_mode: host
     networks: !reset []
     ports: !reset []
