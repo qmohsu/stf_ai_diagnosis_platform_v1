@@ -8,17 +8,18 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v3.1 (Feedback-diagnosis link) |
+| **Status** | Draft v3.2 (PolyU server deployment) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-03-21 |
+| **Last updated** | 2026-03-21 (v3.2) |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | APP-36: Link AI Diagnosis feedback to specific diagnosis generation (GitHub Issue #9). Added `diagnosis_history_id` FK on feedback tables. SSE events emit generation ID. Feedback history shows model name and generation timestamp. |
+| **New in this revision** | DO-07: PolyU GPU server deployment (GitHub Issue #21). Podman compose override with CDI GPU passthrough. Nginx reverse proxy as sole external gateway. Automated setup and deploy scripts. Comprehensive deployment guide. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v3.2 | 2026-03-21 | PolyU GPU server deployment (DO-07): Podman compose override (`docker-compose.polyu.yml`) with CDI GPU passthrough for Ollama. Nginx reverse proxy (`nginx/nginx.conf`) as sole external gateway on port 80, proxying frontend (`/`) and API (`/v1/`, `/v2/`, `/auth/`, `/health`, `/docs`) with SSE streaming support. Server-specific env template (`.env.polyu.example`). Automated setup (`polyu-setup.sh`) and deploy (`polyu-deploy.sh`) scripts. Comprehensive deployment guide with backup, monitoring, troubleshooting, and multi-user GPU etiquette (GitHub Issue #21) |
 | v3.1 | 2026-03-21 | Feedback-diagnosis link (APP-36): `diagnosis_history_id` FK on AI/premium feedback tables, SSE `done`/`cached` emit generation ID, feedback retrieval returns model name + generation timestamp, frontend threads history ID through components (GitHub Issue #9) |
 | v3.0 | 2026-03-21 | Session dashboard (APP-35): `GET /v2/obd/sessions` paginated listing endpoint, `/sessions` page in obd-ui, navigation links, i18n (GitHub Issue #10) |
 | v2.9 | 2026-03-21 | Weaviate → pgvector migration (APP-34): eliminated Weaviate Docker service, consolidated vector storage into PostgreSQL via pgvector extension, HNSW index for cosine similarity |
@@ -134,6 +135,8 @@ Interface invariants that must not change across phases:
 The premium LLM client is the sole exception to the local-only deployment rule. It is disabled by default (`PREMIUM_LLM_ENABLED=false`) and requires an explicit `PREMIUM_LLM_API_KEY` (OpenRouter API key). When enabled, the diagnostic_api container must have outbound internet access to reach the OpenRouter API (`PREMIUM_LLM_BASE_URL`, default `https://openrouter.ai/api/v1`). All other services remain strictly local.
 ### 7.3 Network flow (reference)
 The deployment consists of the Next.js web UI (`obd-ui`, port 3001), the FastAPI backend (`diagnostic_api`), Ollama (model server), and Postgres with pgvector (database + vector store). All services communicate over a dedicated internal Docker network. Only the Nginx reverse proxy handles ingress; backend services are not exposed to the LAN. The outbound allow-list should be enforced at the network layer to restrict calls to internal services only.
+
+**PolyU server deployment (Podman):** The PolyU HK GPU server (2x RTX 6000 Ada, 92 GB VRAM) uses Podman instead of Docker for rootless multi-user access. GPU passthrough uses CDI (Container Device Interface) via `devices: ["nvidia.com/gpu=all"]` in the Podman compose override (`infra/docker-compose.polyu.yml`). Nginx is deployed as a container service on port 80, proxying all external traffic to the frontend and API. SSE streaming endpoints have `proxy_buffering off` for real-time token delivery. See `docs/deployment_polyu.md` for full setup instructions.
 ## 8) Data architecture for the expert model pipeline
 ### 8.1 Data boundaries: what the LLM can and cannot see
 Allowed in LLM context (summaries only):

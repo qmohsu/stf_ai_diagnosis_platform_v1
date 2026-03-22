@@ -44,6 +44,8 @@ Critical path dependency: DO‑01 → DO‑06 → (APP‑02B + APP‑03) → INT
 
 **OBD Expert UI Path:** APP‑17 → APP‑18 (backend persistence + feedback endpoints) → APP‑19 (frontend obd-ui) → APP‑20 (AI diagnosis SSE + RAG/AI feedback tables + DB-first session refactoring) → APP‑21 (Premium LLM comparison) → APP‑23 (OpenRouter multi-model migration + diagnosis history) → APP‑24 (Diagnosis history tab) → APP‑32 (i18n: EN / zh-CN / zh-TW) → APP‑35 (Session dashboard) → APP‑36 (Link feedback to diagnosis generation).
 
+**Deployment Path:** DO‑01 → DO‑07 (PolyU GPU server deployment: Podman + CDI + Nginx).
+
 **RAG Image Parsing Path:** APP‑03 → APP‑22 (PDF image parsing: OCR + vision + page render + CJK translation + image-aware chunking).
 
 ### 2.3 Definition of Done (Applies to Every Ticket)
@@ -369,6 +371,37 @@ Update infra/scripts/smoke_test.sh to use the fixture when present
 Acceptance Criteria:
 
 Running the script returns 200 and the response includes a snapshot_id.
+
+#### DO‑07 — PolyU GPU server deployment (Podman + CDI + Nginx)
+
+Owner: DevOps / Environment Engineer
+Depends on: DO‑01
+Status: **DONE** (2026-03-21, GitHub Issue #21)
+
+PROMPT (task ticket):
+Title: DO‑07 Deploy platform to PolyU shared GPU server (Podman + 2x RTX 6000 Ada)
+
+Context:
+The PolyU HK GPU server uses Podman (not Docker) for rootless multi-user access.
+GPU passthrough requires CDI (Container Device Interface) instead of Docker's
+`runtime: nvidia`. An Nginx reverse proxy is needed as the sole external ingress
+gateway for campus network access.
+
+Deliverables:
+- `infra/docker-compose.polyu.yml` — Podman override (CDI GPU + Nginx gateway)
+- `infra/nginx/nginx.conf` + `proxy_params_api.conf` — Reverse proxy config
+- `infra/.env.polyu.example` — Server-specific env template
+- `infra/scripts/polyu-setup.sh` — First-time automated setup
+- `infra/scripts/polyu-deploy.sh` — Update/redeploy script
+- `docs/deployment_polyu.md` — Comprehensive deployment guide
+
+Acceptance Criteria:
+Podman compose override correctly adds CDI GPU device to Ollama container ✓
+Nginx proxies frontend and API behind a single port (80) ✓
+SSE streaming works through Nginx (proxy_buffering off) ✓
+Setup script validates prerequisites and automates first-time deployment ✓
+Deploy script pulls latest code and rebuilds with health checks ✓
+Deployment guide covers setup, update, backup, monitoring, troubleshooting ✓
 
 ### 3.2 Full-Stack AI Application Engineer Tickets
 #### APP‑01 — ~~API skeleton with OpenAPI + strict request/response schemas~~ REMOVED — R&D prototype
@@ -1837,6 +1870,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-21 | v3.2 | DO-07: PolyU GPU server deployment (GitHub Issue #21). Podman compose override with CDI GPU passthrough for Ollama. Nginx reverse proxy as sole external gateway (port 80), proxying frontend and API with SSE streaming support. Server-specific `.env.polyu.example`. Automated setup script (`polyu-setup.sh`) validates prerequisites, configures env, builds services, pulls Ollama models, runs health checks. Deploy script (`polyu-deploy.sh`) for code updates. Comprehensive deployment guide covering setup, backup, monitoring, troubleshooting, and multi-user GPU etiquette. |
 | 2026-03-21 | v3.1 | APP-36: Link feedback to specific diagnosis generation (GitHub Issue #9). Added nullable `diagnosis_history_id` FK on `obd_ai_diagnosis_feedback` and `obd_premium_diagnosis_feedback` tables. Alembic migration `m4n5`. `_store_diagnosis` returns history UUID. SSE `done`/`cached` events emit `{text, diagnosis_history_id}` dict payload. Validation helper `_validate_diagnosis_history_id` (session ownership + provider match). Feedback retrieval endpoint returns `diagnosis_model_name` and `diagnosis_created_at` via batch join. Frontend threads `diagnosisHistoryId` through AIDiagnosisView → AnalysisLayout → FeedbackForm. FeedbackHistoryView displays model name and generation timestamp. 8 new tests. |
 | 2026-03-21 | v3.0 | APP-35: Session dashboard for browsing past analysis sessions (GitHub Issue #10). New `GET /v2/obd/sessions` endpoint with paginated listing, status/vehicle_id/date filters, and `has_diagnosis`/`has_premium_diagnosis` booleans. New `/sessions` page in obd-ui with table, status filter, and pagination. Navigation links added to header, upload page, and analysis page. All new strings i18n'd (EN/zh-CN/zh-TW). 9 new tests. |
 | 2026-03-21 | v2.9 | APP-34: Migrated vector store from Weaviate to pgvector (PostgreSQL). Deleted Weaviate Docker service, `client.py`, `schema.py`. Added `RagChunk` SQLAlchemy model with `Vector(768)` column + HNSW index. Rewrote `retrieve.py` (pgvector cosine distance via `run_in_executor`) and `ingest.py` (SQLAlchemy session, batch checksum dedup). Switched Postgres image to `pgvector/pgvector:0.7.4-pg15`. Alembic migration `l3m4`. Removed `weaviate-client`, added `pgvector==0.3.6`. Updated all infra, docs, tests. GitHub Issue #15. |
