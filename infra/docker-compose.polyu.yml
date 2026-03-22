@@ -25,6 +25,9 @@ services:
   # deploy.resources.reservations section is Docker-specific and is silently
   # ignored by podman-compose.
   ollama:
+    # Neutralize the base file's deploy.resources (Docker-specific GPU syntax
+    # that podman-compose 1.x mistakenly converts to CDI devices).
+    deploy: {}
     devices:
       - /dev/nvidia0:/dev/nvidia0
       - /dev/nvidia1:/dev/nvidia1
