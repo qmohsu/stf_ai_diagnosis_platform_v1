@@ -1,5 +1,5 @@
 # ============================================================================
-# STF AI Diagnosis Platform - PolyU Server Override (Podman + CDI GPU)
+# STF AI Diagnosis Platform - PolyU Server Override (Podman + GPU)
 # Author: Li-Ta Hsu
 # Date: March 2026
 # ============================================================================
@@ -7,10 +7,10 @@
 #   podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d --build
 #
 # This override file adapts the base docker-compose.yml for the PolyU GPU
-# server which runs Podman (not Docker) with NVIDIA CDI for GPU passthrough.
+# server which runs Podman (not Docker) with NVIDIA GPU device passthrough.
 #
 # Changes from base:
-#   - Ollama: CDI GPU device mapping (replaces Docker deploy.resources)
+#   - Ollama: direct device passthrough (Podman 3.x compatible)
 #   - Nginx: reverse proxy as sole external ingress on port 80
 #   - obd-ui: NEXT_PUBLIC_API_URL set to empty (same-origin via Nginx)
 #   - All app ports bound to 127.0.0.1 (only Nginx exposed externally)
@@ -18,15 +18,24 @@
 
 services:
   # --------------------------------------------------------------------------
-  # Ollama - Add CDI GPU passthrough for Podman
+  # Ollama - GPU passthrough via direct device mapping
   # --------------------------------------------------------------------------
-  # The base file's deploy.resources.reservations section is Docker-specific
-  # and is silently ignored by podman-compose.  CDI device mapping below
-  # grants the container access to all NVIDIA GPUs.
-  # Prerequisite: sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+  # Podman 3.4 does not support CDI (nvidia.com/gpu=all).  Instead, pass
+  # through the NVIDIA device files directly.  The base file's
+  # deploy.resources.reservations section is Docker-specific and is silently
+  # ignored by podman-compose.
   ollama:
     devices:
-      - nvidia.com/gpu=all
+      - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidia1:/dev/nvidia1
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia-uvm:/dev/nvidia-uvm
+      - /dev/nvidia-uvm-tools:/dev/nvidia-uvm-tools
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_FLASH_ATTENTION: "true"
 
   # --------------------------------------------------------------------------
   # obd-ui - Override API URL for Nginx same-origin proxying
@@ -57,10 +66,8 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/proxy_params_api.conf:/etc/nginx/proxy_params_api.conf:ro
     depends_on:
-      obd-ui:
-        condition: service_healthy
-      diagnostic-api:
-        condition: service_healthy
+      - obd-ui
+      - diagnostic-api
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/health"]
       interval: 10s
