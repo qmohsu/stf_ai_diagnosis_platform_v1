@@ -22,7 +22,7 @@
 <body>
 
     <h1>STF AI Diagnosis Platform - Data Schema</h1>
-    <p>This document details the data models used in the application layer, covering both the relational database (PostgreSQL) and the vector database (Weaviate).</p>
+    <p>This document details the data models used in the application layer, covering the relational database (PostgreSQL with pgvector extension for vector storage).</p>
 
     <h2>1. Relational Database (PostgreSQL)</h2>
     <div class="section-box">
@@ -162,10 +162,10 @@
         </table>
     </div>
 
-    <h2>2. Vector Database (Weaviate)</h2>
+    <h2>2. Vector Store (pgvector — PostgreSQL table)</h2>
     <div class="section-box">
-        <h3>2.1. KnowledgeChunk</h3>
-        <p><strong>Purpose:</strong> Stores chunked text from manuals and maintenance logs for Semantic Search (RAG).</p>
+        <h3>2.1. rag_chunks</h3>
+        <p><strong>Purpose:</strong> Stores chunked text from manuals and maintenance logs with 768-dim embeddings for semantic search (RAG). Uses pgvector HNSW index for cosine similarity.</p>
         <table>
             <thead>
                 <tr>

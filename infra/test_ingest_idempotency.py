@@ -1,7 +1,7 @@
 """Tests for ingestion idempotency.
 
 The checksum tests are pure unit tests.  The mocked integration test
-verifies the skip-if-exists logic without a live Weaviate instance.
+verifies the skip-if-exists logic without a live PostgreSQL instance.
 
     pytest infra/test_ingest_idempotency.py -v
 """
@@ -13,9 +13,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "diagnostic_api"))
+sys.path.insert(
+    0,
+    str(Path(__file__).resolve().parent.parent / "diagnostic_api"),
+)
 
-from app.rag.ingest import _checksum, _chunk_exists, process_file
+from app.rag.ingest import _checksum, process_file
 from app.rag.chunker import Chunker
 
 
@@ -24,6 +27,8 @@ from app.rag.chunker import Chunker
 # ---------------------------------------------------------------------------
 
 class TestChecksum:
+    """Verify SHA-256 checksum determinism."""
+
     def test_deterministic(self):
         """Same inputs must always produce the same checksum."""
         c1 = _checksum("doc1", "Section A", "hello world")
@@ -31,39 +36,38 @@ class TestChecksum:
         assert c1 == c2
 
     def test_different_text_different_checksum(self):
+        """Different chunk text must produce different checksums."""
         c1 = _checksum("doc1", "Section A", "text one")
         c2 = _checksum("doc1", "Section A", "text two")
         assert c1 != c2
 
     def test_different_section_different_checksum(self):
+        """Different section titles must produce different checksums."""
         c1 = _checksum("doc1", "Section A", "same text")
         c2 = _checksum("doc1", "Section B", "same text")
         assert c1 != c2
 
     def test_sha256_length(self):
+        """Checksum must be a 64-character SHA-256 hex digest."""
         c = _checksum("d", "s", "t")
-        assert len(c) == 64  # SHA-256 hex digest is 64 chars
+        assert len(c) == 64  # SHA-256 hex digest
 
 
 # ---------------------------------------------------------------------------
-# Idempotency integration test (mocked Weaviate)
+# Idempotency integration test (mocked PostgreSQL)
 # ---------------------------------------------------------------------------
-
-class _FakeQueryResult:
-    """Mimics Weaviate query result with an objects list."""
-    def __init__(self, objects=None):
-        self.objects = objects or []
-
 
 class TestIdempotencyMocked:
-    """Test idempotency logic without a real Weaviate instance."""
+    """Test idempotency logic without a real database."""
 
     @pytest.fixture
     def tmp_doc(self, tmp_path):
         """Create a small temporary document."""
         p = tmp_path / "sample_manual.txt"
         p.write_text(
-            "# STF-850 Manual\n\n## Engine\n\nP0171 lean condition info.\n",
+            "# STF-850 Manual\n\n"
+            "## Engine\n\n"
+            "P0171 lean condition info.\n",
             encoding="utf-8",
         )
         return p
@@ -72,29 +76,23 @@ class TestIdempotencyMocked:
         """Second ingestion of the same file should skip all chunks."""
         inserted_checksums: set = set()
 
-        # --- Build mock collection (sync methods) ---
-        mock_query = MagicMock()
-        mock_data = MagicMock()
-        mock_collection = MagicMock()
-        mock_collection.query = mock_query
-        mock_collection.data = mock_data
+        # --- Build mock DB session ---
+        mock_db = MagicMock()
 
-        # First run: fetch_objects returns empty (not found) -> inserts
-        mock_query.fetch_objects.return_value = _FakeQueryResult([])
+        # First run: no existing checksums -> all inserts
+        mock_db.query.return_value.filter.return_value \
+            .all.return_value = []
 
-        def fake_insert(properties, vector):
-            inserted_checksums.add(properties["checksum"])
+        def fake_add(row):
+            inserted_checksums.add(row.checksum)
 
-        mock_data.insert.side_effect = fake_insert
-
-        # --- Build mock client (sync) ---
-        mock_client = MagicMock()
-        mock_client.collections.get.return_value = mock_collection
+        mock_db.add.side_effect = fake_add
+        mock_db.commit.return_value = None
 
         dummy_vector = [0.1] * 768
         chunker = Chunker(chunk_size=500, overlap=50)
 
-        # Patch embedding_service.get_embedding as a coroutine
+        # Patch embedding_service.get_embedding
         async def fake_embedding(text):
             return dummy_vector
 
@@ -104,16 +102,29 @@ class TestIdempotencyMocked:
         ):
             # --- First run: should insert ---
             stats1 = asyncio.run(
-                process_file(tmp_doc, mock_client, chunker)
+                process_file(tmp_doc, mock_db, chunker)
             )
-            assert stats1["inserted"] >= 1, f"Expected inserts, got {stats1}"
+            assert stats1["inserted"] >= 1, (
+                f"Expected inserts, got {stats1}"
+            )
 
-            # --- Second run: make fetch_objects return "found" ---
-            mock_query.fetch_objects.return_value = _FakeQueryResult([{"x": 1}])
-            mock_data.insert.reset_mock()
+            # --- Second run: existing checksums found ---
+            existing_rows = [
+                (cs,) for cs in inserted_checksums
+            ]
+            mock_db.query.return_value.filter.return_value \
+                .all.return_value = existing_rows
+            mock_db.add.reset_mock()
 
             stats2 = asyncio.run(
-                process_file(tmp_doc, mock_client, chunker)
+                process_file(tmp_doc, mock_db, chunker)
             )
-            assert stats2["skipped"] >= 1, f"Expected skips, got {stats2}"
-            assert stats2["inserted"] == 0, f"Expected 0 inserts, got {stats2}"
+            assert stats2["skipped"] >= 1, (
+                f"Expected skips, got {stats2}"
+            )
+            assert stats2["inserted"] == 0, (
+                f"Expected 0 inserts, got {stats2}"
+            )
+            assert mock_db.add.call_count == 0, (
+                "Expected no db.add() calls on second run"
+            )

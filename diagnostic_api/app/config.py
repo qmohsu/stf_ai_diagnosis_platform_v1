@@ -5,7 +5,6 @@ Date: January 2026
 """
 
 import os
-from typing import Optional
 
 from pydantic_settings import BaseSettings
 
@@ -82,10 +81,6 @@ class Settings(BaseSettings):
             for m in self.premium_llm_curated_models.split(",")
             if m.strip()
         ]
-
-    # Weaviate Configuration
-    weaviate_url: str = os.getenv("WEAVIATE_URL", "http://weaviate:8080")
-    weaviate_api_key: Optional[str] = os.getenv("WEAVIATE_API_KEY")
 
     # Logging Configuration
     log_level: str = os.getenv("LOG_LEVEL", "INFO")

@@ -26,9 +26,8 @@
 This guide provides step-by-step instructions to deploy the STF AI Diagnosis Platform on a local laptop for Phase 1 pilot testing. The platform includes:
 
 - **Ollama** (local LLM inference)
-- **Weaviate** (vector store for RAG)
 - **Diagnostic API** (FastAPI backend)
-- **Postgres** (database)
+- **PostgreSQL + pgvector** (database and vector store for RAG)
 
 All services run locally with **no external API calls** and are bound to `127.0.0.1` for security.
 
@@ -163,7 +162,6 @@ nano .env  # or use your preferred editor
 ```bash
 # Set strong passwords (replace CHANGE_ME_* values)
 POSTGRES_PASSWORD=your_strong_postgres_password_here
-WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS=your_weaviate_api_key_here
 APP_DB_PASSWORD=your_app_db_password_here
 ```
 
@@ -177,8 +175,7 @@ make init
 make up
 
 # This will start:
-# - Postgres
-# - Weaviate
+# - PostgreSQL (with pgvector)
 # - Ollama
 # - Diagnostic API
 ```
@@ -227,12 +224,11 @@ The `.env` file contains all configuration for the stack. Key sections:
 ```bash
 BIND_HOST=127.0.0.1  # Bind to localhost only (security)
 DIAGNOSTIC_API_PORT=8000
-WEAVIATE_PORT=8080
 ```
 
 #### Database Configuration
 ```bash
-POSTGRES_VERSION=15.6-alpine
+POSTGRES_IMAGE=pgvector/pgvector:0.7.4-pg15  # PostgreSQL 15 with pgvector
 POSTGRES_DB=stf_diagnosis
 POSTGRES_USER=stf_user
 POSTGRES_PASSWORD=<set-strong-password>
@@ -304,10 +300,9 @@ make init
 make up
 
 # Services will start in dependency order:
-# 1. Postgres
-# 2. Weaviate
-# 3. Ollama
-# 4. Diagnostic API
+# 1. PostgreSQL (with pgvector extension)
+# 2. Ollama
+# 3. Diagnostic API
 ```
 
 ### Step 6: Monitor Startup
@@ -328,8 +323,7 @@ Expected output:
 ```
 Service Health Check:
 
-  ✓ postgres: healthy
-  ✓ weaviate: healthy
+  ✓ postgres: healthy (pgvector enabled)
   ✓ ollama: healthy
   ✓ diagnostic-api: healthy
 ```
@@ -355,15 +349,6 @@ curl -X POST "http://127.0.0.1:8000/v1/vehicle/diagnose" \
       "end": "2026-01-22T23:59:59Z"
     }
   }'
-```
-
-### Weaviate
-
-**URL:** http://127.0.0.1:8080
-
-**Health Check:**
-```bash
-curl http://127.0.0.1:8080/v1/.well-known/ready
 ```
 
 ### Ollama
@@ -398,11 +383,8 @@ PGPASSWORD=<your-password> psql -h 127.0.0.1 -U stf_user -d stf_diagnosis
 make test-health
 
 # Expected output:
-# Testing Postgres...
+# Testing Postgres (pgvector)...
 # ✓ Postgres is ready
-#
-# Testing Weaviate...
-# ✓ Weaviate is ready
 #
 # Testing Ollama...
 # ✓ Ollama is ready
@@ -427,7 +409,7 @@ Expected:
   "services": {
     "api": "healthy",
     "database": "healthy",
-    "weaviate": "healthy",
+    "vector_store": "healthy",
     "llm": "healthy"
   }
 }
@@ -623,30 +605,6 @@ make up
 
 ---
 
-### Issue: Weaviate not responding
-
-**Check Weaviate logs:**
-```bash
-docker-compose logs weaviate
-```
-
-**Common causes:**
-- Insufficient memory
-- Corrupted data volume
-
-**Solution:**
-```bash
-# Restart Weaviate
-docker-compose restart weaviate
-
-# If persistent, reset Weaviate data
-make down
-docker volume rm stf_weaviate_data
-make up
-```
-
----
-
 ### Issue: Diagnostic API health check fails
 
 **Check logs:**
@@ -656,7 +614,6 @@ make logs-api
 
 **Common causes:**
 - Database not ready
-- Weaviate not accessible
 - Configuration errors
 
 **Solution:**
@@ -711,7 +668,7 @@ If you encounter issues not covered here:
 See the RAG ingestion guide (to be created in Phase 1.1) for:
 - Preparing SOP documents
 - Chunking and embedding
-- Ingesting into Weaviate
+- Ingesting into PostgreSQL via pgvector
 
 ### 2. Development Setup
 

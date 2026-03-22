@@ -44,7 +44,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     logger.info(f"Database: {settings.db_host}:{settings.db_port}")
     logger.info(f"LLM Endpoint: {settings.llm_endpoint}")
-    logger.info(f"Weaviate: {settings.weaviate_url}")
     logger.info(f"Strict Mode: {settings.strict_mode}")
     settings.validate_jwt_secret()
 
@@ -112,7 +111,6 @@ async def health_check() -> HealthResponse:
     services_status = {
         "api": "healthy",
         "database": "healthy",  # TODO(APP-29): real DB check
-        "weaviate": "healthy",  # TODO(APP-29): real Weaviate check
         "llm": "healthy",  # TODO(APP-29): real LLM check
     }
 

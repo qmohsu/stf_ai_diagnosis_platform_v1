@@ -4,7 +4,7 @@
 
 Phase 1 local-first pilot for AI-assisted vehicle diagnosis.
 
-- **Stack**: FastAPI + Pydantic backend (`diagnostic_api/`), Weaviate vector store, Ollama/vLLM local LLM, Docker Compose infrastructure
+- **Stack**: FastAPI + Pydantic backend (`diagnostic_api/`), pgvector (PostgreSQL) vector store, Ollama/vLLM local LLM, Docker Compose infrastructure
 - **Author field**: Li-Ta Hsu
 - **Runtime**: No public internet access. All services run locally (127.0.0.1 only)
 
@@ -115,8 +115,8 @@ obd_agent/        # OBD-II edge agent
 - Local-only deployment (bind ports to 127.0.0.1)
 - Pin all versions in Docker Compose and configs (no `latest`)
 - Use dedicated internal Docker network for app-to-app traffic
-- Only Nginx handles ingress; do not expose Weaviate/Postgres/diagnostic_api to LAN
-- Named Docker volumes for persistence (Postgres, Weaviate)
+- Only Nginx handles ingress; do not expose Postgres/diagnostic_api to LAN
+- Named Docker volumes for persistence (Postgres, Ollama)
 
 ## Structured Logging
 

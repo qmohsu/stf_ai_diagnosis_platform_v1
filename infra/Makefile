@@ -75,7 +75,6 @@ up: check-env ## Start all services
 	@echo "$(YELLOW)Access points:$(NC)"
 	@echo "  OBD UI:           http://127.0.0.1:3001"
 	@echo "  Diagnostic API:   http://127.0.0.1:8000"
-	@echo "  Weaviate:         http://127.0.0.1:8080"
 	@echo "  Ollama:           http://127.0.0.1:11434"
 
 down: ## Stop all services
@@ -103,7 +102,7 @@ status: ps ## Alias for ps
 health: ## Check health status of all services
 	@echo "$(CYAN)Service Health Check:$(NC)"
 	@echo ""
-	@for service in postgres weaviate ollama diagnostic-api obd-ui; do \
+	@for service in postgres ollama diagnostic-api obd-ui; do \
 		status=$$(docker inspect -f '{{.State.Health.Status}}' stf-$$service 2>/dev/null || echo "no healthcheck"); \
 		if [ "$$status" = "healthy" ]; then \
 			echo "  $(GREEN)✓$(NC) $$service: healthy"; \
@@ -127,8 +126,7 @@ clean: down ## Stop services and remove containers (keeps volumes)
 reset-volumes: ## DANGER: Remove all data volumes (requires confirmation)
 	@echo "$(RED)WARNING: This will delete ALL data!$(NC)"
 	@echo "$(YELLOW)This includes:$(NC)"
-	@echo "  - Database data"
-	@echo "  - Vector store data"
+	@echo "  - Database data (including pgvector embeddings)"
 	@echo "  - Ollama models"
 	@echo "  - Application logs"
 	@echo ""
@@ -147,8 +145,6 @@ backup: ## Create backup of persistent data
 	@timestamp=$$(date +%Y%m%d_%H%M%S); \
 	docker run --rm -v stf_postgres_data:/data -v $$(pwd)/backups:/backup \
 		alpine tar czf /backup/postgres_$$timestamp.tar.gz -C /data .; \
-	docker run --rm -v stf_weaviate_data:/data -v $$(pwd)/backups:/backup \
-		alpine tar czf /backup/weaviate_$$timestamp.tar.gz -C /data .; \
 	echo "$(GREEN)Backup complete: backups/*_$$timestamp.tar.gz$(NC)"
 
 exec-postgres: ## Open psql shell in Postgres container
@@ -171,10 +167,6 @@ test-health: ## Run health check tests on all endpoints
 	@echo "Testing Postgres..."
 	@docker exec stf-postgres pg_isready -U $${POSTGRES_USER:-stf_user} && \
 		echo "$(GREEN)✓$(NC) Postgres is ready" || echo "$(RED)✗$(NC) Postgres failed"
-	@echo ""
-	@echo "Testing Weaviate..."
-	@curl -sf http://127.0.0.1:8080/v1/.well-known/ready > /dev/null && \
-		echo "$(GREEN)✓$(NC) Weaviate is ready" || echo "$(RED)✗$(NC) Weaviate failed"
 	@echo ""
 	@echo "Testing Ollama..."
 	@curl -sf http://127.0.0.1:11434/api/version > /dev/null && \

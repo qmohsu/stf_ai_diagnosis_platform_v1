@@ -18,6 +18,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from pgvector.sqlalchemy import Vector
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
@@ -215,3 +216,32 @@ class DiagnosisHistory(Base):
         "OBDAnalysisSession",
         back_populates="diagnosis_history",
     )
+
+
+class RagChunk(Base):
+    """RAG knowledge chunk with pgvector embedding.
+
+    Stores chunked document text alongside its vector embedding
+    for semantic retrieval.  Replaces the former Weaviate
+    ``KnowledgeChunk`` collection.
+    """
+
+    __tablename__ = "rag_chunks"
+
+    id = Column(
+        UUID(as_uuid=True), primary_key=True, default=uuid4,
+    )
+    text = Column(Text, nullable=False)
+    doc_id = Column(String(255), nullable=False, index=True)
+    source_type = Column(String(50), nullable=False)
+    section_title = Column(String(500), nullable=True)
+    vehicle_model = Column(
+        String(100), nullable=True, index=True,
+    )
+    chunk_index = Column(Integer, nullable=False)
+    checksum = Column(
+        String(64), unique=True, nullable=False, index=True,
+    )
+    metadata_json = Column(JSONB, nullable=True)
+    embedding = Column(Vector(768), nullable=False)
+    created_at = Column(DateTime, default=_utcnow)

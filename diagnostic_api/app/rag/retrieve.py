@@ -1,14 +1,20 @@
-"""Weaviate retrieval service for RAG knowledge chunks."""
+"""RAG retrieval service using pgvector cosine similarity."""
 
+import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
-from app.rag.client import get_client
+from app.db.session import SessionLocal
+from app.models_db import RagChunk
 from app.rag.embedding import embedding_service
 
 logger = logging.getLogger(__name__)
+
+_executor = ThreadPoolExecutor(max_workers=4)
 
 
 class RetrievalResult(BaseModel):
@@ -41,17 +47,83 @@ class RetrievalService:
         return await retrieve_context(query, top_k=limit)
 
 
+def _sync_query(
+    vector: list, top_k: int,
+) -> List[RetrievalResult]:
+    """Run pgvector cosine-distance query synchronously.
+
+    Args:
+        vector: Query embedding (768-dim float list).
+        top_k: Maximum number of results.
+
+    Returns:
+        List of RetrievalResult sorted by relevance.
+    """
+    db = SessionLocal()
+    try:
+        distance_col = RagChunk.embedding.cosine_distance(
+            vector,
+        ).label("distance")
+
+        rows = (
+            db.query(
+                RagChunk.text,
+                RagChunk.doc_id,
+                RagChunk.source_type,
+                RagChunk.section_title,
+                RagChunk.chunk_index,
+                RagChunk.metadata_json,
+                distance_col,
+            )
+            .order_by(distance_col)
+            .limit(top_k)
+            .all()
+        )
+
+        results = []
+        for row in rows:
+            # cosine_distance = 1 - cosine_similarity
+            # score = 1 - cosine_distance = cosine_similarity
+            score = 1.0 - (
+                row.distance if row.distance is not None
+                else 1.0
+            )
+            meta = row.metadata_json or {}
+
+            results.append(RetrievalResult(
+                text=row.text,
+                score=score,
+                doc_id=row.doc_id or "unknown",
+                source_type=row.source_type or "unknown",
+                section_title=(
+                    row.section_title or "unknown"
+                ),
+                chunk_index=row.chunk_index or 0,
+                metadata=meta,
+            ))
+
+        return results
+    except Exception as e:
+        logger.error(
+            "pgvector retrieval failed", exc_info=e,
+        )
+        return []
+    finally:
+        db.close()
+
+
 async def retrieve_context(
     query: str,
     top_k: int = 3,
     filters: Optional[Dict[str, Any]] = None,
 ) -> List[RetrievalResult]:
-    """Retrieve relevant chunks from Weaviate.
+    """Retrieve relevant chunks from pgvector.
 
     Args:
         query: Search query string.
         top_k: Maximum number of results to return.
-        filters: Optional filter criteria for the query.
+        filters: Optional filter criteria (reserved for
+            future use).
 
     Returns:
         List of RetrievalResult items sorted by relevance.
@@ -62,82 +134,14 @@ async def retrieve_context(
     # 2. Generate embedding
     vector = await embedding_service.get_embedding(query)
     if not vector:
-        logger.warning("Failed to generate embedding for query.")
+        logger.warning(
+            "Failed to generate embedding for query.",
+        )
         return []
 
-    # 3. Query Weaviate
-    client = get_client()
-    try:
-        gql_query = f"""
-        {{
-          Get {{
-            KnowledgeChunk(
-              nearVector: {{
-                vector: {vector}
-              }}
-              limit: {int(top_k)}
-            ) {{
-              text
-              doc_id
-              source_type
-              section_title
-              chunk_index
-              _additional {{
-                distance
-                score
-              }}
-            }}
-          }}
-        }}
-        """
-
-        response = client.graphql_raw_query(gql_query)
-
-        chunk_data = None
-        if hasattr(response, 'get'):
-            chunk_data = response.get
-        elif hasattr(response, 'result'):
-            res = response.result
-            if (
-                hasattr(res, 'get')
-                and not callable(res.get)
-            ):
-                chunk_data = res.get
-            elif isinstance(res, dict):
-                chunk_data = (
-                    res.get('data', {}).get('Get')
-                )
-
-        if (
-            not chunk_data
-            or 'KnowledgeChunk' not in chunk_data
-        ):
-            return []
-
-        results = []
-        for obj in chunk_data['KnowledgeChunk']:
-            meta = obj.get('_additional', {})
-            dist = meta.get('distance', 1.0)
-            score = 1.0 - dist if dist is not None else 0.0
-
-            results.append(RetrievalResult(
-                text=obj.get('text', ""),
-                score=score,
-                doc_id=obj.get('doc_id', "unknown"),
-                source_type=obj.get(
-                    'source_type', "unknown",
-                ),
-                section_title=obj.get(
-                    'section_title', "unknown",
-                ),
-                chunk_index=obj.get('chunk_index', 0),
-                metadata=meta,
-            ))
-
-        return results
-
-    except Exception as e:
-        logger.error("Weaviate retrieval failed", exc_info=e)
-        return []
-    finally:
-        client.close()
+    # 3. Run sync DB query in thread pool to avoid
+    #    blocking the event loop.
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor, partial(_sync_query, vector, top_k),
+    )

@@ -102,14 +102,12 @@ echo ""
 print_header "Test 1: Container Status"
 
 test_docker_container "stf-postgres"
-test_docker_container "stf-weaviate"
 test_docker_container "stf-ollama"
 test_docker_container "stf-diagnostic-api"
 
 # Test 2: Health endpoints
 print_header "Test 2: Health Endpoints"
 
-test_service "Weaviate" "http://127.0.0.1:8080/v1/.well-known/ready"
 test_service "Ollama" "http://127.0.0.1:11434/api/version"
 test_service "Diagnostic API" "http://127.0.0.1:8000/health"
 
@@ -188,7 +186,7 @@ print_header "Test 6: Data Persistence"
 print_test "Docker volumes exist"
 volumes_exist=true
 
-for volume in postgres_data weaviate_data ollama_data diagnostic_api_logs; do
+for volume in postgres_data ollama_data diagnostic_api_logs; do
     if docker volume ls | grep -q "stf_$volume"; then
         echo "  ✓ Volume stf_$volume exists"
     else
@@ -209,7 +207,7 @@ print_header "Test 7: Network Isolation"
 print_test "Services bound to localhost only"
 bound_to_localhost=true
 
-for port in 8000 8080 11434; do
+for port in 8000 11434; do
     if netstat -tuln 2>/dev/null | grep ":$port" | grep -q "127.0.0.1"; then
         echo "  ✓ Port $port bound to 127.0.0.1"
     elif lsof -iTCP:$port -sTCP:LISTEN 2>/dev/null | grep -q "127.0.0.1"; then

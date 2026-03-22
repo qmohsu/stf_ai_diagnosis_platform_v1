@@ -34,6 +34,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "stf_diagnosis" <<-
 
     -- Create extensions if needed
     CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE EXTENSION IF NOT EXISTS vector;
 
     -- Set default privileges for future tables
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO stf_app_user;

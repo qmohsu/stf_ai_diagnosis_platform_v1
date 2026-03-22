@@ -8,8 +8,6 @@
 # No external LLM API calls - uses local Ollama inference
 # ============================================================================
 
-version: '3.8'
-
 # ============================================================================
 # NETWORKS - Internal-only communication, localhost exposure
 # ============================================================================
@@ -27,8 +25,6 @@ networks:
 volumes:
   postgres_data:
     driver: local
-  weaviate_data:
-    driver: local
   ollama_data:
     driver: local
   diagnostic_api_logs:
@@ -39,10 +35,10 @@ volumes:
 # ============================================================================
 services:
   # --------------------------------------------------------------------------
-  # Postgres - Primary database for diagnostic_api
+  # Postgres + pgvector - Primary database & vector store
   # --------------------------------------------------------------------------
   postgres:
-    image: postgres:${POSTGRES_VERSION:-15.6-alpine}
+    image: pgvector/pgvector:${POSTGRES_VERSION:-0.7.4-pg15}
     container_name: stf-postgres
     restart: unless-stopped
     networks:
@@ -67,37 +63,6 @@ services:
     command: >
       postgres -c max_connections=${POSTGRES_MAX_CONNECTIONS:-100} -c shared_buffers=256MB -c effective_cache_size=1GB -c maintenance_work_mem=64MB -c checkpoint_completion_target=0.9 -c wal_buffers=16MB -c default_statistics_target=100 -c random_page_cost=1.1 -c effective_io_concurrency=200 -c work_mem=2621kB -c min_wal_size=1GB -c max_wal_size=4GB
 
-  # --------------------------------------------------------------------------
-  # Weaviate - Vector database for RAG retrieval
-  # --------------------------------------------------------------------------
-  weaviate:
-    image: semitechnologies/weaviate:${WEAVIATE_VERSION:-1.24.1}
-    container_name: stf-weaviate
-    restart: unless-stopped
-    networks:
-      - stf-internal
-    ports:
-      - "${BIND_HOST:-127.0.0.1}:${WEAVIATE_PORT:-8080}:8080"
-      - "${BIND_HOST:-127.0.0.1}:${WEAVIATE_GRPC_PORT:-50051}:50051"
-    environment:
-      QUERY_DEFAULTS_LIMIT: 25
-      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: ${WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED:-false}
-      AUTHENTICATION_APIKEY_ENABLED: ${WEAVIATE_AUTHENTICATION_APIKEY_ENABLED:-true}
-      AUTHENTICATION_APIKEY_ALLOWED_KEYS: ${WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS:?WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS must be set}
-      AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-admin}
-      PERSISTENCE_DATA_PATH: ${WEAVIATE_PERSISTENCE_DATA_PATH:-/var/lib/weaviate}
-      DEFAULT_VECTORIZER_MODULE: ${WEAVIATE_DEFAULT_VECTORIZER_MODULE:-none}
-      CLUSTER_HOSTNAME: ${WEAVIATE_CLUSTER_HOSTNAME:-node1}
-      ENABLE_MODULES: ''
-      LIMIT_RESOURCES: ${WEAVIATE_LIMIT_RESOURCES:-true}
-    volumes:
-      - weaviate_data:/var/lib/weaviate
-    healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/v1/.well-known/ready" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
 
   # --------------------------------------------------------------------------
   # Ollama - Local LLM inference runtime
@@ -148,8 +113,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      weaviate:
-        condition: service_healthy
       ollama:
         condition: service_started
     environment:
@@ -173,9 +136,6 @@ services:
       PREMIUM_LLM_MODEL: ${PREMIUM_LLM_MODEL:-anthropic/claude-sonnet-4.6}
       PREMIUM_LLM_CURATED_MODELS: ${PREMIUM_LLM_CURATED_MODELS:-anthropic/claude-opus-4.6,anthropic/claude-sonnet-4.6,google/gemini-3.1-pro-preview,google/gemini-3-flash-preview,openai/gpt-5.2,openai/gpt-5-mini,deepseek/deepseek-v3.2,deepseek/deepseek-chat,qwen/qwen3.5-plus-02-15,qwen/qwen3.5-flash-02-23}
 
-      # Weaviate Configuration
-      WEAVIATE_URL: http://weaviate:8080
-      WEAVIATE_API_KEY: ${WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS}
 
       # Logging
       LOG_LEVEL: ${DIAGNOSTIC_API_LOG_LEVEL:-INFO}

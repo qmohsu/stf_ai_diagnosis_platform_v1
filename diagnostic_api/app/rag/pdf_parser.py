@@ -6,7 +6,7 @@ for downstream parsing. Supports large files (50MB+) efficiently.
 When ``describe_images=True`` is passed to the async variant, images are
 extracted from each page and described via a local Ollama vision model.
 The descriptions are inserted inline using ``[Image N, Page M]`` markers
-so the downstream pipeline (chunker -> embedder -> Weaviate) works unchanged.
+so the downstream pipeline (chunker -> embedder -> pgvector) works unchanged.
 
 The ``extract_pdf_sections()`` function provides a higher-level API that
 uses font-size metadata from PyMuPDF to detect heading hierarchy and

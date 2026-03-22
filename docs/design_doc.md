@@ -8,17 +8,18 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v2.8 (OBD threshold rationale docs) |
+| **Status** | Draft v2.9 (Weaviate → pgvector migration) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-03-16 |
-| **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + vector store (Weaviate) |
-| **New in this revision** | APP-33: Added `docs/preprocessing_rationale.md` — comprehensive documentation of all hard-coded thresholds in the OBD pre-processing pipeline with source references (SAE J1979/J2012, library docs, empirical tuning, expert knowledge). See GitHub Issue #6. |
+| **Last updated** | 2026-03-21 |
+| **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + pgvector (PostgreSQL) |
+| **New in this revision** | APP-34: Migrated vector store from Weaviate to pgvector (PostgreSQL). Eliminated Weaviate Docker service. Added `RagChunk` model with HNSW-indexed `Vector(768)` column. Rewrote retrieval and ingestion to use SQLAlchemy. See GitHub Issue #15. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v2.9 | 2026-03-21 | Weaviate → pgvector migration (APP-34): eliminated Weaviate Docker service, consolidated vector storage into PostgreSQL via pgvector extension, HNSW index for cosine similarity |
 | v2.8 | 2026-03-16 | OBD threshold rationale docs (APP-33): `docs/preprocessing_rationale.md` — sources and rationale for all pre-processing thresholds |
 | v2.7 | 2026-03-16 | i18n support (APP-32): EN/zh-CN/zh-TW via react-i18next, LanguageSwitcher, 150+ keys per locale, CJK fonts |
 | v2.6 | 2026-03-09 | Dead code removal (APP-30): deleted unused cache module, validate.py, schemas.py, dead client methods, orphaned test script (~380 LOC) |
@@ -115,7 +116,7 @@ Your materials reference multiple taxonomies (8 system categories; 17-class; 33 
 •	diagnostic_api (FastAPI): workflow orchestration, REST API, LLM-safe summarization, RAG retrieval, schema validation, and tool-calling logic. Handles the full pipeline natively (HTTP tool call, retrieval, generation, schema validation).
 •	Model server (Phase 1): Ollama (OpenAI-compatible endpoints).
 •	Model server (Phase 1.5/2): tuned model served via vLLM/SGLang (OpenAI-compatible), or Ollama with adapters (if chosen).
-•	Vector store: Weaviate for SOP/manual chunks and sanitized knowledge. Chunk metadata includes `has_image` flag and `metadata_json` for image-containing chunks.
+•	Vector store: pgvector (PostgreSQL extension) for SOP/manual chunks and sanitized knowledge. Chunk metadata includes `has_image` flag and `metadata_json` (JSONB) for image-containing chunks.
 •	Postgres: session persistence, diagnosis history, feedback tables, and OBD snapshot storage.
 •	OBD Agent (edge collector): a separate service/daemon (python‑OBD or equivalent) that reads ELM327 OBD‑II and posts sanitized OBDSnapshot telemetry to diagnostic_api.
 •	**OBD Expert Diagnostic Web UI (`obd-ui`)**: Next.js 15 (TypeScript, Tailwind CSS, shadcn/ui, recharts) on port 3001. Provides experts with a visual interface to submit OBD logs, view analysis results across five tabs (Summary, Detailed, RAG, AI Diagnosis, History), and submit structured feedback per tab (up to 10 submissions per tab per session). History tab displays all past AI diagnosis generations with provider badge, model name, timestamp, and expandable text. RAG tab displays retrieved context; AI Diagnosis tab contains Local LLM / Cloud LLM (OpenRouter) sub-tabs for side-by-side comparison — local streams via SSE from Ollama, premium streams via SSE from OpenRouter (opt-in, multi-model). Premium sub-tab includes a model selector dropdown populated from admin-curated list. Communicates with diagnostic_api via `/v2/obd/*` endpoints. Runs as a standalone Docker service.
@@ -130,7 +131,7 @@ Interface invariants that must not change across phases:
 **Exception — Premium LLM (opt-in internet access):**
 The premium LLM client is the sole exception to the local-only deployment rule. It is disabled by default (`PREMIUM_LLM_ENABLED=false`) and requires an explicit `PREMIUM_LLM_API_KEY` (OpenRouter API key). When enabled, the diagnostic_api container must have outbound internet access to reach the OpenRouter API (`PREMIUM_LLM_BASE_URL`, default `https://openrouter.ai/api/v1`). All other services remain strictly local.
 ### 7.3 Network flow (reference)
-The deployment consists of the Next.js web UI (`obd-ui`, port 3001), the FastAPI backend (`diagnostic_api`), Ollama (model server), Weaviate (vector store), and Postgres (database). All services communicate over a dedicated internal Docker network. Only the Nginx reverse proxy handles ingress; backend services are not exposed to the LAN. The outbound allow-list should be enforced at the network layer to restrict calls to internal services only.
+The deployment consists of the Next.js web UI (`obd-ui`, port 3001), the FastAPI backend (`diagnostic_api`), Ollama (model server), and Postgres with pgvector (database + vector store). All services communicate over a dedicated internal Docker network. Only the Nginx reverse proxy handles ingress; backend services are not exposed to the LAN. The outbound allow-list should be enforced at the network layer to restrict calls to internal services only.
 ## 8) Data architecture for the expert model pipeline
 ### 8.1 Data boundaries: what the LLM can and cannot see
 Allowed in LLM context (summaries only):
@@ -493,7 +494,7 @@ Real-world service manual PDFs contain critical diagnostic information embedded 
 
 **Merge order per page:** text layer → OCR blocks → image descriptions → full-page description.
 
-**Image-aware chunking:** The chunker treats image blocks (marker line + description) as atomic units that are never split mid-description. The `has_image` field on `ChunkedSection` propagates to `metadata_json` in Weaviate, enabling image-aware retrieval filtering.
+**Image-aware chunking:** The chunker treats image blocks (marker line + description) as atomic units that are never split mid-description. The `has_image` field on `ChunkedSection` propagates to `metadata_json` (JSONB) in the `rag_chunks` table, enabling image-aware retrieval filtering.
 
 **Vision model pre-flight:** Before processing any PDFs, the ingestion pipeline verifies the vision model is available via the Ollama `/api/tags` endpoint. If unavailable, image description is disabled gracefully and ingestion proceeds with text-only extraction.
 
@@ -563,7 +564,7 @@ Minimum network controls:
 •	Internal-only access (VPN or intranet).
 •	TLS termination at reverse proxy (e.g., nginx) and RBAC at the app layer.
 •	Outbound allow-list: only diagnostic_api, model endpoint, and internal doc store. Deny all other egress by default.
-•	Separate subnets/VLANs for data stores (Postgres/Weaviate) vs app tier where feasible.
+•	Separate subnets/VLANs for data stores (Postgres) vs app tier where feasible.
 ## 13) Security, privacy, and compliance
 ### 13.1 Data handling commitments
 Honor the project’s privacy posture: restricted access, locked storage, and defined retention. The expert layer should avoid surfacing sensitive identifiers in prompts or logs. (Note: automated PII redaction removed for R&D prototype; re-introduce for production.)

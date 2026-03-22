@@ -93,11 +93,11 @@ This document defines the security baseline for the STF AI Diagnosis Platform Ph
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │  Docker Network: stf-internal (172.28.0.0/16)       │  │
 │  │                                                        │  │
-│  │  ┌─────────┐               ┌──────────┐           │  │
-│  │  │ Postgres│               │ Weaviate │           │  │
-│  │  └────┬────┘               └─────┬────┘           │  │
-│  │       │                          │                  │  │
-│  │  ┌────▼──────────────────────────▼─────┐          │  │
+│  │  ┌──────────────────┐                             │  │
+│  │  │ Postgres+pgvector│                             │  │
+│  │  └────────┬─────────┘                             │  │
+│  │           │                                        │  │
+│  │  ┌────────▼───────────────────────────┐          │  │
 │  │  │         Diagnostic API              │          │  │
 │  │  └────┬────────────────────────────────┘          │  │
 │  │       │                                              │  │
@@ -200,12 +200,6 @@ sudo iptables -I DOCKER-USER -s 172.28.0.0/16 ! -d 172.28.0.0/16 -j DROP
 - **Auth:** Password-based (from `.env`)
 - **Access:** Only accessible from Docker internal network
 
-#### Weaviate
-
-- **Auth:** API key-based (`WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS`)
-- **Anonymous Access:** Disabled (`WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=false`)
-- **Access:** Only accessible from Docker internal network
-
 #### Diagnostic API
 
 - **Auth:** None (Phase 1; local single-user access only)
@@ -225,7 +219,7 @@ sudo iptables -I DOCKER-USER -s 172.28.0.0/16 ! -d 172.28.0.0/16 -j DROP
 | Sensor summaries (risk scores, features) | **Internal** | Postgres (interaction_logs) | Encrypted at rest (volume) |
 | User queries (technician input) | **Internal** | Postgres (interaction_logs) | Schema validation |
 | LLM responses (recommendations) | **Internal** | Postgres (interaction_logs) | Encrypted at rest (volume) |
-| SOPs, manuals (RAG corpus) | **Confidential** | Weaviate (vector store) | Access control |
+| SOPs, manuals (RAG corpus) | **Confidential** | Postgres (rag_chunks + pgvector) | Access control |
 | Credentials (passwords, API keys) | **Secret** | `.env` file (gitignored) | Host file permissions |
 
 ### Privacy Boundaries
@@ -280,7 +274,6 @@ sudo iptables -I DOCKER-USER -s 172.28.0.0/16 ! -d 172.28.0.0/16 -j DROP
 ### Secret Types
 
 1. **Database Passwords:** Postgres
-2. **API Keys:** Weaviate
 
 ### Storage & Distribution
 
@@ -496,9 +489,8 @@ services:
 
 #### What to Backup
 
-1. **Postgres database:** `stf_diagnosis`
-2. **Weaviate vector store:** RAG corpus
-3. **Ollama models:** Downloaded LLM models
+1. **Postgres database:** `stf_diagnosis` (includes RAG corpus in `rag_chunks` table via pgvector)
+2. **Ollama models:** Downloaded LLM models
 4. **Configuration:** `.env` file (store securely, separate from code)
 
 #### Backup Frequency
@@ -521,9 +513,6 @@ make backup
 # Manual backup of specific volumes
 docker run --rm -v stf_postgres_data:/data -v $(pwd)/backups:/backup \
   alpine tar czf /backup/postgres_$(date +%Y%m%d_%H%M%S).tar.gz -C /data .
-
-docker run --rm -v stf_weaviate_data:/data -v $(pwd)/backups:/backup \
-  alpine tar czf /backup/weaviate_$(date +%Y%m%d_%H%M%S).tar.gz -C /data .
 ```
 
 ### Backup Storage

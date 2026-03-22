@@ -52,7 +52,7 @@ A ticket is DONE only if:
   LLM, Docker network isolation.
 
 ### 2.4 Deviations and ADRs
-If an engineer deviates from the recommended stack (FastAPI/Pydantic/Weaviate/
+If an engineer deviates from the recommended stack (FastAPI/Pydantic/pgvector/
 Ollama‑or‑vLLM), they must add an ADR (Architecture Decision Record)
 explaining the alternative and why it's worth it.
 
@@ -76,7 +76,7 @@ Title: DO‑01 Bootstrap local diagnosis cloud stack (Compose)
  
 
 Context:
-We are building the diagnosis cloud system using FastAPI + Pydantic + Weaviate + Ollama/vLLM.
+We are building the diagnosis cloud system using FastAPI + Pydantic + pgvector (PostgreSQL) + Ollama/vLLM.
 
 The stack must support "cloud model classification upon request" (Step 5) and RAG based on manuals and maintenance logs.
 
@@ -87,17 +87,15 @@ Create a runnable, local docker-compose baseline under infra/ that starts:
 
 diagnostic_api (FastAPI service container; can be a stub for now)
 
-weaviate (vector DB)
-
 ollama OR vLLM (local inference runtime)
 
-postgres (shared database for diagnostic records and sessions)
+postgres + pgvector (database + vector store for RAG and diagnostic records)
 
 Requirements:
 
 Pin image versions (no latest).
 
-Use named volumes for persistence (DB, Weaviate, Ollama models).
+Use named volumes for persistence (DB, Ollama models).
 
 Add healthchecks for every container.
 
@@ -158,7 +156,7 @@ Only expose minimal entrypoints to host:
 
 diagnostic_api (localhost)
 
-(optional) Weaviate only if needed for local debugging; otherwise keep internal
+(optional) Postgres only if needed for local debugging; otherwise keep internal
 
 Provide a SECURITY_BASELINE.md describing:
 
@@ -1786,6 +1784,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-21 | v2.9 | APP-34: Migrated vector store from Weaviate to pgvector (PostgreSQL). Deleted Weaviate Docker service, `client.py`, `schema.py`. Added `RagChunk` SQLAlchemy model with `Vector(768)` column + HNSW index. Rewrote `retrieve.py` (pgvector cosine distance via `run_in_executor`) and `ingest.py` (SQLAlchemy session, batch checksum dedup). Switched Postgres image to `pgvector/pgvector:0.7.4-pg15`. Alembic migration `l3m4`. Removed `weaviate-client`, added `pgvector==0.3.6`. Updated all infra, docs, tests. GitHub Issue #15. |
 | 2026-03-16 | v2.8 | APP-33: Added `docs/preprocessing_rationale.md` — documents the source and rationale for every hard-coded threshold in the OBD pre-processing pipeline (PID operating ranges, anomaly detection parameters, diagnostic clue thresholds, signal processing constants, agent config defaults). Each value traced to its source: SAE J1979/J2012 standards, library documentation, empirical tuning, or domain-expert knowledge. Values needing broader-fleet validation flagged in appendix. GitHub Issue #6. |
 | 2026-03-16 | v2.7 | APP-32: i18n support (EN / zh-CN / zh-TW) for OBD Expert Diagnostic Web UI. Integrated react-i18next + i18next-browser-languagedetector. Created 3 locale files (150+ keys each). Added LanguageSwitcher dropdown in header, I18nProvider, HeaderTitle client component. Replaced hardcoded strings in 27 files with t() calls. Added CJK fallback fonts and line-height CSS. Language preference persisted to localStorage. |
 | 2026-03-09 | v2.6 | APP-30: Dead code removal — deleted unused `app/cache/` module (OBDSessionCache instantiated but never called), `app/expert/validate.py` (validate_llm_output never invoked in production), `infra/test_llm_client.py` (orphaned demo script). Removed dead methods `generate_diagnosis()` and `generate_obd_diagnosis()` from `ExpertLLMClient`. Removed cache startup/shutdown hooks from `main.py`. Cleaned `test_expert_prompts.py` imports. ~350 LOC removed, zero production impact. |

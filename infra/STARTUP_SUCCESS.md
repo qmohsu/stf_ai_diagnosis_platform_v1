@@ -10,8 +10,7 @@
 | Service | Status | Port | Health |
 |---------|--------|------|--------|
 | Diagnostic API | ✅ Running | 8000 | Healthy |
-| Postgres | ✅ Running | 5432 | Healthy |
-| Weaviate | ✅ Running | 8080 | Healthy |
+| PostgreSQL (pgvector) | ✅ Running | 5432 | Healthy |
 | Ollama | ✅ Running | 11434 | Running |
 
 ---
@@ -68,7 +67,6 @@ curl -X POST http://127.0.0.1:8000/v1/vehicle/diagnose \
 - **OBD UI:** http://127.0.0.1:3001
 - **Diagnostic API:** http://127.0.0.1:8000
 - **Diagnostic API Docs:** http://127.0.0.1:8000/docs
-- **Weaviate:** http://127.0.0.1:8080
 - **Ollama:** http://127.0.0.1:11434
 
 ---
@@ -81,7 +79,7 @@ curl -X POST http://127.0.0.1:8000/v1/vehicle/diagnose \
    cd infra
    make ollama-pull
    ```
-3. **Ingest RAG Data** (Phase 1.1): Add SOPs and manuals to Weaviate
+3. **Ingest RAG Data** (Phase 1.1): Add SOPs and manuals to PostgreSQL via pgvector
 4. **Test End-to-End Flow**: Upload OBD log via OBD UI
 
 ---

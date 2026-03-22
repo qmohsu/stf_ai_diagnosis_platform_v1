@@ -26,7 +26,6 @@ make health && make smoke-test
 | **OBD UI** | http://127.0.0.1:3001 | Diagnostic interface |
 | **Diagnostic API** | http://127.0.0.1:8000 | Backend API |
 | **API Docs** | http://127.0.0.1:8000/docs | Interactive API docs |
-| **Weaviate** | http://127.0.0.1:8080 | Vector store |
 | **Ollama** | http://127.0.0.1:11434 | LLM inference |
 
 ---
@@ -65,7 +64,6 @@ make reset-volumes   # ⚠️ DELETE ALL DATA (requires confirmation)
 
 ```bash
 POSTGRES_PASSWORD=<strong-password>
-WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS=<api-key>
 APP_DB_PASSWORD=<strong-password>
 ```
 
@@ -157,8 +155,8 @@ curl -X POST http://127.0.0.1:8000/v1/rag/retrieve \
 
 ## 🎯 Next Steps (Phase 1.1)
 
-1. **Ingest RAG data:** Prepare and ingest SOPs/manuals into Weaviate
-2. **Implement full diagnostic API:** Connect to Weaviate and Ollama
+1. **Ingest RAG data:** Prepare and ingest SOPs/manuals into PostgreSQL via pgvector
+2. **Implement full diagnostic API:** Connect to pgvector and Ollama
 3. **End-to-end testing:** Test complete flow from UI to response
 
 ---

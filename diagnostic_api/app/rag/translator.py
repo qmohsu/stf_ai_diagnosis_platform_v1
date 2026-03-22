@@ -2,7 +2,7 @@
 
 Uses a local Ollama LLM (e.g., qwen3.5:9b) to translate Traditional
 Chinese section text to English at ingestion time, so the entire
-Weaviate vector store is uniform English.  Uses the Ollama ``/api/chat``
+pgvector store is uniform English.  Uses the Ollama ``/api/chat``
 endpoint with ``think: false`` to disable hidden reasoning tokens in
 Qwen3 thinking models.  Follows the same service pattern as embedding.py
 and vision.py (singleton httpx.AsyncClient, structlog).

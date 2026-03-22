@@ -32,7 +32,7 @@ This project strictly follows the **Google Python Style Guide** and uses:
 
 - **FastAPI** for API endpoints
 - **Pydantic** for data validation
-- **Weaviate** for RAG pipelines
+- **pgvector** (PostgreSQL) for RAG pipelines
 - **Ollama/vLLM** for local LLM inference
 - **OpenRouter** for premium cloud LLM inference (opt-in)
 
@@ -95,7 +95,7 @@ The STF AI Diagnosis Platform is now ready for local deployment! 🚀
 **What's Included (Phase 1):**
 - ✅ Ollama local LLM inference
 - ✅ OpenRouter premium LLM (opt-in)
-- ✅ Weaviate vector store for RAG
+- ✅ pgvector (PostgreSQL) for RAG
 - ✅ FastAPI diagnostic API
 - ✅ Next.js OBD diagnostic UI
 - ✅ Postgres database

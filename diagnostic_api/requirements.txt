@@ -17,8 +17,8 @@ psycopg2-binary==2.9.9
 sqlalchemy==2.0.25
 alembic==1.13.1
 
-# Vector Store
-weaviate-client==4.4.1
+# Vector Store (pgvector extension in PostgreSQL)
+pgvector==0.3.6
 
 # LLM Integration
 openai==1.10.0  # OpenAI-compatible client for Ollama + OpenRouter
