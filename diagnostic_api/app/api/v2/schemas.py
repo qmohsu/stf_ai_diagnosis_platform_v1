@@ -162,7 +162,7 @@ class OBDFeedbackRequest(BaseModel):
         ),
     )
     audio_duration_seconds: Optional[int] = Field(
-        None, ge=0, le=120,
+        None, ge=0, le=600,
     )
 
 

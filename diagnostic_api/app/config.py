@@ -105,10 +105,10 @@ class Settings(BaseSettings):
         "AUDIO_STORAGE_PATH", "/app/data/audio",
     )
     audio_max_file_size_bytes: int = int(
-        os.getenv("AUDIO_MAX_FILE_SIZE_BYTES", "5242880"),
-    )  # 5 MB
+        os.getenv("AUDIO_MAX_FILE_SIZE_BYTES", "26214400"),
+    )  # 25 MB
     audio_max_duration_seconds: int = int(
-        os.getenv("AUDIO_MAX_DURATION_SECONDS", "120"),
+        os.getenv("AUDIO_MAX_DURATION_SECONDS", "600"),
     )
     audio_allowed_mime_types: str = os.getenv(
         "AUDIO_ALLOWED_MIME_TYPES",

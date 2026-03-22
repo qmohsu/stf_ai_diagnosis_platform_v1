@@ -234,7 +234,7 @@ class TestAudioDurationValidation:
         assert req.audio_duration_seconds == 60
 
     def test_duration_exceeding_max_rejected(self):
-        """Duration > 120 fails validation."""
+        """Duration > 600 fails validation."""
         from app.api.v2.schemas import OBDFeedbackRequest
         from pydantic import ValidationError
 
@@ -242,7 +242,7 @@ class TestAudioDurationValidation:
             OBDFeedbackRequest(
                 rating=5,
                 is_helpful=True,
-                audio_duration_seconds=121,
+                audio_duration_seconds=601,
             )
 
     def test_negative_duration_rejected(self):

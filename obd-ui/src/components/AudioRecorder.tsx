@@ -18,7 +18,7 @@ type RecorderState = "idle" | "recording" | "recorded";
 export function AudioRecorder({
   onRecordingComplete,
   onRecordingCleared,
-  maxDurationSeconds = 120,
+  maxDurationSeconds = 600,
   disabled = false,
 }: AudioRecorderProps) {
   const { t } = useTranslation();
