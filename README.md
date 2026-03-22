@@ -1,5 +1,7 @@
 # STF AI Diagnosis Platform v1
 
+> **🌐 Live Demo**: [https://ips-foreign-diploma-sullivan.trycloudflare.com](https://ips-foreign-diploma-sullivan.trycloudflare.com)
+
 ## Overview
 
 This project builds an edge–cloud AI diagnostic system that fuses heterogeneous vehicle data (OBD-II, vibration/acoustics, cameras, GNSS/IMU) to detect anomalies on-vehicle in real time and perform deep fault classification and prediction in the cloud using temporal deep learning (e.g., CNN-LSTM/Transformer with attention).
