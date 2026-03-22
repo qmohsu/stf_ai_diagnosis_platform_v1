@@ -73,8 +73,8 @@ class OBDAnalysisSession(Base):
     input_text_hash = Column(String(64), nullable=False, index=True)  # SHA-256
     input_size_bytes = Column(Integer, nullable=False)
 
-    # Raw OBD TSV text verbatim
-    raw_input_text = Column(Text, nullable=True)
+    # Relative path to raw OBD log file on disk
+    raw_input_file_path = Column(String(500), nullable=True)
 
     # Result stored as JSONB (full LogSummaryV2)
     result_payload = Column(JSONB, nullable=True)

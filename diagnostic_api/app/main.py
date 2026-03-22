@@ -83,6 +83,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info(f"Strict Mode: {settings.strict_mode}")
     settings.validate_jwt_secret()
 
+    # Ensure OBD log storage directory exists.
+    os.makedirs(settings.obd_log_storage_path, exist_ok=True)
+
     # Ensure audio storage directories exist.
     os.makedirs(settings.audio_storage_path, exist_ok=True)
     staging_dir = os.path.join(

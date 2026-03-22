@@ -31,6 +31,8 @@ volumes:
     driver: local
   diagnostic_api_audio:
     driver: local
+  diagnostic_api_obd_logs:
+    driver: local
 
 # ============================================================================
 # SERVICES
@@ -140,11 +142,15 @@ services:
       # Authentication
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
 
+      # OBD Log Storage
+      OBD_LOG_STORAGE_PATH: /app/data/obd_logs
+
       # Audio Feedback Storage
       AUDIO_STORAGE_PATH: /app/data/audio
     volumes:
       - diagnostic_api_logs:/app/logs
       - diagnostic_api_audio:/app/data/audio
+      - diagnostic_api_obd_logs:/app/data/obd_logs
     # Note: easyocr runs on CPU (pip torch is CPU-only in slim image).
     # For GPU OCR, switch to a CUDA base image and install torch+cu121.
     healthcheck:

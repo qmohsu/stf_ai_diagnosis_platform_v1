@@ -100,6 +100,11 @@ class Settings(BaseSettings):
         os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "1440")
     )
 
+    # OBD Log Storage
+    obd_log_storage_path: str = os.getenv(
+        "OBD_LOG_STORAGE_PATH", "/app/data/obd_logs",
+    )
+
     # Audio Feedback Storage
     audio_storage_path: str = os.getenv(
         "AUDIO_STORAGE_PATH", "/app/data/audio",

@@ -1245,7 +1245,7 @@ Implement endpoints under `/v2/obd/`:
    - Creates an `OBDAnalysisSession` record (UUID PK, status=PENDING) persisted to Postgres immediately (DB-first, no in-memory cache)
    - Deduplicates via SHA-256 hash of input text; returns existing session on match
    - Runs `_run_pipeline()` (same 5-stage pipeline as `/v2/tools/summarize-log-raw`)
-   - Stores `raw_input_text`, `parsed_summary_payload`, and `result_payload` (JSONB)
+   - Stores raw OBD log to filesystem (`/app/data/obd_logs/{session_id}.txt`), saves `raw_input_file_path` on session, `parsed_summary_payload`, and `result_payload` (JSONB)
    - Persists result as JSONB (status=COMPLETED) or error (status=FAILED)
    - Returns session_id + full LogSummaryV2
 
@@ -1267,7 +1267,7 @@ Implement endpoints under `/v2/obd/`:
    - RAG feedback snapshots retrieved RAG text; AI diagnosis feedback snapshots diagnosis text via `extra_fields`
 
 Database changes:
-- Table `obd_analysis_sessions`: id (UUID PK), vehicle_id (indexed), status (indexed), input_text_hash (SHA-256, indexed, unique for dedup), input_size_bytes, raw_input_text, parsed_summary_payload (JSONB), result_payload (JSONB), diagnosis_text, error_message, created_at, updated_at
+- Table `obd_analysis_sessions`: id (UUID PK), vehicle_id (indexed), status (indexed), input_text_hash (SHA-256, indexed, unique for dedup), input_size_bytes, raw_input_file_path (String(500), relative path to OBD log file on disk), parsed_summary_payload (JSONB), result_payload (JSONB), diagnosis_text, error_message, created_at, updated_at
 - 4 feedback tables (one per tab):
   - `obd_summary_feedback`: id, session_id (FK), rating, is_helpful, comments, created_at
   - `obd_detailed_feedback`: id, session_id (FK), rating, is_helpful, comments, created_at
@@ -1287,7 +1287,7 @@ Acceptance Criteria:
 
 POST /v2/obd/analyze with fixture TSV returns session_id + full analysis JSON ✓
 Duplicate input text returns existing session (dedup via SHA-256) ✓
-GET /v2/obd/{session_id} returns persisted session with raw_input_text and parsed_summary ✓
+GET /v2/obd/{session_id} returns persisted session with parsed_summary (raw OBD log stored on filesystem) ✓
 POST /v2/obd/{session_id}/diagnose streams AI diagnosis via SSE ✓
 POST feedback (4 endpoints) returns 201; 11th submission returns 429 ✓
 CORS allows requests from localhost:3001 ✓
@@ -1384,7 +1384,7 @@ This ticket covers the post-APP‑19 refinements delivered across multiple commi
 
 6) **Dedup via SHA-256** — `input_text_hash` column (unique index) enables dedup; re-submitting identical input returns the existing session instead of creating a new one.
 
-7) **New session columns** — `raw_input_text`, `parsed_summary_payload` (JSONB), `diagnosis_text` added to `obd_analysis_sessions`.
+7) **New session columns** — `raw_input_file_path` (String(500), replaces former `raw_input_text` — raw OBD logs now stored on filesystem at `/app/data/obd_logs/`), `parsed_summary_payload` (JSONB), `diagnosis_text` added to `obd_analysis_sessions`.
 
 8) **Frontend updates** — obd-ui expanded to 4 tabs (Summary, Detailed, RAG, AI Diagnosis) with per-tab feedback forms, `forceMount` for tab state preservation, and regenerate-diagnosis support.
 

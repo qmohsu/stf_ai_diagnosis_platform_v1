@@ -34,7 +34,7 @@ Core session table for OBD-II analysis requests.
 | `status`                    | VARCHAR(20)   | default `'PENDING'`, INDEXED                 |
 | `input_text_hash`           | VARCHAR(64)   | NOT NULL, INDEXED (SHA-256)                  |
 | `input_size_bytes`          | INTEGER       | NOT NULL                                     |
-| `raw_input_text`            | TEXT          | NULLABLE                                     |
+| `raw_input_file_path`       | VARCHAR(500)  | NULLABLE (relative path to OBD log on disk)  |
 | `result_payload`            | JSONB         | NULLABLE (full LogSummaryV2)                 |
 | `parsed_summary_payload`    | JSONB         | NULLABLE (flat-string parsed summary)        |
 | `error_message`             | TEXT          | NULLABLE                                     |

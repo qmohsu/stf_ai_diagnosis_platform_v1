@@ -315,7 +315,7 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 - Accepts raw OBD TSV text body (same format as `/v2/tools/summarize-log-raw`)
 - **Dedup:** computes SHA-256 hash of the input; if an existing session with the same hash is found in the DB, returns the cached result immediately (no re-analysis)
 - Creates a persisted `OBDAnalysisSession` **immediately in Postgres** (UUID, status, SHA-256 input hash, JSONB result). There is no in-memory cache layer; the DB is the sole source of truth for session lifecycle
-- Stores `raw_input_text` and `parsed_summary_payload` (structured parsed summary as JSONB) on the session row
+- Stores raw OBD log to filesystem (`/app/data/obd_logs/{session_id}.txt`) and saves `raw_input_file_path` (relative path) on the session row; also stores `parsed_summary_payload` (structured parsed summary as JSONB)
 - Runs `_run_pipeline()` internally (same 5-stage pipeline)
 - Returns `session_id` + full `LogSummaryV2` result
 - On failure, persists error state for debugging
@@ -366,7 +366,7 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 - Returns 404 if session not found
 
 **Database tables:**
-- `obd_analysis_sessions`: id (UUID PK), vehicle_id (indexed), status (indexed), input_text_hash (SHA-256, indexed, used for dedup), input_size_bytes, raw_input_text, parsed_summary_payload (JSONB), diagnosis_text, premium_diagnosis_text, premium_diagnosis_model (String(200), latest model used), result_payload (JSONB), error_message, created_at, updated_at
+- `obd_analysis_sessions`: id (UUID PK), vehicle_id (indexed), status (indexed), input_text_hash (SHA-256, indexed, used for dedup), input_size_bytes, raw_input_file_path (String(500), relative path to OBD log file on disk), parsed_summary_payload (JSONB), diagnosis_text, premium_diagnosis_text, premium_diagnosis_model (String(200), latest model used), result_payload (JSONB), error_message, created_at, updated_at
 - `diagnosis_history`: id (UUID PK), session_id (FK, indexed), provider (String(20), CHECK constraint: `'local'`/`'premium'`), model_name (String(200)), diagnosis_text (Text), created_at. Append-only log of every AI diagnosis generation (local + premium). Each regeneration creates a new row; session columns retain only the latest text for quick access.
 - `obd_summary_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, extra_fields (JSONB), created_at
 - `obd_detailed_feedback`: id (UUID PK), session_id (FK), rating, is_helpful, comments, extra_fields (JSONB), created_at

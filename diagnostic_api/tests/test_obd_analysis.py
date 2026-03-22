@@ -6,7 +6,8 @@ Covers:
   - POST /v2/obd/{session_id}/feedback/{tab} (all 4 tabs, 404, 429 cap)
   - POST /v2/obd/{session_id}/feedback/ai_diagnosis (diagnosis text snapshot)
   - GET  /v2/obd/{session_id}/feedback (feedback history)
-  - raw_input_text excluded from API responses (C-1 regression)
+  - raw_input_file_path excluded from API responses (C-1 regression)
+  - OBD log file written to filesystem on analyze
 """
 
 from __future__ import annotations
@@ -146,7 +147,7 @@ class TestAnalyzeEndpoint:
     @patch("app.api.v2.endpoints.obd_analysis.format_summary_flat_strings")
     @patch("app.api.v2.endpoints.obd_analysis._run_pipeline")
     def test_successful_analyze_returns_session(
-        self, mock_pipeline, mock_format, client, app_ref,
+        self, mock_pipeline, mock_format, client, app_ref, tmp_path,
     ):
         from app.api.v2.schemas import LogSummaryV2
 
@@ -160,7 +161,15 @@ class TestAnalyzeEndpoint:
         from app.api.deps import get_db
         app_ref.dependency_overrides[get_db] = lambda: mock_db
 
-        resp = client.post("/v2/obd/analyze", content=b"valid log data\n")
+        with patch(
+            "app.api.v2.endpoints.obd_analysis.settings"
+        ) as mock_settings:
+            mock_settings.obd_log_storage_path = str(tmp_path)
+            mock_settings.premium_llm_enabled = False
+
+            resp = client.post(
+                "/v2/obd/analyze", content=b"valid log data\n",
+            )
         assert resp.status_code == 200
 
         body = resp.json()
@@ -174,10 +183,10 @@ class TestAnalyzeEndpoint:
 
     @patch("app.api.v2.endpoints.obd_analysis.format_summary_flat_strings")
     @patch("app.api.v2.endpoints.obd_analysis._run_pipeline")
-    def test_response_excludes_raw_input_text(
-        self, mock_pipeline, mock_format, client, app_ref,
+    def test_response_excludes_raw_input_file_path(
+        self, mock_pipeline, mock_format, client, app_ref, tmp_path,
     ):
-        """Regression: raw_input_text must NOT appear in the response (C-1)."""
+        """Regression: raw_input_file_path must NOT appear in the response."""
         from app.api.v2.schemas import LogSummaryV2
 
         mock_pipeline.return_value = LogSummaryV2(**FAKE_RESULT_PAYLOAD)
@@ -189,9 +198,83 @@ class TestAnalyzeEndpoint:
         from app.api.deps import get_db
         app_ref.dependency_overrides[get_db] = lambda: mock_db
 
-        resp = client.post("/v2/obd/analyze", content=b"valid log data\n")
+        with patch(
+            "app.api.v2.endpoints.obd_analysis.settings"
+        ) as mock_settings:
+            mock_settings.obd_log_storage_path = str(tmp_path)
+            mock_settings.premium_llm_enabled = False
+
+            resp = client.post(
+                "/v2/obd/analyze", content=b"valid log data\n",
+            )
         assert resp.status_code == 200
+        assert "raw_input_file_path" not in resp.json()
         assert "raw_input_text" not in resp.json()
+
+    @patch("app.api.v2.endpoints.obd_analysis.format_summary_flat_strings")
+    @patch("app.api.v2.endpoints.obd_analysis._run_pipeline")
+    def test_analyze_writes_obd_log_file(
+        self, mock_pipeline, mock_format, client, app_ref, tmp_path,
+    ):
+        """Verify raw OBD log is written to filesystem on success."""
+        from app.api.v2.schemas import LogSummaryV2
+
+        mock_pipeline.return_value = LogSummaryV2(**FAKE_RESULT_PAYLOAD)
+        mock_format.return_value = FAKE_PARSED_SUMMARY
+
+        mock_db = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+
+        log_dir = str(tmp_path / "obd_logs")
+        with patch(
+            "app.api.v2.endpoints.obd_analysis.settings"
+        ) as mock_settings:
+            mock_settings.obd_log_storage_path = log_dir
+            mock_settings.premium_llm_enabled = False
+
+            resp = client.post(
+                "/v2/obd/analyze", content=b"valid log data\n",
+            )
+
+        assert resp.status_code == 200
+        session_id = resp.json()["session_id"]
+        expected_file = tmp_path / "obd_logs" / f"{session_id}.txt"
+        assert expected_file.exists()
+        assert expected_file.read_bytes() == b"valid log data\n"
+
+    @patch("app.api.v2.endpoints.obd_analysis.format_summary_flat_strings")
+    @patch("app.api.v2.endpoints.obd_analysis._run_pipeline")
+    def test_analyze_cleans_up_file_on_pipeline_error(
+        self, mock_pipeline, mock_format, client, app_ref, tmp_path,
+    ):
+        """Verify orphaned OBD log file is removed on pipeline failure."""
+        mock_pipeline.side_effect = ValueError("bad data")
+
+        mock_db = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+
+        log_dir = str(tmp_path / "obd_logs")
+        with patch(
+            "app.api.v2.endpoints.obd_analysis.settings"
+        ) as mock_settings:
+            mock_settings.obd_log_storage_path = log_dir
+            mock_settings.premium_llm_enabled = False
+
+            resp = client.post(
+                "/v2/obd/analyze", content=b"corrupt\tdata\n",
+            )
+
+        assert resp.status_code == 422
+        # No orphaned files should remain
+        import os
+        if os.path.isdir(log_dir):
+            assert len(os.listdir(log_dir)) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -227,8 +310,8 @@ class TestGetSessionEndpoint:
         assert body["result"]["vehicle_id"] == "V-TEST"
         assert body["parsed_summary"] is not None
 
-    def test_db_hit_excludes_raw_input_text(self, client, app_ref):
-        """Regression: raw_input_text must NOT appear in DB-hit response."""
+    def test_db_hit_excludes_raw_input_file_path(self, client, app_ref):
+        """Regression: raw_input_file_path must NOT appear in response."""
         sid = uuid.uuid4()
         mock_db = MagicMock()
         mock_row = MagicMock()
@@ -246,6 +329,7 @@ class TestGetSessionEndpoint:
 
         resp = client.get(f"/v2/obd/{sid}")
         assert resp.status_code == 200
+        assert "raw_input_file_path" not in resp.json()
         assert "raw_input_text" not in resp.json()
 
     def test_unknown_session_returns_404(self, client, app_ref):

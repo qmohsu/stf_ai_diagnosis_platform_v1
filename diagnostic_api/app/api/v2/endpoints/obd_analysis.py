@@ -569,9 +569,12 @@ async def analyze_obd_log(
             premium_diagnosis_text=existing.premium_diagnosis_text,
         )
 
-    raw_text = body_bytes.decode("utf-8", errors="replace")
     session_id = uuid.uuid4()
     tmp_path: str | None = None
+    file_rel_path = f"{session_id}.txt"
+    file_abs_path = os.path.join(
+        settings.obd_log_storage_path, file_rel_path,
+    )
 
     try:
         with tempfile.NamedTemporaryFile(
@@ -587,6 +590,13 @@ async def analyze_obd_log(
         result_dict = result.model_dump(mode="json")
         parsed_dict = format_summary_flat_strings(result_dict)
 
+        # Write raw OBD log to persistent filesystem storage
+        os.makedirs(
+            os.path.dirname(file_abs_path), exist_ok=True,
+        )
+        with open(file_abs_path, "wb") as f:
+            f.write(body_bytes)
+
         # Persist to DB immediately
         db_session = OBDAnalysisSession(
             id=session_id,
@@ -595,7 +605,7 @@ async def analyze_obd_log(
             vehicle_id=result.vehicle_id,
             input_text_hash=input_hash,
             input_size_bytes=len(body_bytes),
-            raw_input_text=raw_text,
+            raw_input_file_path=file_rel_path,
             result_payload=result_dict,
             parsed_summary_payload=parsed_dict,
             error_message=None,
@@ -606,6 +616,9 @@ async def analyze_obd_log(
         except IntegrityError:
             # Concurrent insert with same user_id + input_text_hash
             db.rollback()
+            # Clean up orphaned file
+            if os.path.exists(file_abs_path):
+                os.unlink(file_abs_path)
             existing = (
                 db.query(OBDAnalysisSession)
                 .filter(
@@ -648,6 +661,9 @@ async def analyze_obd_log(
     except HTTPException:
         raise
     except Exception as exc:
+        # Clean up orphaned file on failure
+        if os.path.exists(file_abs_path):
+            os.unlink(file_abs_path)
         logger.error(
             "obd_analyze_error",
             session_id=str(session_id),
