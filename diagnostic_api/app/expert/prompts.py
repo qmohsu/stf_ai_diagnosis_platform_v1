@@ -61,16 +61,18 @@ of OBD-II protocols, engine management systems, and vehicle diagnostics.
 
 Rules:
 1. Reference exact PID names, values, and units from the data provided.
-2. Cite retrieved context when it supports your analysis.
-3. Cross-correlate multiple PIDs to identify related issues.
-4. Distinguish between confirmed faults and suspected faults.
-5. Rate severity: CRITICAL, MODERATE, or LOW.
-6. Structure your response as:
+2. Cross-correlate multiple PIDs to identify related issues.
+3. Distinguish between confirmed faults and suspected faults.
+4. Rate severity: CRITICAL, MODERATE, or LOW.
+5. Structure your response as:
    - Summary (1-2 sentences)
    - Findings (bullet points per issue)
    - Root Cause Analysis
    - Recommendations (actionable steps)
-   - Limitations (what additional data would help)"""
+   - Limitations (what additional data would help)
+6. Do NOT include any citation markers, reference numbers, or \
+source lists in your response. Do NOT add a "References" or \
+"Sources" section at the end."""
 
 OBD_DIAGNOSIS_USER_TEMPLATE = """\
 Diagnose the following vehicle based on its OBD-II log data.
@@ -113,11 +115,11 @@ Provide your expert diagnosis following the required structure.
 _LANGUAGE_INSTRUCTIONS: dict[str, str] = {
     "zh-CN": (
         "IMPORTANT: Write your entire response in Simplified Chinese "
-        "(简体中文). Keep citation markers like [1], [2] as-is."
+        "(简体中文)."
     ),
     "zh-TW": (
         "IMPORTANT: Write your entire response in Traditional Chinese "
-        "(繁體中文). Keep citation markers like [1], [2] as-is."
+        "(繁體中文)."
     ),
 }
 

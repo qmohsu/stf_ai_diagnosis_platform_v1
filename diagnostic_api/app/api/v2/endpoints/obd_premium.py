@@ -207,8 +207,8 @@ async def generate_premium_diagnosis(
         try:
             results = await retrieve_context(rag_query, top_k=3)
             context_str = "\n\n".join(
-                f"[{r.source_type} - {r.doc_id} - "
-                f"{r.section_title}]\n{r.text}"
+                f"{r.source_type} — {r.doc_id} — "
+                f"{r.section_title}\n{r.text}"
                 for r in results
             )
         except Exception as exc:
