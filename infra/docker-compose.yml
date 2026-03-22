@@ -80,21 +80,10 @@ services:
     environment:
       OLLAMA_HOST: 0.0.0.0:11434
       OLLAMA_FLASH_ATTENTION: "true"
-    # Healthcheck removed: curl not available in minimal image
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 3
-    #   start_period: 60s
-    # GPU support (NVIDIA RTX 4080 Super)
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+    # GPU access is environment-specific:
+    #   - Docker: use docker-compose.gpu-docker.yml overlay
+    #   - Podman (PolyU): uses direct /dev/nvidia* device passthrough
+    #     in docker-compose.polyu.yml
 
   # --------------------------------------------------------------------------
   # Diagnostic API - FastAPI backend

@@ -1,0 +1,18 @@
+# ============================================================================
+# Docker GPU Overlay - NVIDIA GPU support for Docker environments
+# Author: Li-Ta Hsu
+# Date: March 2026
+# ============================================================================
+# Usage (local dev with Docker + NVIDIA):
+#   docker compose -f docker-compose.yml -f docker-compose.gpu-docker.yml up -d
+# ============================================================================
+
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
