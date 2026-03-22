@@ -55,10 +55,18 @@ services:
   # --------------------------------------------------------------------------
   # Diagnostic API - use localhost for inter-service comms
   # --------------------------------------------------------------------------
+  # Override uvicorn port to 8001 (host port 8000 occupied by another service)
   diagnostic-api:
     network_mode: host
     networks: !reset []
     ports: !reset []
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     environment:
       DB_HOST: 127.0.0.1
       DB_PORT: ${POSTGRES_PORT:-5432}
