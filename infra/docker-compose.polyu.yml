@@ -4,27 +4,42 @@
 # Date: March 2026
 # ============================================================================
 # Usage:
-#   podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d --build
+#   podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d
 #
-# This override file adapts the base docker-compose.yml for the PolyU GPU
-# server which runs Podman (not Docker) with NVIDIA GPU device passthrough.
+# This override adapts the base docker-compose.yml for the PolyU GPU server
+# running Podman 3.4.x (rootless).
 #
-# Changes from base:
-#   - Ollama: direct device passthrough (Podman 3.x compatible)
-#   - Nginx: reverse proxy as sole external ingress on port 80
-#   - obd-ui: NEXT_PUBLIC_API_URL set to empty (same-origin via Nginx)
-#   - All app ports bound to 127.0.0.1 (only Nginx exposed externally)
+# Key adaptations:
+#   - network_mode: host — avoids Podman 3.x CNI/DNS issues; all services
+#     communicate via 127.0.0.1 on the host network stack.
+#   - Ollama: direct /dev/nvidia* device passthrough (Podman 3.x has no CDI).
+#   - Nginx: reverse proxy as sole external gateway on port 8080.
+#   - obd-ui: NEXT_PUBLIC_API_URL set to empty (same-origin via Nginx).
+#   - Port mappings removed (host network exposes container ports directly).
 # ============================================================================
 
 services:
   # --------------------------------------------------------------------------
+  # Postgres
+  # --------------------------------------------------------------------------
+  postgres:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stf_diagnosis}
+      POSTGRES_USER: ${POSTGRES_USER:-stf_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?APP_DB_PASSWORD must be set}
+      PGDATA: /var/lib/postgresql/data/pgdata
+
+  # --------------------------------------------------------------------------
   # Ollama - GPU passthrough via direct device mapping
   # --------------------------------------------------------------------------
-  # Podman 3.4 does not support CDI (nvidia.com/gpu=all).  Instead, pass
-  # through the NVIDIA device files directly.  The base file's
-  # deploy.resources.reservations section is Docker-specific and is silently
-  # ignored by podman-compose.
   ollama:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
     devices:
       - /dev/nvidia0:/dev/nvidia0
       - /dev/nvidia1:/dev/nvidia1
@@ -38,11 +53,41 @@ services:
       OLLAMA_FLASH_ATTENTION: "true"
 
   # --------------------------------------------------------------------------
+  # Diagnostic API - use localhost for inter-service comms
+  # --------------------------------------------------------------------------
+  diagnostic-api:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+    environment:
+      DB_HOST: 127.0.0.1
+      DB_PORT: ${POSTGRES_PORT:-5432}
+      DB_NAME: ${APP_DB_NAME:-stf_diagnosis}
+      DB_USER: ${APP_DB_USER:-stf_app_user}
+      DB_PASSWORD: ${APP_DB_PASSWORD}
+      LLM_ENDPOINT: http://127.0.0.1:${OLLAMA_PORT:-11434}
+      LLM_MODEL: ${OLLAMA_DEFAULT_MODEL:-qwen3.5:9b}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
+      VISION_MODEL: ${VISION_MODEL:-llava}
+      PREMIUM_LLM_ENABLED: ${PREMIUM_LLM_ENABLED:-false}
+      PREMIUM_LLM_API_KEY: ${PREMIUM_LLM_API_KEY:-}
+      PREMIUM_LLM_BASE_URL: ${PREMIUM_LLM_BASE_URL:-https://openrouter.ai/api/v1}
+      PREMIUM_LLM_MODEL: ${PREMIUM_LLM_MODEL:-anthropic/claude-sonnet-4.6}
+      PREMIUM_LLM_CURATED_MODELS: ${PREMIUM_LLM_CURATED_MODELS:-}
+      LOG_LEVEL: ${DIAGNOSTIC_API_LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${DIAGNOSTIC_API_LOG_FORMAT:-json}
+      LOG_FILE: /app/logs/diagnostic_api.log
+      STRICT_MODE: "true"
+      ALLOW_EXTERNAL_APIS: "false"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
+
+  # --------------------------------------------------------------------------
   # obd-ui - Override API URL for Nginx same-origin proxying
   # --------------------------------------------------------------------------
-  # When behind Nginx, the browser sends API requests to the same origin.
-  # Empty NEXT_PUBLIC_API_URL makes fetch() use relative paths (e.g. /v2/obd).
   obd-ui:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
     build:
       context: ../obd-ui
       dockerfile: Dockerfile
@@ -52,16 +97,13 @@ services:
       NEXT_PUBLIC_API_URL: ""
 
   # --------------------------------------------------------------------------
-  # Nginx - Sole external ingress gateway
+  # Nginx - Sole external ingress gateway (port 8080)
   # --------------------------------------------------------------------------
   nginx:
     image: nginx:1.27-alpine
     container_name: stf-nginx
     restart: unless-stopped
-    networks:
-      - stf-internal
-    ports:
-      - "0.0.0.0:${NGINX_PORT:-80}:80"
+    network_mode: host
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/proxy_params_api.conf:/etc/nginx/proxy_params_api.conf:ro
@@ -69,7 +111,8 @@ services:
       - obd-ui
       - diagnostic-api
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider",
+             "http://127.0.0.1:${NGINX_PORT:-8080}/health"]
       interval: 10s
       timeout: 5s
       retries: 3
