@@ -147,7 +147,7 @@ export async function retrieveRAG(
 type SSECallbacks = {
   onToken: (token: string) => void;
   onDone: (fullText: string, diagnosisHistoryId: string | null) => void;
-  onError: (error: string) => void;
+  onError: (error: string, errorCode?: string) => void;
   onStatus?: (message: string) => void;
 };
 
@@ -224,7 +224,12 @@ async function streamSSE(url: string, cb: SSECallbacks): Promise<void> {
           }
           break;
         case "error":
-          cb.onError(parsed as string);
+          if (typeof parsed === "object" && parsed !== null && "message" in parsed) {
+            const errObj = parsed as { message: string; error_code?: string };
+            cb.onError(errObj.message, errObj.error_code);
+          } else {
+            cb.onError(parsed as string);
+          }
           break;
         case "status":
           cb.onStatus?.(parsed as string);
@@ -246,7 +251,7 @@ export async function streamDiagnosis(
   sessionId: string,
   onToken: (token: string) => void,
   onDone: (fullText: string, diagnosisHistoryId: string | null) => void,
-  onError: (error: string) => void,
+  onError: (error: string, errorCode?: string) => void,
   onStatus?: (message: string) => void,
   force?: boolean,
   locale?: string,
@@ -262,7 +267,7 @@ export async function streamDiagnosis(
 /**
  * Fetch the admin-curated list of available premium models.
  */
-export async function getPremiumModels(): Promise<{ models: string[]; default: string }> {
+export async function getPremiumModels(): Promise<{ models: string[]; default: string; blocked: string[] }> {
   const res = await fetch(`${API_URL}/v2/obd/premium/models`, {
     headers: getAuthHeaders(),
   });
@@ -284,7 +289,7 @@ export async function streamPremiumDiagnosis(
   sessionId: string,
   onToken: (token: string) => void,
   onDone: (fullText: string, diagnosisHistoryId: string | null) => void,
-  onError: (error: string) => void,
+  onError: (error: string, errorCode?: string) => void,
   onStatus?: (message: string) => void,
   force?: boolean,
   model?: string,

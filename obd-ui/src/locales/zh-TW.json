@@ -169,7 +169,8 @@
     "regenerate": "重新產生診斷",
     "regenerateShort": "重新產生",
     "generateFailed": "產生診斷失敗",
-    "modelUsed": "模型：{{model}}"
+    "modelUsed": "模型：{{model}}",
+    "regionBlocked": "所選模型在您所在地區不可用，所有備選模型也被封鎖。請聯繫管理員更新模型配置。"
   },
   "history": {
     "title": "診斷歷史",

@@ -66,7 +66,13 @@ class Settings(BaseSettings):
         "deepseek/deepseek-v3.2,"
         "deepseek/deepseek-chat,"
         "qwen/qwen3.5-plus-02-15,"
-        "qwen/qwen3.5-flash-02-23",
+        "qwen/qwen3.5-flash-02-23,"
+        "minimax/minimax-m2.7,"
+        "minimax/minimax-m2.5,"
+        "z-ai/glm-5,"
+        "z-ai/glm-4.7,"
+        "moonshotai/kimi-k2.5,"
+        "moonshotai/kimi-k2",
     )
 
     @property

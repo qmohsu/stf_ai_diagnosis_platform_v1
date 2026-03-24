@@ -8,17 +8,18 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v3.3 (Audio feedback recording) |
+| **Status** | Draft v3.4 (Region-blocked model handling) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-03-22 (v3.3) |
+| **Last updated** | 2026-03-24 (v3.4) |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | APP-37: Audio feedback recording (GitHub Issue #12). Optional voice recording on all feedback forms via browser MediaRecorder API. Two-step upload flow (staging + token linking). Audio files stored on disk with Docker named volume. Playback via JWT-authed endpoint with Blob URL in frontend. |
+| **New in this revision** | APP-38: Region-blocked model handling (GitHub Issue #23). Model availability probing and caching. Diagnosis fallback on 403. Structured SSE error events. 6 new HK-accessible models (MiniMax, GLM, Kimi). Regional restriction documentation. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v3.4 | 2026-03-24 | Region-blocked model handling (APP-38, GitHub Issue #23): `model_availability.py` probes curated models for 403 (PermissionDeniedError) and caches results with 1-hour TTL. `GET /v2/obd/premium/models` returns `{models, default, blocked}` filtered by availability. `POST /v2/obd/{session_id}/diagnose/premium` implements fallback loop — retries next available model on 403, emits structured SSE error events with `error_code`. Frontend shows localized region-specific error. Curated list expanded with 6 HK-accessible models (MiniMax m2.7/m2.5, GLM glm-5/glm-4.7, Kimi k2.5/k2). Regional restrictions documented in `.env.polyu.example`. 7 new tests. |
 | v3.3 | 2026-03-22 | Audio feedback recording (APP-37, GitHub Issue #12): Optional voice recording on all 5 feedback forms via browser MediaRecorder API (WebM/Opus, max 120s/5 MB). Two-step upload: `POST /v2/obd/audio/upload` stages file and returns token; feedback JSON includes token to link audio. `GET /v2/obd/audio/{feedback_id}` streams playback with JWT auth. Audio stored on disk (`/app/data/audio/`) via Docker named volume. 3 new columns on `_OBDFeedbackMixin`. New `AudioRecorder.tsx` component. `FeedbackHistoryView` inline audio player with auth Blob URLs. Startup cleanup of stale staging files. i18n (EN/zh-CN/zh-TW). 12 new tests. |
 | v3.2 | 2026-03-21 | PolyU GPU server deployment (DO-07): Podman compose override (`docker-compose.polyu.yml`) with CDI GPU passthrough for Ollama. Nginx reverse proxy (`nginx/nginx.conf`) as sole external gateway on port 80, proxying frontend (`/`) and API (`/v1/`, `/v2/`, `/auth/`, `/health`, `/docs`) with SSE streaming support. Server-specific env template (`.env.polyu.example`). Automated setup (`polyu-setup.sh`) and deploy (`polyu-deploy.sh`) scripts. Comprehensive deployment guide with backup, monitoring, troubleshooting, and multi-user GPU etiquette (GitHub Issue #21) |
 | v3.1 | 2026-03-21 | Feedback-diagnosis link (APP-36): `diagnosis_history_id` FK on AI/premium feedback tables, SSE `done`/`cached` emit generation ID, feedback retrieval returns model name + generation timestamp, frontend threads history ID through components (GitHub Issue #9) |
@@ -124,7 +125,7 @@ Your materials reference multiple taxonomies (8 system categories; 17-class; 33 
 •	Postgres: session persistence, diagnosis history, feedback tables, and OBD snapshot storage.
 •	OBD Agent (edge collector): a separate service/daemon (python‑OBD or equivalent) that reads ELM327 OBD‑II and posts sanitized OBDSnapshot telemetry to diagnostic_api.
 •	**OBD Expert Diagnostic Web UI (`obd-ui`)**: Next.js 15 (TypeScript, Tailwind CSS, shadcn/ui, recharts) on port 3001. Provides experts with a visual interface to submit OBD logs, view analysis results across five tabs (Summary, Detailed, RAG, AI Diagnosis, History), and submit structured feedback per tab (up to 10 submissions per tab per session). Session dashboard (`/sessions`) lists all past analysis sessions with status filter, pagination, and diagnosis indicators (`has_diagnosis`, `has_premium_diagnosis`). History tab displays all past AI diagnosis generations with provider badge, model name, timestamp, and expandable text. RAG tab displays retrieved context; AI Diagnosis tab contains Local LLM / Cloud LLM (OpenRouter) sub-tabs for side-by-side comparison — local streams via SSE from Ollama, premium streams via SSE from OpenRouter (opt-in, multi-model). Premium sub-tab includes a model selector dropdown populated from admin-curated list. Communicates with diagnostic_api via `/v2/obd/*` endpoints. Runs as a standalone Docker service.
-•	**Premium LLM client (opt-in)**: `PremiumLLMClient` using OpenAI Python SDK (`AsyncOpenAI`) pointing at **OpenRouter** (`base_url=https://openrouter.ai/api/v1`) for cloud-based diagnosis. Supports any model available on OpenRouter; admin-curated model list configured via `PREMIUM_LLM_CURATED_MODELS` env var. Feature-gated (`PREMIUM_LLM_ENABLED=false` by default). The only component that requires internet access. Uses the same prompts and RAG context as the local Ollama client.
+•	**Premium LLM client (opt-in)**: `PremiumLLMClient` using OpenAI Python SDK (`AsyncOpenAI`) pointing at **OpenRouter** (`base_url=https://openrouter.ai/api/v1`) for cloud-based diagnosis. Supports any model available on OpenRouter; admin-curated model list configured via `PREMIUM_LLM_CURATED_MODELS` env var (16 models across 7 providers). Feature-gated (`PREMIUM_LLM_ENABLED=false` by default). The only component that requires internet access. Uses the same prompts and RAG context as the local Ollama client. **Region-block handling** (`model_availability.py`): probes each curated model with a minimal 1-token completion on first `/premium/models` request, caching results for 1 hour. Models returning `PermissionDeniedError` (HTTP 403) are marked blocked and filtered from the model list. The diagnosis endpoint implements a fallback loop — if the selected model returns 403, it marks it blocked, notifies the user via SSE status event, and retries with the next available model (up to 3 attempts). SSE error events are structured JSON with `error_code` field for frontend differentiation.
 ### 7.2 Deployment principle: local-first and interface invariants
 Interface invariants that must not change across phases:
 •	diagnostic_api calls the model through an OpenAI-compatible base URL.
@@ -335,14 +336,17 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 - **SSE-streaming AI diagnosis** via premium cloud LLM (OpenRouter, multi-model)
 - Accepts optional `model` query param (e.g., `?model=openai/gpt-5.2`); validated against admin-curated list (400 if not in list); defaults to `PREMIUM_LLM_MODEL`
 - Feature-gated: returns 403 if `PREMIUM_LLM_ENABLED=false`; returns 503 if API key is missing
-- Same SSE event format as `/diagnose` (token, done, cached, error, status)
+- SSE event types: `token` (string), `done`/`cached` (JSON with `text`, `diagnosis_history_id`, `model_used`), `error` (JSON with `message`, `error_code`), `status` (string)
+- **Fallback on region-block:** if the selected model returns HTTP 403, marks it blocked, emits SSE `status` event ("Model X is not available in your region. Trying next model..."), and retries with the next available model (up to 3 attempts). If all attempts fail, emits `error` event with `error_code: "all_models_blocked"`
 - Stores `premium_diagnosis_text` and `premium_diagnosis_model` on the session row upon completion
 - Appends a row to `diagnosis_history` table (provider="premium")
 - Independent from local diagnosis — both can exist simultaneously on the same session
 - Uses the same prompts and RAG context as the local endpoint
 
 **Endpoint:** `GET /v2/obd/premium/models`
-- Returns `{models: [...], default: "..."}` from admin-curated `PREMIUM_LLM_CURATED_MODELS` config
+- Returns `{models: [...], default: "...", blocked: [...]}` — `models` contains only regionally-available models; `blocked` lists region-restricted models from curated list
+- Triggers a lazy availability probe on first call (and when cache >1 hour old): sends minimal completion to each curated model, marks 403 responses as blocked
+- If configured default model is blocked, falls back to first available model
 - Feature-gated: returns 403 if `PREMIUM_LLM_ENABLED=false`
 
 **Endpoint:** `GET /v2/obd/{session_id}/history`

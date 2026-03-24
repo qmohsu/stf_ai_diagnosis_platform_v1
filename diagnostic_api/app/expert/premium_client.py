@@ -11,6 +11,7 @@ Date: February 2026
 
 from typing import AsyncIterator, Optional
 
+import openai
 import structlog
 from openai import AsyncOpenAI
 
@@ -146,6 +147,14 @@ class PremiumLLMClient:
                 delta = chunk.choices[0].delta
                 if delta.content:
                     yield delta.content
+
+        except openai.PermissionDeniedError as exc:
+            logger.error(
+                "premium_model_region_blocked",
+                model=effective_model,
+                error=str(exc),
+            )
+            raise
 
         except Exception as exc:
             error_msg = str(exc)

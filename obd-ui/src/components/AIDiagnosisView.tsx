@@ -42,6 +42,7 @@ export function AIDiagnosisView({
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [done, setDone] = useState(!!initialDiagnosisText);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const textRef = useRef("");
   const historyIdRef = useRef<string | null>(null);
 
@@ -49,6 +50,7 @@ export function AIDiagnosisView({
     setStreaming(true);
     setDone(false);
     setError(null);
+    setErrorCode(null);
     setStatusMsg(t("diagnosis.connecting"));
     setDiagnosisText("");
     textRef.current = "";
@@ -67,9 +69,10 @@ export function AIDiagnosisView({
       onDiagnosisGenerated?.(fullText);
       onDiagnosisHistoryIdChanged?.(historyId);
     };
-    const onError = (err: string) => {
+    const onError = (err: string, code?: string) => {
       setStatusMsg(null);
       setError(err);
+      setErrorCode(code ?? null);
       setStreaming(false);
     };
     const onStatus = (status: string) => {
@@ -136,7 +139,11 @@ export function AIDiagnosisView({
           )}
           {error && (
             <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>
+              {errorCode === "all_models_blocked" || errorCode === "region_blocked"
+                ? t("diagnosis.regionBlocked")
+                : error}
+            </AlertDescription>
             </Alert>
           )}
           <Button onClick={() => handleGenerate()} className="w-full">
@@ -165,7 +172,11 @@ export function AIDiagnosisView({
       <CardContent>
         {error && (
           <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>
+              {errorCode === "all_models_blocked" || errorCode === "region_blocked"
+                ? t("diagnosis.regionBlocked")
+                : error}
+            </AlertDescription>
           </Alert>
         )}
 

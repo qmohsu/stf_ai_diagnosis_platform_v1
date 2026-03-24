@@ -169,7 +169,8 @@
     "regenerate": "Regenerate Diagnosis",
     "regenerateShort": "Regenerate",
     "generateFailed": "Failed to generate diagnosis",
-    "modelUsed": "Model: {{model}}"
+    "modelUsed": "Model: {{model}}",
+    "regionBlocked": "The selected model is not available in your region. All fallback models were also blocked. Please contact the administrator to update the model configuration."
   },
   "history": {
     "title": "Diagnosis History",

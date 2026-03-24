@@ -1,17 +1,21 @@
 """Tests for premium AI diagnosis endpoints.
 
 Covers:
-  - GET  /v2/obd/premium/models (200, 403)
-  - POST /v2/obd/{session_id}/diagnose/premium (403, 503, 422, caching)
-  - POST /v2/obd/{session_id}/feedback/premium_diagnosis (404, snapshot)
+  - GET  /v2/obd/premium/models (200, 403, availability filter)
+  - POST /v2/obd/{session_id}/diagnose/premium (403, 503, 422,
+    caching, region-blocked fallback)
+  - POST /v2/obd/{session_id}/feedback/premium_diagnosis (404,
+    snapshot)
   - Per-session regeneration rate limit (429)
 """
 
 from __future__ import annotations
 
+import json
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import openai
 import pytest
 from fastapi.testclient import TestClient
 
@@ -473,3 +477,352 @@ class TestPremiumFeedback:
         )
         assert extra_fields is not None
         assert len(extra_fields["diagnosis_text"]) == 50_000
+
+
+# ---------------------------------------------------------------------------
+# Region-block handling (403 fallback)
+# ---------------------------------------------------------------------------
+
+
+def _parse_sse_events(body: str) -> list[dict]:
+    """Parse SSE event frames from a response body string.
+
+    Returns:
+        List of dicts with ``event`` and ``data`` keys.
+    """
+    events = []
+    for frame in body.split("\n\n"):
+        frame = frame.strip()
+        if not frame or frame.startswith(":"):
+            continue
+        event = ""
+        data = ""
+        for line in frame.split("\n"):
+            if line.startswith("event: "):
+                event = line[7:]
+            elif line.startswith("data: "):
+                data = line[6:]
+        if event and data:
+            try:
+                data = json.loads(data)
+            except (json.JSONDecodeError, TypeError):
+                pass
+            events.append({"event": event, "data": data})
+    return events
+
+
+class TestRegionBlockHandling:
+    """Tests for 403 region-block detection and fallback."""
+
+    @patch(
+        "app.api.v2.endpoints.obd_premium.settings",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium._get_session_data",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium.retrieve_context",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium._get_premium_client",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium._store_diagnosis",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium.get_available_models",
+    )
+    def test_403_triggers_fallback_to_next_model(
+        self,
+        mock_avail,
+        mock_store,
+        mock_client_fn,
+        mock_retrieve,
+        mock_get_data,
+        mock_settings,
+        client,
+    ):
+        """When first model returns 403, falls back to next."""
+        mock_settings.premium_llm_enabled = True
+        mock_settings.premium_llm_api_key = "sk-test"
+        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4.6"
+        mock_settings.premium_llm_model_list = [
+            "anthropic/claude-sonnet-4.6",
+            "deepseek/deepseek-v3.2",
+        ]
+
+        from app.api.v2.endpoints.obd_analysis import (
+            SessionData,
+        )
+        mock_get_data.return_value = SessionData(
+            parsed_summary=FAKE_PARSED_SUMMARY,
+            diagnosis_text=None,
+            premium_diagnosis_text=None,
+        )
+        mock_retrieve.return_value = []
+        mock_store.return_value = uuid.uuid4()
+        mock_avail.return_value = [
+            "anthropic/claude-sonnet-4.6",
+            "deepseek/deepseek-v3.2",
+        ]
+
+        # First call raises 403, second succeeds
+        call_count = 0
+
+        async def _fake_stream(
+            ps, ctx, model_override=None, locale="en",
+        ):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise openai.PermissionDeniedError(
+                    message="region blocked",
+                    response=AsyncMock(status_code=403),
+                    body=None,
+                )
+            yield "OK"
+
+        mock_client = MagicMock()
+        mock_client.generate_obd_diagnosis_stream = _fake_stream
+        mock_client_fn.return_value = mock_client
+
+        sid = uuid.uuid4()
+        resp = client.post(
+            f"/v2/obd/{sid}/diagnose/premium",
+        )
+        assert resp.status_code == 200
+
+        events = _parse_sse_events(resp.text)
+        event_types = [e["event"] for e in events]
+
+        # Should have: status (connecting first), status (blocked),
+        # status (connecting second), done
+        assert "done" in event_types
+        assert call_count == 2
+
+        # Verify the done event includes model_used
+        done_evt = next(
+            e for e in events if e["event"] == "done"
+        )
+        assert done_evt["data"]["model_used"] == (
+            "deepseek/deepseek-v3.2"
+        )
+
+    @patch(
+        "app.api.v2.endpoints.obd_premium.settings",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium._get_session_data",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium.retrieve_context",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium._get_premium_client",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium.get_available_models",
+    )
+    def test_all_models_blocked_returns_error(
+        self,
+        mock_avail,
+        mock_client_fn,
+        mock_retrieve,
+        mock_get_data,
+        mock_settings,
+        client,
+    ):
+        """When all fallback models return 403, returns error."""
+        mock_settings.premium_llm_enabled = True
+        mock_settings.premium_llm_api_key = "sk-test"
+        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4.6"
+        mock_settings.premium_llm_model_list = [
+            "anthropic/claude-sonnet-4.6",
+            "openai/gpt-5.2",
+        ]
+
+        from app.api.v2.endpoints.obd_analysis import (
+            SessionData,
+        )
+        mock_get_data.return_value = SessionData(
+            parsed_summary=FAKE_PARSED_SUMMARY,
+            diagnosis_text=None,
+            premium_diagnosis_text=None,
+        )
+        mock_retrieve.return_value = []
+        mock_avail.return_value = [
+            "anthropic/claude-sonnet-4.6",
+            "openai/gpt-5.2",
+        ]
+
+        # All calls raise 403
+        async def _always_403(
+            ps, ctx, model_override=None, locale="en",
+        ):
+            raise openai.PermissionDeniedError(
+                message="region blocked",
+                response=AsyncMock(status_code=403),
+                body=None,
+            )
+            yield  # pragma: no cover — makes it a generator
+
+        mock_client = MagicMock()
+        mock_client.generate_obd_diagnosis_stream = _always_403
+        mock_client_fn.return_value = mock_client
+
+        sid = uuid.uuid4()
+        resp = client.post(
+            f"/v2/obd/{sid}/diagnose/premium",
+        )
+        assert resp.status_code == 200
+
+        events = _parse_sse_events(resp.text)
+        error_events = [
+            e for e in events if e["event"] == "error"
+        ]
+        assert len(error_events) == 1
+        assert error_events[0]["data"]["error_code"] == (
+            "all_models_blocked"
+        )
+
+    @patch(
+        "app.api.v2.endpoints.obd_premium.settings",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium._get_session_data",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium.retrieve_context",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium._get_premium_client",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium.get_available_models",
+    )
+    def test_non_403_error_does_not_trigger_fallback(
+        self,
+        mock_avail,
+        mock_client_fn,
+        mock_retrieve,
+        mock_get_data,
+        mock_settings,
+        client,
+    ):
+        """Non-403 errors stop immediately, no fallback."""
+        mock_settings.premium_llm_enabled = True
+        mock_settings.premium_llm_api_key = "sk-test"
+        mock_settings.premium_llm_model = "anthropic/claude-sonnet-4.6"
+        mock_settings.premium_llm_model_list = [
+            "anthropic/claude-sonnet-4.6",
+            "deepseek/deepseek-v3.2",
+        ]
+
+        from app.api.v2.endpoints.obd_analysis import (
+            SessionData,
+        )
+        mock_get_data.return_value = SessionData(
+            parsed_summary=FAKE_PARSED_SUMMARY,
+            diagnosis_text=None,
+            premium_diagnosis_text=None,
+        )
+        mock_retrieve.return_value = []
+        mock_avail.return_value = [
+            "anthropic/claude-sonnet-4.6",
+            "deepseek/deepseek-v3.2",
+        ]
+
+        call_count = 0
+
+        async def _generic_error(
+            ps, ctx, model_override=None, locale="en",
+        ):
+            nonlocal call_count
+            call_count += 1
+            raise RuntimeError("connection timeout")
+            yield  # pragma: no cover
+
+        mock_client = MagicMock()
+        mock_client.generate_obd_diagnosis_stream = (
+            _generic_error
+        )
+        mock_client_fn.return_value = mock_client
+
+        sid = uuid.uuid4()
+        resp = client.post(
+            f"/v2/obd/{sid}/diagnose/premium",
+        )
+        assert resp.status_code == 200
+
+        events = _parse_sse_events(resp.text)
+        error_events = [
+            e for e in events if e["event"] == "error"
+        ]
+        assert len(error_events) == 1
+        assert error_events[0]["data"]["error_code"] == (
+            "stream_error"
+        )
+        # Only ONE attempt — no fallback on non-403
+        assert call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# GET /v2/obd/premium/models — availability filtering
+# ---------------------------------------------------------------------------
+
+
+class TestPremiumModelsAvailability:
+    """Tests for model listing with availability filtering."""
+
+    @patch(
+        "app.api.v2.endpoints.obd_premium.refresh_availability",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium.is_cache_stale",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium.get_blocked_models",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium.get_available_models",
+    )
+    @patch(
+        "app.api.v2.endpoints.obd_premium.settings",
+    )
+    def test_returns_filtered_models_with_blocked(
+        self,
+        mock_settings,
+        mock_avail,
+        mock_blocked,
+        mock_stale,
+        mock_refresh,
+        client,
+    ):
+        """Endpoint returns available and blocked model lists."""
+        mock_settings.premium_llm_enabled = True
+        mock_settings.premium_llm_api_key = "sk-test"
+        mock_settings.premium_llm_base_url = (
+            "https://openrouter.ai/api/v1"
+        )
+        mock_settings.premium_llm_model = (
+            "anthropic/claude-sonnet-4.6"
+        )
+        mock_settings.premium_llm_model_list = [
+            "anthropic/claude-sonnet-4.6",
+            "deepseek/deepseek-v3.2",
+        ]
+        mock_stale.return_value = False
+        mock_avail.return_value = ["deepseek/deepseek-v3.2"]
+        mock_blocked.return_value = [
+            "anthropic/claude-sonnet-4.6"
+        ]
+
+        resp = client.get("/v2/obd/premium/models")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["models"] == ["deepseek/deepseek-v3.2"]
+        assert body["blocked"] == [
+            "anthropic/claude-sonnet-4.6"
+        ]
+        # Default falls back since original default is blocked
+        assert body["default"] == "deepseek/deepseek-v3.2"
