@@ -1,6 +1,6 @@
 # STF AI Diagnosis Platform v1
 
-> **🌐 Live Demo**: [https://ips-foreign-diploma-sullivan.trycloudflare.com](https://ips-foreign-diploma-sullivan.trycloudflare.com)
+> **🌐 Live Demo**: [https://stf-diagnosis.dev](https://stf-diagnosis.dev)
 
 ## Overview
 

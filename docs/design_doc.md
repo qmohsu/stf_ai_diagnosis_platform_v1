@@ -8,17 +8,18 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v3.4 (Region-blocked model handling) |
+| **Status** | Draft v3.5 (Permanent Cloudflare Tunnel) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-03-24 (v3.4) |
+| **Last updated** | 2026-03-25 (v3.5) |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | APP-38: Region-blocked model handling (GitHub Issue #23). Model availability probing and caching. Diagnosis fallback on 403. Structured SSE error events. 6 new HK-accessible models (MiniMax, GLM, Kimi). Regional restriction documentation. |
+| **New in this revision** | DO-08: Permanent Cloudflare Tunnel (GitHub Issue #24). Named tunnel on `stf-diagnosis.dev` replaces temporary quick tunnel. Systemd user service with auto-restart and linger. Deployment guide updated with tunnel architecture and management. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v3.5 | 2026-03-25 | Permanent Cloudflare Tunnel (DO-08, GitHub Issue #24): Named tunnel `stf-diagnosis` on `stf-diagnosis.dev` replaces temporary quick tunnel (`trycloudflare.com`). Tunnel config at `~/.cloudflared/config.yml`, credentials at `~/.cloudflared/<TUNNEL_ID>.json`. DNS CNAME routes domain to tunnel. Systemd user service (`cloudflared.service`) with `Restart=on-failure` and `loginctl enable-linger` for persistence across reboots and logouts. Deployment guide updated with tunnel architecture diagram, management commands, and troubleshooting. README live demo URL updated. |
 | v3.4 | 2026-03-24 | Region-blocked model handling (APP-38, GitHub Issue #23): `model_availability.py` probes curated models for 403 (PermissionDeniedError) and caches results with 1-hour TTL. `GET /v2/obd/premium/models` returns `{models, default, blocked}` filtered by availability. `POST /v2/obd/{session_id}/diagnose/premium` implements fallback loop — retries next available model on 403, emits structured SSE error events with `error_code`. Frontend shows localized region-specific error. Curated list expanded with 6 HK-accessible models (MiniMax m2.7/m2.5, GLM glm-5/glm-4.7, Kimi k2.5/k2). Regional restrictions documented in `.env.polyu.example`. 7 new tests. |
 | v3.3 | 2026-03-22 | Audio feedback recording (APP-37, GitHub Issue #12): Optional voice recording on all 5 feedback forms via browser MediaRecorder API (WebM/Opus, max 120s/5 MB). Two-step upload: `POST /v2/obd/audio/upload` stages file and returns token; feedback JSON includes token to link audio. `GET /v2/obd/audio/{feedback_id}` streams playback with JWT auth. Audio stored on disk (`/app/data/audio/`) via Docker named volume. 3 new columns on `_OBDFeedbackMixin`. New `AudioRecorder.tsx` component. `FeedbackHistoryView` inline audio player with auth Blob URLs. Startup cleanup of stale staging files. i18n (EN/zh-CN/zh-TW). 12 new tests. |
 | v3.2 | 2026-03-21 | PolyU GPU server deployment (DO-07): Podman compose override (`docker-compose.polyu.yml`) with CDI GPU passthrough for Ollama. Nginx reverse proxy (`nginx/nginx.conf`) as sole external gateway on port 80, proxying frontend (`/`) and API (`/v1/`, `/v2/`, `/auth/`, `/health`, `/docs`) with SSE streaming support. Server-specific env template (`.env.polyu.example`). Automated setup (`polyu-setup.sh`) and deploy (`polyu-deploy.sh`) scripts. Comprehensive deployment guide with backup, monitoring, troubleshooting, and multi-user GPU etiquette (GitHub Issue #21) |
@@ -138,7 +139,7 @@ The premium LLM client is the sole exception to the local-only deployment rule. 
 ### 7.3 Network flow (reference)
 The deployment consists of the Next.js web UI (`obd-ui`, port 3001), the FastAPI backend (`diagnostic_api`), Ollama (model server), and Postgres with pgvector (database + vector store). All services communicate over a dedicated internal Docker network. Only the Nginx reverse proxy handles ingress; backend services are not exposed to the LAN. The outbound allow-list should be enforced at the network layer to restrict calls to internal services only.
 
-**PolyU server deployment (Podman):** The PolyU HK GPU server (2x RTX 6000 Ada, 92 GB VRAM) uses Podman instead of Docker for rootless multi-user access. GPU passthrough uses CDI (Container Device Interface) via `devices: ["nvidia.com/gpu=all"]` in the Podman compose override (`infra/docker-compose.polyu.yml`). Nginx is deployed as a container service on port 80, proxying all external traffic to the frontend and API. SSE streaming endpoints have `proxy_buffering off` for real-time token delivery. See `docs/deployment_polyu.md` for full setup instructions.
+**PolyU server deployment (Podman):** The PolyU HK GPU server (2x RTX 6000 Ada, 92 GB VRAM) uses Podman instead of Docker for rootless multi-user access. GPU passthrough uses CDI (Container Device Interface) via `devices: ["nvidia.com/gpu=all"]` in the Podman compose override (`infra/docker-compose.polyu.yml`). Nginx is deployed as a container service on port 8080, proxying all external traffic to the frontend and API. SSE streaming endpoints have `proxy_buffering off` for real-time token delivery. Public access is provided via a permanent Cloudflare Tunnel (`stf-diagnosis.dev`) that routes HTTPS traffic to Nginx on `127.0.0.1:8080`. The tunnel runs as a systemd user service with auto-restart and linger. See `docs/deployment_polyu.md` for full setup instructions.
 ## 8) Data architecture for the expert model pipeline
 ### 8.1 Data boundaries: what the LLM can and cannot see
 Allowed in LLM context (summaries only):

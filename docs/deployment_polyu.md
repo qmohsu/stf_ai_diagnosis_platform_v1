@@ -1,6 +1,6 @@
 # PolyU Server Deployment Guide
 
-> Last updated: 2026-03-21 | GitHub Issue: #21
+> Last updated: 2026-03-25 | GitHub Issues: #21, #24
 
 ## Table of Contents
 
@@ -13,6 +13,7 @@
 7. [Database Operations](#database-operations)
 8. [Monitoring & Troubleshooting](#monitoring--troubleshooting)
 9. [Multi-User GPU Etiquette](#multi-user-gpu-etiquette)
+10. [Cloudflare Tunnel (Public Access)](#cloudflare-tunnel-public-access)
 
 ---
 
@@ -64,27 +65,28 @@ SSH key pair: `~/.ssh/id_ed25519`. Public key installed on both bastion and GPU 
 ## Network Architecture
 
 ```
-Campus Network / VPN
-        |
-        v
-  +-----------+
-  |   Nginx   |  :80  (0.0.0.0 - only externally exposed port)
-  +-----------+
-    |       |
-    v       v
-+-------+ +----------------+
-|obd-ui | |diagnostic-api  |  :8000 (internal only)
-| :3001 | +----------------+
-+-------+        |
-                 v
-         +-------------+    +-----------+
-         |  PostgreSQL  |    |  Ollama   |
-         |  + pgvector  |    | (GPU CDI) |
-         |    :5432     |    |  :11434   |
-         +-------------+    +-----------+
+Internet (HTTPS)          Campus Network / VPN
+        |                        |
+        v                        v
+  +------------+           +-----------+
+  | cloudflared|---------->|   Nginx   |  :8080 (127.0.0.1)
+  +------------+           +-----------+
+  (stf-diagnosis.dev)        |       |
+                             v       v
+                       +-------+ +----------------+
+                       |obd-ui | |diagnostic-api  |  :8001 (internal)
+                       | :3001 | +----------------+
+                       +-------+        |
+                                        v
+                                +-------------+    +-----------+
+                                |  PostgreSQL  |    |  Ollama   |
+                                |  + pgvector  |    | (GPU CDI) |
+                                |    :5432     |    |  :11434   |
+                                +-------------+    +-----------+
 ```
 
-- **Nginx** is the sole external gateway (port 80).
+- **Cloudflare Tunnel** provides public HTTPS access via `stf-diagnosis.dev`.
+- **Nginx** is the sole internal gateway (port 8080).
 - All other services bind to `127.0.0.1` (container-internal network).
 - Browser requests to `/v1/*`, `/v2/*`, `/auth/*`, `/health`, `/docs` are
   proxied to the FastAPI backend; everything else goes to the Next.js frontend.
@@ -452,11 +454,93 @@ This server is shared with other researchers. Please follow these guidelines:
 
 ---
 
+## Cloudflare Tunnel (Public Access)
+
+The platform is publicly accessible at **https://stf-diagnosis.dev** via a
+permanent Cloudflare Tunnel. The tunnel routes external HTTPS traffic to the
+Nginx gateway on `127.0.0.1:8080`.
+
+### Architecture
+
+```
+Internet (HTTPS)
+       |
+       v
+  Cloudflare Edge (HK)
+       |  (QUIC)
+       v
+  cloudflared (systemd user service)
+       |
+       v
+  Nginx (:8080)  -->  obd-ui (:3001) / diagnostic-api (:8001)
+```
+
+### Configuration
+
+Tunnel config is stored on the server (not in git):
+
+- **Credentials**: `~/.cloudflared/<TUNNEL_ID>.json`
+- **Certificate**: `~/.cloudflared/cert.pem`
+- **Config**: `~/.cloudflared/config.yml`
+
+```yaml
+# ~/.cloudflared/config.yml
+tunnel: <TUNNEL_ID>
+credentials-file: /home/talon/.cloudflared/<TUNNEL_ID>.json
+
+ingress:
+  - hostname: stf-diagnosis.dev
+    service: http://127.0.0.1:8080
+  - service: http_status:404
+```
+
+### Management
+
+```bash
+# Check tunnel status
+systemctl --user status cloudflared
+
+# Restart tunnel
+systemctl --user restart cloudflared
+
+# View tunnel logs
+journalctl --user -u cloudflared -f
+
+# Stop tunnel (e.g., for maintenance)
+systemctl --user stop cloudflared
+```
+
+The service is configured with `loginctl enable-linger`, so it persists
+across SSH sessions and server reboots.
+
+### Troubleshooting
+
+**Tunnel not connecting:**
+
+```bash
+# Check if cloudflared is running
+systemctl --user status cloudflared
+
+# Check logs for errors
+journalctl --user -u cloudflared --since "10 min ago"
+
+# Manually test the tunnel
+~/.local/bin/cloudflared tunnel run stf-diagnosis
+```
+
+**Domain not resolving:**
+
+```bash
+# Verify DNS CNAME exists
+dig stf-diagnosis.dev CNAME
+
+# Re-add DNS route if needed
+~/.local/bin/cloudflared tunnel route dns stf-diagnosis stf-diagnosis.dev
+```
+
+---
+
 ## Notes
 
-- AWS reverse proxy is only needed if off-campus access is required.
-  For campus or VPN access, direct connection to the server IP is sufficient.
-- SSL/TLS can be added later by mounting certificates in the Nginx container
-  and updating `nginx.conf` to listen on port 443.
 - The `PREMIUM_LLM_ENABLED=true` setting requires outbound internet access
   to reach OpenRouter. Verify the server can reach `https://openrouter.ai`.
