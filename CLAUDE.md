@@ -145,15 +145,30 @@ When the user says **"deploy to server"** or **"update the server"**, follow thi
 
 1. **Pre-flight check**: Run `git status` and `git log origin/main..HEAD` locally to verify all changes are committed and pushed to `origin/main`. If there are unpushed commits or uncommitted changes, warn the user and do NOT proceed until everything is pushed.
 2. **Pull on server**: `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1 && git pull origin main"`
-3. **Rebuild & restart**: `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1/infra && ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d --build"`
-4. **Health checks**: Verify all 5 services are healthy:
+3. **Rebuild images**: `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1/infra && ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml build diagnostic-api obd-ui"`
+4. **Force-recreate changed containers**: Podman 3.4 does NOT recreate containers when the image changes — `up -d --build` silently keeps old containers. You MUST use `down`+`up` for changed services:
+   ```
+   ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1/infra && \
+     ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml down && sleep 2 && \
+     ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d postgres && sleep 5 && \
+     ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d ollama && sleep 2 && \
+     ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d diagnostic-api && sleep 5 && \
+     ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d obd-ui && sleep 3 && \
+     ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d nginx"
+   ```
+5. **Verify containers are fresh**: Check that `CREATED AT` timestamps are recent (within the last minute) for ALL rebuilt services. Old timestamps mean the container was NOT recreated:
+   `ssh polyu-gpu "podman ps --format 'table {{.Names}} {{.CreatedAt}}'"`
+6. **Health checks**: Verify all 5 services are healthy:
    - `curl -sf http://127.0.0.1:11434/api/version` (Ollama)
    - `curl -sf http://127.0.0.1:8001/health` (Diagnostic API)
    - `curl -sf http://127.0.0.1:3001` (OBD UI)
    - `curl -sf http://127.0.0.1:8080/health` (Nginx gateway)
-   - `podman ps --format 'table {{.Names}} {{.Status}}'`
+7. **Verify deployed commit**: Confirm the running code matches what was pushed:
+   `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1 && git log --oneline -1"`
 
 **Server details**: Podman 3.4 (rootless), host networking, API on port 8001, Nginx on port 8080, `runtime: nvidia` for Ollama GPU.
+
+**CRITICAL Podman 3.4 gotcha**: `podman-compose up -d --build` builds new images but does NOT recreate containers. Always use `down` + `up` to ensure containers run the latest image. Verify via `podman ps` creation timestamps.
 
 ## Memory Management
 
