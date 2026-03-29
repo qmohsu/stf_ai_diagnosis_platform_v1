@@ -672,7 +672,10 @@ async def analyze_obd_log(
         )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Failed to parse log file. Ensure it is a valid OBD TSV log.",
+            detail=(
+                "Failed to parse log file. Supported formats: "
+                "TSV (native), CSV (OBDWIZ CSVLog, obd_maxlog)."
+            ),
         ) from exc
     finally:
         if tmp_path is not None:
