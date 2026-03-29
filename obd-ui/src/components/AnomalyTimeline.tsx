@@ -13,7 +13,7 @@ import {
   ZAxis,
 } from "recharts";
 import type { AnomalyEvent } from "@/lib/types";
-import { formatTimestamp } from "@/lib/utils";
+import { formatTimestamp, signalDisplayName } from "@/lib/utils";
 
 interface AnomalyTimelineProps {
   events: AnomalyEvent[];
@@ -85,10 +85,10 @@ export function AnomalyTimeline({ events, onEventClick }: AnomalyTimelineProps) 
                 <div className="rounded border bg-white p-2 text-xs shadow max-w-xs">
                   <p className="font-semibold">{d.label}</p>
                   <p>{t("anomaly.scoreValue", { value: ev.score.toFixed(3) })}</p>
-                  <p>{t("anomaly.severityValue", { value: ev.severity })}</p>
-                  <p>{t("anomaly.detector", { value: ev.detector })}</p>
-                  <p>{t("anomaly.context", { value: ev.context })}</p>
-                  <p>{t("anomaly.signals", { value: ev.signals.join(", ") })}</p>
+                  <p>{t("anomaly.severityValue", { value: t(`anomaly.${ev.severity}`) })}</p>
+                  <p>{t("anomaly.detector", { value: t(`anomaly.detectorType.${ev.detector}`) })}</p>
+                  <p>{t("anomaly.context", { value: t(`anomaly.contextType.${ev.context}`) })}</p>
+                  <p>{t("anomaly.signals", { value: ev.signals.map((s) => signalDisplayName(s, t)).join(", ") })}</p>
                 </div>
               );
             }}

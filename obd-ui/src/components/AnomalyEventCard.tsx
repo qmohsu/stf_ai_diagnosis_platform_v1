@@ -6,7 +6,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import type { AnomalyEvent } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatTimestamp, severityBadgeColor } from "@/lib/utils";
+import { formatTimestamp, severityBadgeColor, signalDisplayName } from "@/lib/utils";
 
 interface AnomalyEventCardProps {
   event: AnomalyEvent;
@@ -25,10 +25,10 @@ export function AnomalyEventCard({ event }: AnomalyEventCardProps) {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Badge className={severityBadgeColor(event.severity)}>
-                {event.severity}
+                {t(`anomaly.${event.severity}`)}
               </Badge>
-              <Badge variant="outline">{event.detector}</Badge>
-              <Badge variant="secondary">{event.context}</Badge>
+              <Badge variant="outline">{t(`anomaly.detectorType.${event.detector}`)}</Badge>
+              <Badge variant="secondary">{t(`anomaly.contextType.${event.context}`)}</Badge>
               <span className="text-xs text-muted-foreground">
                 {t("anomaly.scoreValue", { value: event.score.toFixed(3) })}
               </span>
@@ -39,7 +39,7 @@ export function AnomalyEventCard({ event }: AnomalyEventCardProps) {
             <div className="flex flex-wrap gap-1">
               {event.signals.map((sig) => (
                 <Badge key={sig} variant="outline" className="text-xs">
-                  {sig}
+                  {signalDisplayName(sig, t)}
                 </Badge>
               ))}
             </div>

@@ -38,7 +38,7 @@ export function PIDSummaryTable({ pidSummary }: PIDSummaryTableProps) {
       <TableBody>
         {entries.map(([name, stat]) => (
           <TableRow key={name}>
-            <TableCell className="font-medium">{signalDisplayName(name)}</TableCell>
+            <TableCell className="font-medium">{signalDisplayName(name, t)}</TableCell>
             <TableCell className="text-right font-mono text-sm">
               {formatNumber(stat.min)}
             </TableCell>

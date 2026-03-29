@@ -33,12 +33,12 @@ export function SignalBoxPlot({ valueStatistics }: SignalBoxPlotProps) {
     const signals = unitGroups[selectedUnit] || [];
     return signals.map((signal) => {
       const s = valueStatistics.stats[signal];
-      if (!s) return { signal: signalDisplayName(signal), p50: 0, iqr: 0, lowerWhisker: 0, upperWhisker: 0 };
+      if (!s) return { signal: signalDisplayName(signal, t), p50: 0, iqr: 0, lowerWhisker: 0, upperWhisker: 0 };
       const p25 = s.p25 ?? 0;
       const p75 = s.p75 ?? 0;
       const p50 = s.p50 ?? 0;
       return {
-        signal: signalDisplayName(signal),
+        signal: signalDisplayName(signal, t),
         // Use p25 as base, bar height = IQR (p25 to p75)
         base: p25,
         iqr: p75 - p25,
@@ -50,7 +50,7 @@ export function SignalBoxPlot({ valueStatistics }: SignalBoxPlotProps) {
         upperWhisker: (s.p95 ?? 0) - p75,
       };
     });
-  }, [selectedUnit, unitGroups, valueStatistics.stats]);
+  }, [selectedUnit, unitGroups, valueStatistics.stats, t]);
 
   if (unitOptions.length === 0) return null;
 

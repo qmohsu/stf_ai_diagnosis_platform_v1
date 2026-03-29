@@ -34,13 +34,13 @@ export function SignalBarChart({ valueStatistics }: SignalBarChartProps) {
     return signals.map((signal) => {
       const stats = valueStatistics.stats[signal];
       return {
-        signal: signalDisplayName(signal),
+        signal: signalDisplayName(signal, t),
         min: stats?.min ?? 0,
         mean: stats?.mean ?? 0,
         max: stats?.max ?? 0,
       };
     });
-  }, [selectedUnit, unitGroups, valueStatistics.stats]);
+  }, [selectedUnit, unitGroups, valueStatistics.stats, t]);
 
   if (unitOptions.length === 0) return null;
 

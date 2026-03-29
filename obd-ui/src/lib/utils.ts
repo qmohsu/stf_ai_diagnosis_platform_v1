@@ -78,7 +78,15 @@ export function groupSignalsByUnit(
   return groups;
 }
 
-export function signalDisplayName(signal: string): string {
+export function signalDisplayName(
+  signal: string,
+  t?: (key: string) => string,
+): string {
+  if (t) {
+    const key = `signals.${signal}`;
+    const translated = t(key);
+    if (translated !== key) return translated;
+  }
   return signal
     .split("_")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))

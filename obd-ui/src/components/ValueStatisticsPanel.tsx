@@ -85,7 +85,7 @@ export function ValueStatisticsPanel({ valueStatistics }: ValueStatisticsPanelPr
                     const s = valueStatistics.stats[sig];
                     return (
                       <TableRow key={sig}>
-                        <TableCell className="font-medium text-xs">{signalDisplayName(sig)}</TableCell>
+                        <TableCell className="font-medium text-xs">{signalDisplayName(sig, t)}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {valueStatistics.column_units[sig] || "-"}
                         </TableCell>
