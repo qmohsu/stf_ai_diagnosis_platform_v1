@@ -23,6 +23,7 @@ from app.api.v2.schemas import (
 )
 from obd_agent.anomaly_detector import detect_anomalies
 from obd_agent.clue_generator import generate_clues
+from obd_agent.format_normalizer import normalize_obd_file
 from obd_agent.log_summarizer import LogSummary, summarize_log_file
 from obd_agent.statistics_extractor import extract_statistics
 from obd_agent.time_series_normalizer import normalize_log_file
@@ -41,6 +42,21 @@ _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 def _run_pipeline(tmp_path: str) -> LogSummaryV2:
     """Legacy summariser + all 4 pipeline stages."""
+    # Pre-stage: auto-detect format and normalise to internal TSV.
+    normalised_path = str(normalize_obd_file(tmp_path))
+    try:
+        return _run_pipeline_stages(normalised_path)
+    finally:
+        # Clean up the normalised temp file if one was created.
+        if normalised_path != tmp_path:
+            try:
+                os.unlink(normalised_path)
+            except OSError:
+                pass
+
+
+def _run_pipeline_stages(tmp_path: str) -> LogSummaryV2:
+    """Execute all pipeline stages on a normalised TSV file."""
     # Stage 0: legacy summary (for pid_summary / backward compat)
     summary: LogSummary = summarize_log_file(tmp_path)
 
@@ -153,7 +169,10 @@ async def summarize_log_raw_v2(request: Request) -> LogSummaryV2:
         )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Failed to parse log file. Ensure it is a valid OBD TSV log.",
+            detail=(
+                "Failed to parse log file. Supported formats: "
+                "TSV (native), CSV (OBDWIZ CSVLog, obd_maxlog)."
+            ),
         ) from exc
     finally:
         if tmp_path is not None:

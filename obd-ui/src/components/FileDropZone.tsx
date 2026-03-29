@@ -73,7 +73,7 @@ export function FileDropZone({ onFileContent, maxSizeMB = 10 }: FileDropZoneProp
       <input
         id="file-input"
         type="file"
-        accept=".txt,.tsv,.log"
+        accept=".txt,.tsv,.log,.csv"
         className="hidden"
         onChange={handleInputChange}
       />

@@ -8,17 +8,18 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v3.5 (Permanent Cloudflare Tunnel) |
+| **Status** | Draft v3.6 (Flexible OBD Log Ingestion) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-03-25 (v3.5) |
+| **Last updated** | 2026-03-28 (v3.6) |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | DO-08: Permanent Cloudflare Tunnel (GitHub Issue #24). Named tunnel on `stf-diagnosis.dev` replaces temporary quick tunnel. Systemd user service with auto-restart and linger. Deployment guide updated with tunnel architecture and management. |
+| **New in this revision** | APP-39: Flexible OBD log ingestion (GitHub Issue #30). New `obd_agent/format_normalizer.py` preprocessing layer auto-detects CSV/TSV formats (OBDWIZ CSVLog, obd_maxlog, generic CSV, native TSV) and normalizes to internal TSV before the diagnostic pipeline. Chinese→English column mapping, imperial→metric unit conversion, timestamp normalization, row deduplication, unit-suffix stripping. Frontend accepts `.csv` uploads. 36 new tests. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v3.6 | 2026-03-28 | Flexible OBD log ingestion (APP-39, GitHub Issue #30): New `obd_agent/format_normalizer.py` preprocessing layer that auto-detects incoming file format and normalizes to internal TSV before the diagnostic pipeline. Supports 4 formats: native TSV (pass-through), OBDWIZ CSVLog (39 Chinese→English column mappings, 6 imperial→metric unit converters, Chinese AM/PM timestamp parsing, consecutive row deduplication), obd_maxlog (unit-suffix stripping from headers, `#`-metadata preservation, non-standard column filtering, millisecond truncation), and generic CSV (delimiter conversion + timestamp normalization). Integrated into `_run_pipeline()` with automatic normalized temp file cleanup. Frontend `FileDropZone.tsx` now accepts `.csv` file uploads. 2 test fixture files (`csvlog_sample.csv`, `maxlog_sample.csv`). 36 new tests. |
 | v3.5 | 2026-03-25 | Permanent Cloudflare Tunnel (DO-08, GitHub Issue #24): Named tunnel `stf-diagnosis` on `stf-diagnosis.dev` replaces temporary quick tunnel (`trycloudflare.com`). Tunnel config at `~/.cloudflared/config.yml`, credentials at `~/.cloudflared/<TUNNEL_ID>.json`. DNS CNAME routes domain to tunnel. Systemd user service (`cloudflared.service`) with `Restart=on-failure` and `loginctl enable-linger` for persistence across reboots and logouts. Deployment guide updated with tunnel architecture diagram, management commands, and troubleshooting. README live demo URL updated. |
 | v3.4 | 2026-03-24 | Region-blocked model handling (APP-38, GitHub Issue #23): `model_availability.py` probes curated models for 403 (PermissionDeniedError) and caches results with 1-hour TTL. `GET /v2/obd/premium/models` returns `{models, default, blocked}` filtered by availability. `POST /v2/obd/{session_id}/diagnose/premium` implements fallback loop — retries next available model on 403, emits structured SSE error events with `error_code`. Frontend shows localized region-specific error. Curated list expanded with 6 HK-accessible models (MiniMax m2.7/m2.5, GLM glm-5/glm-4.7, Kimi k2.5/k2). Regional restrictions documented in `.env.polyu.example`. 7 new tests. |
 | v3.3 | 2026-03-22 | Audio feedback recording (APP-37, GitHub Issue #12): Optional voice recording on all 5 feedback forms via browser MediaRecorder API (WebM/Opus, max 120s/5 MB). Two-step upload: `POST /v2/obd/audio/upload` stages file and returns token; feedback JSON includes token to link audio. `GET /v2/obd/audio/{feedback_id}` streams playback with JWT auth. Audio stored on disk (`/app/data/audio/`) via Docker named volume. 3 new columns on `_OBDFeedbackMixin`. New `AudioRecorder.tsx` component. `FeedbackHistoryView` inline audio player with auth Blob URLs. Startup cleanup of stale staging files. i18n (EN/zh-CN/zh-TW). 12 new tests. |
