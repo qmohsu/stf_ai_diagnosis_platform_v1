@@ -34,10 +34,10 @@
   },
   "input": {
     "title": "OBD 日誌分析",
-    "description": "貼上原始 OBD TSV 日誌資料或上傳檔案，執行完整診斷流程。",
+    "description": "貼上原始 OBD 日誌資料或上傳檔案（.txt、.csv、.tsv），執行完整診斷流程。",
     "pasteText": "貼上文字",
     "uploadFile": "上傳檔案",
-    "placeholder": "在此貼上 OBD TSV 日誌資料...",
+    "placeholder": "在此貼上 OBD 日誌資料...",
     "charCount": "{{length}} 個字元，約 {{lines}} 行",
     "analyze": "分析日誌",
     "analyzing": "分析中...",
@@ -45,7 +45,7 @@
     "viewPastSessions": "檢視歷史工作階段"
   },
   "fileUpload": {
-    "dropzone": "拖放 .txt 檔案至此處，或點擊瀏覽",
+    "dropzone": "拖放 .txt/.csv 檔案至此處，或點擊瀏覽",
     "maxSize": "最大 {{size}} MB",
     "exceedsLimit": "檔案超過 {{size}} MB 大小限制",
     "readFailed": "檔案讀取失敗"

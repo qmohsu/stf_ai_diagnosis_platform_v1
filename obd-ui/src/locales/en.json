@@ -34,10 +34,10 @@
   },
   "input": {
     "title": "OBD Log Analysis",
-    "description": "Paste raw OBD TSV log data or upload a file to run the full diagnostic pipeline.",
+    "description": "Paste raw OBD log data or upload a file (.txt, .csv, .tsv) to run the full diagnostic pipeline.",
     "pasteText": "Paste Text",
     "uploadFile": "Upload File",
-    "placeholder": "Paste OBD TSV log data here...",
+    "placeholder": "Paste OBD log data here...",
     "charCount": "{{length}} characters, ~{{lines}} lines",
     "analyze": "Analyze Log",
     "analyzing": "Analyzing...",
@@ -45,7 +45,7 @@
     "viewPastSessions": "View Past Sessions"
   },
   "fileUpload": {
-    "dropzone": "Drag and drop a .txt file here, or click to browse",
+    "dropzone": "Drag and drop a .txt/.csv file here, or click to browse",
     "maxSize": "Max {{size}} MB",
     "exceedsLimit": "File exceeds {{size}} MB limit",
     "readFailed": "Failed to read file"

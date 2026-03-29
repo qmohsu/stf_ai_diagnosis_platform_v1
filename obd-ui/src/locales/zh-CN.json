@@ -34,10 +34,10 @@
   },
   "input": {
     "title": "OBD 日志分析",
-    "description": "粘贴原始 OBD TSV 日志数据或上传文件，运行完整诊断流程。",
+    "description": "粘贴原始 OBD 日志数据或上传文件（.txt、.csv、.tsv），运行完整诊断流程。",
     "pasteText": "粘贴文本",
     "uploadFile": "上传文件",
-    "placeholder": "在此粘贴 OBD TSV 日志数据...",
+    "placeholder": "在此粘贴 OBD 日志数据...",
     "charCount": "{{length}} 个字符，约 {{lines}} 行",
     "analyze": "分析日志",
     "analyzing": "分析中...",
@@ -45,7 +45,7 @@
     "viewPastSessions": "查看历史会话"
   },
   "fileUpload": {
-    "dropzone": "拖放 .txt 文件至此处，或点击浏览",
+    "dropzone": "拖放 .txt/.csv 文件至此处，或点击浏览",
     "maxSize": "最大 {{size}} MB",
     "exceedsLimit": "文件超过 {{size}} MB 大小限制",
     "readFailed": "文件读取失败"
