@@ -131,13 +131,18 @@ obd_agent/        # OBD-II edge agent
 - Never commit secrets — use `.env.example` and gitignore real `.env`
 - Prefer deterministic, testable behavior; fail safe when inputs are missing
 
-## Documentation Update Rule (Mandatory)
+## Documentation Update Rule (Mandatory — Pre-Commit Gate)
 
-Every refactor or new feature **must** include updates to both:
+**Before EVERY commit**, you MUST check whether the changes require updates to:
 - `docs/dev_plan.md` — Add/update the relevant ticket (APP‑XX), update scope (§1.1) if needed, update critical path (§2.2) if dependencies change, and add a changelog entry.
 - `docs/design_doc.md` — Update architecture descriptions (§7.1 components, §8.3.7 endpoints/tables), update "New in this revision" field, bump version and date in document control.
 
-A PR is not complete until these docs reflect the current state of the system.
+**Pre-commit checklist** (run mentally before every `git commit`):
+1. Does this commit add/change a feature, endpoint, config, or architecture? → Update both docs.
+2. Does this commit fix a bug that was introduced in the current session? → Doc update optional (fold into the parent feature's doc entry).
+3. Is this a pure typo/formatting/comment-only change? → No doc update needed.
+
+If in doubt, update the docs. A commit that changes system behavior without updating docs is incomplete. Include the doc updates **in the same commit** as the code change — not in a follow-up commit.
 
 ## Server Deployment (PolyU GPU Server)
 
