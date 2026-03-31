@@ -57,7 +57,8 @@ stf_ai_diagnosis_platform_v1/
 │   ├── .env.example         # Environment template
 │   ├── Makefile             # Convenience commands
 │   ├── README_LOCAL_SETUP.md # Setup instructions
-│   └── init-scripts/        # Database initialization
+│   ├── init-scripts/        # Database initialization
+│   └── nginx/manuals/       # Static manual viewer (HTML + vendored JS)
 └── tests/                # Unit and integration tests (planned)
 ```
 
@@ -85,6 +86,7 @@ The STF AI Diagnosis Platform is now ready for local deployment! 🚀
    ```
 5. **Access the platform:**
    - OBD UI: http://127.0.0.1:3001
+   - Manual Viewer: http://127.0.0.1:8080/manuals/
    - Diagnostic API: http://127.0.0.1:8000/docs
    - API Health: http://127.0.0.1:8000/health
 
@@ -103,6 +105,7 @@ The STF AI Diagnosis Platform is now ready for local deployment! 🚀
 - ✅ Postgres database
 - ✅ Docker Compose orchestration
 - ✅ Makefile for easy management
+- ✅ Service manual viewer (Nginx-served, client-side markdown rendering)
 - ✅ Comprehensive documentation
 
 ## Privacy & Security
