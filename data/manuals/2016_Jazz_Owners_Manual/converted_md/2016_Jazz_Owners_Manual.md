@@ -2,7 +2,7 @@
 source_pdf: 2016_Jazz_Owners_Manual.pdf
 vehicle_model: 2016_Jazz_Owners_Manual
 language: en
-exported_at: "2026-03-31T05:56:55+00:00"
+exported_at: "2026-03-31T06:22:07+00:00"
 page_count: 597
 section_count: 572
 ---
@@ -103,10 +103,32 @@ When You Cannot Open the Tailgate P. 579
 Devices that Emit Radio Waves* P. 587
 EC Declaration of Conformity Content Outline* P. 588
 
+![Image 1 from page 3](images/2016_Jazz_Owners_Manual/p003-1.png)
+
+![Image 2 from page 3](images/2016_Jazz_Owners_Manual/p003-2.png)
+
+![Image 3 from page 3](images/2016_Jazz_Owners_Manual/p003-3.png)
+
+![Image 4 from page 3](images/2016_Jazz_Owners_Manual/p003-4.png)
+
+![Image 5 from page 3](images/2016_Jazz_Owners_Manual/p003-5.png)
+
+![Image 6 from page 3](images/2016_Jazz_Owners_Manual/p003-6.png)
+
 <!-- page:4 -->
 ### Index P. 589
 
 Quick Reference Guide
+
+![Image 1 from page 4](images/2016_Jazz_Owners_Manual/p004-1.png)
+
+![Image 2 from page 4](images/2016_Jazz_Owners_Manual/p004-2.png)
+
+![Image 3 from page 4](images/2016_Jazz_Owners_Manual/p004-3.png)
+
+![Image 4 from page 4](images/2016_Jazz_Owners_Manual/p004-4.png)
+
+![Image 5 from page 4](images/2016_Jazz_Owners_Manual/p004-5.png)
 
 <!-- page:5 -->
 ## Visual Index
@@ -115,10 +137,26 @@ Quick Reference Guide
 Left-hand drive type
 ❙
 
+![Image 1 from page 5](images/2016_Jazz_Owners_Manual/p005-1.png)
+
+![Image 2 from page 5](images/2016_Jazz_Owners_Manual/p005-2.png)
+
+![Image 3 from page 5](images/2016_Jazz_Owners_Manual/p005-3.png)
+
+![Image 4 from page 5](images/2016_Jazz_Owners_Manual/p005-4.png)
+
 <!-- page:6 -->
 ## ❙Navigation System*
 
 () See the Navigation System Manual
+
+![Image 1 from page 6](images/2016_Jazz_Owners_Manual/p006-1.png)
+
+![Image 2 from page 6](images/2016_Jazz_Owners_Manual/p006-2.png)
+
+![Image 3 from page 6](images/2016_Jazz_Owners_Manual/p006-3.png)
+
+![Image 4 from page 6](images/2016_Jazz_Owners_Manual/p006-4.png)
 
 <!-- page:7 -->
 ## ❙Multi-Information Display (P122)
@@ -127,15 +165,45 @@ Quick Reference Guide
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Right-hand drive type
 
+![Image 1 from page 7](images/2016_Jazz_Owners_Manual/p007-1.png)
+
+![Image 2 from page 7](images/2016_Jazz_Owners_Manual/p007-2.png)
+
+![Image 3 from page 7](images/2016_Jazz_Owners_Manual/p007-3.png)
+
+![Image 4 from page 7](images/2016_Jazz_Owners_Manual/p007-4.png)
+
 <!-- page:8 -->
 ## ❙Hazard Warning Button
 
 * Not available on all models
 
+![Image 1 from page 8](images/2016_Jazz_Owners_Manual/p008-1.png)
+
+![Image 2 from page 8](images/2016_Jazz_Owners_Manual/p008-2.png)
+
+![Image 3 from page 8](images/2016_Jazz_Owners_Manual/p008-3.png)
+
+![Image 4 from page 8](images/2016_Jazz_Owners_Manual/p008-4.png)
+
+![Image 5 from page 8](images/2016_Jazz_Owners_Manual/p008-5.png)
+
+![Image 6 from page 8](images/2016_Jazz_Owners_Manual/p008-6.png)
+
+![Image 7 from page 8](images/2016_Jazz_Owners_Manual/p008-7.png)
+
+![Image 8 from page 8](images/2016_Jazz_Owners_Manual/p008-8.png)
+
+![Image 9 from page 8](images/2016_Jazz_Owners_Manual/p008-9.png)
+
 <!-- page:9 -->
 ## Visual Index
 
 Quick Reference Guide
+
+![Image 1 from page 9](images/2016_Jazz_Owners_Manual/p009-1.png)
+
+![Image 2 from page 9](images/2016_Jazz_Owners_Manual/p009-2.png)
 
 <!-- page:10 -->
 ## ❙Intelligent Speed Limiter Buttons* (P421)
@@ -143,10 +211,20 @@ Quick Reference Guide
 Quick Reference Guide
 Left-hand drive type
 
+![Image 1 from page 10](images/2016_Jazz_Owners_Manual/p010-1.png)
+
 <!-- page:11 -->
 ## ❙Glove Box (P197)
 
 * Not available on all models
+
+![Image 1 from page 11](images/2016_Jazz_Owners_Manual/p011-1.png)
+
+![Image 2 from page 11](images/2016_Jazz_Owners_Manual/p011-2.png)
+
+![Image 3 from page 11](images/2016_Jazz_Owners_Manual/p011-3.png)
+
+![Image 4 from page 11](images/2016_Jazz_Owners_Manual/p011-4.png)
 
 <!-- page:12 -->
 ## Visual Index
@@ -159,20 +237,88 @@ Right-hand drive type
 
 Quick Reference Guide
 
+![Image 1 from page 13](images/2016_Jazz_Owners_Manual/p013-1.png)
+
 <!-- page:14 -->
 ## ❙Vanity Mirrors
 
 * Not available on all models
+
+![Image 1 from page 14](images/2016_Jazz_Owners_Manual/p014-1.png)
+
+![Image 2 from page 14](images/2016_Jazz_Owners_Manual/p014-2.png)
+
+![Image 3 from page 14](images/2016_Jazz_Owners_Manual/p014-3.png)
+
+![Image 4 from page 14](images/2016_Jazz_Owners_Manual/p014-4.png)
+
+![Image 5 from page 14](images/2016_Jazz_Owners_Manual/p014-5.png)
+
+![Image 6 from page 14](images/2016_Jazz_Owners_Manual/p014-6.png)
+
+![Image 7 from page 14](images/2016_Jazz_Owners_Manual/p014-7.png)
+
+![Image 8 from page 14](images/2016_Jazz_Owners_Manual/p014-8.png)
 
 <!-- page:15 -->
 ## Visual Index
 
 Quick Reference Guide
 
+![Image 1 from page 15](images/2016_Jazz_Owners_Manual/p015-1.png)
+
+![Image 2 from page 15](images/2016_Jazz_Owners_Manual/p015-2.png)
+
+![Image 3 from page 15](images/2016_Jazz_Owners_Manual/p015-3.png)
+
+![Image 4 from page 15](images/2016_Jazz_Owners_Manual/p015-4.png)
+
+![Image 5 from page 15](images/2016_Jazz_Owners_Manual/p015-5.png)
+
+![Image 6 from page 15](images/2016_Jazz_Owners_Manual/p015-6.png)
+
+![Image 7 from page 15](images/2016_Jazz_Owners_Manual/p015-7.png)
+
+![Image 8 from page 15](images/2016_Jazz_Owners_Manual/p015-8.png)
+
+![Image 9 from page 15](images/2016_Jazz_Owners_Manual/p015-9.png)
+
+![Image 10 from page 15](images/2016_Jazz_Owners_Manual/p015-10.png)
+
+![Image 11 from page 15](images/2016_Jazz_Owners_Manual/p015-11.png)
+
+![Image 12 from page 15](images/2016_Jazz_Owners_Manual/p015-12.png)
+
+![Image 13 from page 15](images/2016_Jazz_Owners_Manual/p015-13.png)
+
 <!-- page:16 -->
 ## ❙Multi-View Rear Camera* (P462)
 
 Quick Reference Guide
+
+![Image 1 from page 16](images/2016_Jazz_Owners_Manual/p016-1.png)
+
+![Image 2 from page 16](images/2016_Jazz_Owners_Manual/p016-2.png)
+
+![Image 3 from page 16](images/2016_Jazz_Owners_Manual/p016-3.png)
+
+![Image 4 from page 16](images/2016_Jazz_Owners_Manual/p016-4.png)
+
+![Image 5 from page 16](images/2016_Jazz_Owners_Manual/p016-5.png)
+
+![Image 6 from page 16](images/2016_Jazz_Owners_Manual/p016-6.png)
+
+![Image 7 from page 16](images/2016_Jazz_Owners_Manual/p016-7.png)
+
+![Image 8 from page 16](images/2016_Jazz_Owners_Manual/p016-8.png)
+
+![Image 9 from page 16](images/2016_Jazz_Owners_Manual/p016-9.png)
+
+![Image 10 from page 16](images/2016_Jazz_Owners_Manual/p016-10.png)
+
+![Image 11 from page 16](images/2016_Jazz_Owners_Manual/p016-11.png)
+
+![Image 12 from page 16](images/2016_Jazz_Owners_Manual/p016-12.png)
 
 <!-- page:17 -->
 ## Auto Idle Stop Function
@@ -228,6 +374,14 @@ your passengers during a moderate-to-severe collision.
 ●Infants must be properly restrained in a rearward facing restraint system on a
 rear seat.
 
+![Image 1 from page 19](images/2016_Jazz_Owners_Manual/p019-1.png)
+
+![Image 1 from page 20](images/2016_Jazz_Owners_Manual/p020-1.png)
+
+![Image 2 from page 20](images/2016_Jazz_Owners_Manual/p020-2.png)
+
+![Image 3 from page 20](images/2016_Jazz_Owners_Manual/p020-3.png)
+
 <!-- page:21 -->
 ## Exhaust Gas Hazard (P81)
 
@@ -235,11 +389,39 @@ rear seat.
 carbon monoxide. Do not run the engine in confined spaces
 where carbon monoxide gas can accumulate.
 
+![Image 1 from page 21](images/2016_Jazz_Owners_Manual/p021-1.png)
+
+![Image 2 from page 21](images/2016_Jazz_Owners_Manual/p021-2.png)
+
+![Image 3 from page 21](images/2016_Jazz_Owners_Manual/p021-3.png)
+
+![Image 4 from page 21](images/2016_Jazz_Owners_Manual/p021-4.png)
+
+![Image 5 from page 21](images/2016_Jazz_Owners_Manual/p021-5.png)
+
+![Image 6 from page 21](images/2016_Jazz_Owners_Manual/p021-6.png)
+
+![Image 7 from page 21](images/2016_Jazz_Owners_Manual/p021-7.png)
+
+![Image 8 from page 21](images/2016_Jazz_Owners_Manual/p021-8.png)
+
 <!-- page:22 -->
 ## Before Driving Checklist (P35)
 
 ●Before driving, check that the front seats, head restraints,
 steering wheel, and mirrors have been properly adjusted.
+
+![Image 1 from page 22](images/2016_Jazz_Owners_Manual/p022-1.png)
+
+![Image 2 from page 22](images/2016_Jazz_Owners_Manual/p022-2.png)
+
+![Image 3 from page 22](images/2016_Jazz_Owners_Manual/p022-3.png)
+
+![Image 4 from page 22](images/2016_Jazz_Owners_Manual/p022-4.png)
+
+![Image 5 from page 22](images/2016_Jazz_Owners_Manual/p022-5.png)
+
+![Image 6 from page 22](images/2016_Jazz_Owners_Manual/p022-6.png)
 
 <!-- page:23 -->
 ## Seat Belts (P36)
@@ -292,6 +474,28 @@ Tachometer
 Ambient Meter
 Fuel Gauge
 
+![Image 1 from page 24](images/2016_Jazz_Owners_Manual/p024-1.png)
+
+![Image 2 from page 24](images/2016_Jazz_Owners_Manual/p024-2.png)
+
+![Image 3 from page 24](images/2016_Jazz_Owners_Manual/p024-3.png)
+
+![Image 4 from page 24](images/2016_Jazz_Owners_Manual/p024-4.png)
+
+![Image 5 from page 24](images/2016_Jazz_Owners_Manual/p024-5.png)
+
+![Image 6 from page 24](images/2016_Jazz_Owners_Manual/p024-6.png)
+
+![Image 7 from page 24](images/2016_Jazz_Owners_Manual/p024-7.png)
+
+![Image 8 from page 24](images/2016_Jazz_Owners_Manual/p024-8.png)
+
+![Image 9 from page 24](images/2016_Jazz_Owners_Manual/p024-9.png)
+
+![Image 10 from page 24](images/2016_Jazz_Owners_Manual/p024-10.png)
+
+![Image 11 from page 24](images/2016_Jazz_Owners_Manual/p024-11.png)
+
 <!-- page:25 -->
 ## Gauges (P121)/Multi-Information Display (P122)/System Indicators (P84)
 
@@ -342,6 +546,20 @@ Display
 * Not available on all models
 Quick Reference Guide
 
+![Image 1 from page 25](images/2016_Jazz_Owners_Manual/p025-1.png)
+
+![Image 2 from page 25](images/2016_Jazz_Owners_Manual/p025-2.png)
+
+![Image 3 from page 25](images/2016_Jazz_Owners_Manual/p025-3.png)
+
+![Image 4 from page 25](images/2016_Jazz_Owners_Manual/p025-4.png)
+
+![Image 5 from page 25](images/2016_Jazz_Owners_Manual/p025-5.png)
+
+![Image 6 from page 25](images/2016_Jazz_Owners_Manual/p025-6.png)
+
+![Image 7 from page 25](images/2016_Jazz_Owners_Manual/p025-7.png)
+
 <!-- page:26 -->
 ## Clock (P138)
 
@@ -354,11 +572,33 @@ system’s clock display.
 Models with navigation system
 Models with audio system
 
+![Image 1 from page 26](images/2016_Jazz_Owners_Manual/p026-1.png)
+
+![Image 2 from page 26](images/2016_Jazz_Owners_Manual/p026-2.png)
+
+![Image 3 from page 26](images/2016_Jazz_Owners_Manual/p026-3.png)
+
+![Image 4 from page 26](images/2016_Jazz_Owners_Manual/p026-4.png)
+
+![Image 5 from page 26](images/2016_Jazz_Owners_Manual/p026-5.png)
+
+![Image 6 from page 26](images/2016_Jazz_Owners_Manual/p026-6.png)
+
+![Image 7 from page 26](images/2016_Jazz_Owners_Manual/p026-7.png)
+
+![Image 8 from page 26](images/2016_Jazz_Owners_Manual/p026-8.png)
+
 <!-- page:27 -->
 ## b Rotate
 
 to change hour, then press
 .
+
+![Image 1 from page 27](images/2016_Jazz_Owners_Manual/p027-1.png)
+
+![Image 2 from page 27](images/2016_Jazz_Owners_Manual/p027-2.png)
+
+![Image 3 from page 27](images/2016_Jazz_Owners_Manual/p027-3.png)
 
 <!-- page:28 -->
 ## c Rotate
@@ -366,6 +606,12 @@ to change hour, then press
 to change minute, then
 press
 .
+
+![Image 1 from page 28](images/2016_Jazz_Owners_Manual/p028-1.png)
+
+![Image 2 from page 28](images/2016_Jazz_Owners_Manual/p028-2.png)
+
+![Image 3 from page 28](images/2016_Jazz_Owners_Manual/p028-3.png)
 
 <!-- page:29 -->
 ## d Select SET, then press
@@ -424,6 +670,10 @@ Flashing
 * Not available on all models
 Quick Reference Guide
 
+![Image 1 from page 35](images/2016_Jazz_Owners_Manual/p035-1.png)
+
+![Image 2 from page 35](images/2016_Jazz_Owners_Manual/p035-2.png)
+
 <!-- page:36 -->
 ## Wipers and Washers
 
@@ -440,6 +690,8 @@ spray washer fluid.
 Adjustment Ring
 : Low Sensitivity
 : High Sensitivity
+
+![Image 1 from page 36](images/2016_Jazz_Owners_Manual/p036-1.png)
 
 <!-- page:37 -->
 ## Steering Wheel (P180)
@@ -489,6 +741,12 @@ Selector Switch
 Adjustment Switch
 Folding Button
 
+![Image 1 from page 40](images/2016_Jazz_Owners_Manual/p040-1.png)
+
+![Image 2 from page 40](images/2016_Jazz_Owners_Manual/p040-2.png)
+
+![Image 3 from page 40](images/2016_Jazz_Owners_Manual/p040-3.png)
+
 <!-- page:41 -->
 ## Power Windows (P159)
 
@@ -510,6 +768,10 @@ Window Switch
 Indicator
 * Not available on all models
 Quick Reference Guide
+
+![Image 1 from page 41](images/2016_Jazz_Owners_Manual/p041-1.png)
+
+![Image 2 from page 41](images/2016_Jazz_Owners_Manual/p041-2.png)
 
 <!-- page:42 -->
 ## Heating and Cooling System* (P204)
@@ -554,6 +816,14 @@ demister
 vents.
 Quick Reference Guide
 
+![Image 1 from page 42](images/2016_Jazz_Owners_Manual/p042-1.png)
+
+![Image 2 from page 42](images/2016_Jazz_Owners_Manual/p042-2.png)
+
+![Image 3 from page 42](images/2016_Jazz_Owners_Manual/p042-3.png)
+
+![Image 4 from page 42](images/2016_Jazz_Owners_Manual/p042-4.png)
+
 <!-- page:43 -->
 ## Climate Control System* (P208)
 
@@ -588,6 +858,8 @@ Heated Mirror) Icon
 (Fresh Air) Icon
 * Not available on all models
 Quick Reference Guide
+
+![Image 1 from page 43](images/2016_Jazz_Owners_Manual/p043-1.png)
 
 <!-- page:44 -->
 ## Audio System (P221, 251)
@@ -628,6 +900,8 @@ For navigation system operation
 Models with navigation system
 Quick Reference Guide
 
+![Image 1 from page 44](images/2016_Jazz_Owners_Manual/p044-1.png)
+
 <!-- page:45 -->
 ## Audio Remote Controls
 
@@ -663,6 +937,10 @@ Models with colour audio system
 Models with display audio system
 Quick Reference Guide
 
+![Image 1 from page 45](images/2016_Jazz_Owners_Manual/p045-1.png)
+
+![Image 2 from page 45](images/2016_Jazz_Owners_Manual/p045-2.png)
+
 <!-- page:46 -->
 ## Driving (P375)
 
@@ -682,6 +960,8 @@ Used when reversing.
 Drive
 ●Normal driving.
 ●7-speed manual shift mode can be used.
+
+![Image 1 from page 46](images/2016_Jazz_Owners_Manual/p046-1.png)
 
 <!-- page:47 -->
 ## Continuously Variable Transmission* (P396)
@@ -719,6 +999,8 @@ Paddle Shifter
 * Not available on all models
 Quick Reference Guide
 
+![Image 1 from page 47](images/2016_Jazz_Owners_Manual/p047-1.png)
+
 <!-- page:48 -->
 ## VSA OFF Button (P441)
 
@@ -743,6 +1025,12 @@ button. Select cruise control by pressing
 the LIM button, then press the –/SET
 button once you have achieved the
 desired speed (above 30 km/h or 18 mph).
+
+![Image 1 from page 49](images/2016_Jazz_Owners_Manual/p049-1.png)
+
+![Image 2 from page 49](images/2016_Jazz_Owners_Manual/p049-2.png)
+
+![Image 3 from page 49](images/2016_Jazz_Owners_Manual/p049-3.png)
 
 <!-- page:50 -->
 ## Adjustable Speed Limiter
@@ -778,6 +1066,8 @@ Fuel tank capacity: 40 L (8.8 Imp gal)
 clicks at least once.
 Quick Reference Guide
 
+![Image 1 from page 53](images/2016_Jazz_Owners_Manual/p053-1.png)
+
 <!-- page:54 -->
 ## Under the Bonnet (P482)
 
@@ -791,6 +1081,12 @@ fluid. Add when necessary.
 
 firmly locked in place.
 
+![Image 1 from page 55](images/2016_Jazz_Owners_Manual/p055-1.png)
+
+![Image 2 from page 55](images/2016_Jazz_Owners_Manual/p055-2.png)
+
+![Image 3 from page 55](images/2016_Jazz_Owners_Manual/p055-3.png)
+
 <!-- page:56 -->
 ## Lights (P493)
 
@@ -802,6 +1098,8 @@ firmly locked in place.
 ●Replace blades if they leave streaks
 across the windscreen.
 
+![Image 1 from page 57](images/2016_Jazz_Owners_Manual/p057-1.png)
+
 <!-- page:58 -->
 ## Tyres (P508)
 
@@ -810,6 +1108,8 @@ across the windscreen.
 ●Install winter tyres for winter
 driving.
 Quick Reference Guide
+
+![Image 1 from page 58](images/2016_Jazz_Owners_Manual/p058-1.png)
 
 <!-- page:59 -->
 ## Flat Tyre (P533)
@@ -828,11 +1128,21 @@ owner's manual.
 Models with a spare tyre
 Models with tyre repair kit
 
+![Image 1 from page 60](images/2016_Jazz_Owners_Manual/p060-1.png)
+
+![Image 2 from page 60](images/2016_Jazz_Owners_Manual/p060-2.png)
+
+![Image 3 from page 60](images/2016_Jazz_Owners_Manual/p060-3.png)
+
 <!-- page:61 -->
 ## Engine Won't Start (P551)
 
 ●If the battery is dead, jump start using a
 booster battery.
+
+![Image 1 from page 61](images/2016_Jazz_Owners_Manual/p061-1.png)
+
+![Image 2 from page 61](images/2016_Jazz_Owners_Manual/p061-2.png)
 
 <!-- page:62 -->
 ## Blown Fuse (P565)
@@ -895,6 +1205,24 @@ dealers and authorised repairers, employees, representatives and
 contractors only for the purpose of the technical diagnosis,
 research and development of the vehicle.
 
+![Image 1 from page 73](images/2016_Jazz_Owners_Manual/p073-1.png)
+
+![Image 2 from page 73](images/2016_Jazz_Owners_Manual/p073-2.png)
+
+![Image 3 from page 73](images/2016_Jazz_Owners_Manual/p073-3.png)
+
+![Image 4 from page 73](images/2016_Jazz_Owners_Manual/p073-4.png)
+
+![Image 5 from page 73](images/2016_Jazz_Owners_Manual/p073-5.png)
+
+![Image 1 from page 74](images/2016_Jazz_Owners_Manual/p074-1.png)
+
+![Image 2 from page 74](images/2016_Jazz_Owners_Manual/p074-2.png)
+
+![Image 3 from page 74](images/2016_Jazz_Owners_Manual/p074-3.png)
+
+![Image 4 from page 74](images/2016_Jazz_Owners_Manual/p074-4.png)
+
 <!-- page:75 -->
 ### Service Diagnostic Recorders
 
@@ -937,6 +1265,10 @@ You will find this important safety information in a variety of forms,
 including:
 ●Safety Labels - on the vehicle.
 
+![Image 1 from page 78](images/2016_Jazz_Owners_Manual/p078-1.png)
+
+![Image 2 from page 78](images/2016_Jazz_Owners_Manual/p078-2.png)
+
 <!-- page:79 -->
 ## ●Safety Messages - preceded by a safety alert symbol 3 and
 
@@ -953,6 +1285,10 @@ read it carefully.
 
 You WILL be KILLED or SERIOUSLY HURT if
 you don't follow instructions.
+
+![Image 1 from page 80](images/2016_Jazz_Owners_Manual/p080-1.png)
+
+![Image 2 from page 80](images/2016_Jazz_Owners_Manual/p080-2.png)
 
 <!-- page:81 -->
 ### 3WARNING
@@ -994,6 +1330,8 @@ Safety Labels
 Label Locations.................................. 82
 Safe Driving
 
+![Image 1 from page 83](images/2016_Jazz_Owners_Manual/p083-1.png)
+
 <!-- page:84 -->
 ## For Safe Driving
 
@@ -1011,6 +1349,14 @@ supplement seat belts, not replace them. So even though your vehicle is equipped
 with airbags, make sure you and your passengers always wear your seat belts, and
 wear them properly.
 
+![Image 1 from page 85](images/2016_Jazz_Owners_Manual/p085-1.png)
+
+![Image 2 from page 85](images/2016_Jazz_Owners_Manual/p085-2.png)
+
+![Image 1 from page 86](images/2016_Jazz_Owners_Manual/p086-1.png)
+
+![Image 2 from page 86](images/2016_Jazz_Owners_Manual/p086-2.png)
+
 <!-- page:107 -->
 ### ■Restrain all children
 
@@ -1018,6 +1364,28 @@ Children aged 12 and under should ride properly restrained in a back seat, not t
 front seat. Infants and small children should be restrained in a child restraint system.
 Larger children should use a booster seat and a lap/shoulder seat belt until they can
 use the belt properly without a booster seat.
+
+![Image 1 from page 107](images/2016_Jazz_Owners_Manual/p107-1.png)
+
+![Image 1 from page 109](images/2016_Jazz_Owners_Manual/p109-1.png)
+
+![Image 1 from page 115](images/2016_Jazz_Owners_Manual/p115-1.png)
+
+![Image 2 from page 115](images/2016_Jazz_Owners_Manual/p115-2.png)
+
+![Image 3 from page 115](images/2016_Jazz_Owners_Manual/p115-3.png)
+
+![Image 4 from page 115](images/2016_Jazz_Owners_Manual/p115-4.png)
+
+![Image 5 from page 115](images/2016_Jazz_Owners_Manual/p115-5.png)
+
+![Image 1 from page 116](images/2016_Jazz_Owners_Manual/p116-1.png)
+
+![Image 2 from page 116](images/2016_Jazz_Owners_Manual/p116-2.png)
+
+![Image 1 from page 117](images/2016_Jazz_Owners_Manual/p117-1.png)
+
+![Image 1 from page 121](images/2016_Jazz_Owners_Manual/p121-1.png)
 
 <!-- page:122 -->
 ### ■Be aware of airbag hazards
@@ -1039,6 +1407,14 @@ other than hands-free devices by the driver while
 driving.
 Safe Driving
 
+![Image 1 from page 123](images/2016_Jazz_Owners_Manual/p123-1.png)
+
+![Image 2 from page 123](images/2016_Jazz_Owners_Manual/p123-2.png)
+
+![Image 3 from page 123](images/2016_Jazz_Owners_Manual/p123-3.png)
+
+![Image 4 from page 123](images/2016_Jazz_Owners_Manual/p123-4.png)
+
 <!-- page:124 -->
 ### ■Pay appropriate attention to the task of driving safely
 
@@ -1046,6 +1422,14 @@ Engaging in mobile phone conversation or other activities that keep you from pay
 close attention to the road, other vehicles, and pedestrians could lead to a crash.
 Remember, situations can change quickly, and only you can decide when it is safe to
 divert some attention away from driving.
+
+![Image 1 from page 124](images/2016_Jazz_Owners_Manual/p124-1.png)
+
+![Image 2 from page 124](images/2016_Jazz_Owners_Manual/p124-2.png)
+
+![Image 3 from page 124](images/2016_Jazz_Owners_Manual/p124-3.png)
+
+![Image 4 from page 124](images/2016_Jazz_Owners_Manual/p124-4.png)
 
 <!-- page:125 -->
 ### ■Control your speed
@@ -1123,6 +1507,8 @@ off.
 2 Door and Tailgate Open Indicator P. 93
 Safe Driving
 
+![Image 1 from page 128](images/2016_Jazz_Owners_Manual/p128-1.png)
+
 <!-- page:129 -->
 ## About Your Seat Belts
 
@@ -1154,6 +1540,8 @@ WARNING: Each belt assembly must only be used by
 one occupant; it is dangerous to put a belt around a
 child being carried on the occupant’s lap.
 
+![Image 1 from page 129](images/2016_Jazz_Owners_Manual/p129-1.png)
+
 <!-- page:130 -->
 ## 3WARNING
 
@@ -1165,6 +1553,14 @@ Be sure you and your passengers always
 wear seat belts and wear them properly.
 Continued
 Safe Driving
+
+![Image 1 from page 130](images/2016_Jazz_Owners_Manual/p130-1.png)
+
+![Image 2 from page 130](images/2016_Jazz_Owners_Manual/p130-2.png)
+
+![Image 3 from page 130](images/2016_Jazz_Owners_Manual/p130-3.png)
+
+![Image 4 from page 130](images/2016_Jazz_Owners_Manual/p130-4.png)
 
 <!-- page:131 -->
 ### ■Lap/shoulder seat belts
@@ -1215,6 +1611,8 @@ the indicator will blink while driving until the
 driver's seat belt is fastened.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
+
+![Image 1 from page 137](images/2016_Jazz_Owners_Manual/p137-1.png)
 
 <!-- page:138 -->
 ## ■Seat Belt Reminder
@@ -1273,6 +1671,8 @@ to-severe frontal collision, sometimes even if
 the collision is not severe enough to inflate the
 front airbags.
 
+![Image 1 from page 139](images/2016_Jazz_Owners_Manual/p139-1.png)
+
 <!-- page:140 -->
 ## ■Automatic Seat Belt Tensioners
 
@@ -1285,6 +1685,8 @@ offer protection in a subsequent crash.
 During a moderate-to-severe side impact, the
 tensioner on that side of the vehicle also activates.
 Safe Driving
+
+![Image 1 from page 140](images/2016_Jazz_Owners_Manual/p140-1.png)
 
 <!-- page:141 -->
 ## Fastening a Seat Belt
@@ -1333,6 +1735,12 @@ completely.
 When exiting the vehicle, be sure the belt is out of
 the way and will not get caught by closing the door.
 
+![Image 1 from page 141](images/2016_Jazz_Owners_Manual/p141-1.png)
+
+![Image 2 from page 141](images/2016_Jazz_Owners_Manual/p141-2.png)
+
+![Image 3 from page 141](images/2016_Jazz_Owners_Manual/p141-3.png)
+
 <!-- page:142 -->
 ## 3WARNING
 
@@ -1351,6 +1759,10 @@ pulling the release outward.
 2. Position the anchor so that the belt rests
 across the centre of your chest and over
 your shoulder.
+
+![Image 1 from page 142](images/2016_Jazz_Owners_Manual/p142-1.png)
+
+![Image 2 from page 142](images/2016_Jazz_Owners_Manual/p142-2.png)
 
 <!-- page:143 -->
 ## ■Adjusting the Shoulder Anchor
@@ -1405,6 +1817,20 @@ If you are pregnant, the best way to protect yourself and your unborn child when
 driving or riding in a vehicle is to always wear a seat belt and keep the lap part of the
 belt as low as possible across the hips.
 
+![Image 1 from page 145](images/2016_Jazz_Owners_Manual/p145-1.png)
+
+![Image 2 from page 145](images/2016_Jazz_Owners_Manual/p145-2.png)
+
+![Image 3 from page 145](images/2016_Jazz_Owners_Manual/p145-3.png)
+
+![Image 4 from page 145](images/2016_Jazz_Owners_Manual/p145-4.png)
+
+![Image 5 from page 145](images/2016_Jazz_Owners_Manual/p145-5.png)
+
+![Image 6 from page 145](images/2016_Jazz_Owners_Manual/p145-6.png)
+
+![Image 7 from page 145](images/2016_Jazz_Owners_Manual/p145-7.png)
+
 <!-- page:146 -->
 ## ■Advice for Pregnant Women
 
@@ -1427,6 +1853,16 @@ belt as low as possible
 across the hips.
 Continued
 Safe Driving
+
+![Image 1 from page 146](images/2016_Jazz_Owners_Manual/p146-1.png)
+
+![Image 2 from page 146](images/2016_Jazz_Owners_Manual/p146-2.png)
+
+![Image 3 from page 146](images/2016_Jazz_Owners_Manual/p146-3.png)
+
+![Image 4 from page 146](images/2016_Jazz_Owners_Manual/p146-4.png)
+
+![Image 5 from page 146](images/2016_Jazz_Owners_Manual/p146-5.png)
 
 <!-- page:147 -->
 ## Seat Belt Inspection
@@ -1458,6 +1894,12 @@ may safely be carried out using mild soap and water.
 The belt should be replaced if webbing becomes
 frayed, contaminated or damaged.
 
+![Image 1 from page 147](images/2016_Jazz_Owners_Manual/p147-1.png)
+
+![Image 2 from page 147](images/2016_Jazz_Owners_Manual/p147-2.png)
+
+![Image 3 from page 147](images/2016_Jazz_Owners_Manual/p147-3.png)
+
 <!-- page:148 -->
 ## 3WARNING
 
@@ -1479,6 +1921,10 @@ Front Seat
 Rear Seat
 Continued
 Safe Driving
+
+![Image 1 from page 149](images/2016_Jazz_Owners_Manual/p149-1.png)
+
+![Image 2 from page 149](images/2016_Jazz_Owners_Manual/p149-2.png)
 
 <!-- page:150 -->
 ## Airbag System Components
@@ -1540,6 +1986,14 @@ Do not attach or place objects on the front airbag covers. Objects on the
 covers marked SRS AIRBAG could interfere with the proper operation of the airbags
 or be propelled inside the vehicle and hurt someone if the airbags inflate.
 
+![Image 1 from page 150](images/2016_Jazz_Owners_Manual/p150-1.png)
+
+![Image 2 from page 150](images/2016_Jazz_Owners_Manual/p150-2.png)
+
+![Image 3 from page 150](images/2016_Jazz_Owners_Manual/p150-3.png)
+
+![Image 4 from page 150](images/2016_Jazz_Owners_Manual/p150-4.png)
+
 <!-- page:151 -->
 ## ■Important facts about your airbags
 
@@ -1553,6 +2007,12 @@ the airbag cover.
 Continued
 Safe Driving
 
+![Image 1 from page 151](images/2016_Jazz_Owners_Manual/p151-1.png)
+
+![Image 2 from page 151](images/2016_Jazz_Owners_Manual/p151-2.png)
+
+![Image 3 from page 151](images/2016_Jazz_Owners_Manual/p151-3.png)
+
 <!-- page:152 -->
 ## Types of Airbags
 
@@ -1561,6 +2021,14 @@ Your vehicle is equipped with three types of airbags:
 • Side airbags: Airbags in the driver's and front passenger's seat-backs.
 • Side curtain airbags: Airbags above the side windows.
 Each is discussed in the following pages.
+
+![Image 1 from page 152](images/2016_Jazz_Owners_Manual/p152-1.png)
+
+![Image 2 from page 152](images/2016_Jazz_Owners_Manual/p152-2.png)
+
+![Image 3 from page 152](images/2016_Jazz_Owners_Manual/p152-3.png)
+
+![Image 4 from page 152](images/2016_Jazz_Owners_Manual/p152-4.png)
 
 <!-- page:153 -->
 ## Front Airbags (SRS)
@@ -1574,6 +2042,8 @@ The front airbags are housed in the centre of the steering wheel for the driver,
 in the dashboard for the front passenger. Both airbags are marked SRS AIRBAG.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
+
+![Image 1 from page 153](images/2016_Jazz_Owners_Manual/p153-1.png)
 
 <!-- page:154 -->
 ## ■Housing Locations
@@ -1617,6 +2087,16 @@ provide sufficient protection, and the supplemental
 protection offered by the airbag would be minimal.
 Continued
 Safe Driving
+
+![Image 1 from page 155](images/2016_Jazz_Owners_Manual/p155-1.png)
+
+![Image 2 from page 155](images/2016_Jazz_Owners_Manual/p155-2.png)
+
+![Image 3 from page 155](images/2016_Jazz_Owners_Manual/p155-3.png)
+
+![Image 1 from page 156](images/2016_Jazz_Owners_Manual/p156-1.png)
+
+![Image 2 from page 156](images/2016_Jazz_Owners_Manual/p156-2.png)
 
 <!-- page:157 -->
 ### ■When front airbags should not deploy
@@ -1675,6 +2155,8 @@ ON: The passenger front airbag is activated.
 The passenger front airbag on indicator comes
 on and remains on for about 60 seconds.
 
+![Image 1 from page 160](images/2016_Jazz_Owners_Manual/p160-1.png)
+
 <!-- page:161 -->
 ### ■To deactivate the passenger front airbag system
 
@@ -1690,10 +2172,14 @@ the switch.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
+![Image 1 from page 161](images/2016_Jazz_Owners_Manual/p161-1.png)
+
 <!-- page:162 -->
 ## ■Passenger Front Airbag Off System
 
 1Passenger Front Airbag Off System
+
+![Image 1 from page 162](images/2016_Jazz_Owners_Manual/p162-1.png)
 
 <!-- page:163 -->
 ## 3WARNING
@@ -1706,6 +2192,18 @@ If the front passenger airbag inflates, it can
 hit the rear-facing child restraint system
 with enough force to kill or cause a very
 serious injury to the infant.
+
+![Image 1 from page 163](images/2016_Jazz_Owners_Manual/p163-1.png)
+
+![Image 2 from page 163](images/2016_Jazz_Owners_Manual/p163-2.png)
+
+![Image 3 from page 163](images/2016_Jazz_Owners_Manual/p163-3.png)
+
+![Image 4 from page 163](images/2016_Jazz_Owners_Manual/p163-4.png)
+
+![Image 5 from page 163](images/2016_Jazz_Owners_Manual/p163-5.png)
+
+![Image 6 from page 163](images/2016_Jazz_Owners_Manual/p163-6.png)
 
 <!-- page:164 -->
 ## 3WARNING
@@ -1735,6 +2233,8 @@ When the passenger front airbag system is activated, the indicator goes off afte
 few seconds when you turn the ignition switch to ON (w*1.
 When the passenger front airbag system is deactivated, the indicator stays on, or
 goes off momentarily and comes back on.
+
+![Image 1 from page 165](images/2016_Jazz_Owners_Manual/p165-1.png)
 
 <!-- page:166 -->
 ### ■Passenger front airbag off system label
@@ -1780,6 +2280,8 @@ The side airbags are housed in the outside edge
 of the driver's and passenger's seat-backs.
 Both are marked SRS AIRBAG.
 
+![Image 1 from page 167](images/2016_Jazz_Owners_Manual/p167-1.png)
+
 <!-- page:168 -->
 ## ■Housing Locations
 
@@ -1790,6 +2292,10 @@ airbags, or hurt someone if an airbag inflates.
 If the impact is on the passenger’s side, the airbag
 may not deploy when there is no passenger in the
 front passenger seat.
+
+![Image 1 from page 168](images/2016_Jazz_Owners_Manual/p168-1.png)
+
+![Image 2 from page 168](images/2016_Jazz_Owners_Manual/p168-2.png)
 
 <!-- page:169 -->
 ## 3WARNING
@@ -1807,6 +2313,20 @@ severe side impact, the control unit signals the
 side airbag on the impact side to immediately
 inflate.
 
+![Image 1 from page 169](images/2016_Jazz_Owners_Manual/p169-1.png)
+
+![Image 2 from page 169](images/2016_Jazz_Owners_Manual/p169-2.png)
+
+![Image 3 from page 169](images/2016_Jazz_Owners_Manual/p169-3.png)
+
+![Image 4 from page 169](images/2016_Jazz_Owners_Manual/p169-4.png)
+
+![Image 5 from page 169](images/2016_Jazz_Owners_Manual/p169-5.png)
+
+![Image 6 from page 169](images/2016_Jazz_Owners_Manual/p169-6.png)
+
+![Image 7 from page 169](images/2016_Jazz_Owners_Manual/p169-7.png)
+
 <!-- page:170 -->
 ### ■When a side airbag deploys with little or no visible damage
 
@@ -1814,6 +2334,8 @@ Because the airbag systems senses sudden acceleration, a strong impact to the si
 of the vehicle's framework can cause a side airbag to deploy. In such cases, there
 may be little or no damage, but the side impact sensors detected a severe enough
 impact to deploy the airbag.
+
+![Image 1 from page 170](images/2016_Jazz_Owners_Manual/p170-1.png)
 
 <!-- page:171 -->
 ### ■When a side airbag may not deploy, even though visible damage appears
@@ -1824,6 +2346,8 @@ apparently severe damage. This can occur when the point of impact was towards
 the far front or rear of the vehicle, or when the vehicle's crushable body parts
 absorbed most of the crash energy. In either case, the side airbag would not have
 been needed nor provided protection even if it had deployed.
+
+![Image 1 from page 171](images/2016_Jazz_Owners_Manual/p171-1.png)
 
 <!-- page:172 -->
 ## ■Operation
@@ -1844,6 +2368,10 @@ Side
 Airbag
 Safe Driving
 
+![Image 1 from page 172](images/2016_Jazz_Owners_Manual/p172-1.png)
+
+![Image 2 from page 172](images/2016_Jazz_Owners_Manual/p172-2.png)
+
 <!-- page:173 -->
 ## Side Curtain Airbags
 
@@ -1855,12 +2383,22 @@ of the vehicle.
 The side curtain airbag is designed to deploy
 in a moderate-to-severe side impact.
 
+![Image 1 from page 173](images/2016_Jazz_Owners_Manual/p173-1.png)
+
+![Image 2 from page 173](images/2016_Jazz_Owners_Manual/p173-2.png)
+
+![Image 3 from page 173](images/2016_Jazz_Owners_Manual/p173-3.png)
+
+![Image 4 from page 173](images/2016_Jazz_Owners_Manual/p173-4.png)
+
 <!-- page:174 -->
 ### ■When side curtain airbags deploy in a frontal collision
 
 One or both side curtain airbags may inflate in a moderate-to-severe angled frontal
 collision.
 In this case, the side curtain airbags will deploy slightly after the front airbags.
+
+![Image 1 from page 174](images/2016_Jazz_Owners_Manual/p174-1.png)
 
 <!-- page:175 -->
 ## ■Housing Locations
@@ -1884,11 +2422,23 @@ Deployed Side Curtain Airbag
 Continued
 Safe Driving
 
+![Image 1 from page 176](images/2016_Jazz_Owners_Manual/p176-1.png)
+
+![Image 2 from page 176](images/2016_Jazz_Owners_Manual/p176-2.png)
+
 <!-- page:177 -->
 ## Airbag System Indicators
 
 If a problem occurs in the airbag system, the SRS indicator comes on and a message
 appears on the multi-information display.
+
+![Image 1 from page 177](images/2016_Jazz_Owners_Manual/p177-1.png)
+
+![Image 2 from page 177](images/2016_Jazz_Owners_Manual/p177-2.png)
+
+![Image 3 from page 177](images/2016_Jazz_Owners_Manual/p177-3.png)
+
+![Image 4 from page 177](images/2016_Jazz_Owners_Manual/p177-4.png)
 
 <!-- page:178 -->
 ### ■When the ignition switch is turned to
@@ -1905,10 +2455,22 @@ may not work properly when they are needed.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
+![Image 1 from page 178](images/2016_Jazz_Owners_Manual/p178-1.png)
+
+![Image 2 from page 178](images/2016_Jazz_Owners_Manual/p178-2.png)
+
 <!-- page:179 -->
 ## ■SRS (Supplemental Restraint System) Indicator
 
 1SRS (Supplemental Restraint System) Indicator
+
+![Image 1 from page 179](images/2016_Jazz_Owners_Manual/p179-1.png)
+
+![Image 2 from page 179](images/2016_Jazz_Owners_Manual/p179-2.png)
+
+![Image 3 from page 179](images/2016_Jazz_Owners_Manual/p179-3.png)
+
+![Image 4 from page 179](images/2016_Jazz_Owners_Manual/p179-4.png)
 
 <!-- page:180 -->
 ## 3WARNING
@@ -1919,6 +2481,14 @@ or tensioners do not work properly.
 Have your vehicle checked by a dealer as
 soon as possible if the SRS indicator alerts
 you to a possible problem.
+
+![Image 1 from page 180](images/2016_Jazz_Owners_Manual/p180-1.png)
+
+![Image 2 from page 180](images/2016_Jazz_Owners_Manual/p180-2.png)
+
+![Image 3 from page 180](images/2016_Jazz_Owners_Manual/p180-3.png)
+
+![Image 4 from page 180](images/2016_Jazz_Owners_Manual/p180-4.png)
 
 <!-- page:181 -->
 ## 3WARNING
@@ -1935,6 +2505,14 @@ be activated, causing serious injury or
 death.
 Safe Driving
 
+![Image 1 from page 181](images/2016_Jazz_Owners_Manual/p181-1.png)
+
+![Image 2 from page 181](images/2016_Jazz_Owners_Manual/p181-2.png)
+
+![Image 3 from page 181](images/2016_Jazz_Owners_Manual/p181-3.png)
+
+![Image 4 from page 181](images/2016_Jazz_Owners_Manual/p181-4.png)
+
 <!-- page:182 -->
 ### ■When the passenger airbag off
 
@@ -1946,6 +2524,8 @@ not in use in the front passenger seat,
 manually turn the system back on. The
 indicator should go off.
 
+![Image 1 from page 182](images/2016_Jazz_Owners_Manual/p182-1.png)
+
 <!-- page:183 -->
 ## Airbag Care
 
@@ -1953,12 +2533,36 @@ You do not need to, and should not, perform any maintenance on or replace any
 airbag system components yourself. However, you should have your vehicle
 inspected by a dealer in the following situations:
 
+![Image 1 from page 183](images/2016_Jazz_Owners_Manual/p183-1.png)
+
+![Image 2 from page 183](images/2016_Jazz_Owners_Manual/p183-2.png)
+
 <!-- page:184 -->
 ### ■When the airbags have deployed
 
 If an airbag has inflated, the control unit and other related parts must be replaced.
 Similarly, once an automatic seat belt tensioner has been activated, it must be
 replaced.
+
+![Image 1 from page 184](images/2016_Jazz_Owners_Manual/p184-1.png)
+
+![Image 2 from page 184](images/2016_Jazz_Owners_Manual/p184-2.png)
+
+![Image 3 from page 184](images/2016_Jazz_Owners_Manual/p184-3.png)
+
+![Image 4 from page 184](images/2016_Jazz_Owners_Manual/p184-4.png)
+
+![Image 5 from page 184](images/2016_Jazz_Owners_Manual/p184-5.png)
+
+![Image 6 from page 184](images/2016_Jazz_Owners_Manual/p184-6.png)
+
+![Image 7 from page 184](images/2016_Jazz_Owners_Manual/p184-7.png)
+
+![Image 8 from page 184](images/2016_Jazz_Owners_Manual/p184-8.png)
+
+![Image 9 from page 184](images/2016_Jazz_Owners_Manual/p184-9.png)
+
+![Image 10 from page 184](images/2016_Jazz_Owners_Manual/p184-10.png)
 
 <!-- page:185 -->
 ### ■When the vehicle has been in a moderate-to-severe collision
@@ -2036,6 +2640,12 @@ seriously injured in a crash.
 1Protecting Child Passengers
 Front Passenger’s Sunvisor
 
+![Image 1 from page 187](images/2016_Jazz_Owners_Manual/p187-1.png)
+
+![Image 2 from page 187](images/2016_Jazz_Owners_Manual/p187-2.png)
+
+![Image 3 from page 187](images/2016_Jazz_Owners_Manual/p187-3.png)
+
 <!-- page:188 -->
 ## 3WARNING
 
@@ -2066,6 +2676,16 @@ whenever you leave the vehicle alone (with other
 occupants).
 Safe Driving
 
+![Image 1 from page 188](images/2016_Jazz_Owners_Manual/p188-1.png)
+
+![Image 2 from page 188](images/2016_Jazz_Owners_Manual/p188-2.png)
+
+![Image 3 from page 188](images/2016_Jazz_Owners_Manual/p188-3.png)
+
+![Image 4 from page 188](images/2016_Jazz_Owners_Manual/p188-4.png)
+
+![Image 5 from page 188](images/2016_Jazz_Owners_Manual/p188-5.png)
+
 <!-- page:189 -->
 ## Safety of Infants and Small Children
 
@@ -2080,11 +2700,21 @@ system
 Child restraint system must be placed and
 secured in a rear seating position.
 
+![Image 1 from page 190](images/2016_Jazz_Owners_Manual/p190-1.png)
+
 <!-- page:191 -->
 ## ■Protecting Infants
 
 1Protecting Infants
 As required by UN-ECE R94 Regulation:
+
+![Image 1 from page 191](images/2016_Jazz_Owners_Manual/p191-1.png)
+
+![Image 2 from page 191](images/2016_Jazz_Owners_Manual/p191-2.png)
+
+![Image 3 from page 191](images/2016_Jazz_Owners_Manual/p191-3.png)
+
+![Image 4 from page 191](images/2016_Jazz_Owners_Manual/p191-4.png)
 
 <!-- page:192 -->
 ## 3WARNING
@@ -2095,6 +2725,22 @@ or death if the passenger’s front airbag
 inflates.
 Always place a rear-facing child restraint
 system in the back seat, not the front.
+
+![Image 1 from page 192](images/2016_Jazz_Owners_Manual/p192-1.png)
+
+![Image 2 from page 192](images/2016_Jazz_Owners_Manual/p192-2.png)
+
+![Image 3 from page 192](images/2016_Jazz_Owners_Manual/p192-3.png)
+
+![Image 4 from page 192](images/2016_Jazz_Owners_Manual/p192-4.png)
+
+![Image 5 from page 192](images/2016_Jazz_Owners_Manual/p192-5.png)
+
+![Image 6 from page 192](images/2016_Jazz_Owners_Manual/p192-6.png)
+
+![Image 7 from page 192](images/2016_Jazz_Owners_Manual/p192-7.png)
+
+![Image 8 from page 192](images/2016_Jazz_Owners_Manual/p192-8.png)
 
 <!-- page:193 -->
 ## 3WARNING
@@ -2126,6 +2772,22 @@ If a child is at least one year old and within the weight range indicated by the
 restraint system manufacturer, the child should be properly restrained in a firmly
 secured front facing child restraint system.
 
+![Image 1 from page 193](images/2016_Jazz_Owners_Manual/p193-1.png)
+
+![Image 2 from page 193](images/2016_Jazz_Owners_Manual/p193-2.png)
+
+![Image 3 from page 193](images/2016_Jazz_Owners_Manual/p193-3.png)
+
+![Image 4 from page 193](images/2016_Jazz_Owners_Manual/p193-4.png)
+
+![Image 5 from page 193](images/2016_Jazz_Owners_Manual/p193-5.png)
+
+![Image 6 from page 193](images/2016_Jazz_Owners_Manual/p193-6.png)
+
+![Image 7 from page 193](images/2016_Jazz_Owners_Manual/p193-7.png)
+
+![Image 8 from page 193](images/2016_Jazz_Owners_Manual/p193-8.png)
+
 <!-- page:194 -->
 ### ■Front facing child restraint system
 
@@ -2135,6 +2797,10 @@ facing child restraint system in a rear seating
 position.
 Placing a front facing child restraint system in the front seat can be hazardous. A
 rear seat is the safest place for a child.
+
+![Image 1 from page 194](images/2016_Jazz_Owners_Manual/p194-1.png)
+
+![Image 2 from page 194](images/2016_Jazz_Owners_Manual/p194-2.png)
 
 <!-- page:195 -->
 ## ■Protecting Smaller Children
@@ -2148,6 +2814,10 @@ Many experts recommend use of a rear-facing child
 restraint system for a child up to two years old, if the
 child’s height and weight are appropriate for a rear-
 facing child restraint system.
+
+![Image 1 from page 195](images/2016_Jazz_Owners_Manual/p195-1.png)
+
+![Image 2 from page 195](images/2016_Jazz_Owners_Manual/p195-2.png)
 
 <!-- page:196 -->
 ## 3WARNING
@@ -2176,6 +2846,14 @@ child restraint system manufacturer may advise that a seat belt be used to attac
 ISO FIX restraint system once a child reaches a specified weight. Please read the child
 restraint system owner’s manual for proper installation instructions.
 
+![Image 1 from page 196](images/2016_Jazz_Owners_Manual/p196-1.png)
+
+![Image 2 from page 196](images/2016_Jazz_Owners_Manual/p196-2.png)
+
+![Image 3 from page 196](images/2016_Jazz_Owners_Manual/p196-3.png)
+
+![Image 4 from page 196](images/2016_Jazz_Owners_Manual/p196-4.png)
+
 <!-- page:197 -->
 ### ■Important consideration when selecting a child restraint system
 
@@ -2186,6 +2864,8 @@ Make sure the child restraint system meets the following three requirements:
 restraint system with the UN-ECE R44 or the regulations of the subject countries.
 Look for the approval mark on the system and the manufacturer’s statement of
 compliance on the box.
+
+![Image 1 from page 197](images/2016_Jazz_Owners_Manual/p197-1.png)
 
 <!-- page:198 -->
 ## ■Selecting a Child Restraint System
@@ -2200,6 +2880,14 @@ by incorrect installation.
 Safe Driving
 Various types of child restraint systems are available. Not all types are suitable for your vehicle. Please refer to the table below to select
 which category of child restraint system can be used on each seating position.
+
+![Image 1 from page 198](images/2016_Jazz_Owners_Manual/p198-1.png)
+
+![Image 2 from page 198](images/2016_Jazz_Owners_Manual/p198-2.png)
+
+![Image 3 from page 198](images/2016_Jazz_Owners_Manual/p198-3.png)
+
+![Image 4 from page 198](images/2016_Jazz_Owners_Manual/p198-4.png)
 
 <!-- page:199 -->
 ## ■The Recommended Child Restraint Systems for EU Countries
@@ -2307,6 +2995,18 @@ system, make sure that the lower
 anchorages are not obstructed by the
 seat belt or any other object.
 
+![Image 1 from page 199](images/2016_Jazz_Owners_Manual/p199-1.png)
+
+![Image 2 from page 199](images/2016_Jazz_Owners_Manual/p199-2.png)
+
+![Image 3 from page 199](images/2016_Jazz_Owners_Manual/p199-3.png)
+
+![Image 4 from page 199](images/2016_Jazz_Owners_Manual/p199-4.png)
+
+![Image 5 from page 199](images/2016_Jazz_Owners_Manual/p199-5.png)
+
+![Image 6 from page 199](images/2016_Jazz_Owners_Manual/p199-6.png)
+
 <!-- page:200 -->
 ### System
 
@@ -2370,6 +3070,12 @@ restraint system manufacturer's
 instructions, and insert the latch plate into
 the buckle.
 u Insert the latch plate fully until it clicks.
+
+![Image 1 from page 200](images/2016_Jazz_Owners_Manual/p200-1.png)
+
+![Image 2 from page 200](images/2016_Jazz_Owners_Manual/p200-2.png)
+
+![Image 3 from page 200](images/2016_Jazz_Owners_Manual/p200-3.png)
 
 <!-- page:201 -->
 ### Belt
@@ -2437,6 +3143,14 @@ anchorage.
 6. Tighten the tether strap as instructed by the
 child restraint system manufacturer.
 
+![Image 1 from page 201](images/2016_Jazz_Owners_Manual/p201-1.png)
+
+![Image 2 from page 201](images/2016_Jazz_Owners_Manual/p201-2.png)
+
+![Image 3 from page 201](images/2016_Jazz_Owners_Manual/p201-3.png)
+
+![Image 4 from page 201](images/2016_Jazz_Owners_Manual/p201-4.png)
+
 <!-- page:202 -->
 ## ■Adding Security with a Tether
 
@@ -2459,6 +3173,12 @@ Anchorage
 FR
 Safe Driving
 
+![Image 1 from page 202](images/2016_Jazz_Owners_Manual/p202-1.png)
+
+![Image 2 from page 202](images/2016_Jazz_Owners_Manual/p202-2.png)
+
+![Image 3 from page 202](images/2016_Jazz_Owners_Manual/p202-3.png)
+
 <!-- page:203 -->
 ## Safety of Larger Children
 
@@ -2468,6 +3188,24 @@ must sit in front.
 When a child is too big for a child restraint system, secure the child in a rear seat
 using the lap/shoulder seat belt. Have the child sit upright and all the way back, then
 answer the following questions.
+
+![Image 1 from page 203](images/2016_Jazz_Owners_Manual/p203-1.png)
+
+![Image 2 from page 203](images/2016_Jazz_Owners_Manual/p203-2.png)
+
+![Image 3 from page 203](images/2016_Jazz_Owners_Manual/p203-3.png)
+
+![Image 4 from page 203](images/2016_Jazz_Owners_Manual/p203-4.png)
+
+![Image 5 from page 203](images/2016_Jazz_Owners_Manual/p203-5.png)
+
+![Image 6 from page 203](images/2016_Jazz_Owners_Manual/p203-6.png)
+
+![Image 7 from page 203](images/2016_Jazz_Owners_Manual/p203-7.png)
+
+![Image 8 from page 203](images/2016_Jazz_Owners_Manual/p203-8.png)
+
+![Image 9 from page 203](images/2016_Jazz_Owners_Manual/p203-9.png)
 
 <!-- page:204 -->
 ### ■Checklist
@@ -2483,6 +3221,10 @@ for the whole trip?
 If you answer yes to all these questions, the child is ready to wear the lap/shoulder
 seat belt correctly. If you answer no to any question, the child needs to ride on a
 booster seat until the seat belt fits properly without a booster seat.
+
+![Image 1 from page 204](images/2016_Jazz_Owners_Manual/p204-1.png)
+
+![Image 2 from page 204](images/2016_Jazz_Owners_Manual/p204-2.png)
 
 <!-- page:205 -->
 ## ■Checking Seat Belt Fit
@@ -2619,6 +3361,14 @@ Gauges and Multi-Information Display
 Gauges............................................ 121
 Multi-Information Display ................ 122
 Instrument Panel
+
+![Image 1 from page 213](images/2016_Jazz_Owners_Manual/p213-1.png)
+
+![Image 2 from page 213](images/2016_Jazz_Owners_Manual/p213-2.png)
+
+![Image 3 from page 213](images/2016_Jazz_Owners_Manual/p213-3.png)
+
+![Image 4 from page 213](images/2016_Jazz_Owners_Manual/p213-4.png)
 
 <!-- page:214 -->
 ## Indicators
@@ -3775,6 +4525,16 @@ appropriate sensor indicator(s) comes on.
 Models with parking sensor system
 Instrument Panel
 
+![Image 1 from page 215](images/2016_Jazz_Owners_Manual/p215-1.png)
+
+![Image 2 from page 215](images/2016_Jazz_Owners_Manual/p215-2.png)
+
+![Image 3 from page 215](images/2016_Jazz_Owners_Manual/p215-3.png)
+
+![Image 4 from page 215](images/2016_Jazz_Owners_Manual/p215-4.png)
+
+![Image 5 from page 215](images/2016_Jazz_Owners_Manual/p215-5.png)
+
 <!-- page:216 -->
 ## Gauges
 
@@ -3792,6 +4552,24 @@ pedal operation.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
+![Image 1 from page 216](images/2016_Jazz_Owners_Manual/p216-1.png)
+
+![Image 2 from page 216](images/2016_Jazz_Owners_Manual/p216-2.png)
+
+![Image 3 from page 216](images/2016_Jazz_Owners_Manual/p216-3.png)
+
+![Image 4 from page 216](images/2016_Jazz_Owners_Manual/p216-4.png)
+
+![Image 5 from page 216](images/2016_Jazz_Owners_Manual/p216-5.png)
+
+![Image 6 from page 216](images/2016_Jazz_Owners_Manual/p216-6.png)
+
+![Image 7 from page 216](images/2016_Jazz_Owners_Manual/p216-7.png)
+
+![Image 8 from page 216](images/2016_Jazz_Owners_Manual/p216-8.png)
+
+![Image 9 from page 216](images/2016_Jazz_Owners_Manual/p216-9.png)
+
 <!-- page:217 -->
 ## ■Ambient Meter
 
@@ -3799,12 +4577,26 @@ Right-hand drive type
 Left-hand drive type
 Instrument Panel
 
+![Image 1 from page 217](images/2016_Jazz_Owners_Manual/p217-1.png)
+
+![Image 2 from page 217](images/2016_Jazz_Owners_Manual/p217-2.png)
+
+![Image 3 from page 217](images/2016_Jazz_Owners_Manual/p217-3.png)
+
+![Image 4 from page 217](images/2016_Jazz_Owners_Manual/p217-4.png)
+
+![Image 5 from page 217](images/2016_Jazz_Owners_Manual/p217-5.png)
+
+![Image 6 from page 217](images/2016_Jazz_Owners_Manual/p217-6.png)
+
 <!-- page:218 -->
 ## Multi-Information Display
 
 The multi-information display shows the odometer, trip meter, outside temperature,
 fuel gauge, and other gauges.
 It also displays important messages such as warnings and other helpful information.
+
+![Image 1 from page 218](images/2016_Jazz_Owners_Manual/p218-1.png)
 
 <!-- page:219 -->
 ### ■Main displays
@@ -3844,6 +4636,10 @@ System*
 Continued
 Instrument Panel
 
+![Image 1 from page 220](images/2016_Jazz_Owners_Manual/p220-1.png)
+
+![Image 2 from page 220](images/2016_Jazz_Owners_Manual/p220-2.png)
+
 <!-- page:222 -->
 ### ■Lower displays
 
@@ -3874,6 +4670,8 @@ Shows the total number of kilometres or miles * that your vehicle has accumulate
 Shows the total number of kilometres or miles* driven since the last reset. Trip A and
 B can be used to measure two separate trips.
 
+![Image 1 from page 222](images/2016_Jazz_Owners_Manual/p222-1.png)
+
 <!-- page:223 -->
 ### ■Resetting a trip meter
 
@@ -3885,6 +4683,12 @@ economy is also reset.
 Shows the estimated distance you can travel on the remaining fuel. This distance is
 estimated from the fuel economy of your previous trips.
 Shows the time elapsed since trip A or trip B was reset.
+
+![Image 1 from page 223](images/2016_Jazz_Owners_Manual/p223-1.png)
+
+![Image 2 from page 223](images/2016_Jazz_Owners_Manual/p223-2.png)
+
+![Image 3 from page 223](images/2016_Jazz_Owners_Manual/p223-3.png)
 
 <!-- page:224 -->
 ## ■Elapsed Time
@@ -3917,6 +4721,12 @@ Shows the rear seat belt use.
 2 Seat Belt Reminder P. 40
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
+
+![Image 1 from page 225](images/2016_Jazz_Owners_Manual/p225-1.png)
+
+![Image 2 from page 225](images/2016_Jazz_Owners_Manual/p225-2.png)
+
+![Image 3 from page 225](images/2016_Jazz_Owners_Manual/p225-3.png)
 
 <!-- page:226 -->
 ## ■Rear Seat Belt Use Monitor
@@ -3957,6 +4767,8 @@ Continued
 Instrument Panel
 Sets the speed alarm on and changes the speed alarm setting.
 
+![Image 1 from page 227](images/2016_Jazz_Owners_Manual/p227-1.png)
+
 <!-- page:228 -->
 ### ■To set the speed alarm
 
@@ -3978,6 +4790,10 @@ u If the speed alarm is
 to
 (off).
 
+![Image 1 from page 228](images/2016_Jazz_Owners_Manual/p228-1.png)
+
+![Image 2 from page 228](images/2016_Jazz_Owners_Manual/p228-2.png)
+
 <!-- page:229 -->
 ## ■Speed Alarm Setting
 
@@ -3989,6 +4805,8 @@ The default settings for
 You can also return to the normal screen by selecting
 (exit).
 Instrument Panel
+
+![Image 1 from page 229](images/2016_Jazz_Owners_Manual/p229-1.png)
 
 <!-- page:230 -->
 ### ■To change the speed setting
@@ -4014,6 +4832,8 @@ You cannot change the speed setting while driving.
 Continued
 Instrument Panel
 Use the multi-information display to customize certain features.
+
+![Image 1 from page 230](images/2016_Jazz_Owners_Manual/p230-1.png)
 
 <!-- page:231 -->
 ### ■How to customize
@@ -4048,6 +4868,10 @@ Goes to Customize Settings.
 SEL/RESET button:
 Enters the selected item.
 Instrument Panel
+
+![Image 1 from page 232](images/2016_Jazz_Owners_Manual/p232-1.png)
+
+![Image 2 from page 232](images/2016_Jazz_Owners_Manual/p232-2.png)
 
 <!-- page:233 -->
 ### ■Customization flow
@@ -4221,6 +5045,8 @@ Cancel/Ok
 Continued
 Instrument Panel
 
+![Image 1 from page 234](images/2016_Jazz_Owners_Manual/p234-1.png)
+
 <!-- page:235 -->
 ### ■Example of customization settings
 
@@ -4259,6 +5085,8 @@ appears on the display, then press the SEL/
 RESET button.
 7. Repeat Step 6 until you return to the
 normal screen.
+
+![Image 1 from page 235](images/2016_Jazz_Owners_Manual/p235-1.png)
 
 <!-- page:236 -->
 ### This chapter explains how to operate the various controls necessary for driving.
@@ -4311,10 +5139,16 @@ Automatic Climate Control Sensors ...........212
 * Not available on all models
 Controls
 
+![Image 1 from page 236](images/2016_Jazz_Owners_Manual/p236-1.png)
+
 <!-- page:237 -->
 ## Adjusting the Clock
 
 You can adjust the time in the clock display with the ignition switch in ON (w*1.
+
+![Image 1 from page 237](images/2016_Jazz_Owners_Manual/p237-1.png)
+
+![Image 2 from page 237](images/2016_Jazz_Owners_Manual/p237-2.png)
 
 <!-- page:238 -->
 ### ■Using the settings menu on the audio/information screen
@@ -4330,6 +5164,10 @@ Adjustment.
 4. Select OK to set the time.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
+
+![Image 1 from page 238](images/2016_Jazz_Owners_Manual/p238-1.png)
+
+![Image 2 from page 238](images/2016_Jazz_Owners_Manual/p238-2.png)
 
 <!-- page:239 -->
 ## ■Adjusting the Time
@@ -4353,6 +5191,8 @@ Models with display audio system
 %$&.
 Controls
 
+![Image 1 from page 239](images/2016_Jazz_Owners_Manual/p239-1.png)
+
 <!-- page:240 -->
 ### ■Using the MENU/CLOCK button
 
@@ -4368,6 +5208,8 @@ to change minute, then press
 and select
 Set, then press
 .
+
+![Image 1 from page 240](images/2016_Jazz_Owners_Manual/p240-1.png)
 
 <!-- page:241 -->
 ### ■Using the settings menu on the audio/information screen
@@ -4400,6 +5242,12 @@ clock display.
 Models with colour audio system
 Models with colour audio system
 
+![Image 1 from page 241](images/2016_Jazz_Owners_Manual/p241-1.png)
+
+![Image 2 from page 241](images/2016_Jazz_Owners_Manual/p241-2.png)
+
+![Image 3 from page 241](images/2016_Jazz_Owners_Manual/p241-3.png)
+
 <!-- page:242 -->
 ## ■Setting the Time Zone
 
@@ -4410,6 +5258,8 @@ Models with display audio system
 %$&.
 Controls
 
+![Image 1 from page 242](images/2016_Jazz_Owners_Manual/p242-1.png)
+
 <!-- page:243 -->
 ## Key Types and Functions
 
@@ -4419,6 +5269,8 @@ to lock and unlock* all the doors and tailgate.
 You can also use the remote transmitter or
 keyless access system* to lock and unlock all
 the doors and tailgate.
+
+![Image 1 from page 243](images/2016_Jazz_Owners_Manual/p243-1.png)
 
 <!-- page:244 -->
 ## ■Keys
@@ -4448,6 +5300,12 @@ Retractable Key*
 Continued
 Controls
 
+![Image 1 from page 244](images/2016_Jazz_Owners_Manual/p244-1.png)
+
+![Image 2 from page 244](images/2016_Jazz_Owners_Manual/p244-2.png)
+
+![Image 3 from page 244](images/2016_Jazz_Owners_Manual/p244-3.png)
+
 <!-- page:245 -->
 ### ■Keyless remote*
 
@@ -4459,6 +5317,8 @@ To remove the built-in key, pull it out while
 sliding the release knob. To reinstall the built-
 in key, push the built-in key into the keyless
 remote until it clicks.
+
+![Image 1 from page 245](images/2016_Jazz_Owners_Manual/p245-1.png)
 
 <!-- page:246 -->
 ### ■Retractable keys*
@@ -4486,6 +5346,8 @@ Controls
 Contains a number that you will need if you
 purchase a replacement key.
 
+![Image 1 from page 246](images/2016_Jazz_Owners_Manual/p246-1.png)
+
 <!-- page:247 -->
 ## ■Key Number Tag
 
@@ -4497,6 +5359,12 @@ dealer.
 If you lose your key and you cannot start the engine,
 contact a dealer.
 Controls
+
+![Image 1 from page 247](images/2016_Jazz_Owners_Manual/p247-1.png)
+
+![Image 2 from page 247](images/2016_Jazz_Owners_Manual/p247-2.png)
+
+![Image 3 from page 247](images/2016_Jazz_Owners_Manual/p247-3.png)
 
 <!-- page:248 -->
 ## Low Keyless Remote Signal Strength*
@@ -4521,6 +5389,8 @@ personal computers.
 * Not available on all models
 Controls
 
+![Image 1 from page 248](images/2016_Jazz_Owners_Manual/p248-1.png)
+
 <!-- page:249 -->
 ## Locking/Unlocking the Doors from the Outside
 
@@ -4533,6 +5403,8 @@ open the tailgate within about 80 cm (32
 inches) radius from the tailgate release
 button.
 
+![Image 1 from page 249](images/2016_Jazz_Owners_Manual/p249-1.png)
+
 <!-- page:250 -->
 ### ■Locking the doors and tailgate
 
@@ -4541,6 +5413,8 @@ or the tailgate.
 u Some exterior lights flash three times; all
 the doors and tailgate lock; and the
 security system sets.
+
+![Image 1 from page 250](images/2016_Jazz_Owners_Manual/p250-1.png)
 
 <!-- page:251 -->
 ## ■Using the Keyless Access System*
@@ -4581,6 +5455,12 @@ Lock Button
 Continued
 Controls
 
+![Image 1 from page 251](images/2016_Jazz_Owners_Manual/p251-1.png)
+
+![Image 2 from page 251](images/2016_Jazz_Owners_Manual/p251-2.png)
+
+![Image 3 from page 251](images/2016_Jazz_Owners_Manual/p251-3.png)
+
 <!-- page:252 -->
 ### ■Unlocking the doors and the tailgate
 
@@ -4601,6 +5481,8 @@ tailgate will automatically relock.
 * Not available on all models
 Controls
 
+![Image 1 from page 252](images/2016_Jazz_Owners_Manual/p252-1.png)
+
 <!-- page:253 -->
 ### ■Locking the doors
 
@@ -4608,6 +5490,12 @@ Press the lock button.
 u Some exterior lights flash three times, all
 the doors and tailgate lock, and the
 security system* sets.
+
+![Image 1 from page 253](images/2016_Jazz_Owners_Manual/p253-1.png)
+
+![Image 2 from page 253](images/2016_Jazz_Owners_Manual/p253-2.png)
+
+![Image 3 from page 253](images/2016_Jazz_Owners_Manual/p253-3.png)
 
 <!-- page:254 -->
 ## ■Using the Remote Transmitter
@@ -4638,6 +5526,14 @@ Button
 * Not available on all models
 Continued
 Controls
+
+![Image 1 from page 254](images/2016_Jazz_Owners_Manual/p254-1.png)
+
+![Image 2 from page 254](images/2016_Jazz_Owners_Manual/p254-2.png)
+
+![Image 3 from page 254](images/2016_Jazz_Owners_Manual/p254-3.png)
+
+![Image 4 from page 254](images/2016_Jazz_Owners_Manual/p254-4.png)
 
 <!-- page:255 -->
 ### ■Unlocking the doors
@@ -4690,6 +5586,8 @@ Unlock*
 * Not available on all models
 Controls
 
+![Image 1 from page 256](images/2016_Jazz_Owners_Manual/p256-1.png)
+
 <!-- page:257 -->
 ### ■Locking the driver's door
 
@@ -4698,10 +5596,30 @@ master door lock switch in the lock direction
 b, then pull and hold the outside door handle
 c. Close the door, then release the handle.
 
+![Image 1 from page 257](images/2016_Jazz_Owners_Manual/p257-1.png)
+
+![Image 2 from page 257](images/2016_Jazz_Owners_Manual/p257-2.png)
+
+![Image 3 from page 257](images/2016_Jazz_Owners_Manual/p257-3.png)
+
+![Image 4 from page 257](images/2016_Jazz_Owners_Manual/p257-4.png)
+
 <!-- page:258 -->
 ### ■Locking the passengers’ doors
 
 Push the lock tab forward and close the door.
+
+![Image 1 from page 258](images/2016_Jazz_Owners_Manual/p258-1.png)
+
+![Image 2 from page 258](images/2016_Jazz_Owners_Manual/p258-2.png)
+
+![Image 3 from page 258](images/2016_Jazz_Owners_Manual/p258-3.png)
+
+![Image 4 from page 258](images/2016_Jazz_Owners_Manual/p258-4.png)
+
+![Image 5 from page 258](images/2016_Jazz_Owners_Manual/p258-5.png)
+
+![Image 6 from page 258](images/2016_Jazz_Owners_Manual/p258-6.png)
 
 <!-- page:259 -->
 ### ■Lockout prevention system
@@ -4709,6 +5627,12 @@ Push the lock tab forward and close the door.
 The doors and the tailgate cannot be locked when the key is in the ignition switch.
 The doors and the tailgate cannot be locked when the keyless remote is inside the
 vehicle.
+
+![Image 1 from page 259](images/2016_Jazz_Owners_Manual/p259-1.png)
+
+![Image 2 from page 259](images/2016_Jazz_Owners_Manual/p259-2.png)
+
+![Image 3 from page 259](images/2016_Jazz_Owners_Manual/p259-3.png)
 
 <!-- page:260 -->
 ## ■Locking a Door Without Using a Key
@@ -4723,15 +5647,31 @@ Models without keyless access system
 Models with keyless access system
 Controls
 
+![Image 1 from page 260](images/2016_Jazz_Owners_Manual/p260-1.png)
+
+![Image 2 from page 260](images/2016_Jazz_Owners_Manual/p260-2.png)
+
 <!-- page:261 -->
 ### ■Locking a door
 
 Push the lock tab forward.
 
+![Image 1 from page 261](images/2016_Jazz_Owners_Manual/p261-1.png)
+
+![Image 2 from page 261](images/2016_Jazz_Owners_Manual/p261-2.png)
+
+![Image 1 from page 262](images/2016_Jazz_Owners_Manual/p262-1.png)
+
+![Image 2 from page 262](images/2016_Jazz_Owners_Manual/p262-2.png)
+
 <!-- page:263 -->
 ### ■Unlocking a door
 
 Pull the lock tab rearward.
+
+![Image 1 from page 263](images/2016_Jazz_Owners_Manual/p263-1.png)
+
+![Image 2 from page 263](images/2016_Jazz_Owners_Manual/p263-2.png)
 
 <!-- page:264 -->
 ## ■Using the Lock Tab
@@ -4752,6 +5692,10 @@ the inner handle unlocks all the other doors.
 Press the master door lock switch in as shown
 to lock or unlock all doors and the tailgate.
 
+![Image 1 from page 264](images/2016_Jazz_Owners_Manual/p264-1.png)
+
+![Image 2 from page 264](images/2016_Jazz_Owners_Manual/p264-2.png)
+
 <!-- page:265 -->
 ## ■Unlocking Using the Front Door Inner Handle
 
@@ -4767,6 +5711,12 @@ childproof door locks are provided.
 2 Childproof Door Locks P. 152
 Inner Handle
 
+![Image 1 from page 265](images/2016_Jazz_Owners_Manual/p265-1.png)
+
+![Image 2 from page 265](images/2016_Jazz_Owners_Manual/p265-2.png)
+
+![Image 3 from page 265](images/2016_Jazz_Owners_Manual/p265-3.png)
+
 <!-- page:266 -->
 ## ■Using the Master Door Lock Switch
 
@@ -4780,6 +5730,10 @@ Lock Switch
 To Lock
 Controls
 
+![Image 1 from page 266](images/2016_Jazz_Owners_Manual/p266-1.png)
+
+![Image 2 from page 266](images/2016_Jazz_Owners_Manual/p266-2.png)
+
 <!-- page:267 -->
 ## Childproof Door Locks
 
@@ -4788,10 +5742,18 @@ regardless of the position of the lock tab.
 Slide the lever in the rear door to the lock
 position, and close the door.
 
+![Image 1 from page 267](images/2016_Jazz_Owners_Manual/p267-1.png)
+
+![Image 2 from page 267](images/2016_Jazz_Owners_Manual/p267-2.png)
+
 <!-- page:268 -->
 ### ■When opening the door
 
 Open the door using the outside door handle.
+
+![Image 1 from page 268](images/2016_Jazz_Owners_Manual/p268-1.png)
+
+![Image 2 from page 268](images/2016_Jazz_Owners_Manual/p268-2.png)
 
 <!-- page:269 -->
 ## ■Setting the Childproof Door Locks
@@ -4806,11 +5768,19 @@ Unlock
 Lock
 Controls
 
+![Image 1 from page 269](images/2016_Jazz_Owners_Manual/p269-1.png)
+
+![Image 2 from page 269](images/2016_Jazz_Owners_Manual/p269-2.png)
+
 <!-- page:270 -->
 ## Precautions for Opening/Closing the Tailgate
 
 Always make sure individuals and objects are clear of the tailgate before opening or
 closing it.
+
+![Image 1 from page 270](images/2016_Jazz_Owners_Manual/p270-1.png)
+
+![Image 2 from page 270](images/2016_Jazz_Owners_Manual/p270-2.png)
 
 <!-- page:271 -->
 ### ■Opening the tailgate
@@ -4819,6 +5789,10 @@ closing it.
 u If it is not fully opened, the tailgate may come down accidentally by its own
 weight.
 • Be careful when it is windy. The wind may cause the tailgate to close.
+
+![Image 1 from page 271](images/2016_Jazz_Owners_Manual/p271-1.png)
+
+![Image 2 from page 271](images/2016_Jazz_Owners_Manual/p271-2.png)
 
 <!-- page:272 -->
 ### ■Closing the tailgate
@@ -4838,6 +5812,10 @@ Do not allow any passenger in the luggage space.
 They may get hurt during hard braking, a sudden
 acceleration, or a crash.
 Controls
+
+![Image 1 from page 272](images/2016_Jazz_Owners_Manual/p272-1.png)
+
+![Image 2 from page 272](images/2016_Jazz_Owners_Manual/p272-2.png)
 
 <!-- page:273 -->
 ## Using the Tailgate Outer Handle/Release Button
@@ -4929,6 +5907,10 @@ intervals.
 * Not available on all models
 Controls
 
+![Image 1 from page 277](images/2016_Jazz_Owners_Manual/p277-1.png)
+
+![Image 2 from page 277](images/2016_Jazz_Owners_Manual/p277-2.png)
+
 <!-- page:278 -->
 ### ■Setting the security system alarm
 
@@ -4973,10 +5955,18 @@ Models without keyless access system
 * Not available on all models
 Controls
 
+![Image 1 from page 280](images/2016_Jazz_Owners_Manual/p280-1.png)
+
 <!-- page:281 -->
 ## Super Locking*
 
 The super locking function disables the lock tabs on all doors.
+
+![Image 1 from page 281](images/2016_Jazz_Owners_Manual/p281-1.png)
+
+![Image 2 from page 281](images/2016_Jazz_Owners_Manual/p281-2.png)
+
+![Image 3 from page 281](images/2016_Jazz_Owners_Manual/p281-3.png)
 
 <!-- page:282 -->
 ### ■To activate the super locking function
@@ -4987,6 +5977,8 @@ seconds.
 • Press the door lock button on the door handle or the tailgate twice within five
 seconds.
 
+![Image 1 from page 282](images/2016_Jazz_Owners_Manual/p282-1.png)
+
 <!-- page:283 -->
 ### ■To cancel the super locking function
 
@@ -4994,6 +5986,8 @@ Unlock the driver’s door with the remote transmitter or keyless access system.
 1Super Locking*
 Do not unlock the door using the key. The security
 system alarm goes off.
+
+![Image 1 from page 283](images/2016_Jazz_Owners_Manual/p283-1.png)
 
 <!-- page:284 -->
 ## 3WARNING
@@ -5009,6 +6003,12 @@ Models with keyless access system
 Continued
 Controls
 
+![Image 1 from page 284](images/2016_Jazz_Owners_Manual/p284-1.png)
+
+![Image 2 from page 284](images/2016_Jazz_Owners_Manual/p284-2.png)
+
+![Image 3 from page 284](images/2016_Jazz_Owners_Manual/p284-3.png)
+
 <!-- page:285 -->
 ## Opening/Closing the Power Windows
 
@@ -5022,6 +6022,8 @@ When the power window lock button is pushed in, the indicator comes on and you
 can only operate the driver's window. Turn the power window lock button on when
 children are in the vehicle.
 
+![Image 1 from page 285](images/2016_Jazz_Owners_Manual/p285-1.png)
+
 <!-- page:286 -->
 ### ■Automatic operation
 
@@ -5030,6 +6032,8 @@ To close: Pull the switch up firmly.
 The window opens or closes completely. To
 stop the window at any time, push or pull the
 switch briefly.
+
+![Image 1 from page 286](images/2016_Jazz_Owners_Manual/p286-1.png)
 
 <!-- page:287 -->
 ### ■Manual operation
@@ -5040,6 +6044,12 @@ To close: Pull the switch up lightly, and hold it
 until the desired position is reached.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
+
+![Image 1 from page 287](images/2016_Jazz_Owners_Manual/p287-1.png)
+
+![Image 2 from page 287](images/2016_Jazz_Owners_Manual/p287-2.png)
+
+![Image 3 from page 287](images/2016_Jazz_Owners_Manual/p287-3.png)
 
 <!-- page:288 -->
 ## ■Opening/Closing Windows with Auto-Open/Close Function
@@ -5059,6 +6069,8 @@ The driver’s window auto reverse function is disabled
 when you continuously pull up the switch.
 The auto reverse function stops sensing when the
 window is almost closed to ensure that it fully closes.
+
+![Image 1 from page 288](images/2016_Jazz_Owners_Manual/p288-1.png)
 
 <!-- page:289 -->
 ## 3WARNING
@@ -5085,6 +6097,8 @@ hold it until the desired position is reached.
 To close: Pull the switch up lightly, and hold it
 until the desired position is reached.
 
+![Image 1 from page 289](images/2016_Jazz_Owners_Manual/p289-1.png)
+
 <!-- page:290 -->
 ## Ignition Switch
 
@@ -5101,6 +6115,10 @@ If the key won’t turn from LOCK (0 to ACCESSORY
 (q, turn the key while moving the steering wheel left
 and right. The steering wheel will unlock, allowing
 the key to turn.
+
+![Image 1 from page 290](images/2016_Jazz_Owners_Manual/p290-1.png)
+
+![Image 2 from page 290](images/2016_Jazz_Owners_Manual/p290-2.png)
 
 <!-- page:291 -->
 ## 3WARNING
@@ -5122,6 +6140,8 @@ other accessories in this position.
 The switch returns to ON (w when you let go of
 the key.
 Controls
+
+![Image 1 from page 291](images/2016_Jazz_Owners_Manual/p291-1.png)
 
 <!-- page:292 -->
 ## ■Changing the Power Mode
@@ -5182,6 +6202,8 @@ Press the ENGINE START/STOP button to switch the mode to VEHICLE OFF (LOCK).
 2 Changing the Power Mode P. 162
 *1: Continuously variable transmission models
 
+![Image 1 from page 292](images/2016_Jazz_Owners_Manual/p292-1.png)
+
 <!-- page:293 -->
 ## ■Automatic Power Off
 
@@ -5203,6 +6225,8 @@ buzzer continues even after the remote is put
 back inside, place it to be within its
 operational range.
 
+![Image 1 from page 293](images/2016_Jazz_Owners_Manual/p293-1.png)
+
 <!-- page:294 -->
 ### ■When the power mode is in ON
 
@@ -5213,6 +6237,10 @@ outside the vehicle. A warning symbol on the
 multi-information display notifies the driver
 inside that the remote is out.
 
+![Image 1 from page 295](images/2016_Jazz_Owners_Manual/p295-1.png)
+
+![Image 2 from page 295](images/2016_Jazz_Owners_Manual/p295-2.png)
+
 <!-- page:296 -->
 ### ■When the power mode is in
 
@@ -5221,6 +6249,12 @@ If the keyless remote is taken out of the
 vehicle, and all the doors are closed, a
 warning buzzer sounds from outside the
 vehicle.
+
+![Image 1 from page 296](images/2016_Jazz_Owners_Manual/p296-1.png)
+
+![Image 2 from page 296](images/2016_Jazz_Owners_Manual/p296-2.png)
+
+![Image 3 from page 296](images/2016_Jazz_Owners_Manual/p296-3.png)
 
 <!-- page:297 -->
 ## ■Keyless Remote Reminder
@@ -5245,6 +6279,8 @@ the vehicle from locating the remote, the warning
 buzzer may also go off even if the remote is within
 the system’s operational range.
 Controls
+
+![Image 1 from page 297](images/2016_Jazz_Owners_Manual/p297-1.png)
 
 <!-- page:298 -->
 ## Ignition Switch and Power Mode Comparison
@@ -5319,11 +6355,25 @@ engine starts.
 Indicator is: On        Off
 Controls
 
+![Image 1 from page 298](images/2016_Jazz_Owners_Manual/p298-1.png)
+
 <!-- page:299 -->
 ## Turn Signals
 
 The turn signals can be used when the ignition
 switch is in ON (w*1.
+
+![Image 1 from page 299](images/2016_Jazz_Owners_Manual/p299-1.png)
+
+![Image 2 from page 299](images/2016_Jazz_Owners_Manual/p299-2.png)
+
+![Image 3 from page 299](images/2016_Jazz_Owners_Manual/p299-3.png)
+
+![Image 4 from page 299](images/2016_Jazz_Owners_Manual/p299-4.png)
+
+![Image 5 from page 299](images/2016_Jazz_Owners_Manual/p299-5.png)
+
+![Image 6 from page 299](images/2016_Jazz_Owners_Manual/p299-6.png)
 
 <!-- page:300 -->
 ### ■One-push turn signal
@@ -5441,6 +6491,12 @@ Controls
 
 Can be used when the position lights or the headlights are on.
 
+![Image 1 from page 308](images/2016_Jazz_Owners_Manual/p308-1.png)
+
+![Image 2 from page 308](images/2016_Jazz_Owners_Manual/p308-2.png)
+
+![Image 3 from page 308](images/2016_Jazz_Owners_Manual/p308-3.png)
+
 <!-- page:309 -->
 ### ■Rear fog light
 
@@ -5462,12 +6518,20 @@ position. The
 and
 indicator comes on.
 
+![Image 1 from page 317](images/2016_Jazz_Owners_Manual/p317-1.png)
+
+![Image 2 from page 317](images/2016_Jazz_Owners_Manual/p317-2.png)
+
+![Image 3 from page 317](images/2016_Jazz_Owners_Manual/p317-3.png)
+
 <!-- page:318 -->
 ### ■To turn the rear fog light on
 
 Rotate the switch down from the OFF
 position. The
 indicator comes on.
+
+![Image 1 from page 318](images/2016_Jazz_Owners_Manual/p318-1.png)
 
 <!-- page:323 -->
 ## ■Front and Rear Fog Lights Switch*
@@ -5485,12 +6549,28 @@ Rotate the switch to
 indicator
 comes on.
 
+![Image 1 from page 333](images/2016_Jazz_Owners_Manual/p333-1.png)
+
 <!-- page:334 -->
 ## ■Rear Fog Lights*
 
 Rear Fog Light Switch
 * Not available on all models
 Controls
+
+![Image 1 from page 334](images/2016_Jazz_Owners_Manual/p334-1.png)
+
+![Image 2 from page 334](images/2016_Jazz_Owners_Manual/p334-2.png)
+
+![Image 3 from page 334](images/2016_Jazz_Owners_Manual/p334-3.png)
+
+![Image 4 from page 334](images/2016_Jazz_Owners_Manual/p334-4.png)
+
+![Image 5 from page 334](images/2016_Jazz_Owners_Manual/p334-5.png)
+
+![Image 6 from page 334](images/2016_Jazz_Owners_Manual/p334-6.png)
+
+![Image 7 from page 334](images/2016_Jazz_Owners_Manual/p334-7.png)
 
 <!-- page:336 -->
 ## Headlight Adjuster
@@ -5500,6 +6580,8 @@ beam headlights when the ignition switch is in
 ON (w*1.
 The larger dial number indicates the lower
 angle.
+
+![Image 1 from page 336](images/2016_Jazz_Owners_Manual/p336-1.png)
 
 <!-- page:337 -->
 ### ■To select the adjusting dial position
@@ -5558,10 +6640,28 @@ time when the headlight switch is in AUTO, consult a
 dealer.
 The system operates when:
 
+![Image 1 from page 341](images/2016_Jazz_Owners_Manual/p341-1.png)
+
+![Image 2 from page 341](images/2016_Jazz_Owners_Manual/p341-2.png)
+
+![Image 3 from page 341](images/2016_Jazz_Owners_Manual/p341-3.png)
+
 <!-- page:342 -->
 ### ■The system recognises that you are driving at
 
 night and the low beam headlights come on.
+
+![Image 1 from page 342](images/2016_Jazz_Owners_Manual/p342-1.png)
+
+![Image 2 from page 342](images/2016_Jazz_Owners_Manual/p342-2.png)
+
+![Image 3 from page 342](images/2016_Jazz_Owners_Manual/p342-3.png)
+
+![Image 1 from page 343](images/2016_Jazz_Owners_Manual/p343-1.png)
+
+![Image 2 from page 343](images/2016_Jazz_Owners_Manual/p343-2.png)
+
+![Image 3 from page 343](images/2016_Jazz_Owners_Manual/p343-3.png)
 
 <!-- page:344 -->
 ### ■The vehicle speed is above 40 km/h (25 mph).
@@ -5584,6 +6684,12 @@ the headlight lever to low beam.
 The high beam support system indicator
 comes on.
 
+![Image 1 from page 344](images/2016_Jazz_Owners_Manual/p344-1.png)
+
+![Image 2 from page 344](images/2016_Jazz_Owners_Manual/p344-2.png)
+
+![Image 3 from page 344](images/2016_Jazz_Owners_Manual/p344-3.png)
+
 <!-- page:345 -->
 ### ■Temporary cancellation
 
@@ -5592,6 +6698,12 @@ The high beam support system operation is temporarily cancelled while:
 • The vehicle speed is below 10 km/h (6 mph).
 • The windscreen wipers run at high speed for more than a few seconds.
 The system operation resumes once the condition that caused it to cancel improves.
+
+![Image 1 from page 345](images/2016_Jazz_Owners_Manual/p345-1.png)
+
+![Image 2 from page 345](images/2016_Jazz_Owners_Manual/p345-2.png)
+
+![Image 3 from page 345](images/2016_Jazz_Owners_Manual/p345-3.png)
 
 <!-- page:346 -->
 ## ■To Operate the System
@@ -5628,6 +6740,12 @@ Headlight Switch
 * Not available on all models
 Controls
 
+![Image 1 from page 346](images/2016_Jazz_Owners_Manual/p346-1.png)
+
+![Image 2 from page 346](images/2016_Jazz_Owners_Manual/p346-2.png)
+
+![Image 3 from page 346](images/2016_Jazz_Owners_Manual/p346-3.png)
+
 <!-- page:347 -->
 ### ■To manually cancel the system temporarily
 
@@ -5636,6 +6754,10 @@ beams. Push the lever forward until you hear a click, or lightly pull the lever 
 you to flash high beams. The high beam support system indicator goes off.
 If you want the high beam support system operation to resume at once, pull and
 hold the lever towards you for a few seconds.
+
+![Image 1 from page 347](images/2016_Jazz_Owners_Manual/p347-1.png)
+
+![Image 2 from page 347](images/2016_Jazz_Owners_Manual/p347-2.png)
 
 <!-- page:348 -->
 ## Daytime Running Lights
@@ -5656,11 +6778,19 @@ by a dealer.
 Continued
 Controls
 
+![Image 1 from page 348](images/2016_Jazz_Owners_Manual/p348-1.png)
+
+![Image 2 from page 348](images/2016_Jazz_Owners_Manual/p348-2.png)
+
+![Image 3 from page 348](images/2016_Jazz_Owners_Manual/p348-3.png)
+
 <!-- page:349 -->
 ## Wipers and Washers
 
 The windscreen wipers and washers can be
 used when the ignition switch is in ON (w*1.
+
+![Image 1 from page 349](images/2016_Jazz_Owners_Manual/p349-1.png)
 
 <!-- page:350 -->
 ### ■MIST
@@ -5668,12 +6798,20 @@ used when the ignition switch is in ON (w*1.
 The wipers run at high speed until you release
 the lever.
 
+![Image 1 from page 350](images/2016_Jazz_Owners_Manual/p350-1.png)
+
+![Image 2 from page 350](images/2016_Jazz_Owners_Manual/p350-2.png)
+
 <!-- page:351 -->
 ### ■Wiper switch (OFF, AUTO, LO, HI)
 
 Change the wiper switch setting according to
 the amount of rain.
 2 Automatic Intermittent Wipers P. 176
+
+![Image 1 from page 351](images/2016_Jazz_Owners_Manual/p351-1.png)
+
+![Image 2 from page 351](images/2016_Jazz_Owners_Manual/p351-2.png)
 
 <!-- page:352 -->
 ### ■Washer
@@ -5728,6 +6866,8 @@ speed, or at high speed and stops in
 accordance with the amount of rainfall the
 rainfall sensor detects.
 
+![Image 1 from page 352](images/2016_Jazz_Owners_Manual/p352-1.png)
+
 <!-- page:353 -->
 ### ■AUTO sensitivity adjustment
 
@@ -5735,6 +6875,12 @@ When in AUTO, you can also adjust the
 rainfall sensor sensitivity using the intermittent
 time adjustment ring.
 Sensor sensitivity
+
+![Image 1 from page 353](images/2016_Jazz_Owners_Manual/p353-1.png)
+
+![Image 2 from page 353](images/2016_Jazz_Owners_Manual/p353-2.png)
+
+![Image 3 from page 353](images/2016_Jazz_Owners_Manual/p353-3.png)
 
 <!-- page:354 -->
 ## ■Automatic Intermittent Wipers
@@ -5758,11 +6904,19 @@ Controls
 The rear wiper and washer can be used when
 the ignition switch is in ON (w*1.
 
+![Image 1 from page 354](images/2016_Jazz_Owners_Manual/p354-1.png)
+
+![Image 2 from page 354](images/2016_Jazz_Owners_Manual/p354-2.png)
+
 <!-- page:355 -->
 ### ■Wiper switch (OFF, INT, ON)
 
 The wiper operates intermittently after
 completing a few sweeps.
+
+![Image 1 from page 355](images/2016_Jazz_Owners_Manual/p355-1.png)
+
+![Image 2 from page 355](images/2016_Jazz_Owners_Manual/p355-2.png)
 
 <!-- page:356 -->
 ### ■Washer (
@@ -5774,6 +6928,10 @@ Hold it to activate the wiper and to spray the
 washer. Once released, it stops operating
 after a few more sweeps.
 
+![Image 1 from page 356](images/2016_Jazz_Owners_Manual/p356-1.png)
+
+![Image 2 from page 356](images/2016_Jazz_Owners_Manual/p356-2.png)
+
 <!-- page:357 -->
 ### ■Operating in reverse
 
@@ -5781,6 +6939,20 @@ When you shift the transmission to (R with the windscreen wipers activated, the
 rear wiper operates automatically as follows even if its switch is off.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
+
+![Image 1 from page 357](images/2016_Jazz_Owners_Manual/p357-1.png)
+
+![Image 2 from page 357](images/2016_Jazz_Owners_Manual/p357-2.png)
+
+![Image 3 from page 357](images/2016_Jazz_Owners_Manual/p357-3.png)
+
+![Image 4 from page 357](images/2016_Jazz_Owners_Manual/p357-4.png)
+
+![Image 5 from page 357](images/2016_Jazz_Owners_Manual/p357-5.png)
+
+![Image 6 from page 357](images/2016_Jazz_Owners_Manual/p357-6.png)
+
+![Image 7 from page 357](images/2016_Jazz_Owners_Manual/p357-7.png)
 
 <!-- page:358 -->
 ## ■Rear Wiper/Washer
@@ -5797,6 +6969,8 @@ LO (Low speed wipe)
 HI (High speed wipe)
 Continuous
 Controls
+
+![Image 1 from page 358](images/2016_Jazz_Owners_Manual/p358-1.png)
 
 <!-- page:359 -->
 ## Brightness Control
@@ -5833,6 +7007,8 @@ exterior lights are on, and when they are off.
 (Select/Reset) Knob
 Controls
 
+![Image 1 from page 360](images/2016_Jazz_Owners_Manual/p360-1.png)
+
 <!-- page:362 -->
 ## Rear Demister/Heated Door Mirror*
 
@@ -5862,6 +7038,8 @@ Models with climate control system
 * Not available on all models
 Controls
 
+![Image 1 from page 362](images/2016_Jazz_Owners_Manual/p362-1.png)
+
 <!-- page:363 -->
 ## Adjusting the Steering Wheel
 
@@ -5884,6 +7062,12 @@ down, in, and out.
 Make any steering wheel adjustments before you
 start driving.
 
+![Image 1 from page 363](images/2016_Jazz_Owners_Manual/p363-1.png)
+
+![Image 2 from page 363](images/2016_Jazz_Owners_Manual/p363-2.png)
+
+![Image 3 from page 363](images/2016_Jazz_Owners_Manual/p363-3.png)
+
 <!-- page:364 -->
 ## 3WARNING
 
@@ -5898,6 +7082,12 @@ Height and Distance
 Lever
 Controls
 
+![Image 1 from page 364](images/2016_Jazz_Owners_Manual/p364-1.png)
+
+![Image 2 from page 364](images/2016_Jazz_Owners_Manual/p364-2.png)
+
+![Image 3 from page 364](images/2016_Jazz_Owners_Manual/p364-3.png)
+
 <!-- page:365 -->
 ## Interior Rearview Mirror
 
@@ -5907,6 +7097,10 @@ Flip the tab to switch the position.
 The night position will help to reduce the glare
 from headlights behind you when driving
 after dark.
+
+![Image 1 from page 365](images/2016_Jazz_Owners_Manual/p365-1.png)
+
+![Image 2 from page 365](images/2016_Jazz_Owners_Manual/p365-2.png)
 
 <!-- page:366 -->
 ## ■Rearview Mirror with Day and Night Positions
@@ -5923,11 +7117,17 @@ Night
 Position
 Controls
 
+![Image 1 from page 366](images/2016_Jazz_Owners_Manual/p366-1.png)
+
+![Image 2 from page 366](images/2016_Jazz_Owners_Manual/p366-2.png)
+
 <!-- page:367 -->
 ## Power Door Mirrors
 
 You can adjust the door mirrors when the
 ignition switch is in ON (w*1.
+
+![Image 1 from page 367](images/2016_Jazz_Owners_Manual/p367-1.png)
 
 <!-- page:368 -->
 ### ■Mirror position adjustment
@@ -5938,6 +7138,12 @@ switch to the centre position.
 Mirror position adjustment switch: Press
 the switch left, right, up, or down to move the
 mirror.
+
+![Image 1 from page 368](images/2016_Jazz_Owners_Manual/p368-1.png)
+
+![Image 2 from page 368](images/2016_Jazz_Owners_Manual/p368-2.png)
+
+![Image 3 from page 368](images/2016_Jazz_Owners_Manual/p368-3.png)
 
 <!-- page:369 -->
 ### ■Folding door mirrors*
@@ -5953,6 +7159,12 @@ Selector Switch
 Continued
 Controls
 
+![Image 1 from page 369](images/2016_Jazz_Owners_Manual/p369-1.png)
+
+![Image 2 from page 369](images/2016_Jazz_Owners_Manual/p369-2.png)
+
+![Image 3 from page 369](images/2016_Jazz_Owners_Manual/p369-3.png)
+
 <!-- page:370 -->
 ## Adjusting the Seat Positions
 
@@ -5967,6 +7179,16 @@ adjusted in a similar manner, so that it is as far
 back from the front airbag in the dashboard
 as possible.
 
+![Image 1 from page 370](images/2016_Jazz_Owners_Manual/p370-1.png)
+
+![Image 2 from page 370](images/2016_Jazz_Owners_Manual/p370-2.png)
+
+![Image 3 from page 370](images/2016_Jazz_Owners_Manual/p370-3.png)
+
+![Image 4 from page 370](images/2016_Jazz_Owners_Manual/p370-4.png)
+
+![Image 5 from page 370](images/2016_Jazz_Owners_Manual/p370-5.png)
+
 <!-- page:371 -->
 ### ■Adjusting the front seat
 
@@ -5978,6 +7200,10 @@ steering wheel and the chest.
 Always make seat adjustments before driving.
 Once a seat is adjusted correctly, rock it back and
 forth to make sure it is locked in position.
+
+![Image 1 from page 371](images/2016_Jazz_Owners_Manual/p371-1.png)
+
+![Image 2 from page 371](images/2016_Jazz_Owners_Manual/p371-2.png)
 
 <!-- page:372 -->
 ## 3WARNING
@@ -6017,6 +7243,12 @@ occupant's chest reduces the protective capability of the belt. It also increase
 chance of sliding under the belt in a crash and being seriously injured. The farther a
 seat-back is reclined, the greater the risk of injury.
 
+![Image 1 from page 372](images/2016_Jazz_Owners_Manual/p372-1.png)
+
+![Image 2 from page 372](images/2016_Jazz_Owners_Manual/p372-2.png)
+
+![Image 3 from page 372](images/2016_Jazz_Owners_Manual/p372-3.png)
+
 <!-- page:373 -->
 ## ■Adjusting the Seat-Backs
 
@@ -6029,6 +7261,12 @@ If you cannot get far enough away from the steering
 wheel and still reach the controls, we recommend
 that you investigate whether some type of adaptive
 equipment may help.
+
+![Image 1 from page 373](images/2016_Jazz_Owners_Manual/p373-1.png)
+
+![Image 2 from page 373](images/2016_Jazz_Owners_Manual/p373-2.png)
+
+![Image 3 from page 373](images/2016_Jazz_Owners_Manual/p373-3.png)
 
 <!-- page:374 -->
 ## 3WARNING
@@ -6050,6 +7288,10 @@ occupant’s ears should be level with the
 centre height of the restraint.
 The front head restraints can also be tilted to
 adjust its position properly.
+
+![Image 1 from page 374](images/2016_Jazz_Owners_Manual/p374-1.png)
+
+![Image 2 from page 374](images/2016_Jazz_Owners_Manual/p374-2.png)
 
 <!-- page:376 -->
 ## ■Adjusting the Head Restraints
@@ -6224,6 +7466,14 @@ seat-back.
 To return the seat to the original position, pull
 up the seat-back in the upright position.
 
+![Image 1 from page 387](images/2016_Jazz_Owners_Manual/p387-1.png)
+
+![Image 2 from page 387](images/2016_Jazz_Owners_Manual/p387-2.png)
+
+![Image 3 from page 387](images/2016_Jazz_Owners_Manual/p387-3.png)
+
+![Image 4 from page 387](images/2016_Jazz_Owners_Manual/p387-4.png)
+
 <!-- page:388 -->
 ## ■Folding Down the Rear Seats
 
@@ -6250,6 +7500,10 @@ Separately lift up the left and right halves of
 the rear seat cushions to make room for
 luggage area.
 
+![Image 1 from page 388](images/2016_Jazz_Owners_Manual/p388-1.png)
+
+![Image 2 from page 388](images/2016_Jazz_Owners_Manual/p388-2.png)
+
 <!-- page:389 -->
 ### ■Lifting up the seat cushion
 
@@ -6271,6 +7525,14 @@ once you pull up the seat leg.
 the seat leg in the floor guide.
 u A latch comes out when the leg is set
 properly.
+
+![Image 1 from page 390](images/2016_Jazz_Owners_Manual/p390-1.png)
+
+![Image 2 from page 390](images/2016_Jazz_Owners_Manual/p390-2.png)
+
+![Image 3 from page 390](images/2016_Jazz_Owners_Manual/p390-3.png)
+
+![Image 4 from page 390](images/2016_Jazz_Owners_Manual/p390-4.png)
 
 <!-- page:392 -->
 ## ■Folding the Rear Seat Up
@@ -6326,6 +7588,12 @@ the tailgate is opened
 
 The interior light remains off regardless of
 whether the doors are open or closed.
+
+![Image 1 from page 397](images/2016_Jazz_Owners_Manual/p397-1.png)
+
+![Image 2 from page 397](images/2016_Jazz_Owners_Manual/p397-2.png)
+
+![Image 3 from page 397](images/2016_Jazz_Owners_Manual/p397-3.png)
 
 <!-- page:398 -->
 ## ■Interior Light Switch
@@ -6385,6 +7653,20 @@ Pull the handle to open the glove box.
 Pull the handle to open the console
 compartment.
 
+![Image 1 from page 400](images/2016_Jazz_Owners_Manual/p400-1.png)
+
+![Image 2 from page 400](images/2016_Jazz_Owners_Manual/p400-2.png)
+
+![Image 3 from page 400](images/2016_Jazz_Owners_Manual/p400-3.png)
+
+![Image 4 from page 400](images/2016_Jazz_Owners_Manual/p400-4.png)
+
+![Image 5 from page 400](images/2016_Jazz_Owners_Manual/p400-5.png)
+
+![Image 6 from page 400](images/2016_Jazz_Owners_Manual/p400-6.png)
+
+![Image 7 from page 400](images/2016_Jazz_Owners_Manual/p400-7.png)
+
 <!-- page:401 -->
 ## 3WARNING
 
@@ -6394,17 +7676,23 @@ passenger is wearing the seat belt.
 Always keep the glove box closed while
 driving.
 
+![Image 1 from page 401](images/2016_Jazz_Owners_Manual/p401-1.png)
+
 <!-- page:402 -->
 ## ■Console Compartment*
 
 * Not available on all models
 Controls
 
+![Image 1 from page 402](images/2016_Jazz_Owners_Manual/p402-1.png)
+
 <!-- page:403 -->
 ### ■Front seat beverage holders
 
 Pull the lid backward to use the front panel
 beverage holder.
+
+![Image 1 from page 403](images/2016_Jazz_Owners_Manual/p403-1.png)
 
 <!-- page:404 -->
 ## ■Beverage Holders
@@ -6419,12 +7707,16 @@ Front Door
 Continued
 Controls
 
+![Image 1 from page 404](images/2016_Jazz_Owners_Manual/p404-1.png)
+
 <!-- page:405 -->
 ### ■Rear seat beverage holders
 
 Pull up the luggage area floor lid.
 Models without centre console box
 Rear Door
+
+![Image 1 from page 405](images/2016_Jazz_Owners_Manual/p405-1.png)
 
 <!-- page:406 -->
 ## ■Luggage Floor Box
@@ -6435,6 +7727,18 @@ Lid
 Controls
 The accessory power socket can be used when the ignition switch is in ACCESSORY
 (q or ON (w*1.
+
+![Image 1 from page 406](images/2016_Jazz_Owners_Manual/p406-1.png)
+
+![Image 2 from page 406](images/2016_Jazz_Owners_Manual/p406-2.png)
+
+![Image 3 from page 406](images/2016_Jazz_Owners_Manual/p406-3.png)
+
+![Image 4 from page 406](images/2016_Jazz_Owners_Manual/p406-4.png)
+
+![Image 5 from page 406](images/2016_Jazz_Owners_Manual/p406-5.png)
+
+![Image 6 from page 406](images/2016_Jazz_Owners_Manual/p406-6.png)
 
 <!-- page:407 -->
 ### ■Accessory power socket (console panel)
@@ -6479,6 +7783,8 @@ items.
 The coat hook is not designed for large or heavy
 items.
 
+![Image 1 from page 410](images/2016_Jazz_Owners_Manual/p410-1.png)
+
 <!-- page:411 -->
 ## ■Tie-down Anchors
 
@@ -6487,6 +7793,18 @@ Anchors
 Rear Anchors
 Controls
 The luggage area cover may be removed to give you more luggage room.
+
+![Image 1 from page 411](images/2016_Jazz_Owners_Manual/p411-1.png)
+
+![Image 2 from page 411](images/2016_Jazz_Owners_Manual/p411-2.png)
+
+![Image 3 from page 411](images/2016_Jazz_Owners_Manual/p411-3.png)
+
+![Image 4 from page 411](images/2016_Jazz_Owners_Manual/p411-4.png)
+
+![Image 5 from page 411](images/2016_Jazz_Owners_Manual/p411-5.png)
+
+![Image 6 from page 411](images/2016_Jazz_Owners_Manual/p411-6.png)
 
 <!-- page:412 -->
 ### ■To remove the luggage area cover
@@ -6550,6 +7868,18 @@ heaters.
 * Not available on all models
 Controls
 
+![Image 1 from page 415](images/2016_Jazz_Owners_Manual/p415-1.png)
+
+![Image 2 from page 415](images/2016_Jazz_Owners_Manual/p415-2.png)
+
+![Image 3 from page 415](images/2016_Jazz_Owners_Manual/p415-3.png)
+
+![Image 4 from page 415](images/2016_Jazz_Owners_Manual/p415-4.png)
+
+![Image 5 from page 415](images/2016_Jazz_Owners_Manual/p415-5.png)
+
+![Image 6 from page 415](images/2016_Jazz_Owners_Manual/p415-6.png)
+
 <!-- page:416 -->
 ## Using Vents, Heating and A/C
 
@@ -6594,6 +7924,16 @@ and
 3. Adjust the temperature using the
 temperature control dial.
 
+![Image 1 from page 416](images/2016_Jazz_Owners_Manual/p416-1.png)
+
+![Image 2 from page 416](images/2016_Jazz_Owners_Manual/p416-2.png)
+
+![Image 3 from page 416](images/2016_Jazz_Owners_Manual/p416-3.png)
+
+![Image 4 from page 416](images/2016_Jazz_Owners_Manual/p416-4.png)
+
+![Image 5 from page 416](images/2016_Jazz_Owners_Manual/p416-5.png)
+
 <!-- page:417 -->
 ### ■To rapidly warm up the interior
 
@@ -6603,6 +7943,20 @@ temperature control dial.
 3. Set the temperature to maximum warm.
 4. Select
 .
+
+![Image 1 from page 417](images/2016_Jazz_Owners_Manual/p417-1.png)
+
+![Image 2 from page 417](images/2016_Jazz_Owners_Manual/p417-2.png)
+
+![Image 3 from page 417](images/2016_Jazz_Owners_Manual/p417-3.png)
+
+![Image 4 from page 417](images/2016_Jazz_Owners_Manual/p417-4.png)
+
+![Image 5 from page 417](images/2016_Jazz_Owners_Manual/p417-5.png)
+
+![Image 6 from page 417](images/2016_Jazz_Owners_Manual/p417-6.png)
+
+![Image 7 from page 417](images/2016_Jazz_Owners_Manual/p417-7.png)
 
 <!-- page:418 -->
 ### ■To dehumidify the interior
@@ -6614,6 +7968,16 @@ interior warm and dry and can prevent the windows from fogging up.
 3. Select
 and
 . Adjust the temperature to your preference.
+
+![Image 1 from page 418](images/2016_Jazz_Owners_Manual/p418-1.png)
+
+![Image 2 from page 418](images/2016_Jazz_Owners_Manual/p418-2.png)
+
+![Image 3 from page 418](images/2016_Jazz_Owners_Manual/p418-3.png)
+
+![Image 4 from page 418](images/2016_Jazz_Owners_Manual/p418-4.png)
+
+![Image 5 from page 418](images/2016_Jazz_Owners_Manual/p418-5.png)
 
 <!-- page:419 -->
 ## ■Heating
@@ -6632,6 +7996,16 @@ and
 temperature control dial.
 4. Press the A/C button (indicator on).
 
+![Image 1 from page 419](images/2016_Jazz_Owners_Manual/p419-1.png)
+
+![Image 2 from page 419](images/2016_Jazz_Owners_Manual/p419-2.png)
+
+![Image 3 from page 419](images/2016_Jazz_Owners_Manual/p419-3.png)
+
+![Image 4 from page 419](images/2016_Jazz_Owners_Manual/p419-4.png)
+
+![Image 5 from page 419](images/2016_Jazz_Owners_Manual/p419-5.png)
+
 <!-- page:420 -->
 ### ■To rapidly cool down the interior
 
@@ -6642,6 +8016,14 @@ temperature control dial.
 4. Press the A/C button (indicator on).
 5. Select
 .
+
+![Image 1 from page 420](images/2016_Jazz_Owners_Manual/p420-1.png)
+
+![Image 2 from page 420](images/2016_Jazz_Owners_Manual/p420-2.png)
+
+![Image 3 from page 420](images/2016_Jazz_Owners_Manual/p420-3.png)
+
+![Image 4 from page 420](images/2016_Jazz_Owners_Manual/p420-4.png)
 
 <!-- page:421 -->
 ## ■Cooling
@@ -6662,6 +8044,18 @@ Controls
 3. Select
 .
 4. Press the A/C button (indicator on).
+
+![Image 1 from page 421](images/2016_Jazz_Owners_Manual/p421-1.png)
+
+![Image 2 from page 421](images/2016_Jazz_Owners_Manual/p421-2.png)
+
+![Image 3 from page 421](images/2016_Jazz_Owners_Manual/p421-3.png)
+
+![Image 4 from page 421](images/2016_Jazz_Owners_Manual/p421-4.png)
+
+![Image 5 from page 421](images/2016_Jazz_Owners_Manual/p421-5.png)
+
+![Image 6 from page 421](images/2016_Jazz_Owners_Manual/p421-6.png)
 
 <!-- page:422 -->
 ### ■To rapidly defrost the windows
@@ -6704,6 +8098,16 @@ If you keep the system in recirculation mode, the
 windows may fog up from humidity. This impedes
 visibility.
 Controls
+
+![Image 1 from page 423](images/2016_Jazz_Owners_Manual/p423-1.png)
+
+![Image 2 from page 423](images/2016_Jazz_Owners_Manual/p423-2.png)
+
+![Image 3 from page 423](images/2016_Jazz_Owners_Manual/p423-3.png)
+
+![Image 4 from page 423](images/2016_Jazz_Owners_Manual/p423-4.png)
+
+![Image 5 from page 423](images/2016_Jazz_Owners_Manual/p423-5.png)
 
 <!-- page:424 -->
 ## Using Automatic Climate Control
@@ -6757,6 +8161,16 @@ A/C (Air Conditioning) Icon
 Continued
 Controls
 
+![Image 1 from page 424](images/2016_Jazz_Owners_Manual/p424-1.png)
+
+![Image 2 from page 424](images/2016_Jazz_Owners_Manual/p424-2.png)
+
+![Image 3 from page 424](images/2016_Jazz_Owners_Manual/p424-3.png)
+
+![Image 4 from page 424](images/2016_Jazz_Owners_Manual/p424-4.png)
+
+![Image 5 from page 424](images/2016_Jazz_Owners_Manual/p424-5.png)
+
 <!-- page:425 -->
 ### ■Switching between the recirculation and fresh air modes
 
@@ -6786,6 +8200,8 @@ Select the
 icon again to turn off, the
 system returns to the previous settings.
 
+![Image 1 from page 425](images/2016_Jazz_Owners_Manual/p425-1.png)
+
 <!-- page:426 -->
 ### ■To rapidly defrost the windows
 
@@ -6793,6 +8209,10 @@ system returns to the previous settings.
 icon.
 2. Select the
 icon.
+
+![Image 1 from page 426](images/2016_Jazz_Owners_Manual/p426-1.png)
+
+![Image 2 from page 426](images/2016_Jazz_Owners_Manual/p426-2.png)
 
 <!-- page:427 -->
 ## ■Defrosting the Windscreen and Windows
@@ -6848,6 +8268,14 @@ and -- is displayed.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
+![Image 1 from page 427](images/2016_Jazz_Owners_Manual/p427-1.png)
+
+![Image 2 from page 427](images/2016_Jazz_Owners_Manual/p427-2.png)
+
+![Image 3 from page 427](images/2016_Jazz_Owners_Manual/p427-3.png)
+
+![Image 4 from page 427](images/2016_Jazz_Owners_Manual/p427-4.png)
+
 <!-- page:428 -->
 ## ■Turning On and Off the Touch Screen Beep
 
@@ -6858,6 +8286,18 @@ ignition switch to LOCK (0*1, then follow this
 procedure again.
 Controls
 
+![Image 1 from page 428](images/2016_Jazz_Owners_Manual/p428-1.png)
+
+![Image 2 from page 428](images/2016_Jazz_Owners_Manual/p428-2.png)
+
+![Image 3 from page 428](images/2016_Jazz_Owners_Manual/p428-3.png)
+
+![Image 4 from page 428](images/2016_Jazz_Owners_Manual/p428-4.png)
+
+![Image 5 from page 428](images/2016_Jazz_Owners_Manual/p428-5.png)
+
+![Image 6 from page 428](images/2016_Jazz_Owners_Manual/p428-6.png)
+
 <!-- page:429 -->
 ## Automatic Climate Control Sensors
 
@@ -6866,6 +8306,28 @@ equipped with sensors. Do not cover or spill
 any liquid on them.
 Sensor
 Sensor
+
+![Image 1 from page 429](images/2016_Jazz_Owners_Manual/p429-1.png)
+
+![Image 2 from page 429](images/2016_Jazz_Owners_Manual/p429-2.png)
+
+![Image 3 from page 429](images/2016_Jazz_Owners_Manual/p429-3.png)
+
+![Image 4 from page 429](images/2016_Jazz_Owners_Manual/p429-4.png)
+
+![Image 1 from page 430](images/2016_Jazz_Owners_Manual/p430-1.png)
+
+![Image 2 from page 430](images/2016_Jazz_Owners_Manual/p430-2.png)
+
+![Image 3 from page 430](images/2016_Jazz_Owners_Manual/p430-3.png)
+
+![Image 4 from page 430](images/2016_Jazz_Owners_Manual/p430-4.png)
+
+![Image 5 from page 430](images/2016_Jazz_Owners_Manual/p430-5.png)
+
+![Image 6 from page 430](images/2016_Jazz_Owners_Manual/p430-6.png)
+
+![Image 7 from page 430](images/2016_Jazz_Owners_Manual/p430-7.png)
 
 <!-- page:431 -->
 ### This chapter describes how to operate technology features.
@@ -6915,6 +8377,8 @@ Models with colour audio system
 Models with display audio system
 * Not available on all models
 Features
+
+![Image 1 from page 431](images/2016_Jazz_Owners_Manual/p431-1.png)
 
 <!-- page:432 -->
 ## About Your Audio System
@@ -6989,12 +8453,28 @@ USB Port
 * Not available on all models
 Features
 
+![Image 1 from page 433](images/2016_Jazz_Owners_Manual/p433-1.png)
+
+![Image 2 from page 433](images/2016_Jazz_Owners_Manual/p433-2.png)
+
+![Image 3 from page 433](images/2016_Jazz_Owners_Manual/p433-3.png)
+
+![Image 4 from page 433](images/2016_Jazz_Owners_Manual/p433-4.png)
+
 <!-- page:434 -->
 ## HDMITM Port*
 
 1. Open the cover.
 2. Install the HDMITM cable to the HDMITM
 port.
+
+![Image 1 from page 434](images/2016_Jazz_Owners_Manual/p434-1.png)
+
+![Image 2 from page 434](images/2016_Jazz_Owners_Manual/p434-2.png)
+
+![Image 3 from page 434](images/2016_Jazz_Owners_Manual/p434-3.png)
+
+![Image 4 from page 434](images/2016_Jazz_Owners_Manual/p434-4.png)
 
 <!-- page:435 -->
 ## Auxiliary Input Jack*
@@ -7029,6 +8509,8 @@ Models with colour audio system
 * Not available on all models
 Features
 
+![Image 1 from page 435](images/2016_Jazz_Owners_Manual/p435-1.png)
+
 <!-- page:436 -->
 ## Audio Antenna
 
@@ -7051,6 +8533,10 @@ The audio system is disabled when it is disconnected from the power source, such
 when the battery is disconnected or goes dead. In certain conditions, the system
 may display a pass code input mode. If this occurs, reactivate the audio system.
 
+![Image 1 from page 437](images/2016_Jazz_Owners_Manual/p437-1.png)
+
+![Image 1 from page 438](images/2016_Jazz_Owners_Manual/p438-1.png)
+
 <!-- page:439 -->
 ### ■Reactivating the audio system
 
@@ -7064,6 +8550,8 @@ the audio unit, you must go to a dealer and have the audio unit checked.
 switch.
 Continued
 Features
+
+![Image 1 from page 439](images/2016_Jazz_Owners_Manual/p439-1.png)
 
 <!-- page:440 -->
 ## Audio Remote Controls
@@ -7225,11 +8713,19 @@ TA Button
 Menu Display
 Features
 
+![Image 1 from page 441](images/2016_Jazz_Owners_Manual/p441-1.png)
+
+![Image 2 from page 441](images/2016_Jazz_Owners_Manual/p441-2.png)
+
 <!-- page:442 -->
 ## Audio/Information Screen
 
 Displays the audio status and wallpaper. From this screen, you can go to various
 setup options.
+
+![Image 1 from page 442](images/2016_Jazz_Owners_Manual/p442-1.png)
+
+![Image 2 from page 442](images/2016_Jazz_Owners_Manual/p442-2.png)
 
 <!-- page:443 -->
 ## ■Switching the Display
@@ -7245,10 +8741,18 @@ Features
 
 Shows the current audio information.
 
+![Image 1 from page 445](images/2016_Jazz_Owners_Manual/p445-1.png)
+
+![Image 2 from page 445](images/2016_Jazz_Owners_Manual/p445-2.png)
+
 <!-- page:446 -->
 ### ■Clock/Wallpaper
 
 Shows a clock screen or an image you import.
+
+![Image 1 from page 446](images/2016_Jazz_Owners_Manual/p446-1.png)
+
+![Image 2 from page 446](images/2016_Jazz_Owners_Manual/p446-2.png)
 
 <!-- page:447 -->
 ### ■Change display
@@ -7266,6 +8770,12 @@ to select Wallpaper, then press
 u If you want to return to the audio display, select Audio.
 Features
 You can change, store, and delete the wallpaper on the audio/information screen.
+
+![Image 1 from page 447](images/2016_Jazz_Owners_Manual/p447-1.png)
+
+![Image 2 from page 447](images/2016_Jazz_Owners_Manual/p447-2.png)
+
+![Image 3 from page 447](images/2016_Jazz_Owners_Manual/p447-3.png)
 
 <!-- page:448 -->
 ### ■Import wallpaper
@@ -7366,6 +8876,18 @@ When the file size is large, it takes a while to be
 previewed.
 Features
 
+![Image 1 from page 451](images/2016_Jazz_Owners_Manual/p451-1.png)
+
+![Image 2 from page 451](images/2016_Jazz_Owners_Manual/p451-2.png)
+
+![Image 3 from page 451](images/2016_Jazz_Owners_Manual/p451-3.png)
+
+![Image 4 from page 451](images/2016_Jazz_Owners_Manual/p451-4.png)
+
+![Image 5 from page 451](images/2016_Jazz_Owners_Manual/p451-5.png)
+
+![Image 6 from page 451](images/2016_Jazz_Owners_Manual/p451-6.png)
+
 <!-- page:452 -->
 ## Adjusting the Sound
 
@@ -7401,6 +8923,10 @@ Volume
 Compensation
 Features
 
+![Image 1 from page 452](images/2016_Jazz_Owners_Manual/p452-1.png)
+
+![Image 2 from page 452](images/2016_Jazz_Owners_Manual/p452-2.png)
+
 <!-- page:453 -->
 ## Display Setup
 
@@ -7431,6 +8957,10 @@ press
 to select the setting you want,
 then press
 .
+
+![Image 1 from page 453](images/2016_Jazz_Owners_Manual/p453-1.png)
+
+![Image 2 from page 453](images/2016_Jazz_Owners_Manual/p453-2.png)
 
 <!-- page:454 -->
 ## ■Changing the Screen Brightness
@@ -7480,6 +9010,12 @@ Features
 Provides convenient automated services related to your selected RDS-capable FM
 station.
 
+![Image 1 from page 455](images/2016_Jazz_Owners_Manual/p455-1.png)
+
+![Image 2 from page 455](images/2016_Jazz_Owners_Manual/p455-2.png)
+
+![Image 3 from page 455](images/2016_Jazz_Owners_Manual/p455-3.png)
+
 <!-- page:456 -->
 ### ■To find an RDS station from Station List
 
@@ -7488,6 +9024,12 @@ while listening to an FM station.
 2. Rotate
 to select the station, then press
 .
+
+![Image 1 from page 456](images/2016_Jazz_Owners_Manual/p456-1.png)
+
+![Image 2 from page 456](images/2016_Jazz_Owners_Manual/p456-2.png)
+
+![Image 3 from page 456](images/2016_Jazz_Owners_Manual/p456-3.png)
 
 <!-- page:457 -->
 ### ■Manual Update
@@ -7523,6 +9065,10 @@ changes from the station name to the frequency.
 * Not available on all models
 Features
 
+![Image 1 from page 458](images/2016_Jazz_Owners_Manual/p458-1.png)
+
+![Image 2 from page 458](images/2016_Jazz_Owners_Manual/p458-2.png)
+
 <!-- page:459 -->
 ### ■Available RDS functions
 
@@ -7545,6 +9091,8 @@ Except AM/FM/DAB* mode
 Continued
 Features
 
+![Image 1 from page 459](images/2016_Jazz_Owners_Manual/p459-1.png)
+
 <!-- page:460 -->
 ### ■Selecting the RDS functions
 
@@ -7566,6 +9114,10 @@ switches the function between on and
 off.
 * Not available on all models
 Features
+
+![Image 1 from page 460](images/2016_Jazz_Owners_Manual/p460-1.png)
+
+![Image 1 from page 461](images/2016_Jazz_Owners_Manual/p461-1.png)
 
 <!-- page:462 -->
 ### ■Traffic announcement (TA) button
@@ -7605,6 +9157,10 @@ Except AM/FM/DAB* mode
 Continued
 Features
 
+![Image 1 from page 463](images/2016_Jazz_Owners_Manual/p463-1.png)
+
+![Image 2 from page 463](images/2016_Jazz_Owners_Manual/p463-2.png)
+
 <!-- page:465 -->
 ### ■PTY alarm
 
@@ -7631,6 +9187,14 @@ to switch to the station list mode.
 3. Rotate
 to select the station, then press
 .
+
+![Image 1 from page 466](images/2016_Jazz_Owners_Manual/p466-1.png)
+
+![Image 2 from page 466](images/2016_Jazz_Owners_Manual/p466-2.png)
+
+![Image 3 from page 466](images/2016_Jazz_Owners_Manual/p466-3.png)
+
+![Image 4 from page 466](images/2016_Jazz_Owners_Manual/p466-4.png)
 
 <!-- page:467 -->
 ### ■Manual update
@@ -7762,6 +9326,20 @@ DAB selected.
 to select Radio text and press
 .
 
+![Image 1 from page 475](images/2016_Jazz_Owners_Manual/p475-1.png)
+
+![Image 2 from page 475](images/2016_Jazz_Owners_Manual/p475-2.png)
+
+![Image 3 from page 475](images/2016_Jazz_Owners_Manual/p475-3.png)
+
+![Image 4 from page 475](images/2016_Jazz_Owners_Manual/p475-4.png)
+
+![Image 5 from page 475](images/2016_Jazz_Owners_Manual/p475-5.png)
+
+![Image 6 from page 475](images/2016_Jazz_Owners_Manual/p475-6.png)
+
+![Image 7 from page 475](images/2016_Jazz_Owners_Manual/p475-7.png)
+
 <!-- page:476 -->
 ## ■Radio Text
 
@@ -7770,6 +9348,22 @@ The TEXT indicator appears on the display indicating
 radio text information.
 Continued
 Features
+
+![Image 1 from page 476](images/2016_Jazz_Owners_Manual/p476-1.png)
+
+![Image 2 from page 476](images/2016_Jazz_Owners_Manual/p476-2.png)
+
+![Image 3 from page 476](images/2016_Jazz_Owners_Manual/p476-3.png)
+
+![Image 4 from page 476](images/2016_Jazz_Owners_Manual/p476-4.png)
+
+![Image 5 from page 476](images/2016_Jazz_Owners_Manual/p476-5.png)
+
+![Image 6 from page 476](images/2016_Jazz_Owners_Manual/p476-6.png)
+
+![Image 7 from page 476](images/2016_Jazz_Owners_Manual/p476-7.png)
+
+![Image 8 from page 476](images/2016_Jazz_Owners_Manual/p476-8.png)
 
 <!-- page:477 -->
 ## Playing a CD
@@ -7850,6 +9444,18 @@ Available mode icons appear above the play
 mode buttons.
 Press the button corresponding to the mode
 you want to select.
+
+![Image 1 from page 478](images/2016_Jazz_Owners_Manual/p478-1.png)
+
+![Image 2 from page 478](images/2016_Jazz_Owners_Manual/p478-2.png)
+
+![Image 3 from page 478](images/2016_Jazz_Owners_Manual/p478-3.png)
+
+![Image 4 from page 478](images/2016_Jazz_Owners_Manual/p478-4.png)
+
+![Image 5 from page 478](images/2016_Jazz_Owners_Manual/p478-5.png)
+
+![Image 6 from page 478](images/2016_Jazz_Owners_Manual/p478-6.png)
 
 <!-- page:479 -->
 ### ■To turn off a play mode
@@ -7946,6 +9552,14 @@ repeatedly until a
 desired item you want to listen is
 displayed.
 
+![Image 1 from page 483](images/2016_Jazz_Owners_Manual/p483-1.png)
+
+![Image 2 from page 483](images/2016_Jazz_Owners_Manual/p483-2.png)
+
+![Image 3 from page 483](images/2016_Jazz_Owners_Manual/p483-3.png)
+
+![Image 4 from page 483](images/2016_Jazz_Owners_Manual/p483-4.png)
+
 <!-- page:484 -->
 ### Selector Knob
 
@@ -7966,6 +9580,24 @@ Available mode icons appear above the play
 mode buttons.
 Press the button corresponding to the mode
 you want to select.
+
+![Image 1 from page 484](images/2016_Jazz_Owners_Manual/p484-1.png)
+
+![Image 2 from page 484](images/2016_Jazz_Owners_Manual/p484-2.png)
+
+![Image 3 from page 484](images/2016_Jazz_Owners_Manual/p484-3.png)
+
+![Image 4 from page 484](images/2016_Jazz_Owners_Manual/p484-4.png)
+
+![Image 5 from page 484](images/2016_Jazz_Owners_Manual/p484-5.png)
+
+![Image 6 from page 484](images/2016_Jazz_Owners_Manual/p484-6.png)
+
+![Image 7 from page 484](images/2016_Jazz_Owners_Manual/p484-7.png)
+
+![Image 8 from page 484](images/2016_Jazz_Owners_Manual/p484-8.png)
+
+![Image 9 from page 484](images/2016_Jazz_Owners_Manual/p484-9.png)
 
 <!-- page:485 -->
 ### ■To turn off a play mode
@@ -7999,6 +9631,8 @@ press
 Play Mode Buttons
 Continued
 Features
+
+![Image 1 from page 487](images/2016_Jazz_Owners_Manual/p487-1.png)
 
 <!-- page:488 -->
 ## Playing a USB Flash Drive
@@ -8049,6 +9683,10 @@ folder.
 to select a file, then press
 .
 
+![Image 1 from page 488](images/2016_Jazz_Owners_Manual/p488-1.png)
+
+![Image 2 from page 488](images/2016_Jazz_Owners_Manual/p488-2.png)
+
 <!-- page:489 -->
 ## ■How to Select a File from a Folder with the Selector Knob
 
@@ -8074,10 +9712,20 @@ mode buttons.
 Press the button corresponding to the mode
 you want to select.
 
+![Image 1 from page 489](images/2016_Jazz_Owners_Manual/p489-1.png)
+
+![Image 2 from page 489](images/2016_Jazz_Owners_Manual/p489-2.png)
+
+![Image 3 from page 489](images/2016_Jazz_Owners_Manual/p489-3.png)
+
 <!-- page:490 -->
 ### ■To turn off a play mode
 
 Press the selected button.
+
+![Image 1 from page 490](images/2016_Jazz_Owners_Manual/p490-1.png)
+
+![Image 2 from page 490](images/2016_Jazz_Owners_Manual/p490-2.png)
 
 <!-- page:491 -->
 ## ■How to Select a Play Mode
@@ -8177,10 +9825,14 @@ compatible phone, which is not compatible
 for Bluetooth® Audio, may already be
 connected.
 
+![Image 1 from page 492](images/2016_Jazz_Owners_Manual/p492-1.png)
+
 <!-- page:493 -->
 ### ■To pause or resume a file
 
 Press a Play or Pause button to select a mode.
+
+![Image 1 from page 493](images/2016_Jazz_Owners_Manual/p493-1.png)
 
 <!-- page:494 -->
 ## ■To Play Bluetooth® Audio Files
@@ -8216,6 +9868,12 @@ and rotate
 repeatedly until a
 desired item you want to listen is
 displayed.
+
+![Image 1 from page 494](images/2016_Jazz_Owners_Manual/p494-1.png)
+
+![Image 1 from page 495](images/2016_Jazz_Owners_Manual/p495-1.png)
+
+![Image 2 from page 495](images/2016_Jazz_Owners_Manual/p495-2.png)
 
 <!-- page:496 -->
 ### Selector Knob
@@ -8287,6 +9945,8 @@ Icon
 (BACK) Icon
 Features
 
+![Image 1 from page 497](images/2016_Jazz_Owners_Manual/p497-1.png)
+
 <!-- page:498 -->
 ## Audio/Information Screen
 
@@ -8294,6 +9954,8 @@ Displays the audio status and wallpaper. From this screen, you can go to various
 setup options.
 Press the
 (display) button on the steering wheel to change the display.
+
+![Image 1 from page 498](images/2016_Jazz_Owners_Manual/p498-1.png)
 
 <!-- page:499 -->
 ## ■Switching the Display
@@ -8321,6 +9983,8 @@ navigation system
 * Not available on all models
 Features
 
+![Image 1 from page 500](images/2016_Jazz_Owners_Manual/p500-1.png)
+
 <!-- page:501 -->
 ### ■Info
 
@@ -8341,11 +10005,29 @@ System/Device Information:
 
 Shows the current audio information.
 
+![Image 1 from page 502](images/2016_Jazz_Owners_Manual/p502-1.png)
+
 <!-- page:503 -->
 ### ■Settings
 
 Enters the customizing menu screen.
 2 Customized Features P. 316
+
+![Image 1 from page 503](images/2016_Jazz_Owners_Manual/p503-1.png)
+
+![Image 2 from page 503](images/2016_Jazz_Owners_Manual/p503-2.png)
+
+![Image 3 from page 503](images/2016_Jazz_Owners_Manual/p503-3.png)
+
+![Image 4 from page 503](images/2016_Jazz_Owners_Manual/p503-4.png)
+
+![Image 5 from page 503](images/2016_Jazz_Owners_Manual/p503-5.png)
+
+![Image 6 from page 503](images/2016_Jazz_Owners_Manual/p503-6.png)
+
+![Image 7 from page 503](images/2016_Jazz_Owners_Manual/p503-7.png)
+
+![Image 8 from page 503](images/2016_Jazz_Owners_Manual/p503-8.png)
 
 <!-- page:504 -->
 ### ■Navigation*
@@ -8369,6 +10051,18 @@ desired position.
 Features
 You can change, store, and delete the wallpaper on the audio/information screen.
 
+![Image 1 from page 505](images/2016_Jazz_Owners_Manual/p505-1.png)
+
+![Image 2 from page 505](images/2016_Jazz_Owners_Manual/p505-2.png)
+
+![Image 3 from page 505](images/2016_Jazz_Owners_Manual/p505-3.png)
+
+![Image 1 from page 506](images/2016_Jazz_Owners_Manual/p506-1.png)
+
+![Image 2 from page 506](images/2016_Jazz_Owners_Manual/p506-2.png)
+
+![Image 3 from page 506](images/2016_Jazz_Owners_Manual/p506-3.png)
+
 <!-- page:507 -->
 ### ■Import wallpaper
 
@@ -8390,6 +10084,24 @@ on the screen.
 7. Select Start Import to save the data.
 u Then the display will return to the
 wallpaper list.
+
+![Image 1 from page 507](images/2016_Jazz_Owners_Manual/p507-1.png)
+
+![Image 2 from page 507](images/2016_Jazz_Owners_Manual/p507-2.png)
+
+![Image 3 from page 507](images/2016_Jazz_Owners_Manual/p507-3.png)
+
+![Image 4 from page 507](images/2016_Jazz_Owners_Manual/p507-4.png)
+
+![Image 5 from page 507](images/2016_Jazz_Owners_Manual/p507-5.png)
+
+![Image 1 from page 508](images/2016_Jazz_Owners_Manual/p508-1.png)
+
+![Image 2 from page 508](images/2016_Jazz_Owners_Manual/p508-2.png)
+
+![Image 3 from page 508](images/2016_Jazz_Owners_Manual/p508-3.png)
+
+![Image 4 from page 508](images/2016_Jazz_Owners_Manual/p508-4.png)
 
 <!-- page:509 -->
 ## ■Wallpaper Setup
@@ -8539,6 +10251,8 @@ Select and hold.
 Drag and drop.
 Features
 
+![Image 1 from page 516](images/2016_Jazz_Owners_Manual/p516-1.png)
+
 <!-- page:517 -->
 ### ■To move icons on the home screen
 
@@ -8584,6 +10298,18 @@ Drag and drop.
 * Not available on all models
 Features
 
+![Image 1 from page 518](images/2016_Jazz_Owners_Manual/p518-1.png)
+
+![Image 2 from page 518](images/2016_Jazz_Owners_Manual/p518-2.png)
+
+![Image 3 from page 518](images/2016_Jazz_Owners_Manual/p518-3.png)
+
+![Image 4 from page 518](images/2016_Jazz_Owners_Manual/p518-4.png)
+
+![Image 1 from page 519](images/2016_Jazz_Owners_Manual/p519-1.png)
+
+![Image 2 from page 519](images/2016_Jazz_Owners_Manual/p519-2.png)
+
 <!-- page:520 -->
 ### ■To change a wallpaper of the home screen
 
@@ -8624,6 +10350,16 @@ You can change the screen interface design.
 6. A confirmation message appears on the
 screen. Select Yes.
 
+![Image 1 from page 521](images/2016_Jazz_Owners_Manual/p521-1.png)
+
+![Image 2 from page 521](images/2016_Jazz_Owners_Manual/p521-2.png)
+
+![Image 3 from page 521](images/2016_Jazz_Owners_Manual/p521-3.png)
+
+![Image 4 from page 521](images/2016_Jazz_Owners_Manual/p521-4.png)
+
+![Image 5 from page 521](images/2016_Jazz_Owners_Manual/p521-5.png)
+
 <!-- page:522 -->
 ## ■Changing the Screen Interface
 
@@ -8648,6 +10384,12 @@ history simultaneously.
 3. Select an app you want to close.
 4. Select Clear.
 u The display will return to the app list.
+
+![Image 1 from page 522](images/2016_Jazz_Owners_Manual/p522-1.png)
+
+![Image 2 from page 522](images/2016_Jazz_Owners_Manual/p522-2.png)
+
+![Image 3 from page 522](images/2016_Jazz_Owners_Manual/p522-3.png)
 
 <!-- page:523 -->
 ## ■Closing Apps
@@ -8679,6 +10421,20 @@ you slow down, audio volume decreases.
 Continued
 Features
 
+![Image 1 from page 524](images/2016_Jazz_Owners_Manual/p524-1.png)
+
+![Image 2 from page 524](images/2016_Jazz_Owners_Manual/p524-2.png)
+
+![Image 1 from page 525](images/2016_Jazz_Owners_Manual/p525-1.png)
+
+![Image 2 from page 525](images/2016_Jazz_Owners_Manual/p525-2.png)
+
+![Image 3 from page 525](images/2016_Jazz_Owners_Manual/p525-3.png)
+
+![Image 4 from page 525](images/2016_Jazz_Owners_Manual/p525-4.png)
+
+![Image 5 from page 525](images/2016_Jazz_Owners_Manual/p525-5.png)
+
 <!-- page:526 -->
 ## Display Setup
 
@@ -8700,12 +10456,16 @@ screen.
 6. Select the setting you want.
 7. Select OK.
 
+![Image 1 from page 526](images/2016_Jazz_Owners_Manual/p526-1.png)
+
 <!-- page:527 -->
 ## ■Changing the Screen Brightness
 
 1Changing the Screen Brightness
 You can change the Contrast and Black Level
 settings in the same manner.
+
+![Image 1 from page 527](images/2016_Jazz_Owners_Manual/p527-1.png)
 
 <!-- page:528 -->
 ## ■Changing the Screen’s Colour Theme
@@ -8721,6 +10481,10 @@ Select the current source icon, then select an icon on the source list to switch
 audio source.
 Certain manual functions are disabled or inoperable while the vehicle is in motion.
 You cannot select a grayed-out option until the vehicle is stopped.
+
+![Image 1 from page 528](images/2016_Jazz_Owners_Manual/p528-1.png)
+
+![Image 2 from page 528](images/2016_Jazz_Owners_Manual/p528-2.png)
 
 <!-- page:529 -->
 ## ■Selecting an Audio Source
@@ -8807,6 +10571,20 @@ Lists the strongest stations on the selected band.
 2. Select Station List.
 3. Select the station.
 
+![Image 1 from page 533](images/2016_Jazz_Owners_Manual/p533-1.png)
+
+![Image 2 from page 533](images/2016_Jazz_Owners_Manual/p533-2.png)
+
+![Image 3 from page 533](images/2016_Jazz_Owners_Manual/p533-3.png)
+
+![Image 4 from page 533](images/2016_Jazz_Owners_Manual/p533-4.png)
+
+![Image 5 from page 533](images/2016_Jazz_Owners_Manual/p533-5.png)
+
+![Image 6 from page 533](images/2016_Jazz_Owners_Manual/p533-6.png)
+
+![Image 7 from page 533](images/2016_Jazz_Owners_Manual/p533-7.png)
+
 <!-- page:534 -->
 ### ■Manual update
 
@@ -8825,12 +10603,48 @@ To turn off scan, select Cancel.
 Features
 Provides text data information related to your selected RDS-capable FM station.
 
+![Image 1 from page 535](images/2016_Jazz_Owners_Manual/p535-1.png)
+
+![Image 2 from page 535](images/2016_Jazz_Owners_Manual/p535-2.png)
+
+![Image 3 from page 535](images/2016_Jazz_Owners_Manual/p535-3.png)
+
+![Image 4 from page 535](images/2016_Jazz_Owners_Manual/p535-4.png)
+
+![Image 5 from page 535](images/2016_Jazz_Owners_Manual/p535-5.png)
+
+![Image 1 from page 536](images/2016_Jazz_Owners_Manual/p536-1.png)
+
+![Image 2 from page 536](images/2016_Jazz_Owners_Manual/p536-2.png)
+
+![Image 3 from page 536](images/2016_Jazz_Owners_Manual/p536-3.png)
+
+![Image 4 from page 536](images/2016_Jazz_Owners_Manual/p536-4.png)
+
+![Image 5 from page 536](images/2016_Jazz_Owners_Manual/p536-5.png)
+
 <!-- page:537 -->
 ### ■To find an RDS station from Station List
 
 1. Select MENU while listening to an FM station.
 2. Select Station List.
 3. Select the station.
+
+![Image 1 from page 537](images/2016_Jazz_Owners_Manual/p537-1.png)
+
+![Image 2 from page 537](images/2016_Jazz_Owners_Manual/p537-2.png)
+
+![Image 3 from page 537](images/2016_Jazz_Owners_Manual/p537-3.png)
+
+![Image 4 from page 537](images/2016_Jazz_Owners_Manual/p537-4.png)
+
+![Image 1 from page 538](images/2016_Jazz_Owners_Manual/p538-1.png)
+
+![Image 2 from page 538](images/2016_Jazz_Owners_Manual/p538-2.png)
+
+![Image 3 from page 538](images/2016_Jazz_Owners_Manual/p538-3.png)
+
+![Image 4 from page 538](images/2016_Jazz_Owners_Manual/p538-4.png)
 
 <!-- page:539 -->
 ### ■Manual update
@@ -8839,6 +10653,18 @@ Updates your available station list at any time.
 1. Select MENU while listening to an FM station.
 2. Select Station List.
 3. Select Update List.
+
+![Image 1 from page 539](images/2016_Jazz_Owners_Manual/p539-1.png)
+
+![Image 2 from page 539](images/2016_Jazz_Owners_Manual/p539-2.png)
+
+![Image 3 from page 539](images/2016_Jazz_Owners_Manual/p539-3.png)
+
+![Image 4 from page 539](images/2016_Jazz_Owners_Manual/p539-4.png)
+
+![Image 5 from page 539](images/2016_Jazz_Owners_Manual/p539-5.png)
+
+![Image 6 from page 539](images/2016_Jazz_Owners_Manual/p539-6.png)
 
 <!-- page:540 -->
 ## ■Radio Data System (RDS)*
@@ -8851,6 +10677,10 @@ signals of that station become weak, the display
 changes from the station name to the frequency.
 * Not available on all models
 Features
+
+![Image 1 from page 540](images/2016_Jazz_Owners_Manual/p540-1.png)
+
+![Image 2 from page 540](images/2016_Jazz_Owners_Manual/p540-2.png)
 
 <!-- page:541 -->
 ### ■Radio text
@@ -8913,6 +10743,12 @@ Lists the strongest stations.
 2. Select Ensemble List.
 3. Select the station.
 
+![Image 1 from page 543](images/2016_Jazz_Owners_Manual/p543-1.png)
+
+![Image 2 from page 543](images/2016_Jazz_Owners_Manual/p543-2.png)
+
+![Image 3 from page 543](images/2016_Jazz_Owners_Manual/p543-3.png)
+
 <!-- page:544 -->
 ### ■Manual update
 
@@ -8925,6 +10761,16 @@ Samples each of the strongest stations on the selected band for 10 seconds.
 2. Select Scan.
 3. Select Scan Ensemble or Scan Service.
 To turn off scan, select Cancel Scan.
+
+![Image 1 from page 544](images/2016_Jazz_Owners_Manual/p544-1.png)
+
+![Image 2 from page 544](images/2016_Jazz_Owners_Manual/p544-2.png)
+
+![Image 3 from page 544](images/2016_Jazz_Owners_Manual/p544-3.png)
+
+![Image 1 from page 545](images/2016_Jazz_Owners_Manual/p545-1.png)
+
+![Image 2 from page 545](images/2016_Jazz_Owners_Manual/p545-2.png)
 
 <!-- page:546 -->
 ## ■Scan
@@ -8942,6 +10788,18 @@ Features
 Displays the radio text information of the selected DAB station.
 1. Select MENU.
 2. Select Radio Text.
+
+![Image 1 from page 546](images/2016_Jazz_Owners_Manual/p546-1.png)
+
+![Image 2 from page 546](images/2016_Jazz_Owners_Manual/p546-2.png)
+
+![Image 1 from page 547](images/2016_Jazz_Owners_Manual/p547-1.png)
+
+![Image 2 from page 547](images/2016_Jazz_Owners_Manual/p547-2.png)
+
+![Image 3 from page 547](images/2016_Jazz_Owners_Manual/p547-3.png)
+
+![Image 4 from page 547](images/2016_Jazz_Owners_Manual/p547-4.png)
 
 <!-- page:548 -->
 ## Playing a CD
@@ -8988,6 +10846,14 @@ Features
 2. Select a folder.
 3. Select a track.
 
+![Image 1 from page 548](images/2016_Jazz_Owners_Manual/p548-1.png)
+
+![Image 1 from page 549](images/2016_Jazz_Owners_Manual/p549-1.png)
+
+![Image 2 from page 549](images/2016_Jazz_Owners_Manual/p549-2.png)
+
+![Image 3 from page 549](images/2016_Jazz_Owners_Manual/p549-3.png)
+
 <!-- page:550 -->
 ### AAC)
 
@@ -9014,6 +10880,20 @@ You can select scan, repeat, and random modes when playing a track or file.
 1. Select MENU.
 2. Select Scan or Random/Repeat.
 3. Select a mode.
+
+![Image 1 from page 550](images/2016_Jazz_Owners_Manual/p550-1.png)
+
+![Image 2 from page 550](images/2016_Jazz_Owners_Manual/p550-2.png)
+
+![Image 3 from page 550](images/2016_Jazz_Owners_Manual/p550-3.png)
+
+![Image 1 from page 551](images/2016_Jazz_Owners_Manual/p551-1.png)
+
+![Image 2 from page 551](images/2016_Jazz_Owners_Manual/p551-2.png)
+
+![Image 3 from page 551](images/2016_Jazz_Owners_Manual/p551-3.png)
+
+![Image 4 from page 551](images/2016_Jazz_Owners_Manual/p551-4.png)
 
 <!-- page:552 -->
 ### ■To turn off a play mode
@@ -9042,6 +10922,10 @@ Random All Tracks: Plays all tracks/files in random
 order.
 Random/Repeat is selected.
 Features
+
+![Image 1 from page 553](images/2016_Jazz_Owners_Manual/p553-1.png)
+
+![Image 2 from page 553](images/2016_Jazz_Owners_Manual/p553-2.png)
 
 <!-- page:554 -->
 ## Playing an iPod
@@ -9106,6 +10990,14 @@ You can select repeat and shuffle modes when playing a file.
 2. Select Shuffle/Repeat.
 3. Select a mode.
 
+![Image 1 from page 555](images/2016_Jazz_Owners_Manual/p555-1.png)
+
+![Image 2 from page 555](images/2016_Jazz_Owners_Manual/p555-2.png)
+
+![Image 3 from page 555](images/2016_Jazz_Owners_Manual/p555-3.png)
+
+![Image 1 from page 556](images/2016_Jazz_Owners_Manual/p556-1.png)
+
 <!-- page:557 -->
 ### ■To turn off a play mode
 
@@ -9128,6 +11020,10 @@ random order.
 Repeat Song: Repeats the current file.
 Continued
 Features
+
+![Image 1 from page 558](images/2016_Jazz_Owners_Manual/p558-1.png)
+
+![Image 2 from page 558](images/2016_Jazz_Owners_Manual/p558-2.png)
 
 <!-- page:559 -->
 ## Playing a USB Flash Drive
@@ -9197,6 +11093,10 @@ You can select scan, repeat, and random modes when playing a file.
 1. Select MENU.
 2. Select Scan or Random/Repeat.
 3. Select a mode.
+
+![Image 1 from page 560](images/2016_Jazz_Owners_Manual/p560-1.png)
+
+![Image 2 from page 560](images/2016_Jazz_Owners_Manual/p560-2.png)
 
 <!-- page:561 -->
 ### ■To turn off a play mode
@@ -9331,6 +11231,16 @@ Depending on the Bluetooth® device you connect,
 some or all of the lists may not be displayed.
 Features
 
+![Image 1 from page 566](images/2016_Jazz_Owners_Manual/p566-1.png)
+
+![Image 2 from page 566](images/2016_Jazz_Owners_Manual/p566-2.png)
+
+![Image 3 from page 566](images/2016_Jazz_Owners_Manual/p566-3.png)
+
+![Image 4 from page 566](images/2016_Jazz_Owners_Manual/p566-4.png)
+
+![Image 5 from page 566](images/2016_Jazz_Owners_Manual/p566-5.png)
+
 <!-- page:567 -->
 ## Playing a Video Using the HDMITM
 
@@ -9369,6 +11279,24 @@ This feature is limited while driving. To play videos,
 stop your vehicle and apply the parking brake.
 Features
 
+![Image 1 from page 568](images/2016_Jazz_Owners_Manual/p568-1.png)
+
+![Image 2 from page 568](images/2016_Jazz_Owners_Manual/p568-2.png)
+
+![Image 3 from page 568](images/2016_Jazz_Owners_Manual/p568-3.png)
+
+![Image 4 from page 568](images/2016_Jazz_Owners_Manual/p568-4.png)
+
+![Image 5 from page 568](images/2016_Jazz_Owners_Manual/p568-5.png)
+
+![Image 6 from page 568](images/2016_Jazz_Owners_Manual/p568-6.png)
+
+![Image 7 from page 568](images/2016_Jazz_Owners_Manual/p568-7.png)
+
+![Image 8 from page 568](images/2016_Jazz_Owners_Manual/p568-8.png)
+
+![Image 9 from page 568](images/2016_Jazz_Owners_Manual/p568-9.png)
+
 <!-- page:569 -->
 ## On Board Apps
 
@@ -9402,6 +11330,14 @@ Honda App Center provides access
 to a variety of App related services.
 Continued
 Features
+
+![Image 1 from page 569](images/2016_Jazz_Owners_Manual/p569-1.png)
+
+![Image 2 from page 569](images/2016_Jazz_Owners_Manual/p569-2.png)
+
+![Image 3 from page 569](images/2016_Jazz_Owners_Manual/p569-3.png)
+
+![Image 4 from page 569](images/2016_Jazz_Owners_Manual/p569-4.png)
 
 <!-- page:570 -->
 ## Smartphone Connection
@@ -9493,6 +11429,24 @@ USB Cable
 Digital AV Adapter
 Features
 
+![Image 1 from page 571](images/2016_Jazz_Owners_Manual/p571-1.png)
+
+![Image 2 from page 571](images/2016_Jazz_Owners_Manual/p571-2.png)
+
+![Image 3 from page 571](images/2016_Jazz_Owners_Manual/p571-3.png)
+
+![Image 4 from page 571](images/2016_Jazz_Owners_Manual/p571-4.png)
+
+![Image 5 from page 571](images/2016_Jazz_Owners_Manual/p571-5.png)
+
+![Image 6 from page 571](images/2016_Jazz_Owners_Manual/p571-6.png)
+
+![Image 7 from page 571](images/2016_Jazz_Owners_Manual/p571-7.png)
+
+![Image 8 from page 571](images/2016_Jazz_Owners_Manual/p571-8.png)
+
+![Image 9 from page 571](images/2016_Jazz_Owners_Manual/p571-9.png)
+
 <!-- page:572 -->
 ## Wi-Fi Connection
 
@@ -9553,6 +11507,14 @@ languageuncheck the box next to Use system
 languageselect the keyboard languages that you
 can enter.
 
+![Image 1 from page 573](images/2016_Jazz_Owners_Manual/p573-1.png)
+
+![Image 2 from page 573](images/2016_Jazz_Owners_Manual/p573-2.png)
+
+![Image 3 from page 573](images/2016_Jazz_Owners_Manual/p573-3.png)
+
+![Image 4 from page 573](images/2016_Jazz_Owners_Manual/p573-4.png)
+
 <!-- page:574 -->
 ## ■Wi-Fi mode (after the initial setting has been made)
 
@@ -9562,6 +11524,12 @@ Fi connection again after you boot your phone.
 iPhone users
 Features
 
+![Image 1 from page 574](images/2016_Jazz_Owners_Manual/p574-1.png)
+
+![Image 2 from page 574](images/2016_Jazz_Owners_Manual/p574-2.png)
+
+![Image 3 from page 574](images/2016_Jazz_Owners_Manual/p574-3.png)
+
 <!-- page:575 -->
 ## Siri Eyes Free
 
@@ -9569,6 +11537,10 @@ You can talk to Siri using the
 (Talk) button on the steering wheel when your
 iPhone is paired to the Hands-Free Telephone (HFT) System.
 2 Phone Setup P. 362
+
+![Image 1 from page 575](images/2016_Jazz_Owners_Manual/p575-1.png)
+
+![Image 2 from page 575](images/2016_Jazz_Owners_Manual/p575-2.png)
 
 <!-- page:576 -->
 ## ■Using Siri Eyes Free
@@ -9596,6 +11568,8 @@ activated in
 Siri Eyes
 Free
 Features
+
+![Image 1 from page 576](images/2016_Jazz_Owners_Manual/p576-1.png)
 
 <!-- page:577 -->
 ## CD Player
@@ -9699,6 +11673,12 @@ USB flash drive
 iPod and USB flash drive
 Features
 
+![Image 1 from page 578](images/2016_Jazz_Owners_Manual/p578-1.png)
+
+![Image 2 from page 578](images/2016_Jazz_Owners_Manual/p578-2.png)
+
+![Image 1 from page 579](images/2016_Jazz_Owners_Manual/p579-1.png)
+
 <!-- page:580 -->
 ## Android/Apps
 
@@ -9734,6 +11714,18 @@ GPS setting of the Android setting is turned off.
 Models with display audio system
 Features
 
+![Image 1 from page 580](images/2016_Jazz_Owners_Manual/p580-1.png)
+
+![Image 2 from page 580](images/2016_Jazz_Owners_Manual/p580-2.png)
+
+![Image 3 from page 580](images/2016_Jazz_Owners_Manual/p580-3.png)
+
+![Image 4 from page 580](images/2016_Jazz_Owners_Manual/p580-4.png)
+
+![Image 1 from page 581](images/2016_Jazz_Owners_Manual/p581-1.png)
+
+![Image 2 from page 581](images/2016_Jazz_Owners_Manual/p581-2.png)
+
 <!-- page:582 -->
 ## Recommended CDs
 
@@ -9754,6 +11746,14 @@ play either.
 
 The CD packages or jackets should have one of these marks.
 Features
+
+![Image 1 from page 585](images/2016_Jazz_Owners_Manual/p585-1.png)
+
+![Image 2 from page 585](images/2016_Jazz_Owners_Manual/p585-2.png)
+
+![Image 3 from page 585](images/2016_Jazz_Owners_Manual/p585-3.png)
+
+![Image 4 from page 585](images/2016_Jazz_Owners_Manual/p585-4.png)
 
 <!-- page:587 -->
 ### ■Protecting CDs
@@ -9794,6 +11794,14 @@ CD
 excessively thick CDs
 Features
 
+![Image 1 from page 587](images/2016_Jazz_Owners_Manual/p587-1.png)
+
+![Image 2 from page 587](images/2016_Jazz_Owners_Manual/p587-2.png)
+
+![Image 3 from page 587](images/2016_Jazz_Owners_Manual/p587-3.png)
+
+![Image 4 from page 587](images/2016_Jazz_Owners_Manual/p587-4.png)
+
 <!-- page:588 -->
 ## Compatible iPod, iPhone, and USB Flash Drives
 
@@ -9821,6 +11829,12 @@ Features
 • Some USB flash drives (e.g., a device with security lockout) may not work.
 • Some software files may not allow for audio play or text data display.
 • Some versions of MP3, WMA, AAC or WAV* formats may be unsupported.
+
+![Image 1 from page 589](images/2016_Jazz_Owners_Manual/p589-1.png)
+
+![Image 2 from page 589](images/2016_Jazz_Owners_Manual/p589-2.png)
+
+![Image 3 from page 589](images/2016_Jazz_Owners_Manual/p589-3.png)
 
 <!-- page:590 -->
 ## ■Recommended Devices
