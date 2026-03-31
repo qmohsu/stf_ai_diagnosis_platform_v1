@@ -16,6 +16,11 @@ from app.expert import prompts
 
 logger = structlog.get_logger()
 
+# Sentinel yielded during the LLM thinking phase so the SSE layer
+# can send keep-alive comments and prevent proxy idle timeouts.
+THINKING_SENTINEL = "\x00__THINKING__\x00"
+
+
 class ExpertLLMClient:
     """
     Client for interacting with the Expert Diagnostic Model (hosted on Ollama).
@@ -62,7 +67,8 @@ class ExpertLLMClient:
         """Stream OBD diagnosis token-by-token.
 
         Yields:
-            Text chunks as the LLM generates them.
+            Content text chunks, or ``THINKING_SENTINEL`` during
+            the model's internal reasoning phase.
         """
         messages = self._build_obd_diagnosis_messages(
             parsed_summary, context, locale
@@ -75,7 +81,6 @@ class ExpertLLMClient:
                 messages=messages,
                 temperature=0.3,
                 stream=True,
-                extra_body={"think": False},
             )
 
             async for chunk in stream:
@@ -84,6 +89,8 @@ class ExpertLLMClient:
                 delta = chunk.choices[0].delta
                 if delta.content:
                     yield delta.content
+                elif getattr(delta, "reasoning_content", None):
+                    yield THINKING_SENTINEL
 
         except Exception as e:
             logger.error("obd_diagnosis_stream_failed", error=str(e))

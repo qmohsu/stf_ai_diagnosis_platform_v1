@@ -59,7 +59,7 @@ from app.api.v2.schemas import (
     OBDSessionSummary,
     SessionListResponse,
 )
-from app.expert.client import ExpertLLMClient
+from app.expert.client import ExpertLLMClient, THINKING_SENTINEL
 from app.config import settings
 from app.models_db import (
     DiagnosisHistory,
@@ -1523,6 +1523,11 @@ async def generate_diagnosis(
             async for token in _expert_client.generate_obd_diagnosis_stream(
                 parsed_summary, context_str, locale=locale
             ):
+                if token == THINKING_SENTINEL:
+                    # SSE comment keeps connection alive during
+                    # the model's internal reasoning phase.
+                    yield ": thinking\n\n"
+                    continue
                 full_text_parts.append(token)
                 yield _sse_event("token", token)
 
