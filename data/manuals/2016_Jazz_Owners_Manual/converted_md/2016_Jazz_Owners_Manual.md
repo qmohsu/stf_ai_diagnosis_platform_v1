@@ -2,7 +2,7 @@
 source_pdf: 2016_Jazz_Owners_Manual.pdf
 vehicle_model: 2016_Jazz_Owners_Manual
 language: en
-exported_at: "2026-03-31T05:45:07+00:00"
+exported_at: "2026-03-31T05:56:55+00:00"
 page_count: 597
 section_count: 572
 ---
@@ -2656,6 +2656,7 @@ indicator - Have your vehicle checked
 by a dealer.
 2 If the Brake System Indicator
 (Red) Comes On P. 561
+uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -2680,6 +2681,7 @@ indicator - The City-Brake Active
 system does not activate. Have your
 vehicle checked by a dealer.
 2 City-Brake Active system P. 450
+uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -2720,6 +2722,7 @@ Comes On or Blinks P. 561
 ●Shows the self-testing condition of the
 diagnostics of the emission control
 system.
+uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -2757,6 +2760,7 @@ starts and acceleration and have your
 vehicle checked by a dealer
 immediately.
 * Not available on all models
+uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -2795,6 +2799,7 @@ occurred in the sensor. Have your
 vehicle checked by a dealer.
 2 Seat Belt Reminder P. 39
 * Not available on all models
+uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -2843,6 +2848,7 @@ following is detected:
 ●Stays on constantly or does not
 come on at all - Have your vehicle
 checked by a dealer.
+uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -2868,6 +2874,7 @@ deactivated.
 2 Passenger Front Airbag Off
 System P. 54
 —
+uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -2899,6 +2906,7 @@ then goes off.
 ●Comes on when you deactivate VSA.
 2 VSA OFF Button P. 441
 —
+uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -2935,6 +2943,7 @@ your vehicle inspected by a dealer.
 —
 (White)
 (Amber)
+uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -2955,6 +2964,7 @@ comes on if any door or the tailgate is
 opened while driving.
 ●Goes off when all doors and the
 tailgate are closed.
+uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -2997,6 +3007,7 @@ get your regular tyre repaired or
 replaced and put back on your vehicle
 as soon as you can.
 * Not available on all models
+uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3041,6 +3052,7 @@ return to the normal screen unless the
 warning is cancelled, or the button is
 pressed.
 —
+uuIndicatorsu
 Instrument Panel
 Indicator
 Name
@@ -3090,6 +3102,7 @@ Indicator
 —
 —
 * Not available on all models
+uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3122,6 +3135,7 @@ problems can occur.
 —
 Models without keyless access system
 Models with keyless access system
+uuIndicatorsu
 Instrument Panel
 *1: Left-hand drive type
 *2: Right-hand drive type
@@ -3152,6 +3166,7 @@ Indicator
 Indicator
 *2
 * Not available on all models
+uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3207,6 +3222,7 @@ speed limiter.
 *2
 *3
 *3
+uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -3249,6 +3265,7 @@ Models with heating and cooling system
 Manual transmission models
 (White)
 * Not available on all models
+uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3273,6 +3290,7 @@ Idle Stop system OFF button.
 2 Auto Idle Stop System ON/OFF
 P. 405, 410
 —
+uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -3312,6 +3330,7 @@ around the camera.
 (White)
 (Amber)
 * Not available on all models
+uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3352,6 +3371,7 @@ around the camera.
 2 Lane Departure Warning Camera
 P. 433
 * Not available on all models
+uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -3395,6 +3415,7 @@ are removed.
 on the bonnet.
 ●Stop your vehicle in a safe place and
 remove snow from the bonnet.
+uuIndicatorsu
 Instrument Panel
 Indicator
 Name
@@ -15322,6 +15343,7 @@ The maintenance schedule may not display correct
 information if you disconnect or remove the battery
 for an extended period. If this occurs, see a dealer.
 * Not available on all models
+uuService Reminder System*u
 Maintenance
 1. Turn the ignition switch to ON (w*1.
 2. Press the
@@ -15348,6 +15370,7 @@ Changes the customize
 menus and items.
 SEL/RESET Button:
 Enters the selected item.
+uuService Reminder System*u
 Continued
 Maintenance
 
@@ -15383,6 +15406,7 @@ Immediately have the service
 performed and make sure to
 reset the service reminder
 system.
+uuService Reminder System*u
 Maintenance
 Service items displayed on the multi-information display are in code and icon.
 For an explanation of the service reminder codes and icons, refer to the Service Book
@@ -15404,6 +15428,7 @@ service reminder system applied countries, consult a
 dealer on how to record your service reminder
 information and schedule your maintenance service
 under the conditions of that country.
+uuService Reminder System*u
 Maintenance
 Reset the service reminder information display if you have performed the
 maintenance service.
@@ -18323,6 +18348,7 @@ Never tow your vehicle with just a rope or chain.
 It is very dangerous since ropes or chains may shift
 from side to side or break.
 Continued
+uuEmergency Towingu
 Handling the Unexpected
 
 ### ■If your vehicle must be towed with the front wheels on the ground:
@@ -18368,6 +18394,7 @@ Make sure to use the properly-designed and attached
 towing equipment.
 Manual transmission models
 Cover
+uuEmergency Towingu
 Handling the Unexpected
 3. Take the towing hook and the wheel nut
 wrench out of the luggage area.
@@ -18433,6 +18460,7 @@ does not hit anyone or any object.
 Lid
 Lever
 Models with keyless access system
+uuWhen You Cannot Open the Tailgateu
 Handling the Unexpected
 2. Slide the lever to unlock the tailgate.
 3. Open the tailgate.
@@ -18508,6 +18536,7 @@ Type
 N-55*1,*2
 Tank Capacity
 2.5 L (2.2 Imp qt)
+uuSpecificationsu
 Continued
 Information
 ■Light Bulbs
@@ -18637,6 +18666,7 @@ Disc
 Parking
 Hand brake
 * Not available on all models
+uuSpecificationsu
 Information
 ■Dimensions
 *1: Modes with 185/60 R15 tyres
@@ -18685,6 +18715,7 @@ Dimensions
 1,061 mm (41.7 in)
 (7)
 786 mm (30.9 in)
+uuSpecificationsu
 Information
 ■Max. Towing Weight
 Trailer with brakes
