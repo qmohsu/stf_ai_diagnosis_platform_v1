@@ -333,6 +333,18 @@ _PAGE_NUM_PATTERN = re.compile(r"^\d{1,2}-\d{1,3}$")
 # EAS/EWA/ECA reference codes (metadata, not heading)
 _EAS_CODE_PATTERN = re.compile(r"^E[ACW][AS]\d{5}$")
 
+# Standalone page numbers (e.g., "10", "33", "141", "280").
+# Complements _PAGE_NUM_PATTERN which handles "X-Y" format.
+_STANDALONE_PAGE_NUM = re.compile(r"^\d{1,4}$")
+
+# Breadcrumb / navigation headers in Honda-style PDFs
+# (e.g., "uuFor Safe DrivinguImportant Safety Precautions")
+_BREADCRUMB_PATTERN = re.compile(r"^uu\w.*u\w")
+
+# Letter in any script (Latin, CJK, Cyrillic, etc.) but
+# not a digit.  Used to guard heading classification.
+_HAS_LETTER_RE = re.compile(r"[^\d\W]", re.UNICODE)
+
 # Minimum text length for a section body to be kept (skip tiny fragments)
 _MIN_SECTION_BODY_LEN = 20
 
@@ -426,15 +438,16 @@ def _classify_line(
     line: dict,
     body_size: float,
 ) -> str:
-    """Classify a line as heading, page_num, eas_code, or body.
+    """Classify a line as heading, page_num, etc.
 
     Args:
         line: Dict with ``text``, ``font_size``, ``is_bold``.
         body_size: The document's body font size.
 
     Returns:
-        One of ``"heading_l1"``, ``"heading_l2"``, ``"page_num"``,
-        ``"eas_code"``, or ``"body"``.
+        One of ``"heading_l1"``, ``"heading_l2"``,
+        ``"page_num"``, ``"eas_code"``, ``"breadcrumb"``,
+        or ``"body"``.
     """
     text = line["text"]
     size = line["font_size"]
@@ -443,16 +456,32 @@ def _classify_line(
     if _PAGE_NUM_PATTERN.match(text):
         return "page_num"
 
+    # Skip standalone page numbers (e.g., "10", "141")
+    if _STANDALONE_PAGE_NUM.match(text):
+        return "page_num"
+
     # Skip EAS/EWA/ECA reference codes
     if _EAS_CODE_PATTERN.match(text):
         return "eas_code"
 
+    # Skip breadcrumb / navigation headers
+    if _BREADCRUMB_PATTERN.match(text):
+        return "breadcrumb"
+
+    # Headings must contain at least one letter (any
+    # script: Latin, CJK, Cyrillic, etc.).  Prevents
+    # pure symbols or digits from becoming headings.
+    has_letter = bool(_HAS_LETTER_RE.search(text))
+
     # Chapter heading: significantly larger than body
-    if size >= body_size * _HEADING_L1_RATIO:
+    if size >= body_size * _HEADING_L1_RATIO and has_letter:
         return "heading_l1"
 
     # Section heading: moderately larger than body
-    if size >= body_size * _HEADING_L2_RATIO:
+    if (
+        size >= body_size * _HEADING_L2_RATIO
+        and has_letter
+    ):
         return "heading_l2"
 
     return "body"
@@ -557,7 +586,7 @@ def extract_pdf_sections(
                     # Include EAS codes in body for traceability
                     current_body_parts.append(line["text"])
 
-                # page_num lines are skipped entirely
+                # page_num and breadcrumb lines skip
 
         # Flush the last section
         _flush_section()
@@ -617,7 +646,13 @@ def _fallback_page_sections(
             ln.strip() for ln in text.split("\n")
             if ln.strip()
             and not _PAGE_NUM_PATTERN.match(ln.strip())
+            and not _STANDALONE_PAGE_NUM.match(
+                ln.strip()
+            )
             and not _EAS_CODE_PATTERN.match(ln.strip())
+            and not _BREADCRUMB_PATTERN.match(
+                ln.strip()
+            )
         ]
         title = first_lines[0] if first_lines else (
             f"{stem} p{page_num}"

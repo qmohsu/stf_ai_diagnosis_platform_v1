@@ -2,9 +2,9 @@
 source_pdf: 2016_Jazz_Owners_Manual.pdf
 vehicle_model: 2016_Jazz_Owners_Manual
 language: en
-exported_at: "2026-03-31T04:52:49+00:00"
+exported_at: "2026-03-31T05:45:07+00:00"
 page_count: 597
-section_count: 562
+section_count: 572
 ---
 
 
@@ -104,7 +104,7 @@ Devices that Emit Radio Waves* P. 587
 EC Declaration of Conformity Content Outline* P. 588
 
 <!-- page:4 -->
-### 2
+### Index P. 589
 
 Quick Reference Guide
 
@@ -113,6 +113,7 @@ Quick Reference Guide
 
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Left-hand drive type
+❙
 
 <!-- page:6 -->
 ## ❙Navigation System*
@@ -120,7 +121,7 @@ Left-hand drive type
 () See the Navigation System Manual
 
 <!-- page:7 -->
-### 3
+## ❙Multi-Information Display (P122)
 
 Quick Reference Guide
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -132,12 +133,12 @@ Right-hand drive type
 * Not available on all models
 
 <!-- page:9 -->
-### 4
+## Visual Index
 
 Quick Reference Guide
 
 <!-- page:10 -->
-### 5
+## ❙Intelligent Speed Limiter Buttons* (P421)
 
 Quick Reference Guide
 Left-hand drive type
@@ -148,13 +149,13 @@ Left-hand drive type
 * Not available on all models
 
 <!-- page:12 -->
-### 6
+## Visual Index
 
 Quick Reference Guide
 Right-hand drive type
 
 <!-- page:13 -->
-### 7
+## ❙Bonnet Release Handle (P483)
 
 Quick Reference Guide
 
@@ -164,12 +165,12 @@ Quick Reference Guide
 * Not available on all models
 
 <!-- page:15 -->
-### 8
+## Visual Index
 
 Quick Reference Guide
 
 <!-- page:16 -->
-### 9
+## ❙Multi-View Rear Camera* (P462)
 
 Quick Reference Guide
 
@@ -211,19 +212,15 @@ On
 Off
 Restarting
 * Not available on all models
-
-<!-- page:18 -->
-### 10
-
 Quick Reference Guide
 
-<!-- page:19 -->
+<!-- page:18 -->
 ## Airbags (P49)
 
 ●Your vehicle is fitted with airbags to help protect you and
 your passengers during a moderate-to-severe collision.
 
-<!-- page:20 -->
+<!-- page:19 -->
 ## Child Safety (P62)
 
 ●All children 12 and younger should be seated in the rear seat.
@@ -253,13 +250,9 @@ posture.
 their seat belts correctly.
 Fasten your lap belt as
 low as possible.
-
-<!-- page:24 -->
-### 11
-
 Quick Reference Guide
 
-<!-- page:25 -->
+<!-- page:24 -->
 ## Instrument Panel (P83)
 
 Rear Fog Light
@@ -299,7 +292,7 @@ Tachometer
 Ambient Meter
 Fuel Gauge
 
-<!-- page:26 -->
+<!-- page:25 -->
 ## Gauges (P121)/Multi-Information Display (P122)/System Indicators (P84)
 
 Turn Signal and
@@ -347,13 +340,9 @@ Indicator
 Multi-Information
 Display
 * Not available on all models
-
-<!-- page:27 -->
-### 12
-
 Quick Reference Guide
 
-<!-- page:28 -->
+<!-- page:26 -->
 ## Clock (P138)
 
 The navigation system receives signals from
@@ -365,20 +354,20 @@ system’s clock display.
 Models with navigation system
 Models with audio system
 
-<!-- page:29 -->
+<!-- page:27 -->
 ## b Rotate
 
 to change hour, then press
 .
 
-<!-- page:30 -->
+<!-- page:28 -->
 ## c Rotate
 
 to change minute, then
 press
 .
 
-<!-- page:31 -->
+<!-- page:29 -->
 ## d Select SET, then press
 
 .
@@ -390,47 +379,41 @@ to select.
 to enter.
 Models with colour audio system
 
-<!-- page:32 -->
+<!-- page:30 -->
 ## a Select the
 
 (HOME) icon, then select
 Settings.
 
-![Image 1 from page 32](images/2016_Jazz_Owners_Manual/p032-1.png)
-
-<!-- page:33 -->
+<!-- page:31 -->
 ## c Touch the
 
 /
 icon to adjust the
 numbers up or down.
 
-<!-- page:34 -->
+<!-- page:32 -->
 ## d Select OK.
 
 Models with display audio system
-3
-4
-
-<!-- page:35 -->
-### 13
-
 Quick Reference Guide
 
-<!-- page:36 -->
+![Image 1 from page 32](images/2016_Jazz_Owners_Manual/p032-1.png)
+
+<!-- page:33 -->
 ## Button* (P162)
 
 Press the button to change the vehicle’s
 power mode.
 
-<!-- page:37 -->
+<!-- page:34 -->
 ## Turn Signals (P166)
 
 Turn Signal Control Lever
 Right
 Left
 
-<!-- page:38 -->
+<!-- page:35 -->
 ## Lights (P167)
 
 Light Control Switches
@@ -439,13 +422,9 @@ Beam
 High Beam
 Flashing
 * Not available on all models
-
-<!-- page:39 -->
-### 14
-
 Quick Reference Guide
 
-<!-- page:40 -->
+<!-- page:36 -->
 ## Wipers and Washers
 
 (P175)
@@ -462,7 +441,7 @@ Adjustment Ring
 : Low Sensitivity
 : High Sensitivity
 
-<!-- page:41 -->
+<!-- page:37 -->
 ## Steering Wheel (P180)
 
 ●To adjust, pull the adjustment lever
@@ -471,7 +450,7 @@ position, then lock the lever back in place.
 To adjust
 To lock
 
-<!-- page:42 -->
+<!-- page:38 -->
 ## Doors from the Inside
 
 (P150)
@@ -480,13 +459,9 @@ unlock and open it in one motion.
 ●Unlocking and opening the driver’s door
 from the inner handle unlocks all the
 other doors.
-
-<!-- page:43 -->
-### 15
-
 Quick Reference Guide
 
-<!-- page:44 -->
+<!-- page:39 -->
 ## Tailgate (P153)
 
 ●With all the doors unlocked, pull the
@@ -500,7 +475,7 @@ carry the keyless access remote.
 Models without keyless access system
 Models with keyless access system
 
-<!-- page:45 -->
+<!-- page:40 -->
 ## Power Door Mirrors
 
 (P182)
@@ -514,7 +489,7 @@ Selector Switch
 Adjustment Switch
 Folding Button
 
-<!-- page:46 -->
+<!-- page:41 -->
 ## Power Windows (P159)
 
 ●With the ignition switch in ON (w*1, open
@@ -534,13 +509,9 @@ Lock Button
 Window Switch
 Indicator
 * Not available on all models
-
-<!-- page:47 -->
-### 16
-
 Quick Reference Guide
 
-<!-- page:48 -->
+<!-- page:42 -->
 ## Heating and Cooling System* (P204)
 
 ●Rotate the fan control dial to adjust the fan speed.
@@ -581,13 +552,9 @@ Air flows from
 windscreen
 demister
 vents.
-
-<!-- page:49 -->
-### 17
-
 Quick Reference Guide
 
-<!-- page:50 -->
+<!-- page:43 -->
 ## Climate Control System* (P208)
 
 ●Select the AUTO icon to activate the climate control system.
@@ -620,13 +587,9 @@ Fan Control Icons
 Heated Mirror) Icon
 (Fresh Air) Icon
 * Not available on all models
-
-<!-- page:51 -->
-### 18
-
 Quick Reference Guide
 
-<!-- page:52 -->
+<!-- page:44 -->
 ## Audio System (P221, 251)
 
 CD Slot
@@ -647,10 +610,6 @@ MENU/CLOCK Button
 Preset Buttons (1-6)
 Button
 RADIO Button
-
-<!-- page:53 -->
-### 19
-
 Quick Reference Guide
 (P251)
 Models with display audio system
@@ -667,13 +626,9 @@ Models without navigation system
 For navigation system operation
 () See the Navigation System Manual
 Models with navigation system
-
-<!-- page:54 -->
-### 20
-
 Quick Reference Guide
 
-<!-- page:55 -->
+<!-- page:45 -->
 ## Audio Remote Controls
 
 (P219)
@@ -706,13 +661,9 @@ SOURCE
 Button
 Models with colour audio system
 Models with display audio system
-
-<!-- page:56 -->
-### 21
-
 Quick Reference Guide
 
-<!-- page:57 -->
+<!-- page:46 -->
 ## Driving (P375)
 
 Park
@@ -732,7 +683,7 @@ Drive
 ●Normal driving.
 ●7-speed manual shift mode can be used.
 
-<!-- page:58 -->
+<!-- page:47 -->
 ## Continuously Variable Transmission* (P396)
 
 ●Shift to (P and depress the brake pedal when starting the engine.
@@ -766,13 +717,9 @@ Paddle Shifter
 Shift Up
 Paddle Shifter
 * Not available on all models
-
-<!-- page:59 -->
-### 22
-
 Quick Reference Guide
 
-<!-- page:60 -->
+<!-- page:48 -->
 ## VSA OFF Button (P441)
 
 ●The vehicle stability assist (VSA) system
@@ -785,7 +732,7 @@ you start the engine.
 ●To turn VSA on or off, press and hold the
 button until you hear a beep.
 
-<!-- page:61 -->
+<!-- page:49 -->
 ## Cruise Control (P414)
 
 ●Cruise control allows you to maintain a
@@ -797,7 +744,7 @@ the LIM button, then press the –/SET
 button once you have achieved the
 desired speed (above 30 km/h or 18 mph).
 
-<!-- page:62 -->
+<!-- page:50 -->
 ## Adjustable Speed Limiter
 
 (P417)
@@ -812,34 +759,26 @@ reaches the desired speed.
 ●The vehicle speed limit can be set from 30
 km/h (18 mph) to 250 km/h (156 mph).
 
-<!-- page:63 -->
+<!-- page:51 -->
 ## System (DWS) (P443)
 
 DWS detects a change in tyre revolutions as
 a decrease in tyre pressure.
-
-<!-- page:64 -->
-### 23
-
 Quick Reference Guide
 
-<!-- page:65 -->
+<!-- page:52 -->
 ## Refueling (P464)
 
 Fuel recommendation: Premium unleaded petrol with a research octane number 95 or higher required
 Fuel tank capacity: 40 L (8.8 Imp gal)
 
-<!-- page:66 -->
+<!-- page:53 -->
 ## d After refueling, screw the cap back on until it
 
 clicks at least once.
-
-<!-- page:67 -->
-### 24
-
 Quick Reference Guide
 
-<!-- page:68 -->
+<!-- page:54 -->
 ## Under the Bonnet (P482)
 
 ●Check engine oil, engine coolant, and windscreen washer
@@ -847,23 +786,23 @@ fluid. Add when necessary.
 ●Check brake fluid.
 ●Check the battery condition monthly.
 
-<!-- page:69 -->
+<!-- page:55 -->
 ## c When finished, close the bonnet and make sure it is
 
 firmly locked in place.
 
-<!-- page:70 -->
+<!-- page:56 -->
 ## Lights (P493)
 
 ●Inspect all lights regularly.
 
-<!-- page:71 -->
+<!-- page:57 -->
 ## Wiper Blades (P504)
 
 ●Replace blades if they leave streaks
 across the windscreen.
 
-<!-- page:72 -->
+<!-- page:58 -->
 ## Tyres (P508)
 
 ●Inspect tyres and wheels regularly.
@@ -872,7 +811,7 @@ across the windscreen.
 driving.
 Quick Reference Guide
 
-<!-- page:73 -->
+<!-- page:59 -->
 ## Flat Tyre (P533)
 
 ●Park in a safe location and replace the
@@ -881,7 +820,7 @@ the luggage area.
 ●Park in a safe location and repair the flat
 tyre using the tyre repair kit.
 
-<!-- page:74 -->
+<!-- page:60 -->
 ## Indicators Come On (P560)
 
 ●Identify the indicator and consult the
@@ -889,73 +828,59 @@ owner's manual.
 Models with a spare tyre
 Models with tyre repair kit
 
-<!-- page:75 -->
+<!-- page:61 -->
 ## Engine Won't Start (P551)
 
 ●If the battery is dead, jump start using a
 booster battery.
 
-<!-- page:76 -->
+<!-- page:62 -->
 ## Blown Fuse (P565)
 
 ●Check for a blown fuse if an electrical
 device does not operate.
 
-<!-- page:77 -->
+<!-- page:63 -->
 ## Overheating (P558)
 
 ●Park in a safe location. If you do not see
 steam under the bonnet, open the
 bonnet, and let the engine cool down.
 
-<!-- page:78 -->
+<!-- page:65 -->
 ## Emergency Towing (P576)
 
 ●Call a professional towing service if you
 need to tow your vehicle.
-
-<!-- page:79 -->
-### 26
-
 Quick Reference Guide
 
-<!-- page:80 -->
+<!-- page:67 -->
 ## What to Do If
 
 *1:  Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 
-<!-- page:81 -->
+<!-- page:69 -->
 ### pump the brake pedal.
 
 Models without keyless access system
 Models with keyless access system
 Models without keyless access system
 Models with keyless access system
-
-<!-- page:82 -->
-### 27
-
 Quick Reference Guide
 
-<!-- page:83 -->
+<!-- page:70 -->
 ### ●The parking brake lever is not fully released.
 
 Models without keyless access system
 Models with keyless access system
+Quick Reference Guide
 
-<!-- page:84 -->
-### 28
+<!-- page:71 -->
+### lead to engine damage.
 
 Quick Reference Guide
 
-![Image 1 from page 84](images/2016_Jazz_Owners_Manual/p084-1.png)
-
-<!-- page:85 -->
-### 29
-
-Quick Reference Guide
-
-<!-- page:86 -->
+<!-- page:73 -->
 ### Event Data Recorders
 
 Your vehicle is equipped with several devices commonly referred to
@@ -970,7 +895,7 @@ dealers and authorised repairers, employees, representatives and
 contractors only for the purpose of the technical diagnosis,
 research and development of the vehicle.
 
-<!-- page:87 -->
+<!-- page:75 -->
 ### Service Diagnostic Recorders
 
 Your vehicle is equipped with service-related devices that record
@@ -983,10 +908,6 @@ However this data may be accessed by Honda, its authorised
 dealers and authorised repairers, employees, representatives and
 contractors only for the purpose of the technical diagnosis,
 research and development of the vehicle.
-
-<!-- page:88 -->
-### 30
-
 Quick Reference Guide
 As you read this manual, you will find Information that is preceded
 by a
@@ -999,7 +920,7 @@ your vehicle.
 is colour-coded to indicate “danger” (red), “warning” (orange),
 or “caution” (amber).
 
-<!-- page:89 -->
+<!-- page:78 -->
 ## A Few Words About Safety
 
 Your safety, and the safety of others, is very important. And
@@ -1016,7 +937,7 @@ You will find this important safety information in a variety of forms,
 including:
 ●Safety Labels - on the vehicle.
 
-<!-- page:90 -->
+<!-- page:79 -->
 ## ●Safety Messages - preceded by a safety alert symbol 3 and
 
 one of three signal words: DANGER, WARNING, or CAUTION.
@@ -1027,25 +948,25 @@ These signal words mean:
 This entire book is filled with important safety information - please
 read it carefully.
 
-<!-- page:91 -->
+<!-- page:80 -->
 ### 3DANGER
 
 You WILL be KILLED or SERIOUSLY HURT if
 you don't follow instructions.
 
-<!-- page:92 -->
+<!-- page:81 -->
 ### 3WARNING
 
 You CAN be KILLED or SERIOUSLY HURT if
 you don't follow instructions.
 
-<!-- page:93 -->
+<!-- page:82 -->
 ### 3CAUTION
 
 You CAN be HURT if you don't follow
 instructions.
 
-<!-- page:94 -->
+<!-- page:83 -->
 ### You can find many safety recommendations throughout this chapter, and throughout this manual.
 
 For Safe Driving
@@ -1071,15 +992,18 @@ Exhaust Gas Hazard
 Carbon Monoxide Gas....................... 81
 Safety Labels
 Label Locations.................................. 82
+Safe Driving
 
-<!-- page:95 -->
+<!-- page:84 -->
 ## For Safe Driving
 
 The following pages explain your vehicle's safety features and how to use them
 properly. The safety precautions below are ones that we consider to be among the
 most important.
 
-<!-- page:96 -->
+![Image 1 from page 84](images/2016_Jazz_Owners_Manual/p084-1.png)
+
+<!-- page:85 -->
 ### ■Always wear your seat belt
 
 A seat belt is your best protection in all types of collisions. Airbags are designed to
@@ -1087,7 +1011,7 @@ supplement seat belts, not replace them. So even though your vehicle is equipped
 with airbags, make sure you and your passengers always wear your seat belts, and
 wear them properly.
 
-<!-- page:97 -->
+<!-- page:107 -->
 ### ■Restrain all children
 
 Children aged 12 and under should ride properly restrained in a back seat, not the
@@ -1095,7 +1019,7 @@ front seat. Infants and small children should be restrained in a child restraint
 Larger children should use a booster seat and a lap/shoulder seat belt until they can
 use the belt properly without a booster seat.
 
-<!-- page:98 -->
+<!-- page:122 -->
 ### ■Be aware of airbag hazards
 
 While airbags can save lives, they can cause serious or fatal injuries to occupants
@@ -1103,7 +1027,7 @@ who sit too close to them, or are not properly restrained. Infants, young childr
 and short adults are at the greatest risk. Be sure to follow all instructions and
 warnings in this manual.
 
-<!-- page:99 -->
+<!-- page:123 -->
 ### ■Don't drink and drive
 
 Alcohol and driving don't mix. Even one drink can reduce your ability to respond to
@@ -1113,14 +1037,9 @@ So don't drink and drive, and don't let your friends drink and drive, either.
 Some countries prohibit the use of mobile phones
 other than hands-free devices by the driver while
 driving.
-
-<!-- page:100 -->
-### 33
-
-uuFor Safe DrivinguImportant Safety Precautions
 Safe Driving
 
-<!-- page:101 -->
+<!-- page:124 -->
 ### ■Pay appropriate attention to the task of driving safely
 
 Engaging in mobile phone conversation or other activities that keep you from paying
@@ -1128,7 +1047,7 @@ close attention to the road, other vehicles, and pedestrians could lead to a cra
 Remember, situations can change quickly, and only you can decide when it is safe to
 divert some attention away from driving.
 
-<!-- page:102 -->
+<!-- page:125 -->
 ### ■Control your speed
 
 Excessive speed is a major factor in crash injuries and deaths. Generally, the higher
@@ -1136,20 +1055,15 @@ the speed, the greater the risk, but serious injuries can also occur at lower sp
 Never drive faster than is safe for current conditions, regardless of the maximum
 speed posted.
 
-<!-- page:103 -->
+<!-- page:126 -->
 ### ■Keep your vehicle in safe condition
 
 Having a tyre blowout or a mechanical failure can be extremely hazardous.
 To reduce the possibility of such problems, check your tyre pressures and condition
 frequently, and perform all regularly scheduled maintenance.
-
-<!-- page:104 -->
-### 34
-
-uuFor Safe DrivinguYour Vehicle’s Safety Features
 Safe Driving
 
-<!-- page:105 -->
+<!-- page:127 -->
 ## Your Vehicle’s Safety Features
 
 The following checklist will help you take an active role in protecting yourself and
@@ -1169,11 +1083,6 @@ advantage of these features unless you remain seated
 in the correct position and always wear your seat
 belts. In fact, some safety features can contribute to
 injuries if they are not used properly.
-6
-7
-8
-9
-10
 Safety Cage
 Crush Zones
 Seats and Seat-Backs
@@ -1184,19 +1093,6 @@ Front Airbags
 Side Curtain Airbags
 Automatic Seat Belt Tensioners
 Side Airbags
-7
-7
-9
-9
-8
-8
-6
-10
-
-<!-- page:106 -->
-### 35
-
-uuFor Safe DrivinguYour Vehicle’s Safety Features
 Safe Driving
 For the safety of you and your passengers, make a habit of checking these items
 each time before you drive.
@@ -1216,7 +1112,7 @@ passengers are properly belted as well.
 age, height and weight.
 2 Child Safety P. 62
 
-<!-- page:107 -->
+<!-- page:128 -->
 ## ■Safety Checklist
 
 1Safety Checklist
@@ -1225,8 +1121,9 @@ and/or the tailgate is not completely closed. Close all
 doors and the tailgate tightly until the indicator goes
 off.
 2 Door and Tailgate Open Indicator P. 93
+Safe Driving
 
-<!-- page:108 -->
+<!-- page:129 -->
 ## About Your Seat Belts
 
 Seat belts are the single most effective safety device because they keep you
@@ -1257,7 +1154,7 @@ WARNING: Each belt assembly must only be used by
 one occupant; it is dangerous to put a belt around a
 child being carried on the occupant’s lap.
 
-<!-- page:109 -->
+<!-- page:130 -->
 ## 3WARNING
 
 Not wearing a seat belt properly increases
@@ -1267,14 +1164,9 @@ airbags.
 Be sure you and your passengers always
 wear seat belts and wear them properly.
 Continued
-
-<!-- page:110 -->
-### 37
-
-uuSeat BeltsuAbout Your Seat Belts
 Safe Driving
 
-<!-- page:111 -->
+<!-- page:131 -->
 ### ■Lap/shoulder seat belts
 
 All five seating positions are equipped with lap/shoulder seat belts with emergency
@@ -1291,14 +1183,9 @@ countries in which you will drive.
 The emergency locking retractor may lock if you lean
 forward too quickly. Slower movements will allow
 the belt to extend fully without locking.
-
-<!-- page:112 -->
-### 38
-
-uuSeat BeltsuAbout Your Seat Belts
 Safe Driving
 
-<!-- page:113 -->
+<!-- page:133 -->
 ### ■Proper use of seat belts
 
 Follow these guidelines for proper use:
@@ -1313,14 +1200,9 @@ seriously injured in a crash.
 or reposition the shoulder part of a seat belt can reduce the protective capability
 and increase the chance of serious injury in a crash.
 Continued
-
-<!-- page:114 -->
-### 39
-
-uuSeat BeltsuAbout Your Seat Belts
 Safe Driving
 
-<!-- page:115 -->
+<!-- page:136 -->
 ### ■Front seats
 
 Your vehicle monitors the front seat belt use.
@@ -1334,7 +1216,7 @@ driver's seat belt is fastened.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
-<!-- page:116 -->
+<!-- page:138 -->
 ## ■Seat Belt Reminder
 
 1Seat Belt Reminder
@@ -1358,14 +1240,11 @@ of the front passenger’s seat.
 • The front passenger is not sitting properly.
 If none of these conditions exist, have your vehicle
 checked by a dealer as soon as possible.
-
-<!-- page:117 -->
-### 40
-
-uuSeat BeltsuAbout Your Seat Belts
 Safe Driving
 
-<!-- page:118 -->
+![Image 1 from page 138](images/2016_Jazz_Owners_Manual/p138-1.png)
+
+<!-- page:139 -->
 ### ■Rear seats
 
 Your vehicle monitors rear seat belt use. A
@@ -1385,11 +1264,6 @@ button repeatedly.
 switch.
 : Latched
 : Unlatched
-
-<!-- page:119 -->
-### 41
-
-uuSeat BeltsuAbout Your Seat Belts
 Safe Driving
 The front and rear outer seats are equipped with automatic seat belt tensioners to
 enhance safety.
@@ -1399,7 +1273,7 @@ to-severe frontal collision, sometimes even if
 the collision is not severe enough to inflate the
 front airbags.
 
-<!-- page:120 -->
+<!-- page:140 -->
 ## ■Automatic Seat Belt Tensioners
 
 1Automatic Seat Belt Tensioners
@@ -1410,14 +1284,9 @@ thoroughly inspect the seat belt system as it may not
 offer protection in a subsequent crash.
 During a moderate-to-severe side impact, the
 tensioner on that side of the vehicle also activates.
-
-<!-- page:121 -->
-### 42
-
-uuSeat BeltsuFastening a Seat Belt
 Safe Driving
 
-<!-- page:122 -->
+<!-- page:141 -->
 ## Fastening a Seat Belt
 
 After adjusting a front seat to the proper position, and while sitting upright and well
@@ -1444,11 +1313,6 @@ Posture.
 Latch Plate
 Buckle
 Continued
-
-<!-- page:123 -->
-### 43
-
-uuSeat BeltsuFastening a Seat Belt
 Safe Driving
 3. Position the lap part of the belt as low as
 possible across your hips, then pull up on
@@ -1469,7 +1333,7 @@ completely.
 When exiting the vehicle, be sure the belt is out of
 the way and will not get caught by closing the door.
 
-<!-- page:124 -->
+<!-- page:142 -->
 ## 3WARNING
 
 Improperly positioning the seat belts can
@@ -1479,11 +1343,6 @@ positioned before driving.
 Lap belt
 as low as
 possible
-uuSeat BeltsuFastening a Seat Belt
-
-<!-- page:125 -->
-### 44
-
 Safe Driving
 The front seats have adjustable shoulder anchors to accommodate taller and shorter
 occupants.
@@ -1493,7 +1352,7 @@ pulling the release outward.
 across the centre of your chest and over
 your shoulder.
 
-<!-- page:126 -->
+<!-- page:143 -->
 ## ■Adjusting the Shoulder Anchor
 
 1Adjusting the Shoulder Anchor
@@ -1504,11 +1363,6 @@ After an adjustment, make sure that the shoulder
 anchor position is secure.
 Pull outward
 Continued
-
-<!-- page:127 -->
-### 45
-
-uuSeat BeltsuFastening a Seat Belt
 Safe Driving
 1. Pull out the seat belt’s small latch plate and
 the latch plate from each holding slot in the
@@ -1521,14 +1375,14 @@ to the anchor buckle.
 Properly fasten the seat belt the same way
 you fasten the lap/shoulder seat belt.
 
-<!-- page:128 -->
+<!-- page:144 -->
 ## ■Seat Belt with Detachable Anchor
 
 1Seat Belt with Detachable Anchor
 To unlatch the detachable anchor, insert the latch
 plate into the slot on the side of the anchor buckle.
 
-<!-- page:129 -->
+<!-- page:145 -->
 ## 3WARNING
 
 Using the seat belt with the detachable
@@ -1546,17 +1400,12 @@ Anchor
 Buckle
 Buckle
 Latch Plate
-uuSeat BeltsuFastening a Seat Belt
-
-<!-- page:130 -->
-### 46
-
 Safe Driving
 If you are pregnant, the best way to protect yourself and your unborn child when
 driving or riding in a vehicle is to always wear a seat belt and keep the lap part of the
 belt as low as possible across the hips.
 
-<!-- page:131 -->
+<!-- page:146 -->
 ## ■Advice for Pregnant Women
 
 1Advice for Pregnant Women
@@ -1576,15 +1425,10 @@ the abdomen.
 Wear the lap part of the
 belt as low as possible
 across the hips.
-
-<!-- page:132 -->
-### 47
-
-uuSeat BeltsuSeat Belt Inspection
 Continued
 Safe Driving
 
-<!-- page:133 -->
+<!-- page:147 -->
 ## Seat Belt Inspection
 
 Regularly check the condition of your seat belts as follows:
@@ -1614,7 +1458,7 @@ may safely be carried out using mild soap and water.
 The belt should be replaced if webbing becomes
 frayed, contaminated or damaged.
 
-<!-- page:134 -->
+<!-- page:148 -->
 ## 3WARNING
 
 Not checking or maintaining seat belts can
@@ -1622,14 +1466,9 @@ result in serious injury or death if the seat
 belts do not work properly when needed.
 Check your seat belts regularly and have
 any problem corrected as soon as possible.
-
-<!-- page:135 -->
-### 48
-
-uuSeat BeltsuSeat Belt Inspection
 Safe Driving
 
-<!-- page:136 -->
+<!-- page:149 -->
 ### ■Anchorage points
 
 When replacing the seat belts, use the
@@ -1638,14 +1477,10 @@ The front seat has a lap/shoulder belt.
 The rear seat has three lap/shoulder belts.
 Front Seat
 Rear Seat
-
-<!-- page:137 -->
-### 49
-
 Continued
 Safe Driving
 
-<!-- page:138 -->
+<!-- page:150 -->
 ## Airbag System Components
 
 The front, front side, and side curtain
@@ -1686,13 +1521,6 @@ been turned off.
 *1: Models with the keyless access system have an
 ENGINE START/STOP button instead of an ignition
 switch.
-uuAirbagsuAirbag System Components
-
-![Image 1 from page 138](images/2016_Jazz_Owners_Manual/p138-1.png)
-
-<!-- page:139 -->
-### 50
-
 Safe Driving
 Airbags can pose serious hazards. To do their job, airbags must inflate with
 tremendous force. So, while airbags help save lives, they can cause burns, bruises,
@@ -1712,7 +1540,7 @@ Do not attach or place objects on the front airbag covers. Objects on the
 covers marked SRS AIRBAG could interfere with the proper operation of the airbags
 or be propelled inside the vehicle and hurt someone if the airbags inflate.
 
-<!-- page:140 -->
+<!-- page:151 -->
 ## ■Important facts about your airbags
 
 1Important facts about your airbags
@@ -1722,15 +1550,10 @@ When driving, keep hands and arms out of the
 deployment path of the front airbag by holding each
 side of the steering wheel. Do not cross an arm over
 the airbag cover.
-
-<!-- page:141 -->
-### 51
-
-uuAirbagsuTypes of Airbags
 Continued
 Safe Driving
 
-<!-- page:142 -->
+<!-- page:152 -->
 ## Types of Airbags
 
 Your vehicle is equipped with three types of airbags:
@@ -1739,7 +1562,7 @@ Your vehicle is equipped with three types of airbags:
 • Side curtain airbags: Airbags above the side windows.
 Each is discussed in the following pages.
 
-<!-- page:143 -->
+<!-- page:153 -->
 ## Front Airbags (SRS)
 
 The front SRS airbags inflate in a moderate-to-severe frontal collision to help to
@@ -1752,7 +1575,7 @@ in the dashboard for the front passenger. Both airbags are marked SRS AIRBAG.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
-<!-- page:144 -->
+<!-- page:154 -->
 ## ■Housing Locations
 
 1Types of Airbags
@@ -1764,11 +1587,6 @@ process of the inflator material and is not harmful.
 People with respiratory problems may experience
 some temporary discomfort. If this occurs, get out of
 the vehicle as soon as it is safe to do so.
-uuAirbagsuFront Airbags (SRS)
-
-<!-- page:145 -->
-### 52
-
 Safe Driving
 Front airbags are designed to inflate during moderate-to-severe frontal collisions.
 When the vehicle decelerates suddenly, the sensors send information to the control
@@ -1785,7 +1603,7 @@ controls.
 The total time for inflation and deflation is so fast that most occupants are not
 aware that the airbags deployed until they see them lying in front of them.
 
-<!-- page:146 -->
+<!-- page:155 -->
 ## ■How the Front Airbags Work
 
 1How the Front Airbags Work
@@ -1797,15 +1615,10 @@ or threshold, that determines whether or not the
 airbags will deploy. In such cases, the seat belt will
 provide sufficient protection, and the supplemental
 protection offered by the airbag would be minimal.
-
-<!-- page:147 -->
-### 53
-
-uuAirbagsuFront Airbags (SRS)
 Continued
 Safe Driving
 
-<!-- page:148 -->
+<!-- page:157 -->
 ### ■When front airbags should not deploy
 
 Minor frontal crashes: Front airbags were designed to supplement seat belts and
@@ -1824,7 +1637,7 @@ and side curtain airbags offer the best protection in a rollover. Because front 
 could provide little if any protection, they are not designed to deploy during a
 rollover.
 
-<!-- page:149 -->
+<!-- page:158 -->
 ### ■When front airbags deploy with little or no visible damage
 
 Because the airbag system senses sudden deceleration, a strong impact to the
@@ -1833,7 +1646,7 @@ Examples include running into a curb, the edge of a hole, or other low fixed obj
 that causes a sudden deceleration in the vehicle chassis. Since the impact is
 underneath the vehicle, damage may not be readily apparent.
 
-<!-- page:150 -->
+<!-- page:159 -->
 ### ■When front airbags may not deploy, even though exterior damage
 
 appears severe
@@ -1842,17 +1655,12 @@ visible damage does not always indicate proper airbag operation. In fact, some
 collisions can result in severe damage but no airbag deployment because the airbags
 would not have been needed or would not have provided protection even if they
 had deployed.
-uuAirbagsuFront Airbags (SRS)
-
-<!-- page:151 -->
-### 54
-
 Safe Driving
 If it is unavoidable to install a rear-facing child restraint system in the front passenger
 seat, you must manually deactivate the passenger front airbag system, using the
 ignition key or the built-in key.
 
-<!-- page:152 -->
+<!-- page:160 -->
 ### ■Passenger front airbag ON/OFF switch
 
 When the passenger front airbag ON/OFF
@@ -1867,7 +1675,7 @@ ON: The passenger front airbag is activated.
 The passenger front airbag on indicator comes
 on and remains on for about 60 seconds.
 
-<!-- page:153 -->
+<!-- page:161 -->
 ### ■To deactivate the passenger front airbag system
 
 1. Set the parking brake, and turn the ignition
@@ -1882,12 +1690,12 @@ the switch.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
-<!-- page:154 -->
+<!-- page:162 -->
 ## ■Passenger Front Airbag Off System
 
 1Passenger Front Airbag Off System
 
-<!-- page:155 -->
+<!-- page:163 -->
 ## 3WARNING
 
 The passenger front airbag system must be
@@ -1899,7 +1707,7 @@ hit the rear-facing child restraint system
 with enough force to kill or cause a very
 serious injury to the infant.
 
-<!-- page:156 -->
+<!-- page:164 -->
 ## 3WARNING
 
 Make sure to turn on the passenger front
@@ -1918,14 +1726,9 @@ Switch
 Passenger Front
 Airbag ON/OFF
 Switch
-
-<!-- page:157 -->
-### 55
-
-uuAirbagsuFront Airbags (SRS)
 Safe Driving
 
-<!-- page:158 -->
+<!-- page:165 -->
 ### ■Passenger front airbag off indicator
 
 When the passenger front airbag system is activated, the indicator goes off after a
@@ -1933,7 +1736,7 @@ few seconds when you turn the ignition switch to ON (w*1.
 When the passenger front airbag system is deactivated, the indicator stays on, or
 goes off momentarily and comes back on.
 
-<!-- page:159 -->
+<!-- page:166 -->
 ### ■Passenger front airbag off system label
 
 The label is located at the side panel of the front passenger side instrument panel.
@@ -1965,14 +1768,9 @@ ride in front if it is unavoidable
 Cannot ride in the front
 Front passenger front airbag is: Active
 Inactive
-
-<!-- page:160 -->
-### 56
-
-uuAirbagsuSide Airbags
 Safe Driving
 
-<!-- page:161 -->
+<!-- page:167 -->
 ## Side Airbags
 
 The side airbags help to protect the upper torso and pelvis of the driver or a front
@@ -1982,7 +1780,7 @@ The side airbags are housed in the outside edge
 of the driver's and passenger's seat-backs.
 Both are marked SRS AIRBAG.
 
-<!-- page:162 -->
+<!-- page:168 -->
 ## ■Housing Locations
 
 1Side Airbags
@@ -1993,7 +1791,7 @@ If the impact is on the passenger’s side, the airbag
 may not deploy when there is no passenger in the
 front passenger seat.
 
-<!-- page:163 -->
+<!-- page:169 -->
 ## 3WARNING
 
 Leaning over the front door can result in
@@ -2003,18 +1801,13 @@ Always sit upright with their back against
 the seat-back.
 Housing
 Location
-
-<!-- page:164 -->
-### 57
-
-uuAirbagsuSide Airbags
 Safe Driving
 When the sensors detect a moderate-to-
 severe side impact, the control unit signals the
 side airbag on the impact side to immediately
 inflate.
 
-<!-- page:165 -->
+<!-- page:170 -->
 ### ■When a side airbag deploys with little or no visible damage
 
 Because the airbag systems senses sudden acceleration, a strong impact to the side
@@ -2022,7 +1815,7 @@ of the vehicle's framework can cause a side airbag to deploy. In such cases, the
 may be little or no damage, but the side impact sensors detected a severe enough
 impact to deploy the airbag.
 
-<!-- page:166 -->
+<!-- page:171 -->
 ### ■When a side airbag may not deploy, even though visible damage appears
 
 severe
@@ -2032,7 +1825,7 @@ the far front or rear of the vehicle, or when the vehicle's crushable body parts
 absorbed most of the crash energy. In either case, the side airbag would not have
 been needed nor provided protection even if it had deployed.
 
-<!-- page:167 -->
+<!-- page:172 -->
 ## ■Operation
 
 1Side Airbags
@@ -2049,14 +1842,9 @@ When
 inflated
 Side
 Airbag
-
-<!-- page:168 -->
-### 58
-
-uuAirbagsuSide Curtain Airbags
 Safe Driving
 
-<!-- page:169 -->
+<!-- page:173 -->
 ## Side Curtain Airbags
 
 The side curtain airbags to help to protect the heads of the driver and passengers in
@@ -2067,14 +1855,14 @@ of the vehicle.
 The side curtain airbag is designed to deploy
 in a moderate-to-severe side impact.
 
-<!-- page:170 -->
+<!-- page:174 -->
 ### ■When side curtain airbags deploy in a frontal collision
 
 One or both side curtain airbags may inflate in a moderate-to-severe angled frontal
 collision.
 In this case, the side curtain airbags will deploy slightly after the front airbags.
 
-<!-- page:171 -->
+<!-- page:175 -->
 ## ■Housing Locations
 
 1Side Curtain Airbags
@@ -2089,25 +1877,20 @@ hook. This could result in injuries if your side curtain
 airbag inflates.
 Side Curtain Airbag Storage
 
-<!-- page:172 -->
+<!-- page:176 -->
 ## ■Operation
 
 Deployed Side Curtain Airbag
-
-<!-- page:173 -->
-### 59
-
-uuAirbagsuAirbag System Indicators
 Continued
 Safe Driving
 
-<!-- page:174 -->
+<!-- page:177 -->
 ## Airbag System Indicators
 
 If a problem occurs in the airbag system, the SRS indicator comes on and a message
 appears on the multi-information display.
 
-<!-- page:175 -->
+<!-- page:178 -->
 ### ■When the ignition switch is turned to
 
 ON (w*1
@@ -2122,12 +1905,12 @@ may not work properly when they are needed.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
-<!-- page:176 -->
+<!-- page:179 -->
 ## ■SRS (Supplemental Restraint System) Indicator
 
 1SRS (Supplemental Restraint System) Indicator
 
-<!-- page:177 -->
+<!-- page:180 -->
 ## 3WARNING
 
 Ignoring the SRS indicator can result in
@@ -2137,7 +1920,7 @@ Have your vehicle checked by a dealer as
 soon as possible if the SRS indicator alerts
 you to a possible problem.
 
-<!-- page:178 -->
+<!-- page:181 -->
 ## 3WARNING
 
 Remove the rear-facing child restraint
@@ -2150,14 +1933,9 @@ The SRS system may have a fault which
 could cause the passenger front airbag to
 be activated, causing serious injury or
 death.
-
-<!-- page:179 -->
-### 60
-
-uuAirbagsuAirbag System Indicators
 Safe Driving
 
-<!-- page:180 -->
+<!-- page:182 -->
 ### ■When the passenger airbag off
 
 indicator comes on
@@ -2168,27 +1946,21 @@ not in use in the front passenger seat,
 manually turn the system back on. The
 indicator should go off.
 
-<!-- page:181 -->
-### 61
-
-uuAirbagsuAirbag Care
-Safe Driving
-
-<!-- page:182 -->
+<!-- page:183 -->
 ## Airbag Care
 
 You do not need to, and should not, perform any maintenance on or replace any
 airbag system components yourself. However, you should have your vehicle
 inspected by a dealer in the following situations:
 
-<!-- page:183 -->
+<!-- page:184 -->
 ### ■When the airbags have deployed
 
 If an airbag has inflated, the control unit and other related parts must be replaced.
 Similarly, once an automatic seat belt tensioner has been activated, it must be
 replaced.
 
-<!-- page:184 -->
+<!-- page:185 -->
 ### ■When the vehicle has been in a moderate-to-severe collision
 
 Even if the airbags did not inflate, have your dealer inspect the following: front seat
@@ -2202,8 +1974,9 @@ qualified personnel for handling.
 We recommend against the use of salvaged airbag
 system components, including the airbag, tensioners,
 sensors, and control unit.
+Safe Driving
 
-<!-- page:185 -->
+<!-- page:186 -->
 ## Protecting Child Passengers
 
 Each year, many children are injured or killed in vehicle crashes because they are
@@ -2226,7 +1999,7 @@ We recommend that child restraint systems meet the
 UN-ECE R44 or the regulations of the subject
 countries.
 
-<!-- page:186 -->
+<!-- page:187 -->
 ## 3WARNING
 
 Children who are unrestrained or
@@ -2239,11 +2012,6 @@ properly restrained with a seat belt, using a
 booster seat if necessary.
 European models
 Except European models
-
-<!-- page:187 -->
-### 63
-
-uuChild SafetyuProtecting Child Passengers
 Continued
 Safe Driving
 Children should sit properly restrained in a rear seat. This is because:
@@ -2255,11 +2023,6 @@ control the vehicle.
 • Statistics show that children of all sizes and
 ages are safer when they are properly
 restrained in a rear seat.
-uuChild SafetyuProtecting Child Passengers
-
-<!-- page:188 -->
-### 64
-
 Safe Driving
 • Any child who is too small to wear a seat belt must be properly restrained in an
 approved child restraint system that is properly secured to the vehicle using the
@@ -2273,18 +2036,13 @@ seriously injured in a crash.
 1Protecting Child Passengers
 Front Passenger’s Sunvisor
 
-<!-- page:189 -->
+<!-- page:188 -->
 ## 3WARNING
 
 NEVER use a rearward facing child restraint
 on a seat protected by an ACTIVE AIRBAG
 in front of it, DEATH or SERIOUS INJURY to
 the CHILD can occur.
-
-<!-- page:190 -->
-### 65
-
-uuChild SafetyuProtecting Child Passengers
 Safe Driving
 • Do not allow children to operate the doors, windows or seat adjustments.
 • Do not leave children in the vehicle unattended, especially in hot weather when
@@ -2306,34 +2064,29 @@ P. 159
 WARNING: Always take the ignition key with you
 whenever you leave the vehicle alone (with other
 occupants).
-
-<!-- page:191 -->
-### 66
-
-uuChild SafetyuSafety of Infants and Small Children
 Safe Driving
 
-<!-- page:192 -->
+<!-- page:189 -->
 ## Safety of Infants and Small Children
 
 An infant must be properly restrained in a rear-facing, reclining child restraint system
 until the infant reaches the restraint system maker's weight or height limit for the
 seat, and the infant is at least one year old.
 
-<!-- page:193 -->
+<!-- page:190 -->
 ### ■Positioning a rear-facing child restraint
 
 system
 Child restraint system must be placed and
 secured in a rear seating position.
 
-<!-- page:194 -->
+<!-- page:191 -->
 ## ■Protecting Infants
 
 1Protecting Infants
 As required by UN-ECE R94 Regulation:
 
-<!-- page:195 -->
+<!-- page:192 -->
 ## 3WARNING
 
 Placing a rear-facing child restraint system
@@ -2343,7 +2096,7 @@ inflates.
 Always place a rear-facing child restraint
 system in the back seat, not the front.
 
-<!-- page:196 -->
+<!-- page:193 -->
 ## 3WARNING
 
 NEVER use a rearward facing child restraint
@@ -2351,11 +2104,6 @@ on a seat protected by an ACTIVE AIRBAG
 in front of it, DEATH or SERIOUS INJURY to
 the CHILD can occur.
 Continued
-
-<!-- page:197 -->
-### 67
-
-uuChild SafetyuSafety of Infants and Small Children
 Safe Driving
 When properly installed, a rear-facing child restraint system may prevent the driver
 or a front passenger from moving their seat all the way back, or from locking their
@@ -2373,17 +2121,12 @@ If it is absolutely unavoidable to install a rear-facing
 child restraint system in the front passenger seat,
 manually turn off the passenger front airbag system.
 2 Passenger Front Airbag Off System P. 54
-uuChild SafetyuSafety of Infants and Small Children
-
-<!-- page:198 -->
-### 68
-
 Safe Driving
 If a child is at least one year old and within the weight range indicated by the child
 restraint system manufacturer, the child should be properly restrained in a firmly
 secured front facing child restraint system.
 
-<!-- page:199 -->
+<!-- page:194 -->
 ### ■Front facing child restraint system
 
 placement
@@ -2393,7 +2136,7 @@ position.
 Placing a front facing child restraint system in the front seat can be hazardous. A
 rear seat is the safest place for a child.
 
-<!-- page:200 -->
+<!-- page:195 -->
 ## ■Protecting Smaller Children
 
 1Protecting Smaller Children
@@ -2406,7 +2149,7 @@ restraint system for a child up to two years old, if the
 child’s height and weight are appropriate for a rear-
 facing child restraint system.
 
-<!-- page:201 -->
+<!-- page:196 -->
 ## 3WARNING
 
 Placing a front facing child restraint system
@@ -2417,11 +2160,6 @@ restraint system in front, move the vehicle
 seat as far back as possible, and properly
 restrain the child.
 Continued
-
-<!-- page:202 -->
-### 69
-
-uuChild SafetyuSafety of Infants and Small Children
 Safe Driving
 Some child restraint systems are lower anchorage compatible. Some have a rigid-
 type connector, while others have a flexible-type connector. Both are equally easy to
@@ -2438,7 +2176,7 @@ child restraint system manufacturer may advise that a seat belt be used to attac
 ISO FIX restraint system once a child reaches a specified weight. Please read the child
 restraint system owner’s manual for proper installation instructions.
 
-<!-- page:203 -->
+<!-- page:197 -->
 ### ■Important consideration when selecting a child restraint system
 
 Make sure the child restraint system meets the following three requirements:
@@ -2449,7 +2187,7 @@ restraint system with the UN-ECE R44 or the regulations of the subject countries
 Look for the approval mark on the system and the manufacturer’s statement of
 compliance on the box.
 
-<!-- page:204 -->
+<!-- page:198 -->
 ## ■Selecting a Child Restraint System
 
 1Selecting a Child Restraint System
@@ -2459,16 +2197,11 @@ Lower anchorage-compatible child restraint systems
 have been developed to simplify the installation
 process and reduce the likelihood of injuries caused
 by incorrect installation.
-
-<!-- page:205 -->
-### 70
-
-uuChild SafetyuSafety of Infants and Small Children
 Safe Driving
 Various types of child restraint systems are available. Not all types are suitable for your vehicle. Please refer to the table below to select
 which category of child restraint system can be used on each seating position.
 
-<!-- page:206 -->
+<!-- page:199 -->
 ## ■The Recommended Child Restraint Systems for EU Countries
 
 Mass group
@@ -2524,11 +2257,6 @@ UF:
 Suitable for front facing “universal” category restraints approved for use in this mass group.
 X:
 Seat position not suitable for children in this mass group.
-
-<!-- page:207 -->
-### 71
-
-uuChild SafetyuSafety of Infants and Small Children
 Continued
 Safe Driving
 A size class is specified for some child restraint systems. Make sure to check the size class as indicated on the manufacturer’s instructions,
@@ -2559,11 +2287,6 @@ X:
 Seating position not suitable for i-Size “universal” Child Restraint systems.
 Models with front seat height adjustment
 Models without front seat height adjustment
-uuChild SafetyuSafety of Infants and Small Children
-
-<!-- page:208 -->
-### 72
-
 Safe Driving
 A lower anchorage-compatible child restraint system can be installed in either of the
 two outer rear seats. A child restraint system is attached to the lower anchorages
@@ -2584,7 +2307,7 @@ system, make sure that the lower
 anchorages are not obstructed by the
 seat belt or any other object.
 
-<!-- page:209 -->
+<!-- page:200 -->
 ### System
 
 1Installing a Lower Anchorage-Compatible Child Restraint System
@@ -2599,11 +2322,6 @@ Marks
 Rigid Type
 Lower Anchorages
 Continued
-
-<!-- page:210 -->
-### 73
-
-uuChild SafetyuSafety of Infants and Small Children
 Safe Driving
 5. Open the tether anchorage cover.
 6. Route the tether strap over the seat-back.
@@ -2639,11 +2357,6 @@ Strap
 Hook
 Anchorage
 FR
-uuChild SafetyuSafety of Infants and Small Children
-
-<!-- page:211 -->
-### 74
-
 Safe Driving
 1. Make sure to lock the seat-back in the
 upright position.
@@ -2658,18 +2371,13 @@ instructions, and insert the latch plate into
 the buckle.
 u Insert the latch plate fully until it clicks.
 
-<!-- page:212 -->
+<!-- page:201 -->
 ### Belt
 
 1Installing a Child Restraint System with a Lap/Shoulder Seat Belt
 A child restraint system that is not properly secured
 will not adequately protect a child in a crash and may
 cause injury to the child or other vehicle occupants.
-
-<!-- page:213 -->
-### 75
-
-uuChild SafetyuSafety of Infants and Small Children
 Continued
 Safe Driving
 5. Push down the tab. Route the shoulder
@@ -2693,11 +2401,6 @@ should be felt.
 9. Make sure any unused seat belt that a
 child can reach is buckled.
 Tab
-
-<!-- page:214 -->
-### 76
-
-uuChild SafetyuSafety of Infants and Small Children
 Safe Driving
 If your child restraint system does not come
 with a mechanism that secures the belt, install
@@ -2716,13 +2419,6 @@ to the latch plate.
 step 8 and 9.
 Locking Clip
 Except European models
-
-![Image 1 from page 214](images/2016_Jazz_Owners_Manual/p214-1.png)
-
-<!-- page:215 -->
-### 77
-
-uuChild SafetyuSafety of Infants and Small Children
 Safe Driving
 Two tether anchorage points are provided on
 the ceiling for rear outer seating positions. A
@@ -2741,7 +2437,7 @@ anchorage.
 6. Tighten the tether strap as instructed by the
 child restraint system manufacturer.
 
-<!-- page:216 -->
+<!-- page:202 -->
 ## ■Adding Security with a Tether
 
 1Adding Security with a Tether
@@ -2761,14 +2457,9 @@ Strap
 Hook
 Anchorage
 FR
-
-<!-- page:217 -->
-### 78
-
-uuChild SafetyuSafety of Larger Children
 Safe Driving
 
-<!-- page:218 -->
+<!-- page:203 -->
 ## Safety of Larger Children
 
 The following pages give instructions on how to check proper seat belt fit, what kind
@@ -2778,7 +2469,7 @@ When a child is too big for a child restraint system, secure the child in a rear
 using the lap/shoulder seat belt. Have the child sit upright and all the way back, then
 answer the following questions.
 
-<!-- page:219 -->
+<!-- page:204 -->
 ### ■Checklist
 
 • Do the child's knees bend comfortably over
@@ -2793,12 +2484,12 @@ If you answer yes to all these questions, the child is ready to wear the lap/sho
 seat belt correctly. If you answer no to any question, the child needs to ride on a
 booster seat until the seat belt fits properly without a booster seat.
 
-<!-- page:220 -->
+<!-- page:205 -->
 ## ■Checking Seat Belt Fit
 
 1Safety of Larger Children
 
-<!-- page:221 -->
+<!-- page:206 -->
 ## 3WARNING
 
 Allowing a child age 12 or under to sit in
@@ -2810,11 +2501,6 @@ have the child sit up properly and wear the
 seat belt properly, using a booster seat if
 needed.
 Continued
-
-<!-- page:222 -->
-### 79
-
-uuChild SafetyuSafety of Larger Children
 Safe Driving
 If a lap/shoulder seat belt cannot be used
 properly, position the child in a booster seat in
@@ -2830,7 +2516,7 @@ through the guide at the shoulder of the back-
 rest and the belt does not touch and cross the
 child’s neck.
 
-<!-- page:223 -->
+<!-- page:207 -->
 ## ■Booster Seats
 
 1Booster Seats
@@ -2841,11 +2527,6 @@ There are high- and low-type booster seats. Choose a
 booster seat that allows the child to wear the seat
 belt correctly.
 Guide
-
-<!-- page:224 -->
-### 80
-
-uuChild SafetyuSafety of Larger Children
 Safe Driving
 Your vehicle has a rear seat where children can be properly restrained. If you ever
 have to carry a group of children, and a child must ride in front:
@@ -2856,21 +2537,21 @@ in this manual.
 • Check that the seat belt is properly positioned so that the child is secure in the
 seat.
 
-<!-- page:225 -->
+<!-- page:208 -->
 ### ■Monitoring child passengers
 
 We strongly recommend that you keep an eye on child passengers. Even older, more
 mature children sometimes need to be reminded to fasten their seat belts and sit up
 properly.
 
-<!-- page:226 -->
+<!-- page:209 -->
 ## Carbon Monoxide Gas
 
 The engine exhaust from this vehicle contains carbon monoxide, a colourless,
 odourless, and highly toxic gas. As long as you properly maintain your vehicle,
 carbon monoxide gas will not get into the interior.
 
-<!-- page:227 -->
+<!-- page:210 -->
 ### ■Have the exhaust system inspected for leaks whenever
 
 • The exhaust system is making an unusual noise.
@@ -2894,7 +2575,7 @@ Do not run the engine with the garage door closed.
 Even when the garage door is open, drive out of the
 garage immediately after starting the engine.
 
-<!-- page:228 -->
+<!-- page:211 -->
 ## 3WARNING
 
 Carbon monoxide gas is toxic. Breathing it
@@ -2903,8 +2584,9 @@ you.
 Avoid any enclosed areas or activities that
 expose you to carbon monoxide.
 * Not available on all models
+Safe Driving
 
-<!-- page:229 -->
+<!-- page:212 -->
 ## Label Locations
 
 These labels are in the locations shown. They warn you of potential hazards that can cause serious injury or death. Read these labels
@@ -2927,7 +2609,7 @@ System Label
 (Left-hand drive type)
 Air Conditioner Label
 
-<!-- page:230 -->
+<!-- page:213 -->
 ### This chapter describes the buttons, indicators, and gauges that are used while driving.
 
 Indicators ............................................ 84
@@ -2936,8 +2618,9 @@ Information Messages.................... 106
 Gauges and Multi-Information Display
 Gauges............................................ 121
 Multi-Information Display ................ 122
+Instrument Panel
 
-<!-- page:231 -->
+<!-- page:214 -->
 ## Indicators
 
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -2973,11 +2656,6 @@ indicator - Have your vehicle checked
 by a dealer.
 2 If the Brake System Indicator
 (Red) Comes On P. 561
-
-<!-- page:232 -->
-### 85
-
-uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3002,11 +2680,6 @@ indicator - The City-Brake Active
 system does not activate. Have your
 vehicle checked by a dealer.
 2 City-Brake Active system P. 450
-
-<!-- page:233 -->
-### 86
-
-uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -3047,11 +2720,6 @@ Comes On or Blinks P. 561
 ●Shows the self-testing condition of the
 diagnostics of the emission control
 system.
-
-<!-- page:234 -->
-### 87
-
-uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3089,11 +2757,6 @@ starts and acceleration and have your
 vehicle checked by a dealer
 immediately.
 * Not available on all models
-
-<!-- page:235 -->
-### 88
-
-uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -3132,11 +2795,6 @@ occurred in the sensor. Have your
 vehicle checked by a dealer.
 2 Seat Belt Reminder P. 39
 * Not available on all models
-
-<!-- page:236 -->
-### 89
-
-uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3185,11 +2843,6 @@ following is detected:
 ●Stays on constantly or does not
 come on at all - Have your vehicle
 checked by a dealer.
-
-<!-- page:237 -->
-### 90
-
-uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -3215,11 +2868,6 @@ deactivated.
 2 Passenger Front Airbag Off
 System P. 54
 —
-
-<!-- page:238 -->
-### 91
-
-uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3251,11 +2899,6 @@ then goes off.
 ●Comes on when you deactivate VSA.
 2 VSA OFF Button P. 441
 —
-
-<!-- page:239 -->
-### 92
-
-uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -3292,11 +2935,6 @@ your vehicle inspected by a dealer.
 —
 (White)
 (Amber)
-
-<!-- page:240 -->
-### 93
-
-uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3317,11 +2955,6 @@ comes on if any door or the tailgate is
 opened while driving.
 ●Goes off when all doors and the
 tailgate are closed.
-
-<!-- page:241 -->
-### 94
-
-uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -3364,11 +2997,6 @@ get your regular tyre repaired or
 replaced and put back on your vehicle
 as soon as you can.
 * Not available on all models
-
-<!-- page:242 -->
-### 95
-
-uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3413,11 +3041,6 @@ return to the normal screen unless the
 warning is cancelled, or the button is
 pressed.
 —
-
-<!-- page:243 -->
-### 96
-
-uuIndicatorsu
 Instrument Panel
 Indicator
 Name
@@ -3467,11 +3090,6 @@ Indicator
 —
 —
 * Not available on all models
-
-<!-- page:244 -->
-### 97
-
-uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3504,11 +3122,6 @@ problems can occur.
 —
 Models without keyless access system
 Models with keyless access system
-
-<!-- page:245 -->
-### 98
-
-uuIndicatorsu
 Instrument Panel
 *1: Left-hand drive type
 *2: Right-hand drive type
@@ -3539,11 +3152,6 @@ Indicator
 Indicator
 *2
 * Not available on all models
-
-<!-- page:246 -->
-### 99
-
-uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3599,11 +3207,6 @@ speed limiter.
 *2
 *3
 *3
-
-<!-- page:247 -->
-### 100
-
-uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -3646,11 +3249,6 @@ Models with heating and cooling system
 Manual transmission models
 (White)
 * Not available on all models
-
-<!-- page:248 -->
-### 101
-
-uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3675,11 +3273,6 @@ Idle Stop system OFF button.
 2 Auto Idle Stop System ON/OFF
 P. 405, 410
 —
-
-<!-- page:249 -->
-### 102
-
-uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -3719,11 +3312,6 @@ around the camera.
 (White)
 (Amber)
 * Not available on all models
-
-<!-- page:250 -->
-### 103
-
-uuIndicatorsu
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3764,11 +3352,6 @@ around the camera.
 2 Lane Departure Warning Camera
 P. 433
 * Not available on all models
-
-<!-- page:251 -->
-### 104
-
-uuIndicatorsu
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Indicator
@@ -3812,11 +3395,6 @@ are removed.
 on the bonnet.
 ●Stop your vehicle in a safe place and
 remove snow from the bonnet.
-
-<!-- page:252 -->
-### 105
-
-uuIndicatorsu
 Instrument Panel
 Indicator
 Name
@@ -3841,14 +3419,11 @@ with the system.
 ●The system does not activate. Have
 your vehicle checked by a dealer.
 * Not available on all models
-
-<!-- page:253 -->
-### 106
-
-uuIndicatorsuMulti-Information Display Warning and Information Messages
 Instrument Panel
 
-<!-- page:254 -->
+![Image 1 from page 214](images/2016_Jazz_Owners_Manual/p214-1.png)
+
+<!-- page:215 -->
 ## Multi-Information Display Warning and Information Messages
 
 The following messages appear only on the multi-information display. Press the
@@ -3871,11 +3446,6 @@ unlatched, or either rear door is opened and closed.
 ●Appears when the vehicle speed reaches the set speed.
 You can set two different speeds for the alarm.
 2 List of customizable options P. 132
-
-<!-- page:255 -->
-### 107
-
-uuIndicatorsuMulti-Information Display Warning and Information Messages
 Continued
 Instrument Panel
 Message
@@ -3893,11 +3463,6 @@ problem in the engine oil level sensor.
 lighting control system.
 ●Appears while driving - Manually turn the lights on,
 and have your vehicle checked by a dealer.
-
-<!-- page:256 -->
-### 108
-
-uuIndicatorsuMulti-Information Display Warning and Information Messages
 Instrument Panel
 Message
 Condition
@@ -3913,11 +3478,6 @@ collision becomes likely unavoidable.
 2 City-Brake Active system P. 450
 ●Changes the display when your vehicle is stopped by the
 City-Brake Active system. The beeper stops.
-
-<!-- page:257 -->
-### 109
-
-uuIndicatorsuMulti-Information Display Warning and Information Messages
 Continued
 Instrument Panel
 Message
@@ -3942,11 +3502,6 @@ temperature becomes significant.
 ●The engine restarts automatically in a few seconds.
 Continuously variable transmission models
 Models with climate control system
-
-<!-- page:258 -->
-### 110
-
-uuIndicatorsuMulti-Information Display Warning and Information Messages
 Instrument Panel
 Message
 Condition
@@ -3968,11 +3523,6 @@ conditions while Auto Idle Stop activates:
 ●The engine restarts automatically in a few seconds.
 ●Appears when the bonnet is opened.
 ●Close the bonnet.
-
-<!-- page:259 -->
-### 111
-
-uuIndicatorsuMulti-Information Display Warning and Information Messages
 Continued
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -3997,11 +3547,6 @@ procedure.
 the pressure to the brake pedal is not enough.
 ●Depress the brake pedal firmly.
 Continuously variable transmission models
-
-<!-- page:260 -->
-### 112
-
-uuIndicatorsuMulti-Information Display Warning and Information Messages
 Instrument Panel
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
 Message
@@ -4037,11 +3582,6 @@ next time Auto Idle Stop activates.
 Manual transmission models
 Models with climate control system
 Models with heating and cooling system
-
-<!-- page:261 -->
-### 113
-
-uuIndicatorsuMulti-Information Display Warning and Information Messages
 Continued
 Instrument Panel
 Message
@@ -4059,11 +3599,6 @@ soft cloth.
 ●If the message does not disappear after cleaning the
 lens, have your vehicle checked by a dealer.
 Models with high beam support system
-
-<!-- page:262 -->
-### 114
-
-uuIndicatorsuMulti-Information Display Warning and Information Messages
 Instrument Panel
 Message
 Condition
@@ -4087,11 +3622,6 @@ to reset the service reminder.
 2 Service Reminder System* P. 473
 Models with service reminder system
 * Not available on all models
-
-<!-- page:263 -->
-### 115
-
-uuIndicatorsuMulti-Information Display Warning and Information Messages
 Continued
 Instrument Panel
 *1: Manual transmission models
@@ -4123,11 +3653,6 @@ Stop.
 Models without keyless access system
 *1
 *2
-
-<!-- page:264 -->
-### 116
-
-uuIndicatorsuMulti-Information Display Warning and Information Messages
 Instrument Panel
 *1: Continuously variable transmission models
 *2: Manual transmission models
@@ -4158,11 +3683,6 @@ Models with keyless access system
 *1
 (White)
 (Amber)
-
-<!-- page:265 -->
-### 117
-
-uuIndicatorsuMulti-Information Display Warning and Information Messages
 Continued
 Instrument Panel
 Message
@@ -4181,11 +3701,6 @@ weak.
 start the engine or the key is not within operating range
 to start the engine. A beeper sounds six times.
 2 If the Keyless Remote Battery is Weak P. 552
-
-<!-- page:266 -->
-### 118
-
-uuIndicatorsuMulti-Information Display Warning and Information Messages
 Instrument Panel
 Message
 Condition
@@ -4203,11 +3718,6 @@ moving the shift lever to (P.
 ●Move the steering wheel left and right while pressing
 the ENGINE START/STOP button.
 Continuously variable transmission models
-
-<!-- page:267 -->
-### 119
-
-uuIndicatorsuMulti-Information Display Warning and Information Messages
 Continued
 Instrument Panel
 Message
@@ -4229,11 +3739,6 @@ lane lines.
 Models with forward collision warning
 Models with lane departure warning
 * Not available on all models
-
-<!-- page:268 -->
-### 120
-
-uuIndicatorsuMulti-Information Display Warning and Information Messages
 Instrument Panel
 Message
 Condition
@@ -4247,8 +3752,9 @@ dealer.
 ●If there is a problem with any of the sensors, the
 appropriate sensor indicator(s) comes on.
 Models with parking sensor system
+Instrument Panel
 
-<!-- page:269 -->
+<!-- page:216 -->
 ## Gauges
 
 Gauges include the speedometer, tachometer, and related indicators. They are
@@ -4265,32 +3771,27 @@ pedal operation.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
-<!-- page:270 -->
+<!-- page:217 -->
 ## ■Ambient Meter
 
 Right-hand drive type
 Left-hand drive type
-
-<!-- page:271 -->
-### 122
-
-uuGauges and Multi-Information DisplayuMulti-Information Display
 Instrument Panel
 
-<!-- page:272 -->
+<!-- page:218 -->
 ## Multi-Information Display
 
 The multi-information display shows the odometer, trip meter, outside temperature,
 fuel gauge, and other gauges.
 It also displays important messages such as warnings and other helpful information.
 
-<!-- page:273 -->
+<!-- page:219 -->
 ### ■Main displays
 
 Press the
 (information) button to change the display.
 
-<!-- page:274 -->
+<!-- page:220 -->
 ## ■Switching the Display
 
 1Switching the Display
@@ -4320,14 +3821,9 @@ Recognition
 System*
 * Not available on all models
 Continued
-
-<!-- page:275 -->
-### 123
-
-uuGauges and Multi-Information DisplayuMulti-Information Display
 Instrument Panel
 
-<!-- page:276 -->
+<!-- page:222 -->
 ### ■Lower displays
 
 Press the SEL/RESET button to change the display.
@@ -4352,17 +3848,12 @@ Trip B
 Outside
 Temperature
 Fuel Gauge
-uuGauges and Multi-Information DisplayuMulti-Information Display
-
-<!-- page:277 -->
-### 124
-
 Instrument Panel
 Shows the total number of kilometres or miles * that your vehicle has accumulated.
 Shows the total number of kilometres or miles* driven since the last reset. Trip A and
 B can be used to measure two separate trips.
 
-<!-- page:278 -->
+<!-- page:223 -->
 ### ■Resetting a trip meter
 
 To reset a trip meter, display it, then press and hold the SEL/RESET button. The trip
@@ -4374,7 +3865,7 @@ Shows the estimated distance you can travel on the remaining fuel. This distance
 estimated from the fuel economy of your previous trips.
 Shows the time elapsed since trip A or trip B was reset.
 
-<!-- page:279 -->
+<!-- page:224 -->
 ## ■Elapsed Time
 
 1Trip Meter
@@ -4389,11 +3880,6 @@ You can change when to reset the elapsed time.
 2 Customized Features P. 129
 * Not available on all models
 Continued
-
-<!-- page:280 -->
-### 125
-
-uuGauges and Multi-Information DisplayuMulti-Information Display
 Instrument Panel
 Shows the average speed in km/h or mph* since trip A or trip B was reset.
 Shows the instant fuel economy as a bar graph in l/100 km or mpg*.
@@ -4401,7 +3887,7 @@ Shows the outside temperature in Celsius.
 If the outside temperature has been below 3°C at the time you turn the ignition
 switch to ON (w*1, the outside temperature indicator blinks for 10 seconds.
 
-<!-- page:281 -->
+<!-- page:225 -->
 ### ■Adjusting the outside temperature display
 
 Adjust the temperature reading up to ±3°C if the temperature reading seems
@@ -4411,7 +3897,7 @@ Shows the rear seat belt use.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
-<!-- page:282 -->
+<!-- page:226 -->
 ## ■Rear Seat Belt Use Monitor
 
 1Average Speed
@@ -4428,11 +3914,6 @@ Use the multi-information display's customized
 features to correct the temperature.
 2 Customized Features P. 129
 * Not available on all models
-uuGauges and Multi-Information DisplayuMulti-Information Display
-
-<!-- page:283 -->
-### 126
-
 Instrument Panel
 Displays the amount of fuel left in the fuel tank.
 Shows the traffic sign recognition system.
@@ -4440,7 +3921,7 @@ Shows the traffic sign recognition system.
 Shows the service reminder system.
 2 Service Reminder System* P. 473
 
-<!-- page:284 -->
+<!-- page:227 -->
 ## ■Service Reminder System*
 
 1Fuel Gauge
@@ -4452,15 +3933,10 @@ The actual amount of remaining fuel may differ from
 the fuel gauge reading.
 * Not available on all models
 Continued
-
-<!-- page:285 -->
-### 127
-
-uuGauges and Multi-Information DisplayuMulti-Information Display
 Instrument Panel
 Sets the speed alarm on and changes the speed alarm setting.
 
-<!-- page:286 -->
+<!-- page:228 -->
 ### ■To set the speed alarm
 
 1. Press the
@@ -4481,7 +3957,7 @@ u If the speed alarm is
 to
 (off).
 
-<!-- page:287 -->
+<!-- page:229 -->
 ## ■Speed Alarm Setting
 
 1Speed Alarm Setting
@@ -4491,9 +3967,9 @@ The default settings for
 (off).
 You can also return to the normal screen by selecting
 (exit).
-uuGauges and Multi-Information DisplayuMulti-Information Display
+Instrument Panel
 
-<!-- page:288 -->
+<!-- page:230 -->
 ### ■To change the speed setting
 
 1. Press the
@@ -4515,15 +3991,10 @@ u You can set the speed setting over 5 km/h
 1Speed Alarm Setting
 You cannot change the speed setting while driving.
 Continued
-
-<!-- page:289 -->
-### 129
-
-uuGauges and Multi-Information DisplayuMulti-Information Display
 Instrument Panel
 Use the multi-information display to customize certain features.
 
-<!-- page:290 -->
+<!-- page:231 -->
 ### ■How to customize
 
 Select the
@@ -4535,7 +4006,7 @@ transmission). Press the SEL/RESET button to enter the customizing mode.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
-<!-- page:291 -->
+<!-- page:232 -->
 ## ■Customized Features
 
 1Customized Features
@@ -4555,14 +4026,9 @@ Multi-Information Display:
 Goes to Customize Settings.
 SEL/RESET button:
 Enters the selected item.
-
-<!-- page:292 -->
-### 130
-
-uuGauges and Multi-Information DisplayuMulti-Information Display
 Instrument Panel
 
-<!-- page:293 -->
+<!-- page:233 -->
 ### ■Customization flow
 
 Press the
@@ -4579,58 +4045,35 @@ Distance*
 Driver Assist System Setup
 City-Brake Active System
 SEL/RESET
-4
-4
-4
-4
-4
-4
 Clock Display
 * Not available on all models
-
-<!-- page:294 -->
-### 131
-
-uuGauges and Multi-Information DisplayuMulti-Information Display
 Continued
 Instrument Panel
-4
 Default All
 (Exit)
 Maintenance Info.*
 Lighting Setup
 Headlight Auto Off Timer
 SEL/RESET
-4
-4
-4
 SEL/RESET
-4
 Meter Setup
 Language
 “Trip A” Reset Timing
 Fuel Efficiency Backlight Colour
 “Trip B” Reset Timing
 SEL/RESET
-4
 Warning Message
 Adjust Outside Temp. Display
 Auto Idle Stop Display
 Speed Display Unit*
 Distance Display Units*
-4
 Fuel Efficiency Backlight
 Maintenance Reset
 SEL/RESET
 * Not available on all models
-
-<!-- page:295 -->
-### 132
-
-uuGauges and Multi-Information DisplayuMulti-Information Display
 Instrument Panel
 
-<!-- page:296 -->
+<!-- page:234 -->
 ### ■List of customizable options
 
 *1: Default Setting
@@ -4667,11 +4110,6 @@ Selects whether the traffic sign small icons come on.
 Small Icon ON*1/Small Icon
 OFF
 * Not available on all models
-
-<!-- page:297 -->
-### 133
-
-uuGauges and Multi-Information DisplayuMulti-Information Display
 Continued
 Instrument Panel
 *1:  Default Setting
@@ -4716,11 +4154,6 @@ Red/Amber/Yellow/White*1
 Fuel Efficiency Backlight
 Turns the ambient meter feature on and off.
 On*1/Off
-
-<!-- page:298 -->
-### 134
-
-uuGauges and Multi-Information DisplayuMulti-Information Display
 Instrument Panel
 *1:  Default Setting
 Setup Group
@@ -4764,15 +4197,10 @@ Cancels/Resets all the customized settings as
 default.
 Cancel/Ok
 * Not available on all models
-
-<!-- page:299 -->
-### 135
-
-uuGauges and Multi-Information DisplayuMulti-Information Display
 Continued
 Instrument Panel
 
-<!-- page:300 -->
+<!-- page:235 -->
 ### ■Example of customization settings
 
 The steps for changing the “Trip A” Reset Timing setting to When Refueled are
@@ -4785,11 +4213,6 @@ then press the SEL/RESET button.
 button until Meter
 Setup appears on the display.
 3. Press the SEL/RESET button.
-
-<!-- page:301 -->
-### 136
-
-uuGauges and Multi-Information DisplayuMulti-Information Display
 Instrument Panel
 4. Press the
 button until “Trip A”
@@ -4816,7 +4239,7 @@ RESET button.
 7. Repeat Step 6 until you return to the
 normal screen.
 
-<!-- page:302 -->
+<!-- page:236 -->
 ### This chapter explains how to operate the various controls necessary for driving.
 
 Clock....................................................... 138
@@ -4865,13 +4288,14 @@ Climate Control System*
 Using Automatic Climate Control ..............208
 Automatic Climate Control Sensors ...........212
 * Not available on all models
+Controls
 
-<!-- page:303 -->
+<!-- page:237 -->
 ## Adjusting the Clock
 
 You can adjust the time in the clock display with the ignition switch in ON (w*1.
 
-<!-- page:304 -->
+<!-- page:238 -->
 ### ■Using the settings menu on the audio/information screen
 
 1. Select the
@@ -4886,7 +4310,7 @@ Adjustment.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
-<!-- page:305 -->
+<!-- page:239 -->
 ## ■Adjusting the Time
 
 1Adjusting the Clock
@@ -4906,16 +4330,9 @@ Models with display audio system
 +20(
 0(18
 %$&.
-3
-4
-
-<!-- page:306 -->
-### 139
-
-uuClockuAdjusting the Clock
 Controls
 
-<!-- page:307 -->
+<!-- page:240 -->
 ### ■Using the MENU/CLOCK button
 
 1. Press and hold the MENU/CLOCK button.
@@ -4931,7 +4348,7 @@ and select
 Set, then press
 .
 
-<!-- page:308 -->
+<!-- page:241 -->
 ### ■Using the settings menu on the audio/information screen
 
 1. Select the
@@ -4962,7 +4379,7 @@ clock display.
 Models with colour audio system
 Models with colour audio system
 
-<!-- page:309 -->
+<!-- page:242 -->
 ## ■Setting the Time Zone
 
 Models with display audio system
@@ -4970,8 +4387,9 @@ Models with display audio system
 +20(
 0(18
 %$&.
+Controls
 
-<!-- page:310 -->
+<!-- page:243 -->
 ## Key Types and Functions
 
 This vehicle comes with the following keys:
@@ -4981,7 +4399,7 @@ You can also use the remote transmitter or
 keyless access system* to lock and unlock all
 the doors and tailgate.
 
-<!-- page:311 -->
+<!-- page:244 -->
 ## ■Keys
 
 1Key Types and Functions
@@ -5007,14 +4425,9 @@ Keyless Remote*
 Retractable Key*
 * Not available on all models
 Continued
-
-<!-- page:312 -->
-### 141
-
-uuLocking and Unlocking the DoorsuKey Types and Functions
 Controls
 
-<!-- page:313 -->
+<!-- page:245 -->
 ### ■Keyless remote*
 
 The built-in key can be used to lock/unlock the
@@ -5026,7 +4439,7 @@ sliding the release knob. To reinstall the built-
 in key, push the built-in key into the keyless
 remote until it clicks.
 
-<!-- page:314 -->
+<!-- page:246 -->
 ### ■Retractable keys*
 
 The key folds up inside the remote
@@ -5048,16 +4461,11 @@ retracts.
 Release Button
 Push
 * Not available on all models
-uuLocking and Unlocking the DoorsuKey Types and Functions
-
-<!-- page:315 -->
-### 142
-
 Controls
 Contains a number that you will need if you
 purchase a replacement key.
 
-<!-- page:316 -->
+<!-- page:247 -->
 ## ■Key Number Tag
 
 1Key Number Tag
@@ -5067,14 +4475,9 @@ If you wish to purchase an additional key, contact a
 dealer.
 If you lose your key and you cannot start the engine,
 contact a dealer.
-
-<!-- page:317 -->
-### 143
-
-uuLocking and Unlocking the DoorsuLow Keyless Remote Signal Strength*
 Controls
 
-<!-- page:318 -->
+<!-- page:248 -->
 ## Low Keyless Remote Signal Strength*
 
 The vehicle transmits radio waves to locate the keyless remote when locking/
@@ -5095,14 +4498,9 @@ remote is receiving strong radio waves. Avoid placing
 it near electrical appliances such as televisions and
 personal computers.
 * Not available on all models
-
-<!-- page:319 -->
-### 144
-
-uuLocking and Unlocking the DoorsuLocking/Unlocking the Doors from the Outside
 Controls
 
-<!-- page:320 -->
+<!-- page:249 -->
 ## Locking/Unlocking the Doors from the Outside
 
 When you carry the keyless remote, you can
@@ -5114,7 +4512,7 @@ open the tailgate within about 80 cm (32
 inches) radius from the tailgate release
 button.
 
-<!-- page:321 -->
+<!-- page:250 -->
 ### ■Locking the doors and tailgate
 
 Press the door lock button on the front door
@@ -5123,7 +4521,7 @@ u Some exterior lights flash three times; all
 the doors and tailgate lock; and the
 security system sets.
 
-<!-- page:322 -->
+<!-- page:251 -->
 ## ■Using the Keyless Access System*
 
 1Using the Keyless Access System*
@@ -5160,14 +4558,9 @@ Door Lock Button
 Lock Button
 * Not available on all models
 Continued
-
-<!-- page:323 -->
-### 145
-
-uuLocking and Unlocking the DoorsuLocking/Unlocking the Doors from the Outside
 Controls
 
-<!-- page:324 -->
+<!-- page:252 -->
 ### ■Unlocking the doors and the tailgate
 
 Grab the front door handle:
@@ -5185,9 +4578,9 @@ If you do not open a door or the tailgate within 30
 seconds of unlocking the vehicle, the doors and
 tailgate will automatically relock.
 * Not available on all models
-uuLocking and Unlocking the DoorsuLocking/Unlocking the Doors from the Outside
+Controls
 
-<!-- page:325 -->
+<!-- page:253 -->
 ### ■Locking the doors
 
 Press the lock button.
@@ -5195,7 +4588,7 @@ u Some exterior lights flash three times, all
 the doors and tailgate lock, and the
 security system* sets.
 
-<!-- page:326 -->
+<!-- page:254 -->
 ## ■Using the Remote Transmitter
 
 1Using the Remote Transmitter
@@ -5223,14 +4616,9 @@ Unlock
 Button
 * Not available on all models
 Continued
-
-<!-- page:327 -->
-### 147
-
-uuLocking and Unlocking the DoorsuLocking/Unlocking the Doors from the Outside
 Controls
 
-<!-- page:328 -->
+<!-- page:255 -->
 ### ■Unlocking the doors
 
 Press the unlock button.
@@ -5255,15 +4643,10 @@ button, the battery is dead.
 Models without keyless access system
 Models with keyless access system
 All models
-uuLocking and Unlocking the DoorsuLocking/Unlocking the Doors from the Outside
-
-<!-- page:329 -->
-### 148
-
 Controls
 Fully insert the key and turn it.
 
-<!-- page:330 -->
+<!-- page:256 -->
 ## ■Locking/Unlocking the Doors Using a Key
 
 1Locking/Unlocking the Doors Using a Key
@@ -5284,14 +4667,9 @@ Unlock *
 Lock
 Unlock*
 * Not available on all models
-
-<!-- page:331 -->
-### 149
-
-uuLocking and Unlocking the DoorsuLocking/Unlocking the Doors from the Outside
 Controls
 
-<!-- page:332 -->
+<!-- page:257 -->
 ### ■Locking the driver's door
 
 Push the lock tab forward a or push the
@@ -5299,19 +4677,19 @@ master door lock switch in the lock direction
 b, then pull and hold the outside door handle
 c. Close the door, then release the handle.
 
-<!-- page:333 -->
+<!-- page:258 -->
 ### ■Locking the passengers’ doors
 
 Push the lock tab forward and close the door.
 
-<!-- page:334 -->
+<!-- page:259 -->
 ### ■Lockout prevention system
 
 The doors and the tailgate cannot be locked when the key is in the ignition switch.
 The doors and the tailgate cannot be locked when the keyless remote is inside the
 vehicle.
 
-<!-- page:335 -->
+<!-- page:260 -->
 ## ■Locking a Door Without Using a Key
 
 1Locking a Door Without Using a Key
@@ -5322,24 +4700,19 @@ locking the door to prevent it from being locked in
 the vehicle.
 Models without keyless access system
 Models with keyless access system
-
-<!-- page:336 -->
-### 150
-
-uuLocking and Unlocking the DoorsuLocking/Unlocking the Doors from the Inside
 Controls
 
-<!-- page:337 -->
+<!-- page:261 -->
 ### ■Locking a door
 
 Push the lock tab forward.
 
-<!-- page:338 -->
+<!-- page:263 -->
 ### ■Unlocking a door
 
 Pull the lock tab rearward.
 
-<!-- page:339 -->
+<!-- page:264 -->
 ## ■Using the Lock Tab
 
 1Using the Lock Tab
@@ -5349,11 +4722,6 @@ lock/unlock at the same time.
 To Unlock
 Lock Tab
 To Lock
-
-<!-- page:340 -->
-### 151
-
-uuLocking and Unlocking the DoorsuLocking/Unlocking the Doors from the Inside
 Controls
 Pull the front door inner handle.
 u The door unlocks and opens in one
@@ -5363,7 +4731,7 @@ the inner handle unlocks all the other doors.
 Press the master door lock switch in as shown
 to lock or unlock all doors and the tailgate.
 
-<!-- page:341 -->
+<!-- page:265 -->
 ## ■Unlocking Using the Front Door Inner Handle
 
 1Unlocking Using the Front Door Inner Handle
@@ -5378,7 +4746,7 @@ childproof door locks are provided.
 2 Childproof Door Locks P. 152
 Inner Handle
 
-<!-- page:342 -->
+<!-- page:266 -->
 ## ■Using the Master Door Lock Switch
 
 1Using the Master Door Lock Switch
@@ -5389,14 +4757,9 @@ To Unlock
 Master Door
 Lock Switch
 To Lock
-
-<!-- page:343 -->
-### 152
-
-uuLocking and Unlocking the DoorsuChildproof Door Locks
 Controls
 
-<!-- page:344 -->
+<!-- page:267 -->
 ## Childproof Door Locks
 
 The childproof door locks prevent the rear doors from being opened from the inside
@@ -5404,12 +4767,12 @@ regardless of the position of the lock tab.
 Slide the lever in the rear door to the lock
 position, and close the door.
 
-<!-- page:345 -->
+<!-- page:268 -->
 ### ■When opening the door
 
 Open the door using the outside door handle.
 
-<!-- page:346 -->
+<!-- page:269 -->
 ## ■Setting the Childproof Door Locks
 
 1Childproof Door Locks
@@ -5420,14 +4783,15 @@ hand out of the window, and pull the outside door
 handle.
 Unlock
 Lock
+Controls
 
-<!-- page:347 -->
+<!-- page:270 -->
 ## Precautions for Opening/Closing the Tailgate
 
 Always make sure individuals and objects are clear of the tailgate before opening or
 closing it.
 
-<!-- page:348 -->
+<!-- page:271 -->
 ### ■Opening the tailgate
 
 • Open the tailgate all the way.
@@ -5435,7 +4799,7 @@ u If it is not fully opened, the tailgate may come down accidentally by its own
 weight.
 • Be careful when it is windy. The wind may cause the tailgate to close.
 
-<!-- page:349 -->
+<!-- page:272 -->
 ### ■Closing the tailgate
 
 Keep the tailgate closed while driving to:
@@ -5452,14 +4816,9 @@ in front of the exhaust pipe. You may get burned.
 Do not allow any passenger in the luggage space.
 They may get hurt during hard braking, a sudden
 acceleration, or a crash.
-
-<!-- page:350 -->
-### 154
-
-uuOpening and Closing the TailgateuUsing the Tailgate Outer Handle/Release Button
 Controls
 
-<!-- page:351 -->
+<!-- page:273 -->
 ## Using the Tailgate Outer Handle/Release Button
 
 When all the doors are unlocked, the tailgate
@@ -5486,11 +4845,6 @@ Tailgate
 Outer
 Handle
 Models without keyless access system
-
-<!-- page:352 -->
-### 155
-
-uuOpening and Closing the TailgateuUsing the Tailgate Outer Handle/Release Button
 Controls
 To close the tailgate, grab the inner handle,
 pull the tailgate down, and push it closed
@@ -5498,8 +4852,9 @@ from outside.
 Inner
 Handle
 All models
+Controls
 
-<!-- page:353 -->
+<!-- page:274 -->
 ## Immobilizer System
 
 The immobilizer system prevents a key that has not been pre-registered from
@@ -5513,18 +4868,18 @@ ENGINE START/STOP button.
 • Do not bring a key from another vehicle's immobilizer system near the ignition
 switch.
 
-<!-- page:354 -->
+<!-- page:275 -->
 ## Security System Alarm*
 
 The security system alarm activates when the doors, tailgate, or bonnet are opened
 without the remote transmitter or keyless access system.
 
-<!-- page:355 -->
+<!-- page:276 -->
 ### ■When the security system alarm activates
 
 The horn sounds intermittently and the turn signal lights flash.
 
-<!-- page:356 -->
+<!-- page:277 -->
 ### ■To deactivate the security system alarm
 
 Unlock the vehicle using the remote transmitter or keyless access system, or turn the
@@ -5551,14 +4906,9 @@ system resets. If the cause of the alarm continues,
 alarming will repeat several times at about 5 second
 intervals.
 * Not available on all models
-
-<!-- page:357 -->
-### 157
-
-uuSecurity SystemuSecurity System Alarm*
 Controls
 
-<!-- page:358 -->
+<!-- page:278 -->
 ### ■Setting the security system alarm
 
 The security system alarm automatically sets when the following conditions have
@@ -5569,13 +4919,13 @@ been met:
 transmitter, or keyless access system.
 • The key has been removed from the ignition switch.
 
-<!-- page:359 -->
+<!-- page:279 -->
 ### ■When the security system alarm sets
 
 The security system alarm indicator in the instrument panel blinks. When the
 blinking interval changes after about 15 seconds, the security system alarm is set.
 
-<!-- page:360 -->
+<!-- page:280 -->
 ### ■To cancel the security system alarm
 
 The security system alarm is cancelled when the vehicle is unlocked using the remote
@@ -5600,19 +4950,14 @@ Do not unlock the door using the key. The security
 system alarm goes off.
 Models without keyless access system
 * Not available on all models
-
-<!-- page:361 -->
-### 158
-
-uuSecurity SystemuSuper Locking*
 Controls
 
-<!-- page:362 -->
+<!-- page:281 -->
 ## Super Locking*
 
 The super locking function disables the lock tabs on all doors.
 
-<!-- page:363 -->
+<!-- page:282 -->
 ### ■To activate the super locking function
 
 • Turn the key in the driver’s door towards the vehicle front twice within five
@@ -5621,7 +4966,7 @@ seconds.
 • Press the door lock button on the door handle or the tailgate twice within five
 seconds.
 
-<!-- page:364 -->
+<!-- page:283 -->
 ### ■To cancel the super locking function
 
 Unlock the driver’s door with the remote transmitter or keyless access system.
@@ -5629,7 +4974,7 @@ Unlock the driver’s door with the remote transmitter or keyless access system.
 Do not unlock the door using the key. The security
 system alarm goes off.
 
-<!-- page:365 -->
+<!-- page:284 -->
 ## 3WARNING
 
 No one must be inside the vehicle with the
@@ -5640,8 +4985,10 @@ Make sure there is no one inside the vehicle
 before setting the super locking.
 Models with keyless access system
 * Not available on all models
+Continued
+Controls
 
-<!-- page:366 -->
+<!-- page:285 -->
 ## Opening/Closing the Power Windows
 
 The power windows can be opened and closed when the ignition switch is in ON
@@ -5654,7 +5001,7 @@ When the power window lock button is pushed in, the indicator comes on and you
 can only operate the driver's window. Turn the power window lock button on when
 children are in the vehicle.
 
-<!-- page:367 -->
+<!-- page:286 -->
 ### ■Automatic operation
 
 To open: Push the switch down firmly.
@@ -5663,7 +5010,7 @@ The window opens or closes completely. To
 stop the window at any time, push or pull the
 switch briefly.
 
-<!-- page:368 -->
+<!-- page:287 -->
 ### ■Manual operation
 
 To open: Push the switch down lightly, and
@@ -5673,7 +5020,7 @@ until the desired position is reached.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
-<!-- page:369 -->
+<!-- page:288 -->
 ## ■Opening/Closing Windows with Auto-Open/Close Function
 
 1Opening/Closing the Power Windows
@@ -5692,7 +5039,7 @@ when you continuously pull up the switch.
 The auto reverse function stops sensing when the
 window is almost closed to ensure that it fully closes.
 
-<!-- page:370 -->
+<!-- page:289 -->
 ## 3WARNING
 
 Closing a power window on someone's
@@ -5711,18 +5058,13 @@ Front Passenger’s
 Window Switch
 (Auto Function *)
 * Not available on all models
-
-<!-- page:371 -->
-### 160
-
-uuOpening and Closing the WindowsuOpening/Closing the Power Windows
 Controls
 To open: Push the switch down lightly, and
 hold it until the desired position is reached.
 To close: Pull the switch up lightly, and hold it
 until the desired position is reached.
 
-<!-- page:372 -->
+<!-- page:290 -->
 ## Ignition Switch
 
 Models without keyless access system
@@ -5739,7 +5081,7 @@ If the key won’t turn from LOCK (0 to ACCESSORY
 and right. The steering wheel will unlock, allowing
 the key to turn.
 
-<!-- page:373 -->
+<!-- page:291 -->
 ## 3WARNING
 
 Removing the key from the ignition switch
@@ -5758,14 +5100,9 @@ other accessories in this position.
 (e START: This position is for starting the engine.
 The switch returns to ON (w when you let go of
 the key.
-
-<!-- page:374 -->
-### 162
-
-uuOperating the Switches Around the Steering WheeluENGINE START/STOP Button
 Controls
 
-<!-- page:375 -->
+<!-- page:292 -->
 ## ■Changing the Power Mode
 
 Models with keyless access system
@@ -5812,11 +5149,6 @@ Indicator
 Continuously Variable Transmission
 Manual Transmission
 Continued
-
-<!-- page:376 -->
-### 163
-
-uuOperating the Switches Around the Steering WheeluENGINE START/STOP Button
 Controls
 If you leave the vehicle for 30 to 60 minutes with the shift lever in (P*1 and the
 power mode in ACCESSORY, the vehicle automatically goes into the mode similar to
@@ -5829,9 +5161,7 @@ Press the ENGINE START/STOP button to switch the mode to VEHICLE OFF (LOCK).
 2 Changing the Power Mode P. 162
 *1: Continuously variable transmission models
 
-![Image 1 from page 376](images/2016_Jazz_Owners_Manual/p376-1.png)
-
-<!-- page:377 -->
+<!-- page:293 -->
 ## ■Automatic Power Off
 
 1ENGINE START/STOP Button
@@ -5842,11 +5172,6 @@ OFF to ACCESSORY, press the ENGINE START/STOP
 button while moving the steering wheel left and
 right. The steering wheel will unlock, allowing the
 mode to change.
-uuOperating the Switches Around the Steering WheeluENGINE START/STOP Button
-
-<!-- page:378 -->
-### 164
-
 Controls
 If you open the driver’s door when the power mode is set to ACCESSORY, a warning
 buzzer sounds.
@@ -5857,7 +5182,7 @@ buzzer continues even after the remote is put
 back inside, place it to be within its
 operational range.
 
-<!-- page:379 -->
+<!-- page:294 -->
 ### ■When the power mode is in ON
 
 If the keyless remote is taken out of the
@@ -5867,7 +5192,7 @@ outside the vehicle. A warning symbol on the
 multi-information display notifies the driver
 inside that the remote is out.
 
-<!-- page:380 -->
+<!-- page:296 -->
 ### ■When the power mode is in
 
 ACCESSORY
@@ -5876,7 +5201,7 @@ vehicle, and all the doors are closed, a
 warning buzzer sounds from outside the
 vehicle.
 
-<!-- page:381 -->
+<!-- page:297 -->
 ## ■Keyless Remote Reminder
 
 1Keyless Remote Reminder
@@ -5898,14 +5223,9 @@ off. Under some other conditions that can prevent
 the vehicle from locating the remote, the warning
 buzzer may also go off even if the remote is within
 the system’s operational range.
-
-<!-- page:382 -->
-### 165
-
-uuOperating the Switches Around the Steering WheeluIgnition Switch and Power Mode Comparison
 Controls
 
-<!-- page:383 -->
+<!-- page:298 -->
 ## Ignition Switch and Power Mode Comparison
 
 Ignition Switch
@@ -5976,20 +5296,15 @@ Indicator-Off
 returns to ON after the
 engine starts.
 Indicator is: On        Off
-
-<!-- page:384 -->
-### 166
-
-uuOperating the Switches Around the Steering WheeluTurn Signals
 Controls
 
-<!-- page:385 -->
+<!-- page:299 -->
 ## Turn Signals
 
 The turn signals can be used when the ignition
 switch is in ON (w*1.
 
-<!-- page:386 -->
+<!-- page:300 -->
 ### ■One-push turn signal
 
 When you lightly push up or down and release
@@ -6001,40 +5316,35 @@ lane change.
 switch.
 Right Turn
 Left Turn
-
-<!-- page:387 -->
-### 167
-
-uuOperating the Switches Around the Steering WheeluLight Switches
 Continued
 Controls
 
-<!-- page:388 -->
+<!-- page:301 -->
 ## Light Switches
 
 Rotating the light switch turns the lights on
 and off, regardless of the position of the
 ignition switch*1.
 
-<!-- page:389 -->
+<!-- page:302 -->
 ### ■High beams
 
 Push the lever forward until you hear a click.
 
-<!-- page:390 -->
+<!-- page:303 -->
 ### ■Low beams
 
 When in high beams, pull the lever back to
 return to low beams.
 
-<!-- page:391 -->
+<!-- page:304 -->
 ### ■Flashing the high beams
 
 Pull the lever back, and release it.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
-<!-- page:392 -->
+<!-- page:305 -->
 ## ■Manual Operation
 
 1Light Switches
@@ -6057,11 +5367,6 @@ Turns on position, tail, and rear
 licence plate lights
 Turns on headlights, position,
 tail, and rear licence plate lights
-uuOperating the Switches Around the Steering WheeluLight Switches
-
-<!-- page:393 -->
-### 168
-
 Controls
 Automatic lighting control can be used when
 the ignition switch is in ON (w*1.
@@ -6083,7 +5388,7 @@ driver’s door, you will hear a lights on reminder chime.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
-<!-- page:394 -->
+<!-- page:306 -->
 ## ■Automatic Lighting Control
 
 1Automatic Lighting Control
@@ -6101,31 +5406,26 @@ Models without automatic
 intermittent wipers
 Sensor
 
-<!-- page:395 -->
+<!-- page:307 -->
 ## ■Automatic Lighting Off Feature
 
 1Automatic Lighting Off Feature
 You can change the headlight auto off timer setting.
 2 Customized Features P. 129
-
-<!-- page:396 -->
-### 169
-
-uuOperating the Switches Around the Steering WheeluFog Lights
 Continued
 Controls
 
-<!-- page:397 -->
+<!-- page:308 -->
 ### ■Front fog lights*
 
 Can be used when the position lights or the headlights are on.
 
-<!-- page:398 -->
+<!-- page:309 -->
 ### ■Rear fog light
 
 Can be used when the headlights or the front fog lights are on.
 
-<!-- page:399 -->
+<!-- page:313 -->
 ### ■To turn the front fog lights on
 
 Rotate the switch up from the OFF position to
@@ -6133,7 +5433,7 @@ the
 position. The
 indicator comes on.
 
-<!-- page:400 -->
+<!-- page:317 -->
 ### ■To turn the front and rear fog lights on
 
 Rotate the switch one position up from the
@@ -6141,27 +5441,22 @@ position. The
 and
 indicator comes on.
 
-<!-- page:401 -->
+<!-- page:318 -->
 ### ■To turn the rear fog light on
 
 Rotate the switch down from the OFF
 position. The
 indicator comes on.
 
-<!-- page:402 -->
+<!-- page:323 -->
 ## ■Front and Rear Fog Lights Switch*
 
 Front and Rear
 Fog Lights Switch
 * Not available on all models
-
-<!-- page:403 -->
-### 170
-
-uuOperating the Switches Around the Steering WheeluFog Lights
 Controls
 
-<!-- page:404 -->
+<!-- page:333 -->
 ### ■To turn the rear fog light on
 
 Rotate the switch to
@@ -6169,19 +5464,14 @@ Rotate the switch to
 indicator
 comes on.
 
-<!-- page:405 -->
+<!-- page:334 -->
 ## ■Rear Fog Lights*
 
 Rear Fog Light Switch
 * Not available on all models
-
-<!-- page:406 -->
-### 171
-
-uuOperating the Switches Around the Steering WheeluHeadlight Adjuster
 Controls
 
-<!-- page:407 -->
+<!-- page:336 -->
 ## Headlight Adjuster
 
 You can adjust the vertical angle of the low
@@ -6190,7 +5480,7 @@ ON (w*1.
 The larger dial number indicates the lower
 angle.
 
-<!-- page:408 -->
+<!-- page:337 -->
 ### ■To select the adjusting dial position
 
 Refer to the below table for the appropriate dial position for your vehicle's riding
@@ -6204,27 +5494,18 @@ distribution.
 Condition
 Dial position
 A driver
-0
 A driver and a front passenger
 Five persons in the front and rear seats
-1
 Five persons in the front and rear seats and luggage in
 the luggage area, within the limit of maximum
 permissible axle weight and maximum permissible
 vehicle weight
-2
 A driver and luggage in the luggage area, within the
 limits of maximum permissible axle weight and
 maximum permissible vehicle weight
-3
-
-<!-- page:409 -->
-### 172
-
-uuOperating the Switches Around the Steering WheeluHigh Beam Support System*
 Controls
 
-<!-- page:410 -->
+<!-- page:341 -->
 ## High Beam Support System*
 
 Uses the camera attached, monitors the space ahead of your vehicle, and
@@ -6256,12 +5537,12 @@ time when the headlight switch is in AUTO, consult a
 dealer.
 The system operates when:
 
-<!-- page:411 -->
+<!-- page:342 -->
 ### ■The system recognises that you are driving at
 
 night and the low beam headlights come on.
 
-<!-- page:412 -->
+<!-- page:344 -->
 ### ■The vehicle speed is above 40 km/h (25 mph).
 
 The system changes between high and low beam headlights when:
@@ -6275,11 +5556,6 @@ brightness of the lights and the weather.
 19-degree
 * Not available on all models
 Continued
-
-<!-- page:413 -->
-### 173
-
-uuOperating the Switches Around the Steering WheeluHigh Beam Support System*
 Controls
 Turn the headlight switch in AUTO and pull
 the headlight lever to low beam.
@@ -6287,7 +5563,7 @@ the headlight lever to low beam.
 The high beam support system indicator
 comes on.
 
-<!-- page:414 -->
+<!-- page:345 -->
 ### ■Temporary cancellation
 
 The high beam support system operation is temporarily cancelled while:
@@ -6296,7 +5572,7 @@ The high beam support system operation is temporarily cancelled while:
 • The windscreen wipers run at high speed for more than a few seconds.
 The system operation resumes once the condition that caused it to cancel improves.
 
-<!-- page:415 -->
+<!-- page:346 -->
 ## ■To Operate the System
 
 1To Operate the System
@@ -6329,9 +5605,9 @@ temperature, which cools down the area around
 the camera.
 Headlight Switch
 * Not available on all models
-uuOperating the Switches Around the Steering WheeluDaytime Running Lights
+Controls
 
-<!-- page:416 -->
+<!-- page:347 -->
 ### ■To manually cancel the system temporarily
 
 You can cancel the operation when you manually change the headlights to high
@@ -6340,7 +5616,7 @@ you to flash high beams. The high beam support system indicator goes off.
 If you want the high beam support system operation to resume at once, pull and
 hold the lever towards you for a few seconds.
 
-<!-- page:417 -->
+<!-- page:348 -->
 ## Daytime Running Lights
 
 The daytime running lights come on when the following conditions have been met:
@@ -6356,34 +5632,29 @@ blocking the windscreen, then start driving again. If
 the message remains on even after driving for a while
 with the clean windscreen, have your vehicle checked
 by a dealer.
-
-<!-- page:418 -->
-### 175
-
-uuOperating the Switches Around the Steering WheeluWipers and Washers
 Continued
 Controls
 
-<!-- page:419 -->
+<!-- page:349 -->
 ## Wipers and Washers
 
 The windscreen wipers and washers can be
 used when the ignition switch is in ON (w*1.
 
-<!-- page:420 -->
+<!-- page:350 -->
 ### ■MIST
 
 The wipers run at high speed until you release
 the lever.
 
-<!-- page:421 -->
+<!-- page:351 -->
 ### ■Wiper switch (OFF, AUTO, LO, HI)
 
 Change the wiper switch setting according to
 the amount of rain.
 2 Automatic Intermittent Wipers P. 176
 
-<!-- page:422 -->
+<!-- page:352 -->
 ### ■Washer
 
 Sprays while you pull the lever toward you.
@@ -6427,11 +5698,6 @@ Pull to use
 washer.
 Intermittent Time
 Adjustment Ring
-uuOperating the Switches Around the Steering WheeluWipers and Washers
-
-<!-- page:423 -->
-### 176
-
 Controls
 When you push the lever down to AUTO, the
 windscreen wipers sweep once, and go into
@@ -6441,7 +5707,7 @@ speed, or at high speed and stops in
 accordance with the amount of rainfall the
 rainfall sensor detects.
 
-<!-- page:424 -->
+<!-- page:353 -->
 ### ■AUTO sensitivity adjustment
 
 When in AUTO, you can also adjust the
@@ -6449,7 +5715,7 @@ rainfall sensor sensitivity using the intermittent
 time adjustment ring.
 Sensor sensitivity
 
-<!-- page:425 -->
+<!-- page:354 -->
 ## ■Automatic Intermittent Wipers
 
 1Automatic Intermittent Wipers
@@ -6467,22 +5733,17 @@ Low sensitivity:
 Lower speed, fewer sweeps
 High sensitivity:
 Higher speed, more sweeps
-
-<!-- page:426 -->
-### 177
-
-uuOperating the Switches Around the Steering WheeluWipers and Washers
 Controls
 The rear wiper and washer can be used when
 the ignition switch is in ON (w*1.
 
-<!-- page:427 -->
+<!-- page:355 -->
 ### ■Wiper switch (OFF, INT, ON)
 
 The wiper operates intermittently after
 completing a few sweeps.
 
-<!-- page:428 -->
+<!-- page:356 -->
 ### ■Washer (
 
 )
@@ -6492,7 +5753,7 @@ Hold it to activate the wiper and to spray the
 washer. Once released, it stops operating
 after a few more sweeps.
 
-<!-- page:429 -->
+<!-- page:357 -->
 ### ■Operating in reverse
 
 When you shift the transmission to (R with the windscreen wipers activated, the
@@ -6500,7 +5761,7 @@ rear wiper operates automatically as follows even if its switch is off.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
-<!-- page:430 -->
+<!-- page:358 -->
 ## ■Rear Wiper/Washer
 
 INT: Intermittent
@@ -6514,14 +5775,9 @@ Intermittent
 LO (Low speed wipe)
 HI (High speed wipe)
 Continuous
-
-<!-- page:431 -->
-### 178
-
-uuOperating the Switches Around the Steering WheeluBrightness Control
 Controls
 
-<!-- page:432 -->
+<!-- page:359 -->
 ## Brightness Control
 
 When the ignition switch is in ON (w*1, you
@@ -6534,7 +5790,7 @@ The multi-information display will return to its
 original state several seconds after you adjust
 the brightness.
 
-<!-- page:433 -->
+<!-- page:360 -->
 ### ■Brightness level indicator
 
 The brightness level is shown on the multi-
@@ -6554,14 +5810,9 @@ panel brightness when the exterior lights are on.
 The brightness can be set differently for when the
 exterior lights are on, and when they are off.
 (Select/Reset) Knob
-
-<!-- page:434 -->
-### 179
-
-uuOperating the Switches Around the Steering WheeluRear Demister/Heated Door Mirror*
 Controls
 
-<!-- page:435 -->
+<!-- page:362 -->
 ## Rear Demister/Heated Door Mirror*
 
 Press the rear demister and heated door mirror button or touch the icon to defog
@@ -6588,14 +5839,9 @@ Models with heating and cooling system
 Models with climate control system
 Models with climate control system
 * Not available on all models
-
-<!-- page:436 -->
-### 180
-
-uuOperating the Switches Around the Steering WheeluAdjusting the Steering Wheel
 Controls
 
-<!-- page:437 -->
+<!-- page:363 -->
 ## Adjusting the Steering Wheel
 
 The steering wheel height and distance from your body can be adjusted so that you
@@ -6617,7 +5863,7 @@ down, in, and out.
 Make any steering wheel adjustments before you
 start driving.
 
-<!-- page:438 -->
+<!-- page:364 -->
 ## 3WARNING
 
 Adjusting the steering wheel position while
@@ -6629,8 +5875,9 @@ To adjust
 To lock
 Height and Distance
 Lever
+Controls
 
-<!-- page:439 -->
+<!-- page:365 -->
 ## Interior Rearview Mirror
 
 Adjust the angle of the rearview mirror when you are sitting in the correct driving
@@ -6640,7 +5887,7 @@ The night position will help to reduce the glare
 from headlights behind you when driving
 after dark.
 
-<!-- page:440 -->
+<!-- page:366 -->
 ## ■Rearview Mirror with Day and Night Positions
 
 1Adjusting the Mirrors
@@ -6653,20 +5900,15 @@ Daytime
 Position
 Night
 Position
-
-<!-- page:441 -->
-### 182
-
-uuAdjusting the MirrorsuPower Door Mirrors
 Controls
 
-<!-- page:442 -->
+<!-- page:367 -->
 ## Power Door Mirrors
 
 You can adjust the door mirrors when the
 ignition switch is in ON (w*1.
 
-<!-- page:443 -->
+<!-- page:368 -->
 ### ■Mirror position adjustment
 
 L/R selector switch: Select the left or right
@@ -6676,7 +5918,7 @@ Mirror position adjustment switch: Press
 the switch left, right, up, or down to move the
 mirror.
 
-<!-- page:444 -->
+<!-- page:369 -->
 ### ■Folding door mirrors*
 
 Press the folding button to fold in and out the
@@ -6687,8 +5929,10 @@ Folding Button*
 Adjustment Switch
 Selector Switch
 * Not available on all models
+Continued
+Controls
 
-<!-- page:445 -->
+<!-- page:370 -->
 ## Adjusting the Seat Positions
 
 Adjust the driver's seat as far back as possible
@@ -6702,7 +5946,7 @@ adjusted in a similar manner, so that it is as far
 back from the front airbag in the dashboard
 as possible.
 
-<!-- page:446 -->
+<!-- page:371 -->
 ### ■Adjusting the front seat
 
 1Adjusting the Seats
@@ -6714,7 +5958,7 @@ Always make seat adjustments before driving.
 Once a seat is adjusted correctly, rock it back and
 forth to make sure it is locked in position.
 
-<!-- page:447 -->
+<!-- page:372 -->
 ## 3WARNING
 
 Sitting too close to a front airbag can result
@@ -6739,11 +5983,6 @@ Pull up the lever to
 change the angle.
 Driver’s seat is shown.
 * Not available on all models
-uuAdjusting the SeatsuAdjusting the Seat Positions
-
-<!-- page:448 -->
-### 184
-
 Controls
 Adjust the driver's seat-back to a comfortable,
 upright position, leaving ample space
@@ -6757,7 +5996,7 @@ occupant's chest reduces the protective capability of the belt. It also increase
 chance of sliding under the belt in a crash and being seriously injured. The farther a
 seat-back is reclined, the greater the risk of injury.
 
-<!-- page:449 -->
+<!-- page:373 -->
 ## ■Adjusting the Seat-Backs
 
 1Adjusting the Seat-Backs
@@ -6770,7 +6009,7 @@ wheel and still reach the controls, we recommend
 that you investigate whether some type of adaptive
 equipment may help.
 
-<!-- page:450 -->
+<!-- page:374 -->
 ## 3WARNING
 
 Reclining the seat-back too far can result in
@@ -6778,11 +6017,6 @@ serious injury or death in a crash.
 Adjust the seat-back to an upright position,
 and sit well back in the seat.
 Continued
-
-<!-- page:451 -->
-### 185
-
-uuAdjusting the SeatsuAdjusting the Seat Positions
 Controls
 Your vehicle is equipped with head restraints
 in all seating positions.
@@ -6796,7 +6030,7 @@ centre height of the restraint.
 The front head restraints can also be tilted to
 adjust its position properly.
 
-<!-- page:452 -->
+<!-- page:376 -->
 ## ■Adjusting the Head Restraints
 
 1Adjusting the Head Restraints
@@ -6807,7 +6041,9 @@ from the restraint legs.
 the seat-back.
 • Install each restraint in its proper location.
 
-<!-- page:453 -->
+![Image 1 from page 376](images/2016_Jazz_Owners_Manual/p376-1.png)
+
+<!-- page:377 -->
 ## 3WARNING
 
 Improperly positioning head restraints
@@ -6817,14 +6053,9 @@ Make sure head restraints are in place and
 positioned properly before driving.
 Position head in the centre
 of the head restraint.
-
-<!-- page:454 -->
-### 186
-
-uuAdjusting the SeatsuAdjusting the Seat Positions
 Controls
 
-<!-- page:455 -->
+<!-- page:378 -->
 ### ■Adjusting the front head restraint positions
 
 To raise the head restraint: Pull it upward.
@@ -6835,11 +6066,6 @@ pressing the release button.
 Release
 Button
 Continued
-
-<!-- page:456 -->
-### 187
-
-uuAdjusting the SeatsuAdjusting the Seat Positions
 Controls
 A passenger sitting in a back seating position
 should adjust the height of their head restraint
@@ -6851,7 +6077,7 @@ To lower the head restraint:
 Push it down while pressing the release
 button.
 
-<!-- page:457 -->
+<!-- page:380 -->
 ## ■Changing the Rear Seat Head Restraint Positions
 
 1Changing the Rear Seat Head Restraint Positions
@@ -6864,11 +6090,6 @@ Button
 Release
 Button
 Centre
-uuAdjusting the SeatsuAdjusting the Seat Positions
-
-<!-- page:458 -->
-### 188
-
 Controls
 Head restraints can be removed for cleaning or repair.
 To remove a head restraint:
@@ -6890,12 +6111,12 @@ In addition, an occupant who is out of position in the front seat can be serious
 fatally injured in a crash by striking interior parts of the vehicle or being struck by an
 inflating front airbag.
 
-<!-- page:459 -->
+<!-- page:381 -->
 ## ■Maintain a Proper Sitting Position
 
 1Removing and Reinstalling the Head Restraints
 
-<!-- page:460 -->
+<!-- page:382 -->
 ## 3WARNING
 
 Failure to reinstall, or correctly reinstall, the
@@ -6905,18 +6126,13 @@ Always replace the head restraints before
 driving.
 1Maintain a Proper Sitting Position
 
-<!-- page:461 -->
+<!-- page:383 -->
 ## 3WARNING
 
 Sitting improperly or out of position can
 result in serious injury or death in a crash.
 Always sit upright, well back in the seat,
 with your feet on the floor.
-
-<!-- page:462 -->
-### 189
-
-uuAdjusting the SeatsuAdjusting the Seat Positions
 Controls
 Reclining the seat-backs on the front seats until they are level with the rear seat
 cushions provides a large cushioned area that can (and should only) be used when
@@ -6946,7 +6162,7 @@ When you return a seat-back to its upright
 position, hold the seat-back to keep it from
 going up too quickly.
 
-<!-- page:463 -->
+<!-- page:384 -->
 ## ■Reclining the Front Seats
 
 1Reclining the Front Seats
@@ -6955,28 +6171,23 @@ upright position, and the head restraints reinstalled
 and properly adjusted before driving.
 2 Removing and Reinstalling the Head
 Restraints P. 188
-
-<!-- page:464 -->
-### 190
-
-uuAdjusting the SeatsuRear Seats
 Controls
 
-<!-- page:465 -->
+<!-- page:385 -->
 ## Rear Seats
 
 Pull the lever on the right to change the angle
 of the right half of the seat-back, and left for
 the left half.
 
-<!-- page:466 -->
-### 191
+<!-- page:386 -->
+## ■Adjusting the Rear Seat-Backs
 
-uuAdjusting the SeatsuRear Seats
+Continued
 Controls
 The rear seats can be folded down separately to allow for additional storage space.
 
-<!-- page:467 -->
+<!-- page:387 -->
 ### ■To fold down the seat
 
 1. Store the centre seat belt first. Insert the
@@ -6992,7 +6203,7 @@ seat-back.
 To return the seat to the original position, pull
 up the seat-back in the upright position.
 
-<!-- page:468 -->
+<!-- page:388 -->
 ## ■Folding Down the Rear Seats
 
 1Folding Down the Rear Seats
@@ -7013,17 +6224,12 @@ Anchor
 Buckle
 Latch Plate
 Release Lever
-uuAdjusting the SeatsuRear Seats
-
-<!-- page:469 -->
-### 192
-
 Controls
 Separately lift up the left and right halves of
 the rear seat cushions to make room for
 luggage area.
 
-<!-- page:470 -->
+<!-- page:389 -->
 ### ■Lifting up the seat cushion
 
 1. Make sure the seat belt buckles are in their
@@ -7033,9 +6239,7 @@ loops on the seat.
 seat cushion firmly against the seat-back to
 lock it.
 
-![Image 1 from page 470](images/2016_Jazz_Owners_Manual/p470-1.png)
-
-<!-- page:471 -->
+<!-- page:390 -->
 ### ■Putting the seat in the original position
 
 1. Hold the seat cushion in the upright
@@ -7047,7 +6251,7 @@ the seat leg in the floor guide.
 u A latch comes out when the leg is set
 properly.
 
-<!-- page:472 -->
+<!-- page:392 -->
 ## ■Folding the Rear Seat Up
 
 1Folding the Rear Seat Up
@@ -7063,30 +6267,26 @@ Seat Leg
 Seat Leg
 Latch
 Floor Guide
-
-<!-- page:473 -->
-### 193
-
-uuAdjusting the SeatsuArmrest*
 Controls
 
-<!-- page:474 -->
+<!-- page:393 -->
 ## Armrest*
 
 The console lid can be used as an armrest.
 
-<!-- page:475 -->
+<!-- page:394 -->
 ## ■Using the Front Seat Armrest
 
 * Not available on all models
+Controls
 
-<!-- page:476 -->
+<!-- page:395 -->
 ### ■ON
 
 The interior light comes on regardless of
 whether the doors are open or closed.
 
-<!-- page:477 -->
+<!-- page:396 -->
 ### ■Door activated
 
 The interior light comes on in the following
@@ -7100,13 +6300,13 @@ OFF (LOCK).
 Only the luggage area light comes on when
 the tailgate is opened
 
-<!-- page:478 -->
+<!-- page:397 -->
 ### ■OFF
 
 The interior light remains off regardless of
 whether the doors are open or closed.
 
-<!-- page:479 -->
+<!-- page:398 -->
 ## ■Interior Light Switch
 
 1Interior Light Switch
@@ -7143,45 +6343,28 @@ Off
 On
 Models without keyless access system
 Models with keyless access system
-
-<!-- page:480 -->
-### 195
-
-uuInterior Lights/Interior Convenience ItemsuInterior Lights
 Continued
 Controls
 The map lights can be turned on and off by
 pressing the lenses.
 
-<!-- page:481 -->
+<!-- page:399 -->
 ## ■Map Lights
 
 Models with display audio system
 Models with colour audio system
-
-<!-- page:482 -->
-### 196
-
-uuInterior Lights/Interior Convenience ItemsuInterior Lights
 Controls
 The light comes on when you open the
 tailgate.
 
-<!-- page:483 -->
-### 197
-
-uuInterior Lights/Interior Convenience ItemsuInterior Convenience Items
-Continued
-Controls
-
-<!-- page:484 -->
+<!-- page:400 -->
 ## Interior Convenience Items
 
 Pull the handle to open the glove box.
 Pull the handle to open the console
 compartment.
 
-<!-- page:485 -->
+<!-- page:401 -->
 ## 3WARNING
 
 An open glove box can cause serious injury
@@ -7190,19 +6373,19 @@ passenger is wearing the seat belt.
 Always keep the glove box closed while
 driving.
 
-<!-- page:486 -->
+<!-- page:402 -->
 ## ■Console Compartment*
 
 * Not available on all models
-uuInterior Lights/Interior Convenience ItemsuInterior Convenience Items
+Controls
 
-<!-- page:487 -->
+<!-- page:403 -->
 ### ■Front seat beverage holders
 
 Pull the lid backward to use the front panel
 beverage holder.
 
-<!-- page:488 -->
+<!-- page:404 -->
 ## ■Beverage Holders
 
 1Beverage Holders
@@ -7212,42 +6395,32 @@ electrical components in the interior.
 Be careful when you are using the beverage holders.
 Hot liquid can scald you.
 Front Door
-
-<!-- page:489 -->
-### 199
-
-uuInterior Lights/Interior Convenience ItemsuInterior Convenience Items
 Continued
 Controls
 
-<!-- page:490 -->
+<!-- page:405 -->
 ### ■Rear seat beverage holders
 
 Pull up the luggage area floor lid.
 Models without centre console box
 Rear Door
 
-<!-- page:491 -->
+<!-- page:406 -->
 ## ■Luggage Floor Box
 
 Luggage Floor Box
 Floor
 Lid
-uuInterior Lights/Interior Convenience ItemsuInterior Convenience Items
-
-<!-- page:492 -->
-### 200
-
 Controls
 The accessory power socket can be used when the ignition switch is in ACCESSORY
 (q or ON (w*1.
 
-<!-- page:493 -->
+<!-- page:407 -->
 ### ■Accessory power socket (console panel)
 
 Open the cover to use it.
 
-<!-- page:494 -->
+<!-- page:408 -->
 ### ■Accessory power socket (console
 
 compartment)*
@@ -7255,7 +6428,7 @@ Open the console lid and the cover to use it.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
-<!-- page:495 -->
+<!-- page:409 -->
 ## ■Accessory Power Socket(s)
 
 1Accessory Power Socket(s)
@@ -7271,11 +6444,6 @@ with the engine running.
 Cover
 * Not available on all models
 Continued
-
-<!-- page:496 -->
-### 201
-
-uuInterior Lights/Interior Convenience ItemsuInterior Convenience Items
 Controls
 There is a coat hook on the rear driver’s side
 grab handle. Pull it down to use it.
@@ -7283,28 +6451,23 @@ The tie-down anchors on the luggage area
 floor can be used to install a net for securing
 items.
 
-<!-- page:497 -->
+<!-- page:410 -->
 ## ■Coat Hook
 
 1Coat Hook
 The coat hook is not designed for large or heavy
 items.
 
-<!-- page:498 -->
+<!-- page:411 -->
 ## ■Tie-down Anchors
 
 Front
 Anchors
 Rear Anchors
-uuInterior Lights/Interior Convenience ItemsuInterior Convenience Items
-
-<!-- page:499 -->
-### 202
-
 Controls
 The luggage area cover may be removed to give you more luggage room.
 
-<!-- page:500 -->
+<!-- page:412 -->
 ### ■To remove the luggage area cover
 
 1. Open the tailgate.
@@ -7317,7 +6480,7 @@ area cover.
 After reinstalling the luggage area cover,
 make sure it is latched securely.
 
-<!-- page:501 -->
+<!-- page:413 -->
 ## ■Luggage Area Cover*
 
 1Luggage Area Cover*
@@ -7328,11 +6491,6 @@ the vehicle during a crush or sudden stop.
 Do not apply excessive pressure to the cover, such as
 leaning on it to retrieve an item.
 * Not available on all models
-
-<!-- page:502 -->
-### 203
-
-uuInterior Lights/Interior Convenience ItemsuInterior Convenience Items
 Controls
 The ignition switch must be in ON (w*1 to use
 the seat heaters. The HI setting heats the seats
@@ -7348,7 +6506,7 @@ warm.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
-<!-- page:503 -->
+<!-- page:414 -->
 ## ■Seat Heaters*
 
 1Seat Heaters*
@@ -7358,7 +6516,7 @@ be weakened, making the engine difficult to start.
 In the LO setting, the heater runs continuously and
 does not automatically turn off.
 
-<!-- page:504 -->
+<!-- page:415 -->
 ## 3WARNING
 
 Heat induced burns are possible when
@@ -7369,8 +6527,9 @@ lower-limb nerve damage, or paralysis) or
 with sensitive skin should not use seat
 heaters.
 * Not available on all models
+Controls
 
-<!-- page:505 -->
+<!-- page:416 -->
 ## Using Vents, Heating and A/C
 
 Mode Control Dial
@@ -7403,11 +6562,6 @@ Demister
 vents
 * Not available on all models
 Continued
-
-<!-- page:506 -->
-### 205
-
-uuHeating and Cooling System*uUsing Vents, Heating and A/C
 Controls
 The heater uses heat from the engine coolant
 to warm the air.
@@ -7419,7 +6573,7 @@ and
 3. Adjust the temperature using the
 temperature control dial.
 
-<!-- page:507 -->
+<!-- page:417 -->
 ### ■To rapidly warm up the interior
 
 1. Set the fan to the maximum speed.
@@ -7429,7 +6583,7 @@ temperature control dial.
 4. Select
 .
 
-<!-- page:508 -->
+<!-- page:418 -->
 ### ■To dehumidify the interior
 
 When used in combination with the heater, the air conditioning system makes the
@@ -7440,18 +6594,13 @@ interior warm and dry and can prevent the windows from fogging up.
 and
 . Adjust the temperature to your preference.
 
-<!-- page:509 -->
+<!-- page:419 -->
 ## ■Heating
 
 1To rapidly warm up the interior
 Change to fresh air mode as soon as the interior gets
 warm enough. The windows may fog up if kept in
 recirculation mode.
-uuHeating and Cooling System *uUsing Vents, Heating and A/C
-
-<!-- page:510 -->
-### 206
-
 Controls
 1. Adjust the fan speed using the fan control
 dial.
@@ -7462,7 +6611,7 @@ and
 temperature control dial.
 4. Press the A/C button (indicator on).
 
-<!-- page:511 -->
+<!-- page:420 -->
 ### ■To rapidly cool down the interior
 
 1. Set the fan to the maximum speed.
@@ -7473,7 +6622,7 @@ temperature control dial.
 5. Select
 .
 
-<!-- page:512 -->
+<!-- page:421 -->
 ## ■Cooling
 
 1To rapidly cool down the interior
@@ -7485,11 +6634,6 @@ conditioning on, press
 to turn off the Auto Idle
 Stop system.
 2 Auto Idle Stop System ON/OFF P. 405, 410
-
-<!-- page:513 -->
-### 207
-
-uuHeating and Cooling System*uUsing Vents, Heating and A/C
 Controls
 1. Set the fan to the high speed.
 2. Select
@@ -7498,7 +6642,7 @@ Controls
 .
 4. Press the A/C button (indicator on).
 
-<!-- page:514 -->
+<!-- page:422 -->
 ### ■To rapidly defrost the windows
 
 1. Set the fan to the maximum speed.
@@ -7509,7 +6653,7 @@ Controls
 .
 5. Set the temperature to maximum warm.
 
-<!-- page:515 -->
+<!-- page:423 -->
 ## ■Defrosting the Windscreen and Windows
 
 1Defrosting the Windscreen and Windows
@@ -7538,8 +6682,9 @@ mode.
 If you keep the system in recirculation mode, the
 windows may fog up from humidity. This impedes
 visibility.
+Controls
 
-<!-- page:516 -->
+<!-- page:424 -->
 ## Using Automatic Climate Control
 
 The automatic climate control system maintains the interior temperature you select.
@@ -7589,14 +6734,9 @@ A/C (Air Conditioning) Icon
 (Fresh Air) Icon
 * Not available on all models
 Continued
-
-<!-- page:517 -->
-### 209
-
-uuClimate Control System*uUsing Automatic Climate Control
 Controls
 
-<!-- page:518 -->
+<!-- page:425 -->
 ### ■Switching between the recirculation and fresh air modes
 
 Select the
@@ -7616,11 +6756,6 @@ During the Auto Idle Stop, the air conditioning
 system will be turned off.
 The air conditioning system may also be turned off
 when driving uphill.
-uuClimate Control System*uUsing Automatic Climate Control
-
-<!-- page:519 -->
-### 210
-
 Controls
 Select the
 icon to turn the air conditioning
@@ -7630,7 +6765,7 @@ Select the
 icon again to turn off, the
 system returns to the previous settings.
 
-<!-- page:520 -->
+<!-- page:426 -->
 ### ■To rapidly defrost the windows
 
 1. Select the
@@ -7638,7 +6773,7 @@ icon.
 2. Select the
 icon.
 
-<!-- page:521 -->
+<!-- page:427 -->
 ## ■Defrosting the Windscreen and Windows
 
 1Defrosting the Windscreen and Windows
@@ -7666,11 +6801,6 @@ After defrosting the windows, switch over to fresh air
 mode. If you keep the system in recirculation mode,
 the windows may fog up from humidity. This
 impedes visibility.
-
-<!-- page:522 -->
-### 211
-
-uuClimate Control System*uUsing Automatic Climate Control
 Controls
 You hear the beep when operating the climate control system on the touch screen.
 This can be turned on and off.
@@ -7697,7 +6827,7 @@ and -- is displayed.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
 
-<!-- page:523 -->
+<!-- page:428 -->
 ## ■Turning On and Off the Touch Screen Beep
 
 1Turning On and Off the Touch Screen Beep
@@ -7705,14 +6835,9 @@ If you touch any other icons during this procedure,
 the setting may fail. In this case, once you turn the
 ignition switch to LOCK (0*1, then follow this
 procedure again.
-
-<!-- page:524 -->
-### 212
-
-uuClimate Control System*uAutomatic Climate Control Sensors
 Controls
 
-<!-- page:525 -->
+<!-- page:429 -->
 ## Automatic Climate Control Sensors
 
 The automatic climate control system is
@@ -7721,7 +6846,7 @@ any liquid on them.
 Sensor
 Sensor
 
-<!-- page:526 -->
+<!-- page:431 -->
 ### This chapter describes how to operate technology features.
 
 Audio System
@@ -7768,8 +6893,9 @@ Hands-Free Telephone System.............356
 Models with colour audio system
 Models with display audio system
 * Not available on all models
+Features
 
-<!-- page:527 -->
+<!-- page:432 -->
 ## About Your Audio System
 
 The audio system features AM/FM radio. It can also play audio CDs, WMA/MP3/AAC
@@ -7806,14 +6932,9 @@ Auxiliary Input Jack
 Remote Controls
 USB Port
 * Not available on all models
-
-<!-- page:528 -->
-### 215
-
-uuAudio SystemuUSB Port(s)
 Features
 
-<!-- page:529 -->
+<!-- page:433 -->
 ## USB Port(s)
 
 1. Open the cover.
@@ -7845,21 +6966,16 @@ USB Port
 Models with colour audio system
 USB Port
 * Not available on all models
-
-<!-- page:530 -->
-### 216
-
-uuAudio SystemuHDMITM Port*
 Features
 
-<!-- page:531 -->
+<!-- page:434 -->
 ## HDMITM Port*
 
 1. Open the cover.
 2. Install the HDMITM cable to the HDMITM
 port.
 
-<!-- page:532 -->
+<!-- page:435 -->
 ## Auxiliary Input Jack*
 
 Use the jack to connect standard audio
@@ -7890,16 +7006,9 @@ buttons. You can return to AUX mode by pressing
 the CD/AUX button.
 Models with colour audio system
 * Not available on all models
-
-![Image 1 from page 532](images/2016_Jazz_Owners_Manual/p532-1.png)
-
-<!-- page:533 -->
-### 217
-
-uuAudio SystemuAudio Antenna
 Features
 
-<!-- page:534 -->
+<!-- page:436 -->
 ## Audio Antenna
 
 Your vehicle is equipped with a removable
@@ -7912,21 +7021,16 @@ antenna from being damaged by the car wash
 brushes.
 Rear fixed antenna type
 Rear fixed antenna type
-
-<!-- page:535 -->
-### 218
-
-uuAudio SystemuAudio System Theft Protection
 Features
 
-<!-- page:536 -->
+<!-- page:437 -->
 ## Audio System Theft Protection
 
 The audio system is disabled when it is disconnected from the power source, such as
 when the battery is disconnected or goes dead. In certain conditions, the system
 may display a pass code input mode. If this occurs, reactivate the audio system.
 
-<!-- page:537 -->
+<!-- page:439 -->
 ### ■Reactivating the audio system
 
 1. Turn the ignition switch to ON (w*1.
@@ -7937,15 +7041,10 @@ connection with the vehicle control unit. If the control unit fails to recognise
 the audio unit, you must go to a dealer and have the audio unit checked.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
-
-<!-- page:538 -->
-### 219
-
-uuAudio SystemuAudio Remote Controls
 Continued
 Features
 
-<!-- page:539 -->
+<!-- page:440 -->
 ## Audio Remote Controls
 
 Allows you to operate the audio system while driving.
@@ -7999,11 +7098,6 @@ Button
 Models with colour audio system
 Models with display audio system
 * Not available on all models
-uuAudio SystemuAudio Remote Controls
-
-<!-- page:540 -->
-### 220
-
 Features
 Steering Wheel
 (Menu) Button
@@ -8034,8 +7128,9 @@ mode is FM, DAB*, LW, MW, CD, USB, iPod, or
 Bluetooth® Audio.
 Models with display audio system
 * Not available on all models
+Features
 
-<!-- page:541 -->
+<!-- page:441 -->
 ## Audio System Basic Operation
 
 To use the audio system function, the ignition switch must be in ACCESSORY (q or
@@ -8107,44 +7202,34 @@ Button
 Button
 TA Button
 Menu Display
-
-<!-- page:542 -->
-### 222
-
-uuAudio System Basic OperationuAudio/Information Screen
 Features
 
-<!-- page:543 -->
+<!-- page:442 -->
 ## Audio/Information Screen
 
 Displays the audio status and wallpaper. From this screen, you can go to various
 setup options.
 
-<!-- page:544 -->
+<!-- page:443 -->
 ## ■Switching the Display
 
 Audio
 Clock/Wallpaper
 Audio/Information Screen
-
-<!-- page:545 -->
-### 223
-
-uuAudio System Basic OperationuAudio/Information Screen
 Continued
 Features
 
-<!-- page:546 -->
+<!-- page:444 -->
 ### ■Audio
 
 Shows the current audio information.
 
-<!-- page:547 -->
+<!-- page:446 -->
 ### ■Clock/Wallpaper
 
 Shows a clock screen or an image you import.
 
-<!-- page:548 -->
+<!-- page:447 -->
 ### ■Change display
 
 1. Press the MENU/CLOCK button.
@@ -8158,15 +7243,10 @@ to select Display change, then press
 to select Wallpaper, then press
 .
 u If you want to return to the audio display, select Audio.
-uuAudio System Basic OperationuAudio/Information Screen
-
-<!-- page:549 -->
-### 224
-
 Features
 You can change, store, and delete the wallpaper on the audio/information screen.
 
-<!-- page:550 -->
+<!-- page:448 -->
 ### ■Import wallpaper
 
 You can import up to three images, one at a
@@ -8201,7 +7281,7 @@ picture, then press
 u The display will return to the wallpaper
 setting screen.
 
-<!-- page:551 -->
+<!-- page:449 -->
 ## ■Wallpaper Setup
 
 1Wallpaper Setup
@@ -8217,14 +7297,9 @@ the image size is less than 420 × 234 pixels, the
 image is displayed in the middle of the screen with
 the extra area appearing in black.
 • Up to 255 files can be selected.
-
-<!-- page:552 -->
-### 225
-
-uuAudio System Basic OperationuAudio/Information Screen
 Features
 
-<!-- page:553 -->
+<!-- page:450 -->
 ### ■Select wallpaper
 
 1. Press the MENU/CLOCK button.
@@ -8242,7 +7317,7 @@ u The screen changes to the wallpaper list.
 to select a desired wallpaper, then press
 .
 
-<!-- page:554 -->
+<!-- page:451 -->
 ### ■Delete wallpaper
 
 1. Press the MENU/CLOCK button.
@@ -8268,14 +7343,9 @@ To go back to the previous screen, press the
 (Back) button.
 When the file size is large, it takes a while to be
 previewed.
-
-<!-- page:555 -->
-### 226
-
-uuAudio System Basic OperationuAdjusting the Sound
 Features
 
-<!-- page:556 -->
+<!-- page:452 -->
 ## Adjusting the Sound
 
 1. Press the MENU/CLOCK button.
@@ -8308,14 +7378,9 @@ SVC
 Speed-sensitive
 Volume
 Compensation
-
-<!-- page:557 -->
-### 227
-
-uuAudio System Basic OperationuDisplay Setup
 Features
 
-<!-- page:558 -->
+<!-- page:453 -->
 ## Display Setup
 
 You can change the brightness or colour theme of the audio/information screen.
@@ -8346,20 +7411,14 @@ to select the setting you want,
 then press
 .
 
-<!-- page:559 -->
+<!-- page:454 -->
 ## ■Changing the Screen Brightness
 
 1Changing the Screen Brightness
 You can change the Contrast and Black level
 settings in the same manner.
 
-<!-- page:560 -->
-### 228
-
-uuAudio System Basic OperationuPlaying AM/FM Radio
-Features
-
-<!-- page:561 -->
+<!-- page:455 -->
 ## Playing AM/FM Radio
 
 Audio/Information Screen
@@ -8396,16 +7455,11 @@ TA Button
 Press to activate the TA stand by
 function.
 Continued
-
-<!-- page:562 -->
-### 229
-
-uuAudio System Basic OperationuPlaying AM/FM Radio
 Features
 Provides convenient automated services related to your selected RDS-capable FM
 station.
 
-<!-- page:563 -->
+<!-- page:456 -->
 ### ■To find an RDS station from Station List
 
 1. Press
@@ -8414,7 +7468,7 @@ while listening to an FM station.
 to select the station, then press
 .
 
-<!-- page:564 -->
+<!-- page:457 -->
 ### ■Manual Update
 
 Updates your available station list at any time.
@@ -8424,7 +7478,7 @@ while listening to an FM station.
 to select Update list, then press
 .
 
-<!-- page:565 -->
+<!-- page:458 -->
 ## ■Radio Data System (RDS)*
 
 FM mode
@@ -8446,9 +7500,9 @@ changes to the station name. However, when the
 signals of that station become weak, the display
 changes from the station name to the frequency.
 * Not available on all models
-uuAudio System Basic OperationuPlaying AM/FM Radio
+Features
 
-<!-- page:566 -->
+<!-- page:459 -->
 ### ■Available RDS functions
 
 Alternative Frequency (AF):
@@ -8468,14 +7522,9 @@ station.
 Except AM/FM/DAB* mode
 * Not available on all models
 Continued
-
-<!-- page:567 -->
-### 231
-
-uuAudio System Basic OperationuPlaying AM/FM Radio
 Features
 
-<!-- page:568 -->
+<!-- page:460 -->
 ### ■Selecting the RDS functions
 
 1. Press the MENU/CLOCK button with the
@@ -8495,9 +7544,9 @@ Pressing
 switches the function between on and
 off.
 * Not available on all models
-uuAudio System Basic OperationuPlaying AM/FM Radio
+Features
 
-<!-- page:569 -->
+<!-- page:462 -->
 ### ■Traffic announcement (TA) button
 
 TA standby function allows the system to stand by for traffic announcements in any
@@ -8510,7 +7559,7 @@ If you want to go back to your last selected mode during the traffic announcemen
 press the TA button again.
 To cancel the function: Press the TA button.
 
-<!-- page:570 -->
+<!-- page:463 -->
 ### ■Programme type (PTY)/News interrupt function
 
 Allows the system to interrupt with a newscast in any mode. The last tuned station
@@ -8533,21 +7582,16 @@ function.
 Except AM/FM/DAB* mode
 * Not available on all models
 Continued
-
-<!-- page:571 -->
-### 233
-
-uuAudio System Basic OperationuPlaying AM/FM Radio
 Features
 
-<!-- page:572 -->
+<!-- page:465 -->
 ### ■PTY alarm
 
 When the PTY code for emergency announcements, such as natural disasters, is
 received, ALARM appears on the display and the system interrupts your audio
 operation.
 
-<!-- page:573 -->
+<!-- page:466 -->
 ### ■Radio Text
 
 1. Press the MENU/CLOCK button with the
@@ -8558,11 +7602,6 @@ to select Radio text and press
 1Radio Text
 The TEXT indicator appears on the display indicating
 radio text information.
-uuAudio System Basic OperationuPlaying AM/FM Radio
-
-<!-- page:574 -->
-### 234
-
 Features
 Lists the strongest stations on the selected band.
 1. Press the RADIO button to switch to a mode.
@@ -8572,7 +7611,7 @@ to switch to the station list mode.
 to select the station, then press
 .
 
-<!-- page:575 -->
+<!-- page:467 -->
 ### ■Manual update
 
 Updates your available station list at any time.
@@ -8590,7 +7629,7 @@ to select Scan, then press
 To turn off scan, press
 .
 
-<!-- page:576 -->
+<!-- page:468 -->
 ## ■Scan
 
 AM (MW/LW) mode
@@ -8601,15 +7640,10 @@ Rotate
 to select Yes, then press
 to update the
 list.
-
-<!-- page:577 -->
-### 235
-
-uuAudio System Basic OperationuPlaying DAB (Digital Audio Broadcasting)*
 Continued
 Features
 
-<!-- page:578 -->
+<!-- page:470 -->
 ## Playing DAB (Digital Audio Broadcasting)*
 
 Audio/Information Screen
@@ -8643,11 +7677,6 @@ To store a station:
 2. Pick a preset button and hold it until you hear a beep.
 To listen to a stored station, select a band, then press the preset button.
 * Not available on all models
-uuAudio System Basic OperationuPlaying DAB (Digital Audio Broadcasting)*
-
-<!-- page:579 -->
-### 236
-
 Features
 1. Press
 while selecting the DAB mode.
@@ -8657,7 +7686,9 @@ to select the station, then press
 u If you select Update list, the system
 updates the station list.
 
-<!-- page:580 -->
+![Image 1 from page 470](images/2016_Jazz_Owners_Manual/p470-1.png)
+
+<!-- page:471 -->
 ## ■To find a DAB station from Service List or Ensemble List
 
 1To find a DAB station from Service List or Ensemble List
@@ -8666,15 +7697,10 @@ message for updating the list appears. Rotate
 to
 select Yes, then press
 to update the list.
-
-<!-- page:581 -->
-### 237
-
-uuAudio System Basic OperationuPlaying DAB (Digital Audio Broadcasting)*
 Continued
 Features
 
-<!-- page:582 -->
+<!-- page:472 -->
 ### ■Setting the DAB functions
 
 1. Press the MENU/CLOCK button with the
@@ -8691,22 +7717,20 @@ to select a function.
 5. Rotate
 to select a setting, then press
 .
-uuAudio System Basic OperationuPlaying DAB (Digital Audio Broadcasting)*
+Features
 
-![Image 1 from page 582](images/2016_Jazz_Owners_Manual/p582-1.png)
-
-<!-- page:583 -->
+<!-- page:473 -->
 ### ■DAB-Link:
 
 Automatically searches for the same station from Ensembles, and switches to it.
 
-<!-- page:584 -->
+<!-- page:474 -->
 ### ■FM-Link:
 
 If the system finds the same station from an FM band, it automatically switches the
 band.
 
-<!-- page:585 -->
+<!-- page:475 -->
 ### ■Band select:
 
 You can select specific bands. This can reduces the time to update the lists, and
@@ -8717,21 +7741,16 @@ DAB selected.
 to select Radio text and press
 .
 
-<!-- page:586 -->
+<!-- page:476 -->
 ## ■Radio Text
 
 1Radio Text
 The TEXT indicator appears on the display indicating
 radio text information.
-
-<!-- page:587 -->
-### 239
-
-uuAudio System Basic OperationuPlaying a CD
 Continued
 Features
 
-<!-- page:588 -->
+<!-- page:477 -->
 ## Playing a CD
 
 Your audio system supports audio CDs, CD-Rs and CD-RWs in either MP3, WMA, or
@@ -8769,11 +7788,6 @@ or
 to change tracks (files in MP3,
 WMA, or AAC).
 Press and hold to move rapidly within a track/file.
-uuAudio System Basic OperationuPlaying a CD
-
-<!-- page:589 -->
-### 240
-
 Features
 1. Press
 to switch the display to a folder list.
@@ -8786,7 +7800,7 @@ folder.
 to select a track, then press
 .
 
-<!-- page:590 -->
+<!-- page:478 -->
 ### (MP3/WMA/AAC)
 
 1Playing a CD
@@ -8809,11 +7823,6 @@ Folder
 Selection
 Track
 Selection
-
-<!-- page:591 -->
-### 241
-
-uuAudio System Basic OperationuPlaying a CD
 Features
 You can select repeat, random, and scan modes when playing a track or file.
 Available mode icons appear above the play
@@ -8821,12 +7830,12 @@ mode buttons.
 Press the button corresponding to the mode
 you want to select.
 
-<!-- page:592 -->
+<!-- page:479 -->
 ### ■To turn off a play mode
 
 Press the selected button.
 
-<!-- page:593 -->
+<!-- page:482 -->
 ## ■How to Select a Play Mode
 
 1How to Select a Play Mode
@@ -8861,14 +7870,9 @@ to select Normal play, then
 press
 .
 Play Mode Buttons
-
-<!-- page:594 -->
-### 242
-
-uuAudio System Basic OperationuPlaying an iPod
 Features
 
-<!-- page:595 -->
+<!-- page:483 -->
 ## Playing an iPod
 
 Connect the iPod using your dock connector to the USB port, then press the CD/
@@ -8904,11 +7908,6 @@ or
 to change songs.
 Press and hold to move rapidly within a song.
 Continued
-
-<!-- page:596 -->
-### 243
-
-uuAudio System Basic OperationuPlaying an iPod
 Features
 1. Press
 to display the iPod music list.
@@ -8926,7 +7925,7 @@ repeatedly until a
 desired item you want to listen is
 displayed.
 
-<!-- page:597 -->
+<!-- page:484 -->
 ### Selector Knob
 
 1Playing an iPod
@@ -8940,10 +7939,6 @@ Category
 Selection
 Item
 Selection
-uuAudio System Basic OperationuPlaying an iPod
-
-### 244
-
 Features
 You can select repeat and shuffle modes when playing a song.
 Available mode icons appear above the play
@@ -8951,10 +7946,12 @@ mode buttons.
 Press the button corresponding to the mode
 you want to select.
 
+<!-- page:485 -->
 ### ■To turn off a play mode
 
 Press the selected button.
 
+<!-- page:487 -->
 ## ■How to Select a Play Mode
 
 1How to Select a Play Mode
@@ -8979,13 +7976,10 @@ to select Normal play, then
 press
 .
 Play Mode Buttons
-
-### 245
-
-uuAudio System Basic OperationuPlaying a USB Flash Drive
 Continued
 Features
 
+<!-- page:488 -->
 ## Playing a USB Flash Drive
 
 Your audio system reads and plays sound files on a USB flash drive in either MP3,
@@ -9022,10 +8016,6 @@ Press
 or
 to change files.
 Press and hold to move rapidly within a file.
-uuAudio System Basic OperationuPlaying a USB Flash Drive
-
-### 246
-
 Features
 1. Press
 to display a folder list.
@@ -9038,6 +8028,7 @@ folder.
 to select a file, then press
 .
 
+<!-- page:489 -->
 ## ■How to Select a File from a Folder with the Selector Knob
 
 1Playing a USB Flash Drive
@@ -9055,10 +8046,6 @@ Folder
 Selection
 Track
 Selection
-
-### 247
-
-uuAudio System Basic OperationuPlaying a USB Flash Drive
 Features
 You can select repeat, random, and scan modes when playing a file.
 Available mode icons appear above the play
@@ -9066,10 +8053,12 @@ mode buttons.
 Press the button corresponding to the mode
 you want to select.
 
+<!-- page:490 -->
 ### ■To turn off a play mode
 
 Press the selected button.
 
+<!-- page:491 -->
 ## ■How to Select a Play Mode
 
 1How to Select a Play Mode
@@ -9100,12 +8089,9 @@ to select Normal play, then
 press
 .
 Play Mode Buttons
-
-### 248
-
-uuAudio System Basic OperationuPlaying Bluetooth® Audio
 Features
 
+<!-- page:492 -->
 ## Playing Bluetooth® Audio
 
 Your audio system allows you to listen to music from your Bluetooth-compatible
@@ -9161,10 +8147,6 @@ Press
 or
 to change files.
 Continued
-
-### 249
-
-uuAudio System Basic OperationuPlaying Bluetooth® Audio
 Features
 1. Make sure that your phone is paired and
 connected to the system.
@@ -9174,10 +8156,12 @@ compatible phone, which is not compatible
 for Bluetooth® Audio, may already be
 connected.
 
+<!-- page:493 -->
 ### ■To pause or resume a file
 
 Press a Play or Pause button to select a mode.
 
+<!-- page:494 -->
 ## ■To Play Bluetooth® Audio Files
 
 1To Play Bluetooth® Audio Files
@@ -9195,10 +8179,6 @@ from your phone.
 Pause Button
 Play Button
 CD/AUX Button
-uuAudio System Basic OperationuPlaying Bluetooth® Audio
-
-### 250
-
 Features
 1. Press
 to display the music search list.
@@ -9216,6 +8196,7 @@ repeatedly until a
 desired item you want to listen is
 displayed.
 
+<!-- page:496 -->
 ### Selector Knob
 
 1How to Select a Song from the Music Search List with the Selector
@@ -9226,7 +8207,9 @@ Category
 Selection
 Item
 Selection
+Features
 
+<!-- page:497 -->
 ## Audio System Basic Operation
 
 To use the audio system function, the ignition switch must be in ACCESSORY (q or
@@ -9281,12 +8264,9 @@ Button
 Icon
 (MENU) Icon
 (BACK) Icon
-
-### 252
-
-uuAudio System Basic OperationuAudio/Information Screen
 Features
 
+<!-- page:498 -->
 ## Audio/Information Screen
 
 Displays the audio status and wallpaper. From this screen, you can go to various
@@ -9294,21 +8274,19 @@ setup options.
 Press the
 (display) button on the steering wheel to change the display.
 
+<!-- page:499 -->
 ## ■Switching the Display
 
 Using the
 button
 (Display) Button
 Audio/Information Screen
-
-### 253
-
-uuAudio System Basic OperationuAudio/Information Screen
 Continued
 Features
 Select HOME to go to the HOME screen.
 Select Phone, Info, Audio, Settings or Navigation*.
 
+<!-- page:500 -->
 ### ■Phone
 
 Shows the HFT information.
@@ -9320,12 +8298,9 @@ navigation system
 Models with
 navigation system
 * Not available on all models
-
-### 254
-
-uuAudio System Basic OperationuAudio/Information Screen
 Features
 
+<!-- page:501 -->
 ### ■Info
 
 To see all available information, Trip Computer, Clock/Wallpaper, or System/
@@ -9340,24 +8315,23 @@ System/Device Information:
 • USB Device Information: Displays the memory usage of the USB device.
 • USB Device Change: Connects or disconnects USB device to this audio system.
 
+<!-- page:502 -->
 ### ■Audio
 
 Shows the current audio information.
 
+<!-- page:503 -->
 ### ■Settings
 
 Enters the customizing menu screen.
 2 Customized Features P. 316
 
+<!-- page:504 -->
 ### ■Navigation*
 
 Displays the navigation screen.
 2 Refer to the Navigation System Manual
 * Not available on all models
-
-### 255
-
-uuAudio System Basic OperationuAudio/Information Screen
 Continued
 Features
 1. Select HOME.
@@ -9368,15 +8342,13 @@ Features
 6. Select and hold the icon then, drag it to the
 desired position.
 
+<!-- page:505 -->
 ## ■Changing the Home Screen Icon Layout
-
-uuAudio System Basic OperationuAudio/Information Screen
-
-### 256
 
 Features
 You can change, store, and delete the wallpaper on the audio/information screen.
 
+<!-- page:507 -->
 ### ■Import wallpaper
 
 You can import up to five images, one at a time, for wallpaper from a USB flash
@@ -9398,6 +8370,7 @@ on the screen.
 u Then the display will return to the
 wallpaper list.
 
+<!-- page:509 -->
 ## ■Wallpaper Setup
 
 1Wallpaper Setup
@@ -9416,12 +8389,9 @@ the extra area appearing in black.
 • If the USB flash drive does not have any pictures,
 the No files detected message appears.
 Continued
-
-### 257
-
-uuAudio System Basic OperationuAudio/Information Screen
 Features
 
+<!-- page:510 -->
 ### ■Select wallpaper
 
 1. Select Settings to go to the Settings screen.
@@ -9434,6 +8404,7 @@ u The pop-up menu appears on the screen.
 5. Select Set.
 u The display will return to the wallpaper list.
 
+<!-- page:511 -->
 ### ■Delete wallpaper
 
 1. Select Settings to go to the Settings screen.
@@ -9456,14 +8427,16 @@ When the file size is large, it takes a while to be
 previewed.
 To delete all wallpapers you add, select Delete All,
 then Yes.
-uuAudio System Basic OperationuAudio/Information Screen
+Features
 
+<!-- page:512 -->
 ### ■To change to a next screen
 
 Selecting
 or
 , or swiping the screen left or right changes to the next screen.
 
+<!-- page:513 -->
 ## ■Home Screen
 
 1Home Screen
@@ -9474,12 +8447,9 @@ Icon
 Current page position
 Swipe
 Continued
-
-### 259
-
-uuAudio System Basic OperationuAudio/Information Screen
 Features
 
+<!-- page:514 -->
 ### ■To use apps or widgets
 
 1. Select
@@ -9521,12 +8491,9 @@ If you perform Factory Data Reset, it may reset all
 the settings to their factory default.
 2 Defaulting All the Settings P. 332
 Icon
-
-### 260
-
-uuAudio System Basic OperationuAudio/Information Screen
 Features
 
+<!-- page:516 -->
 ### ■To add app or widget icons on the home screen
 
 App or widget icons can be added on the home screen.
@@ -9536,10 +8503,6 @@ u The pop-up menu appears on the screen.
 2. Select Add App or Add Widget.
 u The Add App/Widget screen appears.
 Select and hold.
-
-### 261
-
-uuAudio System Basic OperationuAudio/Information Screen
 Continued
 Features
 3. Select and hold an app or widget icon you
@@ -9553,8 +8516,9 @@ u The screen will return to the home
 screen.
 Select and hold.
 Drag and drop.
-uuAudio System Basic OperationuAudio/Information Screen
+Features
 
+<!-- page:517 -->
 ### ■To move icons on the home screen
 
 You can change location on the home screen.
@@ -9574,12 +8538,9 @@ Select and hold.
 Drag and drop.
 * Not available on all models
 Continued
-
-### 263
-
-uuAudio System Basic OperationuAudio/Information Screen
 Features
 
+<!-- page:518 -->
 ### ■To delete icons on the home screen
 
 You can delete the icons on the home screen.
@@ -9600,12 +8561,9 @@ icon on the home screen.
 Select and hold.
 Drag and drop.
 * Not available on all models
-
-### 264
-
-uuAudio System Basic OperationuAudio/Information Screen
 Features
 
+<!-- page:520 -->
 ### ■To change a wallpaper of the home screen
 
 You can change a wallpaper of the home screen.
@@ -9619,10 +8577,6 @@ u The pop-up menu appears on the screen.
 5. Select Set wallpaper.
 u The wallpaper is changed, then the
 screen will return to the home screen.
-
-### 265
-
-uuAudio System Basic OperationuAudio/Information Screen
 Continued
 Features
 Swipe the upper area of the screen.
@@ -9633,15 +8587,12 @@ or swipe up the
 icon to close the
 area.
 
+<!-- page:521 -->
 ## ■Status Area
 
 Icon
 Status Area
 Swipe
-uuAudio System Basic OperationuAudio/Information Screen
-
-### 266
-
 Features
 You can change the screen interface design.
 1. Select HOME.
@@ -9652,6 +8603,7 @@ You can change the screen interface design.
 6. A confirmation message appears on the
 screen. Select Yes.
 
+<!-- page:522 -->
 ## ■Changing the Screen Interface
 
 1Changing the Screen Interface
@@ -9664,10 +8616,6 @@ information screen.
 If you change the screen interface, some of the
 setting items will change.
 2 Customized Features P. 316
-
-### 267
-
-uuAudio System Basic OperationuAudio/Information Screen
 Features
 You can close apps running in the background on the system.
 1. Select HOME.
@@ -9680,6 +8628,7 @@ history simultaneously.
 4. Select Clear.
 u The display will return to the app list.
 
+<!-- page:523 -->
 ## ■Closing Apps
 
 1Closing Apps
@@ -9689,12 +8638,9 @@ using them.
 If this happens close unused apps.
 To close all apps on the system, select Clear All, then
 Yes.
-
-### 268
-
-uuAudio System Basic OperationuAdjusting the Sound
 Features
 
+<!-- page:524 -->
 ## Adjusting the Sound
 
 1. Select HOME.
@@ -9709,13 +8655,10 @@ The SVC has four modes: Off, Low, Mid, and High.
 SVC adjusts the volume level based on the vehicle
 speed. As you go faster, audio volume increases. As
 you slow down, audio volume decreases.
-
-### 269
-
-uuAudio System Basic OperationuDisplay Setup
 Continued
 Features
 
+<!-- page:526 -->
 ## Display Setup
 
 You can change the brightness or colour theme of the audio/information screen.
@@ -9736,12 +8679,14 @@ screen.
 6. Select the setting you want.
 7. Select OK.
 
+<!-- page:527 -->
 ## ■Changing the Screen Brightness
 
 1Changing the Screen Brightness
 You can change the Contrast and Black Level
 settings in the same manner.
 
+<!-- page:528 -->
 ## ■Changing the Screen’s Colour Theme
 
 1Changing the Screen’s Colour Theme
@@ -9750,16 +8695,13 @@ If you default the System settings when the colour
 theme is changed from its default colour, the system
 reboots.
 2 Customized Features P. 316
-uuAudio System Basic OperationuDisplay Setup
-
-### 270
-
 Features
 Select the current source icon, then select an icon on the source list to switch the
 audio source.
 Certain manual functions are disabled or inoperable while the vehicle is in motion.
 You cannot select a grayed-out option until the vehicle is stopped.
 
+<!-- page:529 -->
 ## ■Selecting an Audio Source
 
 1Selecting an Audio Source
@@ -9771,18 +8713,16 @@ source select screen.
 You can startup those audio apps from App/Widget
 List.
 
+<!-- page:530 -->
 ## ■Limitations for Manual Operation
 
 Select the source icon.
 Source Select Screen
 Source List Icons
-
-### 271
-
-uuAudio System Basic OperationuPlaying AM/FM Radio
 Continued
 Features
 
+<!-- page:532 -->
 ## Playing AM/FM Radio
 
 *1:Some or all of the lists may not be displayed.
@@ -9814,10 +8754,6 @@ Select to adjust the volume.
 Open/Close Icon*1
 Displays/hides the detailed
 information.
-uuAudio System Basic OperationuPlaying AM/FM Radio
-
-### 272
-
 Features
 To store a station:
 1. Tune to the selected station.
@@ -9825,6 +8761,9 @@ To store a station:
 3. Select Save Preset.
 4. Select the preset number you want to store that station.
 
+![Image 1 from page 532](images/2016_Jazz_Owners_Manual/p532-1.png)
+
+<!-- page:533 -->
 ## ■Preset Memory
 
 1Playing AM/FM Radio
@@ -9840,10 +8779,6 @@ Source on the Audio menu screen.
 You can store 12 AM stations and 12 FM stations into
 the preset memory. AM has two types of frequencies
 LW and MW, and each lets you store six stations.
-
-### 273
-
-uuAudio System Basic OperationuPlaying AM/FM Radio
 Continued
 Features
 Lists the strongest stations on the selected band.
@@ -9851,6 +8786,7 @@ Lists the strongest stations on the selected band.
 2. Select Station List.
 3. Select the station.
 
+<!-- page:534 -->
 ### ■Manual update
 
 Updates your available station list at any time.
@@ -9862,21 +8798,20 @@ Samples each of the strongest stations on the selected band for 10 seconds.
 2. Select Scan.
 To turn off scan, select Cancel.
 
+<!-- page:535 -->
 ## ■Scan
-
-uuAudio System Basic OperationuPlaying AM/FM Radio
-
-### 274
 
 Features
 Provides text data information related to your selected RDS-capable FM station.
 
+<!-- page:537 -->
 ### ■To find an RDS station from Station List
 
 1. Select MENU while listening to an FM station.
 2. Select Station List.
 3. Select the station.
 
+<!-- page:539 -->
 ### ■Manual update
 
 Updates your available station list at any time.
@@ -9884,6 +8819,7 @@ Updates your available station list at any time.
 2. Select Station List.
 3. Select Update List.
 
+<!-- page:540 -->
 ## ■Radio Data System (RDS)*
 
 1Radio Data System (RDS)*
@@ -9893,30 +8829,25 @@ changes to the station name. However, when the
 signals of that station become weak, the display
 changes from the station name to the frequency.
 * Not available on all models
-
-### 275
-
-uuAudio System Basic OperationuPlaying AM/FM Radio
 Features
 
+<!-- page:541 -->
 ### ■Radio text
 
 Displays the radio text information of the selected RDS station.
 1. Select MENU.
 2. Select Radio Text.
 
+<!-- page:542 -->
 ### ■Scan
 
 Samples each of the strongest stations on the selected band for 10 seconds.
 1. Select MENU.
 2. Select Scan.
 To turn off scan, select Cancel Scan.
-
-### 276
-
-uuAudio System Basic OperationuPlaying DAB (Digital Audio Broadcasting)*
 Features
 
+<!-- page:543 -->
 ## Playing DAB (Digital Audio Broadcasting)*
 
 *1:Some or all of the lists may not be displayed.
@@ -9950,10 +8881,6 @@ Displays/hides the detailed
 information.
 * Not available on all models
 Continued
-
-### 277
-
-uuAudio System Basic OperationuPlaying DAB (Digital Audio Broadcasting)*
 Features
 Stores a station:
 1. Tune to the selected station.
@@ -9965,6 +8892,7 @@ Lists the strongest stations.
 2. Select Ensemble List.
 3. Select the station.
 
+<!-- page:544 -->
 ### ■Manual update
 
 Updates your available station list at any time.
@@ -9977,6 +8905,7 @@ Samples each of the strongest stations on the selected band for 10 seconds.
 3. Select Scan Ensemble or Scan Service.
 To turn off scan, select Cancel Scan.
 
+<!-- page:546 -->
 ## ■Scan
 
 1Playing DAB (Digital Audio Broadcasting)*
@@ -9988,21 +8917,12 @@ You can also switch the mode by selecting Change
 Source on the Audio menu screen.
 You can store 12 DAB stations into preset memory.
 * Not available on all models
-
-### 278
-
-uuAudio System Basic OperationuPlaying DAB (Digital Audio Broadcasting)*
 Features
 Displays the radio text information of the selected DAB station.
 1. Select MENU.
 2. Select Radio Text.
 
-### 279
-
-uuAudio System Basic OperationuPlaying a CD
-Continued
-Features
-
+<!-- page:548 -->
 ## Playing a CD
 
 Your audio system supports audio CDs, CD-Rs and CD-RWs in either MP3, WMA, or
@@ -10042,15 +8962,12 @@ previous folder in MP3, WMA, or AAC.
 Open/Close Icon*2
 Displays/hides the detailed
 information.
-uuAudio System Basic OperationuPlaying a CD
-
-### 280
-
 Features
 1. Select MENU and select Music Search.
 2. Select a folder.
 3. Select a track.
 
+<!-- page:550 -->
 ### AAC)
 
 1Playing a CD
@@ -10071,21 +8988,19 @@ the system reloads the CD automatically after several
 seconds.
 Folder Selection
 Track Selection
-
-### 281
-
-uuAudio System Basic OperationuPlaying a CD
 Features
 You can select scan, repeat, and random modes when playing a track or file.
 1. Select MENU.
 2. Select Scan or Random/Repeat.
 3. Select a mode.
 
+<!-- page:552 -->
 ### ■To turn off a play mode
 
 1. Select MENU.
 2. Select the mode you want to turn off.
 
+<!-- page:553 -->
 ## ■How to Select a Play Mode
 
 1How to Select a Play Mode
@@ -10105,12 +9020,9 @@ in the current folder in random order.
 Random All Tracks: Plays all tracks/files in random
 order.
 Random/Repeat is selected.
-
-### 282
-
-uuAudio System Basic OperationuPlaying an iPod
 Features
 
+<!-- page:554 -->
 ## Playing an iPod
 
 Connect the iPod using your dock connector to the USB port, then select the iPod
@@ -10143,14 +9055,11 @@ Cover Art
 USB Indicator
 Appears when an iPod is connected.
 Continued
-
-### 283
-
-uuAudio System Basic OperationuPlaying an iPod
 Features
 1. Select MENU and select Music Search.
 2. Select the items on that menu.
 
+<!-- page:555 -->
 ## ■How to Select a Song from the Music Search List
 
 1How to Select a Song from the Music Search List
@@ -10170,21 +9079,19 @@ screen to switch to another USB device.
 USB device change
 Category Selection
 Track Selection
-uuAudio System Basic OperationuPlaying an iPod
-
-### 284
-
 Features
 You can select repeat and shuffle modes when playing a file.
 1. Select MENU.
 2. Select Shuffle/Repeat.
 3. Select a mode.
 
+<!-- page:557 -->
 ### ■To turn off a play mode
 
 1. Select MENU.
 2. Select the mode you want to turn off.
 
+<!-- page:558 -->
 ## ■How to Select a Play Mode
 
 1How to Select a Play Mode
@@ -10198,13 +9105,10 @@ selected list (playlists, artists, albums, songs,
 podcasts, genres, composers, or audiobooks) in
 random order.
 Repeat Song: Repeats the current file.
-
-### 285
-
-uuAudio System Basic OperationuPlaying a USB Flash Drive
 Continued
 Features
 
+<!-- page:559 -->
 ## Playing a USB Flash Drive
 
 Your audio system reads and plays sound files on a USB flash drive in either MP3, WMA, AAC*1, or WAV format.
@@ -10243,16 +9147,13 @@ Audio/Information Screen
 Select to go back to the previous display.
 (MENU) Icon
 Select to display the menu items.
-uuAudio System Basic OperationuPlaying a USB Flash Drive
-
-### 286
-
 Features
 1. Select MENU and select Music Search.
 2. Select Music or Movie.
 3. Select a folder.
 4. Select a track.
 
+<!-- page:560 -->
 ## ■How to Select a File from the Music Search List
 
 1Playing a USB Flash Drive
@@ -10270,21 +9171,19 @@ Select USB device change in the Audio menu
 screen to switch to another USB device.
 Folder Selection
 Track Selection
-
-### 287
-
-uuAudio System Basic OperationuPlaying a USB Flash Drive
 Features
 You can select scan, repeat, and random modes when playing a file.
 1. Select MENU.
 2. Select Scan or Random/Repeat.
 3. Select a mode.
 
+<!-- page:561 -->
 ### ■To turn off a play mode
 
 1. Select MENU.
 2. Select the mode you want to turn off.
 
+<!-- page:562 -->
 ## ■How to Select a Play Mode
 
 1How to Select a Play Mode
@@ -10307,12 +9206,9 @@ Play/Pause: Select to resume or play a file.
 Stop: Select to stop a file.
 *1: When playing a video file
 Random/Repeat is selected.
-
-### 288
-
-uuAudio System Basic OperationuPlaying Bluetooth® Audio
 Features
 
+<!-- page:563 -->
 ## Playing Bluetooth® Audio
 
 Your audio system allows you to listen to music from your Bluetooth-compatible
@@ -10377,10 +9273,6 @@ the previous display.
 (MENU) Icon
 Select to display
 the menu items.
-
-### 289
-
-uuAudio System Basic OperationuPlaying Bluetooth® Audio
 Features
 1. Make sure that your phone is paired and
 connected to the system.
@@ -10390,6 +9282,7 @@ compatible phone, which is not compatible
 for Bluetooth® Audio, may already be
 connected.
 
+<!-- page:564 -->
 ### ■To pause or resume a file
 
 Select the play icon or pause icon.
@@ -10399,6 +9292,7 @@ Select the play icon or pause icon.
 4. Select an item.
 u The selection begins playing.
 
+<!-- page:565 -->
 ## ■To Play Bluetooth® Audio Files
 
 1To Play Bluetooth® Audio Files
@@ -10408,17 +9302,15 @@ instructions.
 Switching to another mode pauses the music playing
 from your phone.
 
+<!-- page:566 -->
 ## ■Searching for Music
 
 1Searching for Music
 Depending on the Bluetooth® device you connect,
 some or all of the lists may not be displayed.
-
-### 290
-
-uuAudio System Basic OperationuPlaying a Video Using the HDMITM
 Features
 
+<!-- page:567 -->
 ## Playing a Video Using the HDMITM
 
 Your audio system allows you to play videos from an HDMITM-compatible device.
@@ -10439,10 +9331,6 @@ Select to go back to the previous display.
 (MENU) Icon
 Select to display the menu items.
 * Not available on all models
-
-### 291
-
-uuAudio System Basic OperationuPlaying a Video Using the HDMITM
 Features
 1. Select HOME.
 2. Select Settings to go to the Settings
@@ -10452,17 +9340,15 @@ screen.
 5. Select the setting you want.
 6. Select OK.
 
+<!-- page:568 -->
 ## ■Changing the Screen Aspect
 
 1Playing a Video Using the HDMITM
 This feature is limited while driving. To play videos,
 stop your vehicle and apply the parking brake.
-
-### 292
-
-uuAudio System Basic OperationuOn Board Apps
 Features
 
+<!-- page:569 -->
 ## On Board Apps
 
 Honda Connect has the capability of On Board Apps which may be created by
@@ -10493,13 +9379,10 @@ https://ivhs.os.ixonos.com/honda/help, and may also incur charges.
 Honda App Center icon
 Honda App Center provides access
 to a variety of App related services.
-
-### 293
-
-uuAudio System Basic OperationuSmartphone Connection
 Continued
 Features
 
+<!-- page:570 -->
 ## Smartphone Connection
 
 Some of your smartphone apps can be displayed and operated on the audio/
@@ -10530,10 +9413,6 @@ Ask the app provider for any questions on the app’s
 features.
 Do not get drawn into the display while operating a
 vehicle.
-
-### 294
-
-uuAudio System Basic OperationuSmartphone Connection
 Features
 To use smartphone connection, you need to first pair your smartphone to the audio system via Bluetooth®.
 2 Phone Setup P. 362
@@ -10557,10 +9436,6 @@ you selected. (Not available on all apps.)
 Select to go back to the previous display.
 (Not available on all phones.)
 Microphone
-
-### 295
-
-uuAudio System Basic OperationuSmartphone Connection
 Features
 1. Connect your phone to the display audio
 via Bluetooth®.
@@ -10581,6 +9456,7 @@ audio/information screen.
 u To go back to the previous screen, select
 HOME.
 
+<!-- page:571 -->
 ## ■Connecting Your iPhone
 
 1Connecting Your iPhone
@@ -10594,12 +9470,9 @@ cable purchasing information.
 HDMITM Cable
 USB Cable
 Digital AV Adapter
-
-### 296
-
-uuAudio System Basic OperationuWi-Fi Connection
 Features
 
+<!-- page:572 -->
 ## Wi-Fi Connection
 
 You can connect the display audio system to the Internet using Wi-Fi and browse
@@ -10619,6 +9492,7 @@ the system.
 u If you do not find the phone you want to
 connect in the list, select Scan.
 
+<!-- page:573 -->
 ## ■Wi-Fi mode (setting for the first time)
 
 1Wi-Fi mode (setting for the first time)
@@ -10634,10 +9508,6 @@ off with the
 icon on Wi-Fi Device list.
 Transmission speed and others will not be displayed
 on this screen.
-
-### 297
-
-uuAudio System Basic OperationuWi-Fi Connection
 Features
 7. Select Connect.
 u Enter a password for your phone, and
@@ -10662,18 +9532,16 @@ languageuncheck the box next to Use system
 languageselect the keyboard languages that you
 can enter.
 
+<!-- page:574 -->
 ## ■Wi-Fi mode (after the initial setting has been made)
 
 1Wi-Fi mode (after the initial setting has been made)
 You may need to go through an initial setup for Wi-
 Fi connection again after you boot your phone.
 iPhone users
-
-### 298
-
-uuAudio System Basic OperationuSiri Eyes Free
 Features
 
+<!-- page:575 -->
 ## Siri Eyes Free
 
 You can talk to Siri using the
@@ -10681,6 +9549,7 @@ You can talk to Siri using the
 iPhone is paired to the Hands-Free Telephone (HFT) System.
 2 Phone Setup P. 362
 
+<!-- page:576 -->
 ## ■Using Siri Eyes Free
 
 1Siri Eyes Free
@@ -10705,7 +9574,9 @@ when Siri is
 activated in
 Siri Eyes
 Free
+Features
 
+<!-- page:577 -->
 ## CD Player
 
 If a disc error occurs, you may see the following error messages.
@@ -10760,12 +9631,9 @@ Heat Error*2
 High temperature
 ●Turn the audio system off and allow the player to cool down until
 the error message is cleared.
-
-### 300
-
-uuAudio Error MessagesuiPod/USB Flash Drive
 Features
 
+<!-- page:578 -->
 ## iPod/USB Flash Drive
 
 If an error occurs while playing an iPod or USB flash drive, you may see the following
@@ -10808,12 +9676,9 @@ connected, reconnect the device.
 iPod
 USB flash drive
 iPod and USB flash drive
-
-### 301
-
-uuAudio Error MessagesuAndroid/Apps
 Features
 
+<!-- page:580 -->
 ## Android/Apps
 
 If an error occurs while using the audio system or apps, you may see the following
@@ -10846,7 +9711,9 @@ GPS setting of the Android setting is turned off.
 ●Move to the area where GPS reception is available.
 2 Customized Features P. 316
 Models with display audio system
+Features
 
+<!-- page:582 -->
 ## Recommended CDs
 
 • Use only high-quality CD-R or CD-RW discs labeled for audio use.
@@ -10859,15 +9726,15 @@ A Dual-disc cannot play on this audio unit. If recorded
 under certain conditions, a CD-R or CD-RW may not
 play either.
 
+![Image 1 from page 582](images/2016_Jazz_Owners_Manual/p582-1.png)
+
+<!-- page:583 -->
 ## ■CDs with MP3, WMA, or AAC files
 
 The CD packages or jackets should have one of these marks.
-
-### 303
-
-uuGeneral Information on the Audio SystemuRecommended CDs
 Features
 
+<!-- page:587 -->
 ### ■Protecting CDs
 
 Follow these precautions when handling or storing CDs:
@@ -10904,16 +9771,14 @@ Burrs
 CD
 ●Bubbled, wrinkled, labeled, and
 excessively thick CDs
-
-### 304
-
-uuGeneral Information on the Audio SystemuCompatible iPod, iPhone, and USB Flash Drives
 Features
 
+<!-- page:588 -->
 ## Compatible iPod, iPhone, and USB Flash Drives
 
 *1: Display audio system
 
+<!-- page:589 -->
 ## ■iPod and iPhone Model Compatibility
 
 Model
@@ -10929,10 +9794,6 @@ iPhone 3G/iPhone 3GS/iPhone 4/iPhone 4s/iPhone 5/iPhone 5c*1/iPhone 5s*1
 1iPod and iPhone Model Compatibility
 This system may not work with all software versions
 of these devices.
-
-### 305
-
-uuGeneral Information on the Audio SystemuCompatible iPod, iPhone, and USB Flash Drives
 Features
 • Use a recommended USB flash drive of 256 MB or higher.
 • Some digital audio players may not be compatible.
@@ -10940,6 +9801,7 @@ Features
 • Some software files may not allow for audio play or text data display.
 • Some versions of MP3, WMA, AAC or WAV* formats may be unsupported.
 
+<!-- page:590 -->
 ## ■Recommended Devices
 
 Media
@@ -10965,12 +9827,9 @@ order. This order may be different from the order
 displayed on your PC or device.
 Models with display audio system
 * Not available on all models
-
-### 306
-
-uuGeneral Information on the Audio SystemuAbout Open Source Licences
 Features
 
+<!-- page:591 -->
 ## About Open Source Licences
 
 To see the open source licence information, follow these steps.
@@ -10988,11 +9847,15 @@ u Select
 appears on the screen.
 • Select
 , then select Settings on the App tab.
+Continued
+Features
 
+<!-- page:592 -->
 ## Customized Features
 
 Use the audio/information screen to customize certain features.
 
+<!-- page:593 -->
 ### ■How to customize
 
 While the vehicle is at a complete stop with the ignition switch in ON (w, press the
@@ -11022,12 +9885,9 @@ MENU/CLOCK Button
 Audio/Information Screen
 Selector Knob
 (Phone) Button
-
-### 308
-
-uuCustomized Featuresu
 Features
 
+<!-- page:594 -->
 ### ■Customization flow
 
 Press the MENU/CLOCK button.
@@ -11053,10 +9913,6 @@ Scan tracks
 *2: CD/iPod/USB mode
 *3: AM/FM/DAB * mode
 * Not available on all models
-
-### 309
-
-uuCustomized Featuresu
 Continued
 Features
 Bluetooth
@@ -11079,10 +9935,6 @@ Band select
 Settings
 *1: Except AM/FM/DAB* mode
 * Not available on all models
-
-### 310
-
-uuCustomized Featuresu
 Features
 Language
 Display change
@@ -11100,10 +9952,6 @@ Gray
 12H
 24H
 Clock format
-
-### 311
-
-uuCustomized Featuresu
 Continued
 Features
 Press the
@@ -11125,12 +9973,9 @@ Caller ID info
 Name priority
 Number priority
 System clear
-
-### 312
-
-uuCustomized Featuresu
 Features
 
+<!-- page:595 -->
 ### ■List of customizable options
 
 *1: Default Setting
@@ -11157,7 +10002,6 @@ Play mode
 Normal play
 Selects a play mode.
 2 How to Select a Play Mode P. 241, 244,
-247
 —
 Repeat one folder
 Repeat one track
@@ -11175,10 +10019,6 @@ iPod mode
 iPod mode
 CD/USB mode
 CD/USB mode
-
-### 313
-
-uuCustomized Featuresu
 Continued
 Features
 *1: Default Setting
@@ -11240,10 +10080,6 @@ Audio device to HFT.
 AM/FM/DAB* mode
 Except AM/FM/DAB* mode
 * Not available on all models
-
-### 314
-
-uuCustomized Featuresu
 Features
 *1: Default Setting
 Setup
@@ -11294,10 +10130,6 @@ Clock format
 Selects the digital clock display from 12H to
 24H.
 12H*1/24H
-
-### 315
-
-uuCustomized Featuresu
 Continued
 Features
 *1: Default Setting
@@ -11347,13 +10179,10 @@ System clear
 Cancels/Resets all customized items in the
 Phone setup group as default.
 —
-uuCustomized Featuresu
-
-### 316
-
 Features
 Use the audio/information screen to customize certain features.
 
+<!-- page:596 -->
 ### ■How to customize
 
 While the vehicle is at a complete stop with the ignition switch in ON (w*1, select
@@ -11383,13 +10212,10 @@ items.
 0(18
 %$&.
 Audio/Information Screen
-
-### 317
-
-uuCustomized Featuresu
 Continued
 Features
 
+<!-- page:597 -->
 ### ■Customization flow
 
 Select HOME.
@@ -11433,10 +10259,6 @@ Clock Reset
 screen interface design.
 *2: Appears only when you change the
 screen interface design.
-
-### 318
-
-uuCustomized Featuresu
 Features
 *1: May change depending on your currently selected source.
 Sound
@@ -11468,10 +10290,6 @@ REG
 AF
 DAB Settings*
 * Not available on all models
-
-### 319
-
-uuCustomized Featuresu
 Continued
 Features
 Time Zone
@@ -11489,10 +10307,6 @@ Other
 Info Screen Preference
 Clock Display
 Clock Location
-
-### 320
-
-uuCustomized Featuresu
 Features
 Edit Speed Dial
 Bluetooth
@@ -11517,10 +10331,6 @@ Wi-Fi On/Off Status
 Wi-Fi Device List
 Wi-Fi Device Information
 * Not available on all models
-
-### 321
-
-uuCustomized Featuresu
 Continued
 Features
 Wi-Fi
@@ -11540,10 +10350,6 @@ Language & input
 Backup & reset
 Date & time
 Accessibility
-
-### 322
-
-uuCustomized Featuresu
 Features
 
 ### ■List of customizable options
@@ -11598,10 +10404,6 @@ Voice Prompt
 Turns the voice prompt on and off.
 On*1/Off
 * Not available on all models
-
-### 323
-
-uuCustomized Featuresu
 Continued
 Features
 *1: Default Setting
@@ -11653,10 +10455,6 @@ Right lower/Left lower/Off
 Clock Reset
 Resets the clock settings to the factory default.
 —
-
-### 324
-
-uuCustomized Featuresu
 Features
 *1: Default Setting
 *2: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition switch.
@@ -11710,10 +10508,6 @@ Selects whether the list of selectable audio
 sources comes on or not when Audio is
 selected on the HOME screen.
 On/Off*1
-
-### 325
-
-uuCustomized Featuresu
 Continued
 Features
 *1: Default Setting
@@ -11764,10 +10558,6 @@ USB, HDMITM mode
 Bluetooth® Audio mode
 Bluetooth® Audio mode
 * Not available on all models
-
-### 326
-
-uuCustomized Featuresu
 Features
 *1: Default Setting
 Setup
@@ -11812,10 +10602,6 @@ Cancels/Resets all customized items in the
 Audio group as default.
 Yes/No
 * Not available on all models
-
-### 327
-
-uuCustomized Featuresu
 Continued
 Features
 *1: Default Setting
@@ -11851,10 +10637,6 @@ Default
 Cancels/Resets all customized items in the
 Info group as default.
 Yes/No
-
-### 328
-
-uuCustomized Featuresu
 Features
 *1: Default Setting
 Setup
@@ -11889,10 +10671,6 @@ Default
 Cancels/Resets all customized items in the
 Phone group as default.
 Yes/No
-
-### 329
-
-uuCustomized Featuresu
 Continued
 Features
 *1: Default Setting
@@ -11936,10 +10714,6 @@ Edits Pairing Code.
 P. 363
 Random/Fixed*1
 * Not available on all models
-
-### 330
-
-uuCustomized Featuresu
 Features
 *1: Default Setting
 Setup
@@ -11989,10 +10763,6 @@ Display
 Sets up the wallpaper and changes the font
 size.
 —
-
-### 331
-
-uuCustomized Featuresu
 Features
 *1: Default Setting
 Setup
@@ -12037,10 +10807,6 @@ About device
 Shows the status of the system, the Android
 version, the legal information, and so on.
 —
-
-### 332
-
-uuCustomized FeaturesuDefaulting All the Settings
 Features
 
 ## Defaulting All the Settings
@@ -12063,6 +10829,8 @@ The following settings will be reset:
 • Audio preset settings
 • Phonebook entries
 • Other display and personal settings.
+Continued
+Features
 
 ## Hands-Free Telephone System
 
@@ -12098,10 +10866,6 @@ Volume down
 (Hang-up) Button
 (Pick-up) Button
 Volume up
-
-### 334
-
-uuHands-Free Telephone SystemuUsing HFT
 Features
 (Phone) button: Press to go directly to the Phone screen.
 LIST/SELECT (Selector) knob: Rotate
@@ -12111,10 +10875,6 @@ press
 (Pick-up) button: Press to go directly to the Phone screen or to answer an
 incoming call.
 (Hang-up) button: Press to end a call.
-
-### 335
-
-uuHands-Free Telephone SystemuUsing HFT
 Features
 The audio/information screen notifies you
 when there is an incoming call.
@@ -12152,11 +10912,6 @@ to HFT.
 Roam Status
 Call Name
 
-### 336
-
-uuHands-Free Telephone SystemuHFT Menus
-Features
-
 ## HFT Menus
 
 The ignition switch must be in ACCESSORY (q or ON (w to use the system.
@@ -12191,10 +10946,6 @@ Call history*1
 Display the paired phones’s phonebook.
 Enter a phone number to dial.
 (Existing entry list)
-
-### 337
-
-uuHands-Free Telephone SystemuHFT Menus
 Continued
 Features
 *1: Appears only when a phone is connected to the system.
@@ -12215,10 +10966,6 @@ Pass-key
 Create a code for a paired phone.
 Connect a Bluetooth® Audio device to the
 system.
-
-### 338
-
-uuHands-Free Telephone SystemuHFT Menus
 Features
 *1: Appears only when a phone is connected to the system.
 Call history
@@ -12238,10 +10985,6 @@ Change a previously stored speed dial
 number.
 Add New
 Existing entry list
-
-### 339
-
-uuHands-Free Telephone SystemuHFT Menus
 Continued
 Features
 System clear
@@ -12259,7 +11002,7 @@ Mobile phone
 Select the ring tone stored in HFT.
 Select the ring tone stored in the connected
 mobile phone.
-uuHands-Free Telephone SystemuHFT Menus
+Features
 
 ### ■To pair a mobile phone (No phone has
 
@@ -12311,10 +11054,6 @@ right side.
 These icons indicate the following:
 : The phone can be used with HFT.
 : The phone is compatible with Bluetooth® Audio.
-
-### 341
-
-uuHands-Free Telephone SystemuHFT Menus
 Continued
 Features
 
@@ -12343,10 +11082,6 @@ u The screen changes to device list.
 5. Rotate
 to select Add new, then press
 .
-
-### 342
-
-uuHands-Free Telephone SystemuHFT Menus
 Features
 6. Make sure your phone is in search or
 discoverable mode, then press
@@ -12365,10 +11100,6 @@ audio display.
 u Confirm if the pairing code on the screen
 and your phone match.
 This may vary by phone.
-
-### 343
-
-uuHands-Free Telephone SystemuHFT Menus
 Continued
 Features
 
@@ -12397,10 +11128,6 @@ then press
 u The system disconnects the connected
 phone and starts searching for another
 paired phone.
-
-### 344
-
-uuHands-Free Telephone SystemuHFT Menus
 Features
 
 ### ■To change the pairing code setting
@@ -12421,10 +11148,6 @@ to select Pass-key, then press
 .
 5. Input a new pairing code, then press
 .
-
-### 345
-
-uuHands-Free Telephone SystemuHFT Menus
 Continued
 Features
 
@@ -12454,10 +11177,6 @@ delete, then press
 screen. Rotate
 to select Yes, then press
 .
-uuHands-Free Telephone SystemuHFT Menus
-
-### 346
-
 Features
 You can change the ring tone setting.
 1. Press the
@@ -12506,10 +11225,6 @@ Name priority: A caller’s name is displayed if it is
 stored in the phonebook.
 Number priority: A caller’s phone number is
 displayed.
-
-### 347
-
-uuHands-Free Telephone SystemuHFT Menus
 Continued
 Features
 Pairing codes, paired phones, all speed dial entries, all call history data, and all
@@ -12537,10 +11252,6 @@ to select Yes, then press
 
 ## ■To Clear the System
 
-uuHands-Free Telephone SystemuHFT Menus
-
-### 348
-
 Features
 When your phone is paired, the contents of its phonebook and call history are
 automatically imported to the system.
@@ -12567,10 +11278,6 @@ Fax
 Car
 Other
 Continued
-
-### 349
-
-uuHands-Free Telephone SystemuHFT Menus
 Features
 Up to 20 speed dial numbers can be stored per phone.
 To store a speed dial number:
@@ -12604,10 +11311,6 @@ store a speed dial number:
 during a call.
 2. The contact information for the active call will be
 stored for the corresponding speed dial.
-
-### 350
-
-uuHands-Free Telephone SystemuHFT Menus
 Features
 
 ### ■To edit a speed dial
@@ -12653,10 +11356,6 @@ to select Yes, then
 press
 .
 Continued
-
-### 351
-
-uuHands-Free Telephone SystemuHFT Menus
 Features
 You can make calls by inputting any phone number, or by using the imported
 phonebook, call history, speed dial entries, or redial.
@@ -12669,7 +11368,7 @@ vehicles is 10 metres (30 feet).
 Once a call is connected, you can hear the voice of
 the person you are calling through the audio
 speakers.
-uuHands-Free Telephone SystemuHFT Menus
+Features
 
 ### ■To make a call using the imported
 
@@ -12717,10 +11416,6 @@ This function is disabled while the vehicle is moving.
 1To make a call using a phone number
 This function is disabled while the vehicle is moving.
 Continued
-
-### 353
-
-uuHands-Free Telephone SystemuHFT Menus
 Features
 
 ### ■To make a call using redial
@@ -12759,7 +11454,7 @@ number dialed in your phone’s call history.
 The call history appears only when a phone is
 connected to the system, and displays the last 20
 dialed, received, or missed calls.
-uuHands-Free Telephone SystemuHFT Menus
+Features
 
 ### ■To make a call using a speed dial entry
 
@@ -12808,10 +11503,6 @@ to select the icon, then press
 .
 HFL Mode
 Caller’s Name
-
-### 355
-
-uuHands-Free Telephone SystemuHFT Menus
 Features
 The following options are available during a call.
 Swap call: Put the current call on hold to answer the incoming call.
@@ -12831,6 +11522,7 @@ selected. Select Mute again to turn it off.
 
 1Options During a Call
 Dial tones: Available on some phones.
+Features
 
 ## Hands-Free Telephone System
 
@@ -12891,10 +11583,6 @@ Volume up
 /
 Buttons
 Continued
-
-### 357
-
-uuHands-Free Telephone SystemuUsing HFT
 Features
 (Talk) button: Press to call a number with a stored voice tag.
 (Menu) button: Press to display Speed Dial, Call History, or Redial on the
@@ -12935,22 +11623,12 @@ HFT Mode
 Battery Level Status
 Caller’s Name
 Caller’s Number
-
-### 358
-
-uuHands-Free Telephone SystemuUsing HFT
 Features
 Certain manual functions are disabled or inoperable while the vehicle is in motion.
 You cannot select a grayed-out option until the vehicle is stopped.
 Only previously stored speed dial entries with voice tags, phonebook names, or
 numbers can be called using voice commands while the vehicle is in motion.
 2 Speed Dial P. 368
-
-### 359
-
-uuHands-Free Telephone SystemuHFT Menus
-Continued
-Features
 
 ## HFT Menus
 
@@ -12985,10 +11663,6 @@ phone name.
 Pair a phone to the system.
 Delete a previously paired
 phone.
-
-### 360
-
-uuHands-Free Telephone SystemuHFT Menus
 Features
 *1: Appears only when a phone is connected to the system.
 Edit Speed Dial
@@ -13022,10 +11696,6 @@ Delete a previously stored
 speed dial number.
 Set phonebook and call history data to be automatically imported when a phone is paired to HFT.
 Cancel/Reset all customized items in the Phone Settings group as default.
-
-### 361
-
-uuHands-Free Telephone SystemuHFT Menus
 Continued
 Features
 
@@ -13064,7 +11734,7 @@ Received
 Display the last 20 incoming calls.
 Missed
 Display the last 20 missed calls.
-uuHands-Free Telephone SystemuHFT Menus
+Features
 
 ### ■To pair a mobile phone (when there is
 
@@ -13106,10 +11776,6 @@ paired to the system.
 by the system, the system will return to the
 previous screen.
 Continued
-
-### 363
-
-uuHands-Free Telephone SystemuHFT Menus
 Features
 
 ### ■To change the currently paired phone
@@ -13143,10 +11809,6 @@ To create your own, select Fixed, and delete the
 current code, then enter a new one.
 For a randomly generated pairing code each time you
 pair a phone, select Random.
-
-### 364
-
-uuHands-Free Telephone SystemuHFT Menus
 Features
 
 ### ■To edit an already-paired phone name
@@ -13159,10 +11821,6 @@ Features
 5. Edit the name and select OK.
 6. A notification appears if the change is
 successful.
-
-### 365
-
-uuHands-Free Telephone SystemuHFT Menus
 Continued
 Features
 
@@ -13177,10 +11835,6 @@ Features
 the screen. Select Yes.
 6. A notification appears if the deletion is
 successful.
-uuHands-Free Telephone SystemuHFT Menus
-
-### 366
-
 Features
 You can change the ring tone setting.
 1. Go to the Phone settings screen.
@@ -13195,10 +11849,6 @@ Fixed: The fixed ring tone sounds from the speaker.
 Mobile Phone: The ring tone stored in the
 connected mobile phone sounds from the speaker.
 Continued
-
-### 367
-
-uuHands-Free Telephone SystemuHFT Menus
 Features
 
 ### ■When Automatic Phone Sync is set to
@@ -13236,10 +11886,6 @@ Car
 Other
 Voice
 Pref
-uuHands-Free Telephone SystemuHFT Menus
-
-### 368
-
 Features
 Up to 20 speed dial numbers can be stored per phone.
 To store a speed dial number:
@@ -13273,10 +11919,6 @@ button to
 call the number using the voice tag. Say the voice tag
 name.
 Continued
-
-### 369
-
-uuHands-Free Telephone SystemuHFT Menus
 Features
 
 ### ■To add a voice tag to a stored speed
@@ -13312,7 +11954,7 @@ It is easier for the system to recognize a longer name.
 For example, use “John Smith” instead of “John.”
 Clear
 Play
-uuHands-Free Telephone SystemuHFT Menus
+Features
 
 ### ■To edit a speed dial
 
@@ -13350,10 +11992,6 @@ Once a call is connected, you can hear the voice of
 the person you are calling through the audio
 speakers.
 Continued
-
-### 371
-
-uuHands-Free Telephone SystemuHFT Menus
 Features
 
 ### ■To make a call using the imported
@@ -13392,7 +12030,7 @@ However, you can call a stored voice-tagged speed
 dial number using voice commands.
 2 Limitations for Manual Operation P. 358
 2 Speed Dial P. 368
-uuHands-Free Telephone SystemuHFT Menus
+Features
 
 ### ■To make a call using redial
 
@@ -13437,10 +12075,6 @@ Any voice-tagged speed dial entry can be dialed by
 voice from any screen.
 Press the
 button and follow the prompts.
-
-### 373
-
-uuHands-Free Telephone SystemuHFT Menus
 Features
 When there is an incoming call, an audible
 notification sounds and the Incoming call
@@ -13537,6 +12171,7 @@ Accessories and Modifications
 Accessories...........................................467
 Modifications .......................................467
 * Not available on all models
+Driving
 
 ## Driving Preparation
 
@@ -13578,10 +12213,6 @@ small animal. Also check under the bonnet for
 leftover flammable materials after you or someone
 else has performed maintenance on your vehicle.
 Continued
-
-### 377
-
-uuBefore DrivinguDriving Preparation
 Driving
 • Store or secure all items on board properly.
 u Carrying too much luggage, or improperly storing it, can affect your vehicle's
@@ -13618,10 +12249,6 @@ You can adjust the low beam headlight angle by your
 self.
 2 Headlight Adjuster P. 171
 * Not available on all models
-
-### 378
-
-uuBefore DrivinguDriving Preparation
 Driving
 • Be sure items placed on the floor behind the front seats cannot roll under the
 seats.
@@ -13633,10 +12260,6 @@ operation of the seats.
 vehicle, and go off soon after.
 u Always have a dealer check the vehicle if a problem is indicated.
 2 Indicators P. 84
-
-### 379
-
-uuBefore DrivinguLoad Limit
 Driving
 
 ## Load Limit
@@ -13656,6 +12279,7 @@ handling and stability and cause a crash in
 which you can be hurt or killed.
 Follow all load limits and other loading
 guidelines in this manual.
+Driving
 
 ## Towing Preparation
 
@@ -13700,10 +12324,6 @@ killed.
 Check the loading of your vehicle and
 trailer carefully before starting to drive.
 Total Load
-
-### 381
-
-uuTowing a TraileruTowing Preparation
 Continued
 Driving
 
@@ -13722,10 +12342,6 @@ little trailer nose load can make the trailer unstable and cause it to sway.
 front of the trailer and 40% toward the rear. Readjust the load as needed.
 Tongue Load
 Trailer Nose Load
-uuTowing a TraileruTowing Preparation
-
-### 382
-
 Driving
 Towing equipment varies by the size of your trailer, how much load you are towing,
 and where you are towing.
@@ -13770,10 +12386,6 @@ situation.
 The lighting and wiring of trailers can vary by type
 and brand. If a connector is required, it should only
 be installed by a qualified technician.
-
-### 383
-
-uuTowing a TraileruDriving Safely with a Trailer
 Continued
 Driving
 
@@ -13810,10 +12422,6 @@ trailer, keep a constant speed and steer straight
 ahead.
 Always drive slowly and have someone guide you
 when reversing.
-uuTowing a TraileruDriving Safely with a Trailer
-
-### 384
-
 Driving
 • Drive slower than normal.
 • Obey posted speed limits for vehicles with trailers.
@@ -13832,10 +12440,6 @@ Road and traffic conditions may require you to shift
 at times other than those indicated.
 Continuously variable transmission models
 Manual transmission models
-
-### 385
-
-uuTowing a TraileruDriving Safely with a Trailer
 Driving
 • Turn more slowly and with a wider turning arc than normal.
 • Allow more time and distance for braking.
@@ -13852,6 +12456,7 @@ from overheating.
 
 Continuously variable transmission models
 * Not available on all models
+Driving
 
 ## Starting the Engine
 
@@ -13888,10 +12493,6 @@ Clutch Pedal
 Manual transmission models
 * Not available on all models
 Continued
-
-### 387
-
-uuWhen DrivinguStarting the Engine
 Driving
 3. Turn the ignition switch to START (e
 without depressing the accelerator pedal.
@@ -13927,7 +12528,7 @@ The engine may automatically restart under certain
 conditions.
 Otherwise, follow the standard procedure.
 Manual transmission models
-uuWhen DrivinguStarting the Engine
+Driving
 
 ### ■Hill start assist system
 
@@ -13945,10 +12546,6 @@ Hill start assist is not a replacement for the parking
 brake.
 Manual transmission models
 Continuously variable transmission models
-
-### 389
-
-uuWhen DrivinguStarting the Engine
 Continued
 Driving
 
@@ -13989,10 +12586,6 @@ Continuously variable transmission models
 Brake Pedal
 Clutch Pedal
 Manual transmission models
-uuWhen DrivinguStarting the Engine
-
-### 390
-
 Driving
 3. Press the ENGINE START/STOP button
 without depressing the accelerator pedal.
@@ -14013,10 +12606,6 @@ START
 STOP
 All models
 Continued
-
-### 391
-
-uuWhen DrivinguStarting the Engine
 Driving
 You can turn the engine off when the vehicle is completely stopped.
 1. Shift to (P.
@@ -14043,7 +12632,7 @@ conditions.
 Otherwise, follow the standard procedure.
 Manual transmission models
 Continuously variable transmission models
-uuWhen DrivinguStarting the Engine
+Driving
 
 ### ■Hill start assist system
 
@@ -14061,10 +12650,6 @@ rolling downhill on a very steep or slippery slope, and
 does not operate on small inclines.
 Hill start assist is not a replacement for the parking
 brake.
-
-### 393
-
-uuWhen DrivinguPrecautions While Driving
 Continued
 Driving
 
@@ -14102,10 +12687,6 @@ and all steering and brake power assist functions will
 stop, making it difficult to control the vehicle.
 Do not put the shift lever in (N, as you will lose
 engine braking (and acceleration) performance.
-uuWhen DrivinguPrecautions While Driving
-
-### 394
-
 Driving
 If there is a strong impact with something under the vehicle, stop in a safe location.
 Check the underside of the vehicle for damage or any fluid leaks.
@@ -14128,10 +12709,6 @@ The following can damage the under spoiler:
 (such as a road shoulder)
 • Driving on a rutted or bumpy road
 • Driving on a road with potholes.
-
-### 395
-
-uuWhen DrivinguContinuously Variable Transmission*
 Driving
 
 ## Continuously Variable Transmission*
@@ -14145,10 +12722,6 @@ the accelerator pedal carefully, especially on slippery roads and curves.
 ## ■Kickdown
 
 * Not available on all models
-
-### 396
-
-uuWhen DrivinguShifting
 Driving
 
 ## Shifting
@@ -14194,10 +12767,6 @@ Used:
 shift mode
 ●When towing a trailer in hilly terrain
 Continued
-
-### 397
-
-uuWhen DrivinguShifting
 Driving
 
 ## ■Shift Lever Operation
@@ -14234,10 +12803,6 @@ and shift.
 M (7-Speed Manual Shift Mode)
 Indicator/Shift Indicator
 Tachometer’s red zone
-uuWhen DrivinguShifting
-
-### 398
-
 Driving
 Use the paddle shifters to change between 1st and 7th speeds without removing
 your hands from the steering wheel. The transmission switches to the 7-speed
@@ -14291,10 +12856,6 @@ may cause the tyres to lock up. In this case, the 7-
 speed manual shift mode is cancelled and goes back
 to the normal driving mode.
 Continued
-
-### 399
-
-uuWhen DrivinguShifting
 Driving
 
 ## ■7-Speed Manual Shift Mode Operation
@@ -14325,10 +12886,6 @@ the
 paddle shifter
 (Changes to higher speed
 number)
-uuWhen DrivinguShifting
-
-### 400
-
 Driving
 Comes on while the vehicle is in the 7-speed
 manual shift mode to indicate when a shift
@@ -14355,10 +12912,6 @@ Never refer to the Shift Indicators when
 road and traffic conditions are unsuitable
 or when it may distract you.
 Shift Up Indicator
-
-### 401
-
-uuWhen DrivinguShifting
 Continued
 Driving
 
@@ -14396,10 +12949,6 @@ If you exceed the maximum speed for the gear you
 are in, the engine speed will enter into the
 tachometer's red zone. When this happens, you may
 experience a slight jolt.
-uuWhen DrivinguShifting
-
-### 402
-
 Driving
 Come on to indicate when a gear change is
 appropriate to maintain the most fuel efficient
@@ -14431,10 +12980,6 @@ you achieve better fuel economy.
 Never refer to the Shift Indicators when
 road and traffic conditions are unsuitable
 or when it may distract you.
-
-### 403
-
-uuWhen DrivinguShifting
 Driving
 The manual transmission has a lockout mechanism that stops you from accidentally
 shifting into (R from a forward gear while the vehicle is moving above a certain
@@ -14452,11 +12997,6 @@ Have your vehicle checked by a dealer if you
 have to go through this procedure repeatedly.
 *1: Models with the keyless access system have an ENGINE START/STOP button instead of an ignition
 switch.
-
-### 404
-
-uuWhen DrivinguAuto Idle Stop
-Driving
 
 ## Auto Idle Stop
 
@@ -14488,10 +13028,6 @@ Auto idle stop may activate less frequently in such
 condition as a traffic jam.
 Auto Idle Stop Indicator (green)
 Continued
-
-### 405
-
-uuWhen DrivinguAuto Idle Stop
 Driving
 To turn the Auto Idle Stop system off, press
 this button. The Auto Idle Stop system stops.
@@ -14510,10 +13046,6 @@ Auto Idle
 Stop
 Indicator
 (Amber)
-uuWhen DrivinguAuto Idle Stop
-
-### 406
-
 Driving
 The vehicle stops with the shift lever in (D and the brake pedal depressed.
 
@@ -14566,10 +13098,6 @@ Models without keyless access system
 Models with capacitor unit
 Models with climate control system
 Models with heating and cooling system
-
-### 407
-
-uuWhen DrivinguAuto Idle Stop
 Continued
 Driving
 
@@ -14584,10 +13112,6 @@ Driving
 the set temperature and the actual interior temperature.
 • Humidity in the interior is high.
 Models with climate control system
-uuWhen DrivinguAuto Idle Stop
-
-### 408
-
 Driving
 The brake pedal is released.
 
@@ -14621,10 +13145,6 @@ Stop, the device may temporarily be turned off when
 the engine restarts.
 Models with climate control system
 Models with heating and cooling system
-
-### 409
-
-uuWhen DrivinguAuto Idle Stop
 Continued
 Driving
 
@@ -14662,10 +13182,6 @@ sure to select the specified type. Ask a dealer for
 more details.
 2 Specifications P. 582
 Auto Idle Stop Indicator (green)
-uuWhen DrivinguAuto Idle Stop
-
-### 410
-
 Driving
 To turn the Auto Idle Stop system off, press
 this button. The Auto Idle Stop system stops.
@@ -14685,10 +13201,6 @@ Stop
 Indicator
 (Amber)
 Continued
-
-### 411
-
-uuWhen DrivinguAuto Idle Stop
 Driving
 The Auto Idle Stop is activated after the vehicle has come to a stop and the shift lever
 is in (N with the clutch released.
@@ -14738,7 +13250,7 @@ Models with keyless access system
 Models without keyless access system
 Models with climate control system
 Models with heating and cooling system
-uuWhen DrivinguAuto Idle Stop
+Driving
 
 ### ■Auto idle stop may not activate when:
 
@@ -14785,10 +13297,6 @@ If the system is deactivated, restart the engine with
 the ENGINE START/STOP button or the ignition
 switch.
 2 Starting the Engine P. 386, 389
-
-### 413
-
-uuWhen DrivinguAuto Idle Stop
 Driving
 Fully depress the clutch pedal.
 u The engine automatically restarts.
@@ -14811,10 +13319,6 @@ dial is turned to
 .
 Models with climate control system
 Models with heating and cooling system
-
-### 414
-
-uuWhen DrivinguCruise Control
 Driving
 
 ## Cruise Control
@@ -14865,10 +13369,6 @@ of the multi-information display.
 Cruise control is ready to use.
 If a different indicator comes on, press the
 LIM button to switch to cruise control.
-
-### 415
-
-uuWhen DrivinguCruise Control
 Continued
 Driving
 Take your foot off the pedal and press the –/SET button when you reach the desired
@@ -14883,10 +13383,6 @@ Button
 Press and release
 The set speed appears when
 cruise control begins
-uuWhen DrivinguCruise Control
-
-### 416
-
 Driving
 Increase or decrease the vehicle speed using the RES/+ or –/SET buttons on the
 steering wheel.
@@ -14933,10 +13429,6 @@ Button
 LIM
 Button
 Manual transmission models
-
-### 417
-
-uuWhen DrivinguAdjustable Speed Limiter
 Continued
 Driving
 
@@ -14983,10 +13475,6 @@ the adjustable speed limiter.
 The indicator is on in the instrument panel.
 Adjustable speed limiter is ready to use.
 * Not available on all models
-uuWhen DrivinguAdjustable Speed Limiter
-
-### 418
-
 Driving
 • Take your foot off the pedal and press the -/SET button when you reach the
 desired speed.
@@ -15014,10 +13502,6 @@ speed limiter is set
 RES/+
 Button
 Continued
-
-### 419
-
-uuWhen DrivinguAdjustable Speed Limiter
 Driving
 Increase or decrease the speed limit by using the RES/+ or -/SET buttons on the
 steering wheel.
@@ -15040,10 +13524,6 @@ higher than the set speed limit with the acceleration
 pedal depressed completely.
 The adjustable speed limiter resumes working once
 the vehicle speed goes lower than the set speed limit.
-uuWhen DrivinguAdjustable Speed Limiter
-
-### 420
-
 Driving
 To cancel the adjustable speed limiter, do any
 of the following:
@@ -15069,10 +13549,6 @@ CANCEL
 Button
 LIM
 Button
-
-### 421
-
-uuWhen DrivinguIntelligent Speed Limiter
 Continued
 Driving
 
@@ -15101,10 +13577,6 @@ It is always your responsibility to adjust the
 vehicle speed to obey the actual speed
 limit, and safely operate the vehicle.
 * Not available on all models
-uuWhen DrivinguIntelligent Speed Limiter
-
-### 422
-
 Driving
 1Intelligent Speed Limiter
 The system is designed to detect signs that follow the
@@ -15142,10 +13614,6 @@ The indicator is on in the instrument panel.
 Intelligent speed limiter is ready to use.
 * Not available on all models
 Continued
-
-### 423
-
-uuWhen DrivinguIntelligent Speed Limiter
 Driving
 • The moment you release the -/SET button or RES/+ button, the intelligent speed
 limiter is set to the speed limit that the traffic sign recognition system detects. The
@@ -15183,7 +13651,7 @@ necessary, slow down by depressing the brake pedal.
 And the beeper sounds and the displayed speed limit
 blinks if the vehicle speed exceeds the limit by 3 km/h
 (2 mph) or more.
-uuWhen DrivinguIntelligent Speed Limiter
+Driving
 
 ### ■When the traffic sign recognition system detects the new speed limit sign
 
@@ -15201,10 +13669,6 @@ system when:
 The intelligent speed limiter may also switch to pause
 when the traffic sign recognition system detects only
 additional speed limit signs.
-
-### 425
-
-uuWhen DrivinguIntelligent Speed Limiter
 Continued
 Driving
 
@@ -15219,10 +13683,6 @@ sign for a time while the intelligent speed limiter is activated
 While driving, in addition to when the traffic sign recognition system detects no
 speed limit sign, the traffic sign recognition system may display no speed limit. But,
 intelligent speed limiter functions continue.
-uuWhen DrivinguIntelligent Speed Limiter
-
-### 426
-
 Driving
 Increase or decrease the speed limit by using the RES/+ or -/SET buttons on the
 steering wheel.
@@ -15259,10 +13719,6 @@ higher than the set speed limit with the acceleration
 pedal depressed completely.
 The intelligent speed limiter resumes working once
 the vehicle speed goes lower than the set speed limit.
-
-### 427
-
-uuWhen DrivinguIntelligent Speed Limiter
 Driving
 To cancel the intelligent speed limiter, do any
 of the following:
@@ -15287,10 +13743,6 @@ Button
 LIM
 Button
 * Not available on all models
-
-### 428
-
-uuWhen DrivinguForward Collision Warning*
 Driving
 
 ## Forward Collision Warning*
@@ -15337,10 +13789,6 @@ Normal
 Near
 * Not available on all models
 Continued
-
-### 429
-
-uuWhen DrivinguForward Collision Warning*
 Driving
 1Forward Collision Warning*
 Never apply a film or attach any objects to the
@@ -15366,7 +13814,7 @@ appears in
 the multi-information display until a
 possible collision is avoided.
 * Not available on all models
-uuWhen DrivinguForward Collision Warning*
+Driving
 
 ### ■Automatic shutoff
 
@@ -15402,10 +13850,6 @@ the symbol remains on even after driving for a while
 with the clean windscreen, have your vehicle checked
 by a dealer.
 * Not available on all models
-
-### 431
-
-uuWhen DrivinguForward Collision Warning*
 Driving
 Forward Collision Warning may not activate or may not detect a vehicle in front of
 your vehicle, and may activate even when you are aware of a vehicle ahead of you,
@@ -15434,10 +13878,6 @@ camera to properly detect a vehicle in front of you.
 • When driving at night, the vehicle ahead of you is running with either taillight bulb burned out.
 • When you drive in the shadows of trees, buildings, etc.
 • When your vehicle is towing a trailer.
-
-### 432
-
-uuWhen DrivinguLane Departure Warning*
 Driving
 
 ## Lane Departure Warning*
@@ -15489,10 +13929,6 @@ indicator comes and stays on.
 2 Indicators P. 103
 * Not available on all models
 Continued
-
-### 433
-
-uuWhen DrivinguLane Departure Warning*
 Driving
 The camera is located behind the rearview
 mirror.
@@ -15536,10 +13972,6 @@ Camera
 
 Indicator
 Button
-uuWhen DrivinguLane Departure Warning*
-
-### 434
-
 Driving
 The system may not properly detect lane markings and the position of your vehicle
 under certain conditions. Some examples of these conditions are listed below.
@@ -15576,10 +14008,6 @@ the message remains on even after driving for a while
 with the clean windscreen, have your vehicle checked
 by a dealer.
 * Not available on all models
-
-### 435
-
-uuWhen DrivinguLane Departure Warning*
 Driving
 
 ### ■Roadway conditions
@@ -15611,10 +14039,6 @@ improperly inflated, compact spare tyre*, etc.).
 • The vehicle is tilted due to a heavy load or suspension modifications.
 • When tyre chains are installed.
 * Not available on all models
-
-### 436
-
-uuWhen DrivinguTraffic Sign Recognition System*
 Driving
 
 ## Traffic Sign Recognition System*
@@ -15649,10 +14073,6 @@ snow, etc.
 • Dew condensation is formed on the windscreen.
 * Not available on all models
 Continued
-
-### 437
-
-uuWhen DrivinguTraffic Sign Recognition System*
 Driving
 While driving, in addition to when there is no detected sign, you may also see the
 below screen when.
@@ -15695,10 +14115,6 @@ Condition
 • When the windscreen is dirty or cloudy.
 • When you drive in the shadows of trees, buildings, etc.
 * Not available on all models
-
-### 438
-
-uuWhen DrivinguTraffic Sign Recognition System*
 Driving
 Two traffic signs can be simultaneously displayed next to each other when detected.
 The speed limit sign icon is displayed on the right half of the screen. The overtaking
@@ -15726,10 +14142,6 @@ Speed
 Limit
 Sign
 Depending on situation, *1 can be replaced with *2, or *2 can appear on the right side.
-
-### 439
-
-uuWhen DrivinguTraffic Sign Recognition System*
 Driving
 
 ### ■Selecting to display traffic signs when main mode is off
@@ -15737,10 +14149,6 @@ Driving
 You can continue displaying reduced-size traffic sign icon on the multi-information
 display even while the main mode is not selected.
 2 Customized Features P. 129
-
-### 440
-
-uuWhen DrivinguVehicle Stability Assist (VSA) System
 Driving
 
 ## Vehicle Stability Assist (VSA) System
@@ -15770,10 +14178,6 @@ still need to drive and corner at speeds appropriate
 for the conditions and always leave a sufficient
 margin of safety.
 VSA System Indicator
-
-### 441
-
-uuWhen DrivinguVehicle Stability Assist (VSA) System
 Driving
 This button is on the driver side control panel.
 To partically turn the VSA features on and off,
@@ -15814,10 +14218,6 @@ engine compartment while system checks are being
 performed immediately after starting the engine or
 while driving. This is normal.
 VSA OFF Indicator
-
-### 442
-
-uuWhen DrivinguAgile Handling Assist System
 Driving
 
 ## Agile Handling Assist System
@@ -15836,10 +14236,6 @@ does not activate.
 You may hear a sound coming from the engine
 compartment while the system is activated. This is
 normal.
-
-### 443
-
-uuWhen DrivinguDeflation Warning System
 Continued
 Driving
 
@@ -15903,10 +14299,6 @@ Manual transmission models
 Continuously variable transmission models
 All models
 * Not available on all models
-uuWhen DrivinguDeflation Warning System
-
-### 444
-
 Driving
 You can calibrate the system from the
 customized features on the multi-information
@@ -15960,10 +14352,6 @@ We recommend that the tyres be replaced with the
 same brand, model, and size as the originals. Ask a
 dealer for details.
 * Not available on all models
-
-### 445
-
-uuWhen DrivinguAdjusting Headlight Distribution
 Driving
 
 ## Adjusting Headlight Distribution
@@ -16013,6 +14401,7 @@ Centre point
 5 mm (0.2 in)
 12 mm
 (0.5 in)
+Driving
 
 ## Brake System
 
@@ -16037,10 +14426,6 @@ If you start driving without fully releasing the parking
 brake, a buzzer sounds as a warning, and
 appears on the multi-information display.
 Always apply the parking brake when parking.
-
-### 447
-
-uuBrakinguBrake System
 Driving
 Your vehicle is equipped with disc brakes at all four wheels. A vacuum power assist
 helps to reduce the effort needed on the brake pedal. The brake assist system
@@ -16070,10 +14455,6 @@ Do not rest your foot on the brake pedal while
 driving, as it will lightly apply the brakes and cause
 them to lose effectiveness over time and reduce pad
 life. It will also confuse drivers behind you.
-
-### 448
-
-uuBrakinguAnti-lock Brake System (ABS)
 Driving
 
 ## Anti-lock Brake System (ABS)
@@ -16118,10 +14499,6 @@ You may hear a motor sound coming from the
 engine compartment while system checks are being
 performed immediately after starting the engine or
 while driving. This is normal.
-
-### 449
-
-uuBrakinguBrake Assist System
 Driving
 
 ## Brake Assist System
@@ -16134,11 +14511,6 @@ the brake pedal hard during emergency braking.
 Press the brake pedal firmly for more powerful braking.
 When brake assist operates, the pedal may wiggle slightly and an operating noise
 may be heard. This is normal. Keep holding the brake pedal firmly down.
-
-### 450
-
-uuBrakinguCity-Brake Active system
-Driving
 
 ## City-Brake Active system
 
@@ -16181,10 +14553,6 @@ vehicle detected in front of you is about 5 km/h (3 mph) to 32 km/h (20 mph)
 with a high chance of collision.
 The system don’t activate when shift position is (R.
 Continued
-
-### 451
-
-uuBrakinguCity-Brake Active system
 Driving
 The beeper sounds, and a CTBA warning
 blinks on the multi-information display, and
@@ -16237,10 +14605,6 @@ small vehicle the sensor cannot detect properly.
 sensor is covered with dirt, ice frost, etc.
 The system may not activate while you are fully
 depressing the accelerator pedal.
-uuBrakinguCity-Brake Active system
-
-### 452
-
 Driving
 You can turn the system on and off using the
 multi-information display.
@@ -16280,10 +14644,6 @@ roller.
 • Driving off road or on a mountainous road
 obstructed with branches and leaves.
 Continued
-
-### 453
-
-uuBrakinguCity-Brake Active system
 Driving
 The system may activate even when you are aware of a vehicle ahead of you, or
 when there is no vehicle ahead. Some examples of this are:
@@ -16326,10 +14686,6 @@ system may operate abnormally.
 The system may not work properly if:
 • Your vehicle has heavy load in the rear.
 • Tyres are over- or underinflated.
-uuBrakinguCity-Brake Active system
-
-### 454
-
 Driving
 The City-Brake Active system unit, including
 the laser sensor, is located behind the
@@ -16366,10 +14722,6 @@ Average power angle
 28 × 12
 Laser Classification Label
 Laser Explanation Label
-
-### 455
-
-uuBrakinguEmergency Stop Signal
 Driving
 
 ## Emergency Stop Signal
@@ -16402,6 +14754,7 @@ Hard Braking
 Brake Lights Come On
 Hazard Warning Lights Flash
 Hazard Warning Indicators Blink
+Driving
 
 ## When Stopped
 
@@ -16428,10 +14781,6 @@ Raise the wiper arms when snow is expected.
 Continuously variable transmission models
 Continuously variable transmission models
 Manual transmission models
-
-### 457
-
-uuParking Your VehicleuParking Sensor System*
 Continued
 Driving
 
@@ -16468,7 +14817,7 @@ Front Corner
 Sensors
 Within about 110 cm (43 in) or less
 * Not available on all models
-uuParking Your VehicleuParking Sensor System*
+Driving
 
 ### ■Parking sensor system on and off
 
@@ -16492,10 +14841,6 @@ The parking sensor system is in the previously
 selected on or off setting each time you start the
 engine.
 Manual transmission models
-
-### 459
-
-uuParking Your VehicleuParking Sensor System*
 Continued
 Driving
 
@@ -16534,10 +14879,6 @@ Blinks in Red
 Models with multi-view rear camera
 Indicators light where the
 sensor detects an obstacle.
-
-### 460
-
-uuParking Your VehicleuParking Sensor System*
 Driving
 *1: At this stage, only the centre sensors detect obstacles.
 Length of the
@@ -16572,10 +14913,6 @@ About 35 cm
 Models without multi-view rear camera
 Indicators: Where the sensor
 detects an obstacle lights.
-
-### 461
-
-uuParking Your VehicleuParking Sensor System*
 Driving
 1. Make sure that the parking sensor system is not activated. Turn the ignition
 switch to LOCK (0*1.
@@ -16597,6 +14934,7 @@ When you shift to (R, the indicator in the parking
 sensor system button blinks as a reminder that the
 rear sensors have been turned off.
 * Not available on all models
+Driving
 
 ## About Your Multi-View Rear Camera
 
@@ -16641,10 +14979,6 @@ Approx. 2 m (6.6 ft.)
 Approx. 3 m (9.8 ft.)
 Tailgate open range
 * Not available on all models
-
-### 463
-
-uuMulti-View Rear Camera*uAbout Your Multi-View Rear Camera
 Driving
 You can view three different camera angles on the rearview display.
 Touch the appropriate icon to switch the angle.
@@ -16660,6 +14994,7 @@ available in additional:
 • Display tab: Adjusts Brightness, Contrast, and Black Level of the rear camera
 screen.
 • Colour tab: Adjusts Colour and Tint of the rear camera screen.
+Driving
 
 ### ■Fuel recommendation
 
@@ -16689,10 +15024,6 @@ designed to operate on oxygenated fuels containing
 up to 10% ethanol by volume and up to 22% ETBE
 by volume, based on the EN 228 standards. For more
 information, ask your dealer.
-
-### 465
-
-uuRefuelinguHow to Refuel
 Driving
 
 ## How to Refuel
@@ -16740,6 +15071,7 @@ Release Handle
 Cap
 Cap
 Holder
+Driving
 
 ## Improving Fuel Economy
 
@@ -16775,9 +15107,9 @@ Kilometres
 driven
 Litres of
 fuel
-100
 L per 100 km
 * Not available on all models
+Driving
 
 ## Accessories
 
@@ -16861,6 +15193,7 @@ Cleaning
 Interior Care .................................... 525
 Exterior Care.................................... 527
 * Not available on all models
+Maintenance
 
 ## Inspection and Maintenance
 
@@ -16890,10 +15223,6 @@ refueling.
 ## ■Types of Inspection and Maintenance
 
 * Not available on all models
-
-### 471
-
-uuBefore Performing MaintenanceuSafety When Performing Maintenance
 Maintenance
 
 ## Safety When Performing Maintenance
@@ -16944,10 +15273,6 @@ instructions and precautions can cause you
 to be seriously hurt or killed.
 Always follow the procedures and
 precautions in this owner's manual.
-
-### 472
-
-uuBefore Performing MaintenanceuParts and Fluids Used in Maintenance Service
 Maintenance
 
 ## Parts and Fluids Used in Maintenance Service
@@ -16976,9 +15301,6 @@ information and schedule your maintenance service
 under the conditions of that country.
 Models with service reminder system
 * Not available on all models
-
-### 473
-
 Continued
 Maintenance
 
@@ -17000,10 +15322,6 @@ The maintenance schedule may not display correct
 information if you disconnect or remove the battery
 for an extended period. If this occurs, see a dealer.
 * Not available on all models
-uuService Reminder System*u
-
-### 474
-
 Maintenance
 1. Turn the ignition switch to ON (w*1.
 2. Press the
@@ -17030,10 +15348,6 @@ Changes the customize
 menus and items.
 SEL/RESET Button:
 Enters the selected item.
-
-### 475
-
-uuService Reminder System*u
 Continued
 Maintenance
 
@@ -17069,10 +15383,6 @@ Immediately have the service
 performed and make sure to
 reset the service reminder
 system.
-uuService Reminder System*u
-
-### 476
-
 Maintenance
 Service items displayed on the multi-information display are in code and icon.
 For an explanation of the service reminder codes and icons, refer to the Service Book
@@ -17094,10 +15404,6 @@ service reminder system applied countries, consult a
 dealer on how to record your service reminder
 information and schedule your maintenance service
 under the conditions of that country.
-
-### 477
-
-uuService Reminder System*u
 Maintenance
 Reset the service reminder information display if you have performed the
 maintenance service.
@@ -17136,6 +15442,7 @@ Changes the customize
 menus and items.
 SEL/RESET Button:
 Enters the selected item.
+Maintenance
 
 ## Maintenance Schedule*
 
@@ -17152,16 +15459,6 @@ requirements.
 Service at the indicated distance or
 time - whichever comes first.
 km x 1,000
-20
-40
-60
-80
-100
-120
-140
-160
-180
-200
 miles x 1,000
 12.5
 25.0
@@ -17172,16 +15469,6 @@ miles x 1,000
 87.5
 100.0 112.5 125.0
 months
-12
-24
-36
-48
-60
-72
-84
-96
-108
-120
 Replace engine oil*1
 Normal
 Every 10,000 km (6,250 miles) or 1 year
@@ -17211,26 +15498,12 @@ Inspect idle speed
 •
 Models without Service Book
 * Not available on all models
-
-### 479
-
-uuMaintenance Schedule*u
 Continued
 Maintenance
 *1:Refer to page 480 for replacement information under severe conditions.
 Service at the indicated distance or
 time - whichever comes first.
 km x 1,000
-20
-40
-60
-80
-100
-120
-140
-160
-180
-200
 miles x 1,000
 12.5
 25.0
@@ -17241,16 +15514,6 @@ miles x 1,000
 87.5
 100.0 112.5 125.0
 months
-12
-24
-36
-48
-60
-72
-84
-96
-108
-120
 Replace engine coolant
 At 200,000 km (120,000 miles) or 10 years,
 thereafter every 100,000 km (60,000 miles) or 5 years
@@ -17314,10 +15577,6 @@ All fluid levels and condition of fluid
 Exhaust system
 Fuel lines and connections
 * Not available on all models
-uuMaintenance Schedule*u
-
-### 480
-
 Maintenance
 If you drive your vehicle under severe conditions, you must have the following items
 served to the maintenance schedule indicated as Severe.
@@ -17337,10 +15596,6 @@ go.
 D. towing trailer, loaded roof rack, or in mountains.
 E. on muddy, dusty or de-iced roads.
 * Not available on all models
-
-### 481
-
-uuMaintenance Schedule*uMaintenance Record (On vehicles without Service Book)
 Maintenance
 
 ## Maintenance Record (On vehicles without Service Book)
@@ -17369,6 +15624,7 @@ Sign or Stamp
 112,500 Mi. (or 108 Mo.)
 200,000 km
 125,000 Mi. (or 120 Mo.)
+Maintenance
 
 ## Maintenance Items Under the Bonnet
 
@@ -17384,10 +15640,6 @@ Engine Oil Fill Cap
 Battery
 Brake Fluid (Black Cap)
 Right-hand drive type
-
-### 483
-
-uuMaintenance Under the BonnetuOpening the Bonnet
 Maintenance
 
 ## Opening the Bonnet
@@ -17427,10 +15679,6 @@ Lever
 Support Rod
 Grip
 Clamp
-
-### 484
-
-uuMaintenance Under the BonnetuRecommended Engine Oil
 Maintenance
 
 ## Recommended Engine Oil
@@ -17465,10 +15713,6 @@ European models without service reminder
 ★HONDA ENG OIL #1.0
 Honda Green oil. 0W-20
 Ambient Temperature
-
-### 485
-
-uuMaintenance Under the BonnetuRecommended Engine Oil
 Maintenance
 Use a Genuine Honda Motor oil or another
 commercial engine oil of suitable SAE viscosity
@@ -17481,10 +15725,6 @@ Except European models
 10W-30
 0W-20, 0W-30, 5W-30
 Ambient Temperature
-
-### 486
-
-uuMaintenance Under the BonnetuOil Check
 Maintenance
 
 ## Oil Check
@@ -17511,10 +15751,6 @@ Consumption is likely to be higher when the engine is
 new.
 Upper Mark
 Lower Mark
-
-### 487
-
-uuMaintenance Under the BonnetuAdding Engine Oil
 Maintenance
 
 ## Adding Engine Oil
@@ -17533,10 +15769,6 @@ engine damage.
 If any oil spills, wipe it up immediately. Spilled oil may
 damage the engine compartment components.
 Engine Oil Fill Cap
-
-### 488
-
-uuMaintenance Under the BonnetuEngine Coolant
 Maintenance
 
 ## Engine Coolant
@@ -17572,10 +15804,6 @@ with the coolant or with the engine components.
 Reserve Tank
 MAX
 MIN
-
-### 489
-
-uuMaintenance Under the BonnetuEngine Coolant
 Maintenance
 1. Make sure the engine and radiator are
 cool.
@@ -17609,10 +15837,6 @@ out, seriously scalding you.
 Always let the engine and radiator cool
 down before removing the radiator cap.
 Radiator Cap
-
-### 490
-
-uuMaintenance Under the BonnetuTransmission Fluid
 Maintenance
 
 ## Transmission Fluid
@@ -17657,10 +15881,6 @@ not contain the proper additives for the transmission
 and continued use can cause decreased shifting
 performance and lead to transmission damage.
 * Not available on all models
-
-### 491
-
-uuMaintenance Under the BonnetuBrake Fluid
 Maintenance
 
 ## Brake Fluid
@@ -17692,10 +15912,6 @@ MIN
 MAX
 Reserve Tank
 Manual transmission models
-
-### 492
-
-uuMaintenance Under the BonnetuRefilling Window Washer Fluid
 Maintenance
 
 ## Refilling Window Washer Fluid
@@ -17725,9 +15941,6 @@ Window Washer
 Reservoir
 Models without Service Book
 All models
-
-### 493
-
 Continued
 Maintenance
 
@@ -17761,10 +15974,6 @@ Coupler
 Rubber Weather Seal
 Hold-Down Wire
 * Not available on all models
-
-### 494
-
-uuReplacing Light BulbsuHeadlight Bulbs
 Maintenance
 5. Reinstall the hold-down wire. Hook the end
 of the wire on the knob in the slot.
@@ -17777,10 +15986,6 @@ bulb.
 Inspection Window
 Hold-Down
 Wire
-
-### 495
-
-uuReplacing Light BulbsuFront Fog Light Bulbs*
 Maintenance
 
 ## Front Fog Light Bulbs*
@@ -17812,10 +16017,6 @@ Tab
 Bulb
 Coupler
 * Not available on all models
-
-### 496
-
-uuReplacing Light BulbsuFront Turn Signal Light Bulbs
 Maintenance
 
 ## Front Turn Signal Light Bulbs
@@ -17827,10 +16028,6 @@ When replacing, use the following bulbs.
 Front Turn Signal Light: 21 W (Amber)
 Bulb
 Socket
-
-### 497
-
-uuReplacing Light BulbsuPosition Light Bulbs
 Maintenance
 
 ## Position Light Bulbs
@@ -17842,10 +16039,6 @@ then remove the old bulb.
 Position Light: 5 W
 Bulb
 Socket
-
-### 498
-
-uuReplacing Light BulbsuSide Turn Signal Light Bulbs
 Maintenance
 
 ## Side Turn Signal Light Bulbs
@@ -17857,10 +16050,6 @@ and replace the light bulbs.
 
 Daytime running light bulbs are the LED type. Have an authorized Honda dealer
 inspect and replace the light assembly.
-
-### 499
-
-uuReplacing Light BulbsuBack-Up Light, Rear Turn Signal Light and Rear Fog Light Bulbs
 Maintenance
 
 ## Light Bulbs
@@ -17880,20 +16069,12 @@ Rear Fog Light: 21 W
 Bolt
 Bulb
 Socket
-
-### 500
-
-uuReplacing Light BulbsuBrake/Taillight Bulbs
 Maintenance
 
 ## Brake/Taillight Bulbs
 
 Brake/taillight bulbs are the LED type. Have an authorized Honda dealer inspect and
 replace the light assembly.
-
-### 501
-
-uuReplacing Light BulbsuRear Licence Plate Light Bulbs
 Maintenance
 
 ## Rear Licence Plate Light Bulbs
@@ -17913,10 +16094,6 @@ inspect and replace the light assembly.
 Rear Licence Plate Light: 5 W
 Lens
 Bulb
-
-### 502
-
-uuReplacing Light BulbsuOther Light Bulbs
 Maintenance
 
 ## Other Light Bulbs
@@ -17955,10 +16132,6 @@ bulb.
 Models with colour audio system
 Bulb
 Bulb
-
-### 503
-
-uuReplacing Light BulbsuOther Light Bulbs
 Maintenance
 When replacing, use the following bulbs.
 1. Pry on the edge of the cover using a flat-
@@ -17972,6 +16145,7 @@ Luggage Area Light: 5 W
 2. Remove the old bulb and insert a new
 bulb.
 Bulb
+Maintenance
 
 ## Checking Wiper Blades
 
@@ -17989,10 +16163,6 @@ NOTICE
 Avoid dropping the wiper arm; it may damage the
 windscreen.
 Lock Tab
-
-### 505
-
-uuChecking and Maintaining Wiper BladesuChanging the Front Wiper Blade Rubber
 Maintenance
 3. Slide the wiper blade out from its holder by
 pulling the tabbed end out.
@@ -18007,10 +16177,6 @@ then the driver side.
 Blade
 Tab
 Blade
-
-### 506
-
-uuChecking and Maintaining Wiper BladesuChanging the Rear Wiper Blade Rubber
 Maintenance
 
 ## Changing the Rear Wiper Blade Rubber
@@ -18026,10 +16192,6 @@ Avoid dropping the wiper blade; it may damage the
 rear window.
 Wiper Arm
 Blade
-
-### 507
-
-uuChecking and Maintaining Wiper BladesuChanging the Rear Wiper Blade Rubber
 Maintenance
 4. Remove the retainers from the rubber blade
 that has been removed, and mount to a
@@ -18040,6 +16202,7 @@ install the wiper blade assembly onto the
 wiper arm.
 Retainer
 Holder
+Maintenance
 
 ## Checking Tyres
 
@@ -18082,10 +16245,6 @@ Follow all instructions in this owner’s
 manual regarding tyre inflation and
 maintenance.
 * Not available on all models
-
-### 509
-
-uuChecking and Maintaining TyresuChecking Tyres
 Maintenance
 
 ### ■Inspection guidelines
@@ -18112,10 +16271,6 @@ Pressure
 Front: 240 kPa (2.4 kgf/cm2, 35 psi)
 Rear: 230 kPa (2.3 kgf/cm2, 33 psi)
 Models with 185/55 R16 tyres
-
-### 510
-
-uuChecking and Maintaining TyresuWear Indicators
 Maintenance
 
 ## Wear Indicators
@@ -18139,10 +16294,6 @@ years from the date of manufacture, regardless of their condition or state of we
 Example of a Wear
 Indicator mark
 * Not available on all models
-
-### 511
-
-uuChecking and Maintaining TyresuTyre and Wheel Replacement
 Maintenance
 
 ## Tyre and Wheel Replacement
@@ -18165,10 +16316,6 @@ hurt or killed.
 Always use the size and type of tyres
 recommended in the tyre information label
 on your vehicle.
-
-### 512
-
-uuChecking and Maintaining TyresuTyre Rotation
 Maintenance
 
 ## Tyre Rotation
@@ -18192,10 +16339,6 @@ FRONT
 Rotation Mark
 Front
 Front
-
-### 513
-
-uuChecking and Maintaining TyresuSnow Traction Devices
 Continued
 Maintenance
 
@@ -18241,10 +16384,6 @@ seriously injured or killed.
 Follow all instructions in this owner’s
 manual regarding the selection and use of
 tyre chains.
-
-### 514
-
-uuChecking and Maintaining TyresuSnow Traction Devices
 Maintenance
 For tyre chains:
 • Consult a dealer before purchasing any type of chains for your vehicle.
@@ -18262,6 +16401,7 @@ Chain Type
 RUD-matic classic 48479
 185/55R16 83H
 RUD-matic classic 48479
+Maintenance
 
 ## Checking the Battery
 
@@ -18310,10 +16450,6 @@ Test Indicator Window*
 On the battery with test indicator
 On the battery without the test indicator
 * Not available on all models
-
-### 516
-
-uuBatteryuCharging the Battery
 Maintenance
 
 ## Charging the Battery
@@ -18340,10 +16476,6 @@ Clean terminals with a damp towel. Cloth/towel dry
 the battery. Coat the terminals with grease to help
 prevent future corrosion.
 Models with test indicator window on the battery
-
-### 517
-
-uuBatteryuReplacing Battery
 Continued
 Maintenance
 
@@ -18382,10 +16514,6 @@ Cover
 Nuts
 Nuts
 Stays
-uuBatteryuReplacing Battery
-
-### 518
-
 Maintenance
 6. Remove the battery cover.
 7. Take out the battery carefully.
@@ -18402,10 +16530,6 @@ sure to select the specified type. Ask a dealer for
 more details.
 2 Battery P. 582
 Battery Cover
-
-### 519
-
-uuBatteryuBattery Label
 Maintenance
 
 ## Battery Label
@@ -18433,6 +16557,7 @@ or below the recommended level. Using the battery
 with low electrolyte can cause it to explode,
 causing serious injury.
 Example
+Maintenance
 
 ## Replacing the Button Battery
 
@@ -18460,10 +16585,6 @@ must not be treated as household waste.
 Battery type: CR2032
 Battery
 * Not available on all models
-
-### 521
-
-uuRemote Transmitter CareuReplacing the Button Battery
 Maintenance
 1. Remove the built-in key.
 2. Remove the upper half of the cover by
@@ -18480,6 +16601,7 @@ correct polarity.
 Battery type: CR2032
 Battery
 * Not available on all models
+Maintenance
 
 ## Air Conditioning
 
@@ -18504,10 +16626,6 @@ technician to service
 : Air Conditioning
 System
 * Not available on all models
-
-### 523
-
-uuHeating and Cooling System*/Climate Control System* MaintenanceuDust and Pollen Filter
 Continued
 Maintenance
 
@@ -18535,10 +16653,6 @@ other debris in the air.
 Handle
 Pull
 * Not available on all models
-uuHeating and Cooling System */Climate Control System* MaintenanceuDust and Pollen Filter
-
-### 524
-
 Maintenance
 2. Disengage the two tabs by pushing on each
 side panel.
@@ -18559,9 +16673,6 @@ Push
 Push
 Dust and Pollen
 Filter
-
-### 525
-
 Continued
 Maintenance
 
@@ -18604,10 +16715,6 @@ Loop
 Wires are mounted to the inside of the rear window.
 Wipe along the same direction as the wires with a
 soft cloth so as not to damage them.
-uuCleaninguInterior Care
-
-### 526
-
 Maintenance
 The driver’s floor mat hooks over the floor
 anchors, which keep the mat from sliding
@@ -18638,10 +16745,6 @@ Unlock
 ## ■Maintaining Genuine Leather*
 
 * Not available on all models
-
-### 527
-
-uuCleaninguExterior Care
 Continued
 Maintenance
 
@@ -18673,10 +16776,6 @@ Do not spray water into the air intake vents or engine
 compartment. It can cause a malfunction.
 Air Intake Vents
 * Not available on all models
-uuCleaninguExterior Care
-
-### 528
-
 Maintenance
 A good coat of automotive body wax helps protect your vehicle’s paint from the
 elements. Wax will wear off over time and expose your vehicle’s paint to the
@@ -18703,10 +16802,6 @@ Ask a dealer about the correct coating material when
 you want to repair the painted surface of the parts
 made of resin.
 * Not available on all models
-
-### 529
-
-uuCleaninguExterior Care
 Maintenance
 The inside lenses of exterior lights (headlights, brake lights etc.) may fog temporarily
 if you have driven in the rain, or after the vehicle has been run through a car wash.
@@ -18754,9 +16849,6 @@ Inspecting and Changing Fuses........ 575
 Emergency Towing........................... 576
 When You Cannot Open the Tailgate .....579
 * Not available on all models
-
-### 532
-
 Handling the Unexpected
 
 ## Types of Tools
@@ -18780,9 +16872,6 @@ Detachable
 Towing Hook
 Temporary
 Tyre Repair Kit
-
-### 533
-
 Continued
 Handling the Unexpected
 
@@ -18831,10 +16920,6 @@ Continuously variable transmission models
 Manual transmission models
 All models
 * Not available on all models
-uuIf a Tyre Goes FlatuChanging a Flat Tyre*
-
-### 534
-
 Handling the Unexpected
 1. Open the luggage area floor lid.
 2. Take the tool case out of the luggage area.
@@ -18863,10 +16948,6 @@ Wheel
 Blocks
 The tyre to be replaced.
 * Not available on all models
-
-### 535
-
-uuIf a Tyre Goes FlatuChanging a Flat Tyre*
 Continued
 Handling the Unexpected
 6. Place the spare tyre (wheel side up) under
@@ -18886,10 +16967,6 @@ Cover
 Wheel Nut
 Models with wheel cover
 All models
-uuIf a Tyre Goes FlatuChanging a Flat Tyre*
-
-### 536
-
 Handling the Unexpected
 1. Place the jack under the jacking point
 closest to the tyre to be changed.
@@ -18920,10 +16997,6 @@ exactly, and no person should place any
 portion of their body under a vehicle that is
 supported by a jack.
 Continued
-
-### 537
-
-uuIf a Tyre Goes FlatuChanging a Flat Tyre*
 Handling the Unexpected
 3. Raise the vehicle, using the jack handle bar
 and the jack handle, until the tyre is off the
@@ -18947,10 +17020,6 @@ the jack safely:
 • Do not get in the vehicle while using the jack.
 • Do not put anything on top of or underneath the
 jack.
-uuIf a Tyre Goes FlatuChanging a Flat Tyre*
-
-### 538
-
 Handling the Unexpected
 1. Remove the wheel nuts and flat tyre.
 2. Wipe the mounting surfaces of the wheel
@@ -18983,10 +17052,6 @@ Valve Mark
 Wheel
 Nut
 Continued
-
-### 539
-
-uuIf a Tyre Goes FlatuChanging a Flat Tyre*
 Handling the Unexpected
 1. Remove the centre cap.
 2. Remove the spacer cone from the wing
@@ -19025,10 +17090,6 @@ spare tyre
 Models with aluminium wheels
 Models with a compact spare tyre
 All models
-
-### 540
-
-uuIf a Tyre Goes FlatuChanging a Flat Tyre*
 Handling the Unexpected
 If you replace a flat tyre with the spare tyre,
 indicator comes on while you are
@@ -19038,9 +17099,8 @@ Calibrate the deflation warning system when you replace the tyre with a specifie
 regular tyre.
 2 Deflation Warning System Calibration P. 443
 
-### 541
+## ■Deflation Warning System and the Spare Tyre
 
-uuIf a Tyre Goes FlatuTemporarily Repairing a Flat Tyre
 Continued
 Handling the Unexpected
 
@@ -19087,10 +17147,6 @@ Contact Area
 Continuously variable transmission models
 Manual transmission models
 All models
-uuIf a Tyre Goes FlatuTemporarily Repairing a Flat Tyre
-
-### 542
-
 Handling the Unexpected
 1. Open the luggage area floor lid, then take
 the kit out of the tool box.
@@ -19114,10 +17170,6 @@ in the Tyre” Sticker
 Tyre Repair Kit
 Floor Lid
 Continued
-
-### 543
-
-uuIf a Tyre Goes FlatuTemporarily Repairing a Flat Tyre
 Handling the Unexpected
 1. Take the air compressor hose and plug
 cord out of the back of the air compressor.
@@ -19148,10 +17200,6 @@ necessary.
 Plug Cord
 Air Compressor
 Hose
-uuIf a Tyre Goes FlatuTemporarily Repairing a Flat Tyre
-
-### 544
-
 Handling the Unexpected
 4. Remove the bottle cap.
 u Do not remove the sealed cover.
@@ -19171,10 +17219,6 @@ Removed
 Valve Cap
 Valve
 Continued
-
-### 545
-
-uuIf a Tyre Goes FlatuTemporarily Repairing a Flat Tyre
 Handling the Unexpected
 7. Screw the air compressor hose onto the
 tyre valve.
@@ -19213,10 +17257,6 @@ Valve
 Air Compressor Hose
 Accessory Power Socket
 Plug
-uuIf a Tyre Goes FlatuTemporarily Repairing a Flat Tyre
-
-### 546
-
 Handling the Unexpected
 10. Turn on the air compressor and inflate the
 tyre to the required air pressure.
@@ -19266,10 +17306,6 @@ OFF
 ON
 Wheel Label
 Continued
-
-### 547
-
-uuIf a Tyre Goes FlatuTemporarily Repairing a Flat Tyre
 Handling the Unexpected
 1. Apply the speed limit label to the location
 as shown.
@@ -19296,10 +17332,6 @@ Breathing this colourless, odourless gas can
 cause unconsciousness and even death.
 Only run the engine to power the air
 compressor with the vehicle outdoors.
-uuIf a Tyre Goes FlatuTemporarily Repairing a Flat Tyre
-
-### 548
-
 Handling the Unexpected
 5. If the air pressure is
 • Less than 130 kPa (19 psi): Do not add
@@ -19332,10 +17364,6 @@ Compressor
 OFF
 ON
 Continued
-
-### 549
-
-uuIf a Tyre Goes FlatuTemporarily Repairing a Flat Tyre
 Handling the Unexpected
 You can use the kit to inflate a non-punctured under-inflated tyre.
 1. Take the air compressor out of the
@@ -19376,10 +17404,6 @@ Valve
 Hose
 Accessory Power Socket
 Plug
-uuIf a Tyre Goes FlatuTemporarily Repairing a Flat Tyre
-
-### 550
-
 Handling the Unexpected
 7. Turn on the air compressor and inflate the
 tyre to the required air pressure (See the
@@ -19413,9 +17437,6 @@ Air Valve
 Switch
 OFF
 ON
-
-### 551
-
 Handling the Unexpected
 
 ## Checking the Engine
@@ -19462,10 +17483,6 @@ If you must start the vehicle immediately, use an
 assisting vehicle to jump start it.
 2 Jump Starting P. 554
 Models with keyless access system
-
-### 552
-
-uuEngine Does Not StartuIf the Keyless Remote Battery is Weak
 Handling the Unexpected
 
 ## If the Keyless Remote Battery is Weak
@@ -19494,10 +17511,6 @@ Models with keyless access system
 ENGINE
 START
 STOP
-
-### 553
-
-uuEngine Does Not StartuEmergency Engine Stop
 Handling the Unexpected
 
 ## Emergency Engine Stop
@@ -19523,9 +17536,6 @@ absolutely necessary for the engine to be switched
 off.
 Continuously variable transmission models
 Manual transmission models
-
-### 554
-
 Handling the Unexpected
 
 ## Jump Starting
@@ -19571,10 +17581,6 @@ Keep all sparks, open flames, and smoking
 materials away from the battery.
 Booster Battery
 Continued
-
-### 555
-
-uuJump Startingu
 Handling the Unexpected
 4. Connect the other end of the second
 jumper cable to the stud bolt as shown. Do
@@ -19589,10 +17595,6 @@ cables have good metal-to-metal contact.
 1Jump Starting
 Battery performance degrades in cold conditions and
 may prevent the engine from starting.
-
-### 556
-
-uuJump Startingu
 Handling the Unexpected
 Once your vehicle's engine has started, remove the jumper cables in the following
 order.
@@ -19604,7 +17606,7 @@ terminal.
 terminal.
 Have your vehicle inspected by a nearby service station or a dealer.
 
-### 557
+## ■What to Do After the Engine Starts
 
 Handling the Unexpected
 
@@ -19639,9 +17641,6 @@ All models
 Release Button
 Shift Lock
 Release Slot
-
-### 558
-
 Handling the Unexpected
 
 ## How to Handle Overheating
@@ -19669,10 +17668,6 @@ Steam and spray from an overheated
 engine can seriously scald you.
 Do not open the bonnet if steam is coming
 out.
-
-### 559
-
-uuOverheatinguHow to Handle Overheating
 Handling the Unexpected
 
 ### ■Next thing to do
@@ -19717,9 +17712,6 @@ down before removing the radiator cap.
 Reserve Tank
 MAX
 MIN
-
-### 560
-
 Handling the Unexpected
 
 ### ■Reasons for the indicator to come on
@@ -19759,10 +17751,6 @@ If you need to stop temporarily, do not turn off the
 engine. Restarting the engine may rapidly discharge
 the battery.
 * Not available on all models
-
-### 561
-
-uuIndicator, Coming On/BlinkinguIf the Malfunction Indicator Lamp Comes On or Blinks
 Handling the Unexpected
 
 ### ■Reasons for the indicator lamp to come on or blink
@@ -19812,10 +17800,6 @@ on simultaneously, the electronic brake distribution
 system is not working. This can result in vehicle
 instability under sudden braking.
 Have your vehicle inspected by a dealer immediately.
-
-### 562
-
-uuIndicator, Coming On/BlinkinguIf the Electric Power Steering (EPS) System Indicator Comes On
 Handling the Unexpected
 
 ### ■Reasons for the indicator to come on
@@ -19830,10 +17814,6 @@ sometimes the steering wheel becomes harder to operate.
 Stop the vehicle in a safe place and restart the engine.
 If the indicator comes on and stays on, immediately have your vehicle
 inspected by a dealer.
-
-### 563
-
-uuIndicator, Coming On/BlinkinguIf the Low Tyre Pressure/Deflation Warning System Indicator Comes On or Blinks
 Handling the Unexpected
 
 ### ■Reasons for the indicator to come on/blink
@@ -19869,10 +17849,6 @@ Driving on an extremely underinflated tyre can cause
 it to overheat. An overheated tyre can fail. Always
 inflate your tyres to the prescribed level.
 * Not available on all models
-
-### 564
-
-uuIndicator, Coming On/BlinkinguIf the Low Oil Level Symbol Appears
 Handling the Unexpected
 
 ### ■Reasons for the symbol to appear
@@ -19899,9 +17875,6 @@ have to drive for a long time until the system starts
 monitoring the engine oil level.
 If the symbol appears again, stop the engine and
 contact a dealer for repairs immediately.
-
-### 565
-
 Continued
 Handling the Unexpected
 
@@ -19921,100 +17894,54 @@ image and table.
 ## ■Engine Compartment Fuse Box
 
 Tab
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
 13 14
-25
-26
-27
-28
-29
-30
-31
-32
-33
 15 16 17 18 19 20 21 22
-11
-12
-23
-24
 Front
-
-### 566
-
-uuFusesuFuse Locations
 Handling the Unexpected
 
 ### ■Circuit protected and fuse rating
 
 Circuit Protected
 Amps
-1
 Headlight Low Beam Main
 20 A
-2
 CDC*
 (30 A)
-3
 Hazard
 10 A
-4
 DBW
 15 A
-5
 Wiper
 (30 A)
-6
 Stop
 10 A
-7
 IGP
 15 A
-8
 IG Coil
 15 A
-9
 ECP*
 (10 A)
-10
 INJ
 (20 A)
 11*
 DC/DC2
 30 A
-12
 Main Fan
 30 A
-13
 Starter SW
 (30 A)
-14
 MG Clutch
 7.5 A
-15
 Battery Sensor*
 (7.5 A)
-16
 –
 –
-17
 DRL
 7.5 A
-18
 Horn
 10 A
-19
 Front Fog Lights*
 (15 A)
-20
 UB ECU
 7.5 A
 *1: Models with the keyless access system have an
@@ -20022,54 +17949,38 @@ ENGINE START/STOP button instead of an ignition
 switch.
 Circuit Protected
 Amps
-21
 Capacitor*
 (15 A)
 DC/DC converter*
 (10 A)
-22
 Interior Light
 7.5 A
-23
 Sub Fan
 (30 A)
 24*
 DC/DC 1
 30 A
-25
 Starter
 (7.5 A)
-26
 CAM SNSR
 (7.5 A)
-27
 –
 –
-28
 –
 –
-29
 Capacitor*
 (10 A)
 DC/DC converter*
 (30 A)
-30
 IGP LAF
 (10 A)
-31
 IGPS
 (7.5 A)
-32
 Right Headlight Low Beam
 10 A
-33
 Left Headlight Low Beam
 10 A
 * Not available on all models
-
-### 567
-
-uuFusesuFuse Locations
 Continued
 Handling the Unexpected
 
@@ -20098,10 +18009,6 @@ RB Main 2
 d
 CAP Main
 80 A
-
-### 568
-
-uuFusesuFuse Locations
 Handling the Unexpected
 
 ### ■Type A
@@ -20112,53 +18019,7 @@ image and table.
 
 ## ■Driver Side Interior Fuse Box
 
-5
-6
-7
-12
-13
-14
-8
-9
-10
-11
-19
-20
-21
-26
-27
-28
-22
-23
-24
-25
-15
-16
-17
-18
-33
-34
-35
-40
-41
-42
-36
-37
-38
-39
-29
-30
-31
-32
-1
-2
-3
-4
 UP
-
-### 569
-
-uuFusesuFuse Locations
 Continued
 Handling the Unexpected
 
@@ -20166,141 +18027,95 @@ Handling the Unexpected
 
 Circuit Protected
 Amps
-1
 Door Lock
 20 A
-2
 –
 –
-3
 Keyless Access System*
 (10 A)
-4
 Left Side Door Unlock
 15 A
-5
 Right Side Door Unlock
 15 A
-6
 –
 –
-7
 –
 –
-8
 Driver’s Power Window
 20 A
-9
 Passenger’s Power Window
 20 A
-10
 Rear Left Power Window
 20 A
-11
 Rear Right Power Window
 20 A
-12
 Left Side Door Lock
 15 A
-13
 Right Side Door Lock
 15 A
-14
 Rear Fog Light
 10 A
-15
 Right Headlight High Beam
 10 A
-16
 STS*
 (7.5 A)
-17
 –
 –
-18
 –
 –
-19
 Heated Seat*
 (20 A)
-20
 –
 –
 Circuit Protected
 Amps
-21
 –
 –
-22
 Washer
 15 A
-23
 Rear Wiper Main*
 (10 A)
-24
 A/C
 7.5 A
-25
 Daytime Running Lights
 7.5 A
-26
 Starter Cut
 (7.5 A)
-27
 ABS/VSA
 7.5 A
-28
 SRS
 10 A
-29
 Left Headlight High Beam
 10 A
-30
 ACG
 10 A
-31
 Power Window
 10 A
-32
 Fuel Pump
 15 A
-33
 SRS
 7.5 A
-34
 Meter
 7.5 A
-35
 Mission SOL
 7.5 A
-36
 Front ACC Socket
 20 A
-37
 ACC
 7.5 A
-38
 ACC Key Lock
 (7.5 A)
-39
 Option
 (10 A)
-40
 Rear Wiper
 (10 A)
 Circuit Protected
 Amps
-41
 –
 –
-42
 –
 –
 * Not available on all models
-
-### 570
-
-uuFusesuFuse Locations
 Handling the Unexpected
 
 ### ■Type B
@@ -20310,27 +18125,7 @@ screwdriver into the side slot as shown.
 Locate the fuse in question by the following
 image and table.
 Cover
-1
-3
-4
-11
-12
-13
-5
-6
-7
-8
-9
-10
-2
-14
-13
-15
 UP
-
-### 571
-
-uuFusesuFuse Locations
 Continued
 Handling the Unexpected
 
@@ -20338,7 +18133,6 @@ Handling the Unexpected
 
 Circuit Protected
 Amps
-1
 EPS
 70 A
 IG Main
@@ -20352,7 +18146,6 @@ Fuse Box Main 1
 30 A
 Fuse Box Main 3
 40 A
-2
 –
 –
 –
@@ -20369,50 +18162,36 @@ Fuse Box Main 3
 *2: Models with the keyless access system
 Circuit Protected
 Amps
-3
 Heater
 30 A
 4*2
 IG Main
 30 A
-5
 ABS/VSA FSR
 30 A
-6
 ISA*
 (15 A)
-7
 –
 –
-8
 Super Lock*
 20 A
-9
 Small Light
 10 A
-10
 Centre Accessory Socket*
 (20 A)
-11
 Rear Demister
 30 A
 12*1
 Key ACC Lock
 (7.5 A)
-13
 Heated Door Mirror*
 (10 A)
-14
 A/C Blower SW
 (7.5 A)
 15*1
 Wiper
 30 A
 * Not available on all models
-
-### 572
-
-uuFusesuFuse Locations
 Handling the Unexpected
 
 ### ■Type C
@@ -20428,33 +18207,22 @@ number and label number.
 
 Circuit Protected
 Amps
-1
 –
 –
 –
-2
 IG1-2
 7.5 A
-3
 Power Oil Pump
 (10 A)
-4
 –
 –
 –
-5
 Accessory
 7.5 A
-6
 IG1-1
 7.5 A
-7
 Back Up
 15 A
-
-### 573
-
-uuFusesuFuse Locations
 Continued
 Handling the Unexpected
 Located behind the glove box.
@@ -20469,10 +18237,6 @@ Right-hand drive type
 Handle
 Pull
 Tabs
-
-### 574
-
-uuFusesuFuse Locations
 Handling the Unexpected
 Fuse Label
 Fuse locations are shown on the label.
@@ -20483,33 +18247,22 @@ number and label number.
 
 Circuit Protected
 Amps
-1
 –
 –
 –
-2
 IG1-2
 7.5 A
-3
 Power Oil Pump
 (10 A)
-4
 –
 –
 –
-5
 Accessory
 7.5 A
-6
 IG1-1
 7.5 A
-7
 Back Up
 15 A
-
-### 575
-
-uuFusesuInspecting and Changing Fuses
 Handling the Unexpected
 
 ## Inspecting and Changing Fuses
@@ -20545,9 +18298,6 @@ Fuse Box on the Battery
 Blown
 Combined Fuse
 Blown Fuse
-
-### 576
-
 Handling the Unexpected
 
 ## Emergency Towing
@@ -20573,10 +18323,6 @@ Never tow your vehicle with just a rope or chain.
 It is very dangerous since ropes or chains may shift
 from side to side or break.
 Continued
-
-### 577
-
-uuEmergency Towingu
 Handling the Unexpected
 
 ### ■If your vehicle must be towed with the front wheels on the ground:
@@ -20622,10 +18368,6 @@ Make sure to use the properly-designed and attached
 towing equipment.
 Manual transmission models
 Cover
-uuEmergency Towingu
-
-### 578
-
 Handling the Unexpected
 3. Take the towing hook and the wheel nut
 wrench out of the luggage area.
@@ -20668,9 +18410,6 @@ All models
 Manual transmission models
 Continuously variable transmission models
 All models
-
-### 579
-
 Continued
 Handling the Unexpected
 
@@ -20694,10 +18433,6 @@ does not hit anyone or any object.
 Lid
 Lever
 Models with keyless access system
-
-### 580
-
-uuWhen You Cannot Open the Tailgateu
 Handling the Unexpected
 2. Slide the lever to unlock the tailgate.
 3. Open the tailgate.
@@ -20714,6 +18449,7 @@ Devices that Emit Radio Waves* ..... 587
 EC Declaration of Conformity Content
 Outline*........................................... 588
 * Not available on all models
+Information
 
 ## Specifications
 
@@ -20772,10 +18508,6 @@ Type
 N-55*1,*2
 Tank Capacity
 2.5 L (2.2 Imp qt)
-
-### 583
-
-uuSpecificationsu
 Continued
 Information
 ■Light Bulbs
@@ -20905,10 +18637,6 @@ Disc
 Parking
 Hand brake
 * Not available on all models
-
-### 584
-
-uuSpecificationsu
 Information
 ■Dimensions
 *1: Modes with 185/60 R15 tyres
@@ -20957,10 +18685,6 @@ Dimensions
 1,061 mm (41.7 in)
 (7)
 786 mm (30.9 in)
-
-### 585
-
-uuSpecificationsu
 Information
 ■Max. Towing Weight
 Trailer with brakes
@@ -20970,6 +18694,7 @@ Trailer without brakes
 The maximum permissible vertical load
 on the coupling device
 95 kg (209 lbs)
+Information
 
 ## and Transmission Number
 
@@ -20993,6 +18718,7 @@ Transmission Number
 Vehicle Identification Number
 Vehicle Identification
 Number
+Information
 
 ## Devices that Emit Radio Waves*
 
@@ -21016,6 +18742,7 @@ European models
 Models with remote transmitter
 Models with keyless access system
 * Not available on all models
+Information
 
 ## EC Declaration of Conformity Content Outline*
 
@@ -21114,9 +18841,6 @@ Maintenance (Replacing) .........................  517
 Belts (Seat)..................................................  36
 Beverage Holders .....................................  198
 Bluetooth® Audio.............................  248, 288
-
-### 590
-
 Index
 Booster Seats (For Children)....................... 79
 Brake System............................................. 446
@@ -21211,9 +18935,6 @@ Deflation Warning System ......................  443
 Indicator ...........................................  94, 563
 Defrosting the Windscreen and
 Windows.........................................  207, 210
-
-### 591
-
 Index
 Devices that Emit Radio Waves...............  587
 Digital Audio Broadcasting
@@ -21306,9 +19027,6 @@ Fuel Fill Cap ........................................  23, 465
 Fuel Fill Door ......................................  23, 465
 Fuses..........................................................  565
 Inspecting and Changing.........................  575
-
-### 592
-
 Index
 Locations......................... 565, 567, 568, 570
 
@@ -21403,9 +19121,6 @@ M (7-speed manual shift mode) /Shift .......  88
 Malfunction Indicator Lamp ......................  86
 Parking Brake and Brake System ...............  84
 Passenger Front Airbag On/Off..................  90
-
-### 593
-
 Index
 Rear Fog Light...........................................  96
 Seat Belt Reminder....................................  88
@@ -21500,9 +19215,6 @@ Tyres .......................................................  508
 Under the Bonnet....................................  482
 Malfunction Indicator Lamp..............  86, 561
 Manual Transmission ...............................  401
-
-### 594
-
 Index
 Map Lights ................................................ 195
 Maximum Loaded Vehicle Weight .......... 379
@@ -21597,9 +19309,6 @@ Seat Belts ....................................................  36
 Adjusting the Shoulder Anchor .................  44
 Automatic Seat Belt Tensioners .................  41
 Checking ..................................................  47
-
-### 595
-
 Index
 Fastening..................................................  42
 Installing a Child Restraint System
@@ -21694,9 +19403,6 @@ Turn Signals ..............................................  166
 Indicators (Instrument Panel) .....................  96
 Tyres..........................................................  508
 Air Pressure.....................................  508, 583
-
-### 596
-
 Index
 Checking and Maintaining....................... 508
 Inspection................................................ 508

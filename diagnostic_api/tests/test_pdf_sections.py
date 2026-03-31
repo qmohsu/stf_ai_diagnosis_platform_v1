@@ -150,6 +150,166 @@ class TestClassifyLine:
         # 12.5 / 10.5 = 1.19, below 1.25 threshold
         assert _classify_line(line, body_size=10.5) == "body"
 
+    # -- standalone page number filter --
+
+    def test_standalone_page_number_small(self):
+        """Standalone '10' at heading size is page_num."""
+        line = {
+            "text": "10",
+            "font_size": 10.0,
+            "is_bold": False,
+        }
+        assert _classify_line(
+            line, body_size=8.0,
+        ) == "page_num"
+
+    def test_standalone_page_number_three_digit(self):
+        """Standalone '141' at heading size is page_num."""
+        line = {
+            "text": "141",
+            "font_size": 10.0,
+            "is_bold": False,
+        }
+        assert _classify_line(
+            line, body_size=8.0,
+        ) == "page_num"
+
+    def test_standalone_page_number_four_digit(self):
+        """Standalone '1385' is page_num."""
+        line = {
+            "text": "1385",
+            "font_size": 10.0,
+            "is_bold": False,
+        }
+        assert _classify_line(
+            line, body_size=8.0,
+        ) == "page_num"
+
+    def test_five_digits_not_page_num(self):
+        """Five-digit numbers are NOT filtered as page_num."""
+        line = {
+            "text": "12345",
+            "font_size": 14.0,
+            "is_bold": False,
+        }
+        # Should be body (no alpha → not heading either)
+        assert _classify_line(
+            line, body_size=8.0,
+        ) == "body"
+
+    # -- breadcrumb filter --
+
+    def test_breadcrumb_honda_style(self):
+        """Honda breadcrumb is classified as breadcrumb."""
+        line = {
+            "text": (
+                "uuFor Safe Drivingu"
+                "Important Safety Precautions"
+            ),
+            "font_size": 7.5,
+            "is_bold": False,
+        }
+        assert _classify_line(
+            line, body_size=8.0,
+        ) == "breadcrumb"
+
+    def test_breadcrumb_variant(self):
+        """Breadcrumb with different section names."""
+        line = {
+            "text": (
+                "uuSeat Beltsu"
+                "About Your Seat Belts"
+            ),
+            "font_size": 7.5,
+            "is_bold": False,
+        }
+        assert _classify_line(
+            line, body_size=8.0,
+        ) == "breadcrumb"
+
+    def test_normal_text_not_breadcrumb(self):
+        """Text starting with 'u' but not 'uu' is not breadcrumb."""
+        line = {
+            "text": "under the bonnet",
+            "font_size": 8.0,
+            "is_bold": False,
+        }
+        assert _classify_line(
+            line, body_size=8.0,
+        ) == "body"
+
+    # -- alphabetic content guard --
+
+    def test_symbols_only_not_heading(self):
+        """Pure symbols at heading size stay body."""
+        line = {
+            "text": "●▲★",
+            "font_size": 14.0,
+            "is_bold": False,
+        }
+        assert _classify_line(
+            line, body_size=8.0,
+        ) == "body"
+
+    def test_heading_with_alpha_honda(self):
+        """14pt heading with body=8.0 is heading_l1."""
+        line = {
+            "text": "Airbags",
+            "font_size": 14.0,
+            "is_bold": False,
+        }
+        # 14.0 / 8.0 = 1.75, >= 1.5 threshold
+        assert _classify_line(
+            line, body_size=8.0,
+        ) == "heading_l1"
+
+    def test_heading_l2_with_symbol_prefix(self):
+        """10pt sub-heading with ■ prefix is heading_l2."""
+        line = {
+            "text": "■Pay appropriate attention",
+            "font_size": 10.0,
+            "is_bold": False,
+        }
+        # 10.0 / 8.0 = 1.25, >= 1.25 threshold, has alpha
+        assert _classify_line(
+            line, body_size=8.0,
+        ) == "heading_l2"
+
+    def test_cjk_heading_allowed(self):
+        """CJK heading text passes alphabetic guard."""
+        line = {
+            "text": "引擎規格",
+            "font_size": 17.0,
+            "is_bold": False,
+        }
+        assert _classify_line(
+            line, body_size=10.5,
+        ) == "heading_l1"
+
+    # -- backward compatibility --
+
+    def test_yamaha_heading_unaffected(self):
+        """Yamaha 17pt heading still works with body=10.5."""
+        line = {
+            "text": "Chapter Title",
+            "font_size": 17.0,
+            "is_bold": False,
+        }
+        assert _classify_line(
+            line, body_size=10.5,
+        ) == "heading_l1"
+
+    def test_yamaha_page_num_unaffected(self):
+        """Yamaha '3-22' page number still detected."""
+        line = {
+            "text": "3-22",
+            "font_size": 12.0,
+            "is_bold": False,
+        }
+        assert _classify_line(
+            line, body_size=10.5,
+        ) == "page_num"
+
 
 # ------------------------------------------------------------------
 # compute_body_font_size tests
@@ -521,6 +681,71 @@ class TestExtractPdfSections:
         fake = tmp_path / "no_such_file.pdf"
         with pytest.raises(FileNotFoundError):
             extract_pdf_sections(fake)
+
+    @patch("app.rag.pdf_parser.fitz")
+    def test_standalone_pagenum_and_breadcrumb_skipped(
+        self, mock_fitz, tmp_path,
+    ):
+        """Standalone page numbers and breadcrumbs are excluded."""
+        body_size = 8.0
+
+        page = _mock_page(
+            _make_page_dict(_make_block(
+                _make_line(
+                    _make_span(
+                        "Climate Control System*",
+                        14.0,
+                    ),
+                ),
+                _make_line(
+                    _make_span("33", 10.0),
+                ),
+                _make_line(
+                    _make_span(
+                        "uuFor Safe Drivingu"
+                        "Important Safety",
+                        7.5,
+                    ),
+                ),
+                _make_line(
+                    _make_span(
+                        "Select the AUTO icon on the "
+                        "touchscreen to activate.",
+                        body_size,
+                    ),
+                ),
+            )),
+            plain_text=(
+                "Climate Control System*\n33\n"
+                "uuFor Safe DrivinguImportant Safety\n"
+                "Select the AUTO icon on the "
+                "touchscreen to activate."
+            ),
+        )
+
+        mock_doc = MagicMock()
+        mock_doc.page_count = 1
+        mock_doc.__getitem__ = MagicMock(
+            side_effect=lambda idx: page,
+        )
+        mock_fitz.open.return_value = mock_doc
+
+        pdf_path = tmp_path / "test.pdf"
+        pdf_path.write_bytes(b"%PDF")
+
+        with patch(
+            "app.rag.pdf_parser.compute_body_font_size",
+            return_value=body_size,
+        ):
+            sections = extract_pdf_sections(pdf_path)
+
+        assert len(sections) == 1
+        assert sections[0].title == (
+            "Climate Control System*"
+        )
+        assert "33" not in sections[0].body
+        assert "uu" not in sections[0].body
+        assert "AUTO" in sections[0].body
 
 
 # ------------------------------------------------------------------
