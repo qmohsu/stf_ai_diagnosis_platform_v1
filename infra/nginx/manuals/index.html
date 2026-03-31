@@ -313,8 +313,9 @@ function configureMd() {
       // Rewrite image paths: images/... → /manuals/data/images/...
       image: function(token) {
         var src = token.href || "";
-        if (src.startsWith("images/") ||
-            src.startsWith("./images/")) {
+        // Rewrite any relative path to DATA_BASE
+        if (src && !src.startsWith("http") &&
+            !src.startsWith("/")) {
           src = DATA_BASE + src.replace(/^\.\//, "");
         }
         var alt = escapeHtml(token.text || "");
