@@ -89,9 +89,18 @@ def extract_images_from_page(
             if pix.width < _MIN_IMAGE_WIDTH or pix.height < _MIN_IMAGE_HEIGHT:
                 continue
 
-            # Convert CMYK or other non-RGB color spaces to RGB
-            if pix.n > 4:
-                pix_converted = fitz.Pixmap(fitz.csRGB, pix)
+            # Convert non-RGB/non-grayscale colorspaces
+            # to RGB.  Check colorspace.n (component count
+            # excluding alpha) rather than pix.n to avoid
+            # confusing CMYK (colorspace.n=4) with RGBA
+            # (colorspace.n=3, pix.n=4).
+            if (
+                pix.colorspace
+                and pix.colorspace.n not in (1, 3)
+            ):
+                pix_converted = fitz.Pixmap(
+                    fitz.csRGB, pix,
+                )
                 active_pix = pix_converted
             else:
                 active_pix = pix

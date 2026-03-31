@@ -152,6 +152,7 @@ class TestExtractImagesFromPage:
         mock_pix.width = 200
         mock_pix.height = 200
         mock_pix.n = 3  # RGB
+        mock_pix.colorspace = MagicMock(n=3)
         mock_pix.tobytes.return_value = b"\x89PNG" + b"\x00" * (_MIN_IMAGE_BYTES + 100)
 
         with patch("app.rag.pdf_parser.fitz") as mock_fitz:
@@ -162,31 +163,105 @@ class TestExtractImagesFromPage:
         assert result[0]["index"] == 1
 
     def test_cmyk_to_rgb_conversion(self):
-        """CMYK images (n > 4) are converted to RGB."""
+        """CMYK images (colorspace.n=4) are converted to RGB."""
         mock_doc = MagicMock()
         mock_page = MagicMock()
-        mock_page.get_images.return_value = [(1, 0, 0, 0, 0, 0, 0)]
+        mock_page.get_images.return_value = [
+            (1, 0, 0, 0, 0, 0, 0),
+        ]
 
         mock_pix_cmyk = MagicMock()
         mock_pix_cmyk.width = 200
         mock_pix_cmyk.height = 200
-        mock_pix_cmyk.n = 5  # CMYK + alpha
+        mock_pix_cmyk.n = 4  # CMYK without alpha
+        mock_pix_cmyk.colorspace = MagicMock(n=4)
 
         mock_pix_rgb = MagicMock()
         mock_pix_rgb.width = 200
         mock_pix_rgb.height = 200
         mock_pix_rgb.n = 3
-        mock_pix_rgb.tobytes.return_value = b"\x89PNG" + b"\x00" * (_MIN_IMAGE_BYTES + 100)
+        mock_pix_rgb.tobytes.return_value = (
+            b"\x89PNG" + b"\x00" * (
+                _MIN_IMAGE_BYTES + 100
+            )
+        )
 
-        with patch("app.rag.pdf_parser.fitz") as mock_fitz:
-            # First call returns CMYK pixmap, second returns RGB conversion
-            mock_fitz.Pixmap.side_effect = [mock_pix_cmyk, mock_pix_rgb]
-            result = extract_images_from_page(mock_doc, mock_page, 1)
+        with patch(
+            "app.rag.pdf_parser.fitz",
+        ) as mock_fitz:
+            mock_fitz.Pixmap.side_effect = [
+                mock_pix_cmyk, mock_pix_rgb,
+            ]
+            result = extract_images_from_page(
+                mock_doc, mock_page, 1,
+            )
 
         assert len(result) == 1
-        # Verify fitz.Pixmap was called twice (once for xref, once for conversion)
         assert mock_fitz.Pixmap.call_count == 2
-        mock_fitz.Pixmap.assert_any_call(mock_fitz.csRGB, mock_pix_cmyk)
+        mock_fitz.Pixmap.assert_any_call(
+            mock_fitz.csRGB, mock_pix_cmyk,
+        )
+
+    def test_rgba_not_converted(self):
+        """RGBA images (colorspace.n=3, pix.n=4) pass through."""
+        mock_doc = MagicMock()
+        mock_page = MagicMock()
+        mock_page.get_images.return_value = [
+            (1, 0, 0, 0, 0, 0, 0),
+        ]
+
+        mock_pix = MagicMock()
+        mock_pix.width = 200
+        mock_pix.height = 200
+        mock_pix.n = 4  # RGB + alpha
+        mock_pix.colorspace = MagicMock(n=3)  # RGB
+        mock_pix.tobytes.return_value = (
+            b"\x89PNG" + b"\x00" * (
+                _MIN_IMAGE_BYTES + 100
+            )
+        )
+
+        with patch(
+            "app.rag.pdf_parser.fitz",
+        ) as mock_fitz:
+            mock_fitz.Pixmap.return_value = mock_pix
+            result = extract_images_from_page(
+                mock_doc, mock_page, 1,
+            )
+
+        assert len(result) == 1
+        # Only one Pixmap call (xref), no conversion
+        assert mock_fitz.Pixmap.call_count == 1
+
+    def test_grayscale_passes_through(self):
+        """Grayscale images (colorspace.n=1) pass through."""
+        mock_doc = MagicMock()
+        mock_page = MagicMock()
+        mock_page.get_images.return_value = [
+            (1, 0, 0, 0, 0, 0, 0),
+        ]
+
+        mock_pix = MagicMock()
+        mock_pix.width = 200
+        mock_pix.height = 200
+        mock_pix.n = 1
+        mock_pix.colorspace = MagicMock(n=1)
+        mock_pix.tobytes.return_value = (
+            b"\x89PNG" + b"\x00" * (
+                _MIN_IMAGE_BYTES + 100
+            )
+        )
+
+        with patch(
+            "app.rag.pdf_parser.fitz",
+        ) as mock_fitz:
+            mock_fitz.Pixmap.return_value = mock_pix
+            result = extract_images_from_page(
+                mock_doc, mock_page, 1,
+            )
+
+        assert len(result) == 1
+        assert mock_fitz.Pixmap.call_count == 1
 
     def test_image_extraction_failure_graceful(self):
         """Errors during image extraction are caught and skipped."""
@@ -210,6 +285,7 @@ class TestExtractImagesFromPage:
         mock_pix.width = 200
         mock_pix.height = 200
         mock_pix.n = 3
+        mock_pix.colorspace = MagicMock(n=3)
         mock_pix.tobytes.return_value = b"\x89PNG" + b"\x00" * 100  # < 5KB
 
         with patch("app.rag.pdf_parser.fitz") as mock_fitz:
