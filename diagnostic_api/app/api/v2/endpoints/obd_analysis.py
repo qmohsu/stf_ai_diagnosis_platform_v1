@@ -1516,7 +1516,18 @@ async def generate_diagnosis(
         # initial payload ensures the first real SSE events are delivered
         # immediately.
         yield ": " + " " * 2048 + "\n\n"
-        yield _sse_event("status", "Retrieving context and initializing LLM...")
+        _init_msgs = {
+            "zh-CN": "正在检索上下文并初始化 LLM...",
+            "zh-TW": "正在檢索上下文並初始化 LLM...",
+        }
+        _think_msgs = {
+            "zh-CN": "AI 正在深度推理分析中...",
+            "zh-TW": "AI 正在深度推理分析中...",
+        }
+        yield _sse_event(
+            "status",
+            _init_msgs.get(locale, "Retrieving context and initializing LLM..."),
+        )
 
         full_text_parts: list[str] = []
         thinking_notified = False
@@ -1526,7 +1537,10 @@ async def generate_diagnosis(
             ):
                 if token == THINKING_SENTINEL:
                     if not thinking_notified:
-                        yield _sse_event("status", "AI 正在深度推理分析中...")
+                        yield _sse_event(
+                            "status",
+                            _think_msgs.get(locale, "AI is reasoning..."),
+                        )
                         thinking_notified = True
                     # SSE comment keeps connection alive during
                     # the model's internal reasoning phase.
