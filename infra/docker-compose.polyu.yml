@@ -53,6 +53,7 @@ services:
       OLLAMA_HOST: 0.0.0.0:11434
       OLLAMA_FLASH_ATTENTION: "true"
       OLLAMA_KEEP_ALIVE: "-1"
+      OLLAMA_CONTEXT_LENGTH: "8192"
 
   # --------------------------------------------------------------------------
   # Diagnostic API - use localhost for inter-service comms
