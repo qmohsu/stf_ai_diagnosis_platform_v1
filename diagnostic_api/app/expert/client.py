@@ -89,7 +89,11 @@ class ExpertLLMClient:
                 delta = chunk.choices[0].delta
                 if delta.content:
                     yield delta.content
-                elif getattr(delta, "reasoning_content", None):
+                elif (
+                    hasattr(delta, "model_extra")
+                    and delta.model_extra
+                    and delta.model_extra.get("reasoning")
+                ):
                     yield THINKING_SENTINEL
 
         except Exception as e:
