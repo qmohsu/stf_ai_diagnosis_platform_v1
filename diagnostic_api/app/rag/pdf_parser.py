@@ -36,7 +36,7 @@ import structlog
 from app.rag.parser import (
     Section,
     _extract_dtc_codes,
-    _extract_vehicle_model,
+    extract_vehicle_model,
 )
 
 logger = structlog.get_logger(__name__)
@@ -340,7 +340,7 @@ _MIN_SECTION_BODY_LEN = 20
 _FONT_SAMPLE_PAGES = 50
 
 
-def _compute_body_font_size(doc: fitz.Document) -> float:
+def compute_body_font_size(doc: fitz.Document) -> float:
     """Determine the most common (body) font size in the document.
 
     Samples up to ``_FONT_SAMPLE_PAGES`` pages spread across the
@@ -493,7 +493,7 @@ def extract_pdf_sections(
 
     doc = fitz.open(file_path)
     try:
-        body_size = _compute_body_font_size(doc)
+        body_size = compute_body_font_size(doc)
         logger.info(
             "pdf_parser.body_font_size",
             file=filename,
@@ -501,7 +501,7 @@ def extract_pdf_sections(
         )
 
         # Extract document-level vehicle model from filename
-        doc_vehicle = _extract_vehicle_model(filename)
+        doc_vehicle = extract_vehicle_model(filename)
 
         # Collect all lines across all pages with classification
         sections: List[Section] = []
@@ -522,7 +522,7 @@ def extract_pdf_sections(
 
             # Extract metadata from the section body
             full_text = title + "\n" + body
-            section_vehicle = _extract_vehicle_model(full_text)
+            section_vehicle = extract_vehicle_model(full_text)
             if section_vehicle == "Generic":
                 section_vehicle = doc_vehicle
 
@@ -627,7 +627,7 @@ def _fallback_page_sections(
             title = title[:57] + "..."
 
         full_text = title + "\n" + text
-        section_vehicle = _extract_vehicle_model(full_text)
+        section_vehicle = extract_vehicle_model(full_text)
         if section_vehicle == "Generic":
             section_vehicle = doc_vehicle
 
@@ -642,7 +642,7 @@ def _fallback_page_sections(
     return sections
 
 
-def _build_page_to_section_map(
+def build_page_to_section_map(
     doc: fitz.Document,
     body_size: float,
 ) -> dict[int, int]:
@@ -772,8 +772,8 @@ async def extract_pdf_sections_async(
 
     doc = fitz.open(file_path)
     try:
-        body_size = _compute_body_font_size(doc)
-        page_to_section = _build_page_to_section_map(
+        body_size = compute_body_font_size(doc)
+        page_to_section = build_page_to_section_map(
             doc, body_size,
         )
 

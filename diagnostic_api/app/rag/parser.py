@@ -58,7 +58,7 @@ def _extract_dtc_codes(text: str) -> List[str]:
     return sorted(set(DTC_PATTERN.findall(text)))
 
 
-def _extract_vehicle_model(text: str) -> str:
+def extract_vehicle_model(text: str) -> str:
     """Extract and normalize a vehicle model identifier from text.
 
     Tries each pattern in ``VEHICLE_MODEL_PATTERNS`` in order and
@@ -99,7 +99,7 @@ def parse_manual(text: str, filename: str = "") -> List[Section]:
         List of Section objects.
     """
     # Extract document-level vehicle model (often in first line / title)
-    doc_vehicle_model = _extract_vehicle_model(text)
+    doc_vehicle_model = extract_vehicle_model(text)
 
     headings = list(HEADING_PATTERN.finditer(text))
 
@@ -142,7 +142,7 @@ def parse_manual(text: str, filename: str = "") -> List[Section]:
         body = text[body_start:body_end].strip()
 
         # Section-level overrides: check section text for vehicle model
-        section_vehicle = _extract_vehicle_model(title + " " + body)
+        section_vehicle = extract_vehicle_model(title + " " + body)
         if section_vehicle == "Generic":
             section_vehicle = doc_vehicle_model
 
@@ -187,7 +187,7 @@ def parse_log(text: str, filename: str = "") -> List[Section]:
     else:
         title = Path(filename).stem if filename else "Log Entry"
 
-    vehicle_model = _extract_vehicle_model(text)
+    vehicle_model = extract_vehicle_model(text)
     dtc_codes = _extract_dtc_codes(text)
 
     return [

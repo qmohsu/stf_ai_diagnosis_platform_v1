@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.rag.pdf_parser import (
     _classify_line,
-    _compute_body_font_size,
+    compute_body_font_size,
     _extract_page_lines,
     extract_pdf_sections,
     extract_pdf_sections_async,
@@ -152,7 +152,7 @@ class TestClassifyLine:
 
 
 # ------------------------------------------------------------------
-# _compute_body_font_size tests
+# compute_body_font_size tests
 # ------------------------------------------------------------------
 
 class TestComputeBodyFontSize:
@@ -183,7 +183,7 @@ class TestComputeBodyFontSize:
             side_effect=lambda idx: pages[idx],
         )
 
-        result = _compute_body_font_size(mock_doc)
+        result = compute_body_font_size(mock_doc)
         assert result == 10.5
 
     def test_fallback_on_empty_doc(self):
@@ -196,7 +196,7 @@ class TestComputeBodyFontSize:
             side_effect=lambda idx: page,
         )
 
-        result = _compute_body_font_size(mock_doc)
+        result = compute_body_font_size(mock_doc)
         assert result == 10.0
 
 
@@ -280,7 +280,7 @@ class TestExtractPdfSections:
         pdf_path.write_bytes(b"%PDF")
 
         with patch(
-            "app.rag.pdf_parser._compute_body_font_size",
+            "app.rag.pdf_parser.compute_body_font_size",
             return_value=body_size,
         ):
             sections = extract_pdf_sections(pdf_path)
@@ -326,7 +326,7 @@ class TestExtractPdfSections:
         pdf_path.write_bytes(b"%PDF")
 
         with patch(
-            "app.rag.pdf_parser._compute_body_font_size",
+            "app.rag.pdf_parser.compute_body_font_size",
             return_value=body_size,
         ):
             sections = extract_pdf_sections(pdf_path)
@@ -367,7 +367,7 @@ class TestExtractPdfSections:
         pdf_path.write_bytes(b"%PDF")
 
         with patch(
-            "app.rag.pdf_parser._compute_body_font_size",
+            "app.rag.pdf_parser.compute_body_font_size",
             return_value=body_size,
         ):
             sections = extract_pdf_sections(pdf_path)
@@ -408,7 +408,7 @@ class TestExtractPdfSections:
         pdf_path.write_bytes(b"%PDF")
 
         with patch(
-            "app.rag.pdf_parser._compute_body_font_size",
+            "app.rag.pdf_parser.compute_body_font_size",
             return_value=body_size,
         ):
             sections = extract_pdf_sections(pdf_path)
@@ -471,7 +471,7 @@ class TestExtractPdfSections:
         pdf_path.write_bytes(b"%PDF")
 
         with patch(
-            "app.rag.pdf_parser._compute_body_font_size",
+            "app.rag.pdf_parser.compute_body_font_size",
             return_value=body_size,
         ):
             sections = extract_pdf_sections(pdf_path)
@@ -509,7 +509,7 @@ class TestExtractPdfSections:
         pdf_path.write_bytes(b"%PDF")
 
         with patch(
-            "app.rag.pdf_parser._compute_body_font_size",
+            "app.rag.pdf_parser.compute_body_font_size",
             return_value=body_size,
         ):
             sections = extract_pdf_sections(pdf_path)
@@ -594,7 +594,7 @@ class TestExtractPdfSectionsAsyncOCR:
 
         with (
             patch(
-                "app.rag.pdf_parser._compute_body_font_size",
+                "app.rag.pdf_parser.compute_body_font_size",
                 return_value=10.5,
             ),
             patch(
@@ -663,7 +663,7 @@ class TestExtractPdfSectionsAsyncOCR:
 
         with (
             patch(
-                "app.rag.pdf_parser._compute_body_font_size",
+                "app.rag.pdf_parser.compute_body_font_size",
                 return_value=10.5,
             ),
             patch(
@@ -753,7 +753,7 @@ class TestExtractPdfSectionsAsyncOCR:
 
         with (
             patch(
-                "app.rag.pdf_parser._compute_body_font_size",
+                "app.rag.pdf_parser.compute_body_font_size",
                 return_value=10.5,
             ),
             patch(
@@ -813,7 +813,7 @@ class TestExtractPdfSectionsAsyncOCR:
 
         with (
             patch(
-                "app.rag.pdf_parser._compute_body_font_size",
+                "app.rag.pdf_parser.compute_body_font_size",
                 return_value=10.5,
             ),
             patch(

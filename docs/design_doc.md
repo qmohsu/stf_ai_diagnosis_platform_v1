@@ -8,17 +8,18 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v3.7 (Structured Markdown Manual Schema) |
+| **Status** | Draft v3.8 (PDF-to-Markdown Converter) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-03-30 (v3.7) |
+| **Last updated** | 2026-03-30 (v3.8) |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | APP-40: Structured markdown manual schema (GitHub Issue #33, parent #32). Schema spec (`docs/manual_markdown_schema.md`) defines file format for storing service manuals as structured `.md` files for agent-navigated retrieval. Covers YAML frontmatter, heading hierarchy, section anchor slugs, DTC subsections, image references with vision descriptions, page markers, and DTC cross-reference index. Reference example at `docs/examples/manual_example.md`. New section 10.3.2 in design doc. Documentation only. |
+| **New in this revision** | Phase 1b: PDF-to-markdown converter (GitHub Issue #34, parent #32). New `app/rag/md_export.py` CLI tool converts PDF service manuals to structured `.md` files conforming to schema from #33. Reuses `extract_pdf_sections_async`, `extract_images_from_page`, `translate_sections`, and vision service. Output: YAML frontmatter, heading hierarchy with `<!-- page:N -->` markers, extracted PNG images with optional vision descriptions, DTC index appendix. CLI: `python -m app.rag.md_export --dir ... --output ...`. 41 tests. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v3.8 | 2026-03-30 | Phase 1b PDF-to-markdown converter (GitHub Issue #34, parent #32): New `app/rag/md_export.py` CLI module converts PDF service manuals to structured `.md` files per schema from #33. Reuses `extract_pdf_sections_async` (section extraction), `extract_images_from_page` (image saving), `translate_sections` (Chinese→English), and vision service (image descriptions). Produces YAML frontmatter, heading hierarchy with `<!-- page:N -->` markers, PNG images in `images/{stem}/` subdirectory, optional vision descriptions, and DTC cross-reference index appendix. CLI: `python -m app.rag.md_export --dir ... --output ... [--describe-images] [--enable-ocr] [--enable-translation]`. 41 new tests. Phase 1b of §10.3.2 marked DONE. |
 | v3.7 | 2026-03-30 | Structured markdown manual schema (APP-40, GitHub Issue #33, parent #32): Schema spec (`docs/manual_markdown_schema.md`) defines file format for storing service manuals as structured `.md` files for agent-navigated retrieval. YAML frontmatter (`source_pdf`, `vehicle_model`, `language`, `page_count`, `section_count`), heading hierarchy (`#`→`####`), deterministic section anchor slugs, DTC subsections (`#### DTC: P0171 — Description`), image references with vision descriptions, page markers (`<!-- page:N -->`), and optional DTC cross-reference index appendix. Reference example at `docs/examples/manual_example.md`. New section 10.3.2 in design doc describes rationale and implementation phases. Compatibility mapping to existing `RagChunk` columns documented. Documentation only — no code changes. |
 | v3.6 | 2026-03-28 | Flexible OBD log ingestion (APP-39, GitHub Issue #30): New `obd_agent/format_normalizer.py` preprocessing layer that auto-detects incoming file format and normalizes to internal TSV before the diagnostic pipeline. Supports 4 formats: native TSV (pass-through), OBDWIZ CSVLog (39 Chinese→English column mappings, 6 imperial→metric unit converters, Chinese AM/PM timestamp parsing, consecutive row deduplication), obd_maxlog (unit-suffix stripping from headers, `#`-metadata preservation, non-standard column filtering, millisecond truncation), and generic CSV (delimiter conversion + timestamp normalization). Integrated into `_run_pipeline()` with automatic normalized temp file cleanup. Frontend `FileDropZone.tsx` now accepts `.csv` file uploads. 2 test fixture files (`csvlog_sample.csv`, `maxlog_sample.csv`). 36 new tests. |
 | v3.5 | 2026-03-25 | Permanent Cloudflare Tunnel (DO-08, GitHub Issue #24): Named tunnel `stf-diagnosis` on `stf-diagnosis.dev` replaces temporary quick tunnel (`trycloudflare.com`). Tunnel config at `~/.cloudflared/config.yml`, credentials at `~/.cloudflared/<TUNNEL_ID>.json`. DNS CNAME routes domain to tunnel. Systemd user service (`cloudflared.service`) with `Restart=on-failure` and `loginctl enable-linger` for persistence across reboots and logouts. Deployment guide updated with tunnel architecture diagram, management commands, and troubleshooting. README live demo URL updated. |
@@ -553,7 +554,7 @@ An alternative to vector-chunk retrieval: store service manuals as well-structur
 
 **Implementation phases:**
 1. Phase 1a (APP-40): Schema specification (this section) — DONE
-2. Phase 1b: PDF -> structured markdown converter
+2. Phase 1b: PDF -> structured markdown converter (`app/rag/md_export.py`, GitHub Issue #34) — DONE
 3. Phase 2a: Agent tool set (`list_manuals`, `list_sections`, `read_section`, `search_manual`)
 4. Phase 2b: A/B comparison framework (vector RAG vs agent-navigated structured MD)
 
