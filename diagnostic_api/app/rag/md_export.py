@@ -38,10 +38,51 @@ _SLUG_MAX_LEN = 80
 _VISION_CONCURRENCY = 3
 _LANG_SAMPLE_CHARS = 2000
 
+# Common suffixes found in service manual filenames.
+# Matched case-insensitively and stripped to extract the
+# vehicle model portion of the filename.
+_MANUAL_SUFFIX_PATTERN = re.compile(
+    r"[_\-\s]+"
+    r"(?:Owners?|Service|Workshop|Repair|Shop|"
+    r"Maintenance|Factory|Technical|User)"
+    r"(?:[_\-\s]+(?:Manual|Guide|Handbook|Book))?"
+    r"$",
+    re.IGNORECASE,
+)
+
 
 # ------------------------------------------------------------------
 # Pure helpers
 # ------------------------------------------------------------------
+
+
+def _clean_filename_stem(stem: str) -> str:
+    """Extract a human-readable vehicle model from a filename stem.
+
+    Strips common manual-related suffixes (e.g.
+    ``Owners_Manual``, ``Service_Guide``) and normalises
+    separators to spaces.
+
+    Examples::
+
+        >>> _clean_filename_stem("2016_Jazz_Owners_Manual")
+        '2016 Jazz'
+        >>> _clean_filename_stem("Honda_Civic_2020_Service_Manual")
+        'Honda Civic 2020'
+        >>> _clean_filename_stem("random_document")
+        'random document'
+
+    Args:
+        stem: Filename stem (no extension).
+
+    Returns:
+        Cleaned string with underscores/hyphens replaced by
+        spaces and manual suffixes removed.  Returns the
+        original stem (space-normalised) if no suffix matched.
+    """
+    cleaned = _MANUAL_SUFFIX_PATTERN.sub("", stem)
+    cleaned = re.sub(r"[_\-]+", " ", cleaned).strip()
+    return cleaned if cleaned else stem
 
 
 def _slugify(title: str) -> str:
@@ -125,8 +166,10 @@ def _yaml_escape(value: str) -> str:
     Returns:
         Quoted string safe for YAML frontmatter.
     """
-    if re.search(r"[:{}\[\]#&*!|>'\"%@`,]", value):
+    if re.search(r"[:{}\[\]#&*!|>'\"%@`,\n\r]", value):
         escaped = value.replace('"', '\\"')
+        escaped = escaped.replace("\n", "\\n")
+        escaped = escaped.replace("\r", "\\r")
         return f'"{escaped}"'
     return value
 
@@ -447,27 +490,36 @@ def _resolve_vehicle_model(
     sections: list[Section],
     filename: str,
     stem: str,
+    override: str = "",
 ) -> str:
     """Determine the best vehicle model string.
 
-    Priority: first non-"Generic" section value, then filename
-    regex match, then filename stem as fallback.
+    Priority:
+
+    1. Explicit *override* (from ``--vehicle-model`` CLI).
+    2. First non-"Generic" section ``vehicle_model``.
+    3. Domain-specific regex match via
+       :func:`extract_vehicle_model`.
+    4. Cleaned filename stem (manual suffixes stripped).
 
     Args:
         sections: Parsed sections.
         filename: Original PDF filename.
         stem: PDF filename stem.
+        override: Optional explicit model string from CLI.
 
     Returns:
         Resolved vehicle model string (never ``"Generic"``).
     """
+    if override:
+        return override
     for sec in sections:
         if sec.vehicle_model != "Generic":
             return sec.vehicle_model
     model = extract_vehicle_model(filename)
     if model != "Generic":
         return model
-    return stem
+    return _clean_filename_stem(stem)
 
 
 # ------------------------------------------------------------------
@@ -482,6 +534,7 @@ async def export_pdf_to_markdown(
     describe_images: bool = False,
     enable_ocr: bool = False,
     enable_translation: bool = False,
+    vehicle_model: str = "",
 ) -> Path:
     """Convert a single PDF to structured markdown.
 
@@ -497,6 +550,9 @@ async def export_pdf_to_markdown(
         enable_ocr: If True, run OCR on PDF images.
         enable_translation: If True, translate Chinese sections
             to English.
+        vehicle_model: Optional explicit vehicle model string.
+            When provided, takes priority over all auto-detection
+            (``--vehicle-model`` CLI flag).
 
     Returns:
         Path to the written ``.md`` file.
@@ -565,8 +621,9 @@ async def export_pdf_to_markdown(
             await translator.close()
 
     # Phase 5: resolve vehicle model
-    vehicle_model = _resolve_vehicle_model(
+    resolved_model = _resolve_vehicle_model(
         sections, file_path.name, stem,
+        override=vehicle_model,
     )
 
     # Phase 6: build mappings
@@ -589,7 +646,7 @@ async def export_pdf_to_markdown(
     markdown = _sections_to_markdown(
         sections,
         source_pdf=file_path.name,
-        vehicle_model=vehicle_model,
+        vehicle_model=resolved_model,
         language=language,
         translated=translated,
         page_count=page_count,
@@ -664,6 +721,16 @@ def _build_arg_parser() -> argparse.ArgumentParser:
             "Translate Chinese sections to English."
         ),
     )
+    parser.add_argument(
+        "--vehicle-model",
+        type=str,
+        default="",
+        help=(
+            "Explicit vehicle model string "
+            "(overrides auto-detection). "
+            'E.g. "Honda Jazz 2016".'
+        ),
+    )
     return parser
 
 
@@ -701,6 +768,7 @@ async def main() -> None:
                 enable_translation=(
                     args.enable_translation
                 ),
+                vehicle_model=args.vehicle_model,
             )
             logger.info(
                 "md_export.file_done",

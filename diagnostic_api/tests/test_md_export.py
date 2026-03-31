@@ -13,8 +13,10 @@ import pytest
 from app.rag.md_export import (
     _build_dtc_index,
     _build_frontmatter,
+    _clean_filename_stem,
     _detect_language,
     _heading_prefix,
+    _resolve_vehicle_model,
     _sections_to_markdown,
     _slugify,
     _yaml_escape,
@@ -133,6 +135,13 @@ class TestYamlEscape:
         """Double quotes inside value are escaped."""
         result = _yaml_escape('File "test".pdf')
         assert result == '"File \\"test\\".pdf"'
+
+    def test_newline_escaped(self):
+        """Newlines in values are escaped to prevent YAML
+        injection."""
+        result = _yaml_escape("Honda\nmalicious: true")
+        assert result == '"Honda\\nmalicious: true"'
+        assert "\n" not in result
 
 
 # ---- TestHeadingPrefix ----
@@ -488,6 +497,132 @@ class TestSectionsToMarkdown:
         assert "## Root" in md
 
 
+# ---- TestCleanFilenameStem ----
+
+class TestCleanFilenameStem:
+    """Tests for the _clean_filename_stem helper."""
+
+    def test_strips_owners_manual(self):
+        """Owners_Manual suffix is removed."""
+        assert _clean_filename_stem(
+            "2016_Jazz_Owners_Manual"
+        ) == "2016 Jazz"
+
+    def test_strips_service_manual(self):
+        """Service_Manual suffix is removed."""
+        assert _clean_filename_stem(
+            "Honda_Civic_2020_Service_Manual"
+        ) == "Honda Civic 2020"
+
+    def test_strips_workshop_manual(self):
+        """Workshop_Manual suffix is removed."""
+        assert _clean_filename_stem(
+            "Corolla_Workshop_Manual"
+        ) == "Corolla"
+
+    def test_strips_owner_guide(self):
+        """Owner_Guide suffix is removed."""
+        assert _clean_filename_stem(
+            "Ford_F150_Owner_Guide"
+        ) == "Ford F150"
+
+    def test_no_suffix_cleans_separators(self):
+        """Filenames without manual suffixes get separators
+        cleaned."""
+        assert _clean_filename_stem(
+            "some_random_document"
+        ) == "some random document"
+
+    def test_hyphens_cleaned(self):
+        """Hyphens are normalised to spaces."""
+        assert _clean_filename_stem(
+            "2016-Jazz-Owners-Manual"
+        ) == "2016 Jazz"
+
+    def test_case_insensitive(self):
+        """Suffix matching is case-insensitive."""
+        assert _clean_filename_stem(
+            "Jazz_OWNERS_MANUAL"
+        ) == "Jazz"
+
+    def test_empty_stem_returns_stem(self):
+        """Empty stem returns original (edge case)."""
+        result = _clean_filename_stem("")
+        assert result == ""
+
+    def test_suffix_only_returns_original(self):
+        """Stem that IS the suffix returns cleaned stem."""
+        result = _clean_filename_stem("Owners_Manual")
+        assert result == "Owners Manual"
+
+    def test_maintenance_suffix(self):
+        """Maintenance suffix is removed."""
+        assert _clean_filename_stem(
+            "Camry_Maintenance_Manual"
+        ) == "Camry"
+
+
+# ---- TestResolveVehicleModel ----
+
+class TestResolveVehicleModel:
+    """Tests for the _resolve_vehicle_model function."""
+
+    def test_override_takes_priority(self):
+        """Explicit override wins over everything."""
+        sections = [
+            _make_section(vehicle_model="TRICITY-155"),
+        ]
+        result = _resolve_vehicle_model(
+            sections, "file.pdf", "file",
+            override="Honda Jazz 2016",
+        )
+        assert result == "Honda Jazz 2016"
+
+    def test_section_model_over_filename(self):
+        """Section model beats filename extraction."""
+        sections = [
+            _make_section(vehicle_model="NMAX-155"),
+        ]
+        result = _resolve_vehicle_model(
+            sections, "random.pdf", "random",
+        )
+        assert result == "NMAX-155"
+
+    def test_filename_regex_over_stem(self):
+        """Domain regex on filename beats cleaned stem."""
+        sections = [
+            _make_section(vehicle_model="Generic"),
+        ]
+        result = _resolve_vehicle_model(
+            sections, "MWS150A_manual.pdf",
+            "MWS150A_manual",
+        )
+        assert "MWS" in result
+
+    def test_falls_back_to_cleaned_stem(self):
+        """Cleaned stem when no regex matches."""
+        sections = [
+            _make_section(vehicle_model="Generic"),
+        ]
+        result = _resolve_vehicle_model(
+            sections,
+            "2016_Jazz_Owners_Manual.pdf",
+            "2016_Jazz_Owners_Manual",
+        )
+        assert result == "2016 Jazz"
+
+    def test_generic_sections_skip(self):
+        """All Generic sections are skipped."""
+        sections = [
+            _make_section(vehicle_model="Generic"),
+            _make_section(vehicle_model="Generic"),
+        ]
+        result = _resolve_vehicle_model(
+            sections, "unknown.pdf", "unknown",
+        )
+        assert result == "unknown"
+
+
 # ---- TestExportPdfToMarkdown ----
 
 def _mock_fitz_doc(page_count: int = 5):
@@ -734,6 +869,75 @@ class TestExportPdfToMarkdown:
     @patch("app.rag.md_export.build_page_to_section_map")
     @patch("app.rag.md_export.compute_body_font_size")
     @patch("app.rag.md_export.fitz")
+    async def test_vehicle_model_override(
+        self,
+        mock_fitz,
+        mock_body_size,
+        mock_page_map,
+        mock_images,
+        mock_sections,
+        tmp_path,
+    ):
+        """Explicit vehicle_model overrides auto-detection."""
+        mock_fitz.open.return_value = _mock_fitz_doc()
+        mock_body_size.return_value = 10.5
+        mock_page_map.return_value = {0: 0}
+        mock_images.return_value = []
+        mock_sections.return_value = [
+            _make_section(vehicle_model="Generic"),
+        ]
+
+        pdf = tmp_path / "2016_Jazz_Owners_Manual.pdf"
+        pdf.write_bytes(b"%PDF-1.4 dummy")
+        out_dir = tmp_path / "out"
+
+        result = await export_pdf_to_markdown(
+            pdf, out_dir,
+            vehicle_model="Honda Jazz 2016",
+        )
+        content = result.read_text(encoding="utf-8")
+        assert "vehicle_model: Honda Jazz 2016" in content
+
+    @pytest.mark.asyncio
+    @patch("app.rag.md_export.extract_pdf_sections_async")
+    @patch("app.rag.md_export.extract_images_from_page")
+    @patch("app.rag.md_export.build_page_to_section_map")
+    @patch("app.rag.md_export.compute_body_font_size")
+    @patch("app.rag.md_export.fitz")
+    async def test_cleaned_stem_fallback(
+        self,
+        mock_fitz,
+        mock_body_size,
+        mock_page_map,
+        mock_images,
+        mock_sections,
+        tmp_path,
+    ):
+        """Filename stem is cleaned when no regex matches."""
+        mock_fitz.open.return_value = _mock_fitz_doc()
+        mock_body_size.return_value = 10.5
+        mock_page_map.return_value = {0: 0}
+        mock_images.return_value = []
+        mock_sections.return_value = [
+            _make_section(vehicle_model="Generic"),
+        ]
+
+        pdf = tmp_path / "2016_Jazz_Owners_Manual.pdf"
+        pdf.write_bytes(b"%PDF-1.4 dummy")
+        out_dir = tmp_path / "out"
+
+        result = await export_pdf_to_markdown(
+            pdf, out_dir,
+        )
+        content = result.read_text(encoding="utf-8")
+        assert "vehicle_model: 2016 Jazz" in content
+
+    @pytest.mark.asyncio
+    @patch("app.rag.md_export.extract_pdf_sections_async")
+    @patch("app.rag.md_export.extract_images_from_page")
+    @patch("app.rag.md_export.build_page_to_section_map")
+    @patch("app.rag.md_export.compute_body_font_size")
+    @patch("app.rag.md_export.fitz")
     async def test_section_extraction_error_propagates(
         self,
         mock_fitz,
@@ -844,6 +1048,37 @@ class TestMain:
         assert (
             call_kwargs.kwargs["enable_translation"]
             is True
+        )
+
+    @pytest.mark.asyncio
+    @patch("app.rag.md_export.export_pdf_to_markdown")
+    async def test_vehicle_model_flag_propagated(
+        self, mock_export, tmp_path,
+    ):
+        """--vehicle-model flag is passed to export."""
+        mock_export.return_value = (
+            tmp_path / "out" / "a.md"
+        )
+
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        (data_dir / "a.pdf").write_bytes(b"fake")
+
+        with patch(
+            "sys.argv",
+            [
+                "md_export",
+                "--dir", str(data_dir),
+                "--output", str(tmp_path / "out"),
+                "--vehicle-model", "Honda Jazz 2016",
+            ],
+        ):
+            await main()
+
+        call_kwargs = mock_export.call_args
+        assert (
+            call_kwargs.kwargs["vehicle_model"]
+            == "Honda Jazz 2016"
         )
 
     @pytest.mark.asyncio
