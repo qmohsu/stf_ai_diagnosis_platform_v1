@@ -24,7 +24,11 @@ class ExpertLLMClient:
     def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None):
         self.base_url = base_url or f"{settings.llm_endpoint}/v1"
         self.model = model or settings.llm_model
-        self.client = AsyncOpenAI(api_key="ollama", base_url=self.base_url)
+        self.client = AsyncOpenAI(
+            api_key="ollama",
+            base_url=self.base_url,
+            timeout=300.0,
+        )
         logger.info("initialized_expert_llm_client", base_url=self.base_url, model=self.model)
 
     def _build_obd_diagnosis_messages(
