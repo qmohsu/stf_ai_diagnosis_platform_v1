@@ -8,17 +8,18 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v3.6 (Flexible OBD Log Ingestion) |
+| **Status** | Draft v3.7 (Structured Markdown Manual Schema) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-03-28 (v3.6) |
+| **Last updated** | 2026-03-30 (v3.7) |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | APP-39: Flexible OBD log ingestion (GitHub Issue #30). New `obd_agent/format_normalizer.py` preprocessing layer auto-detects CSV/TSV formats (OBDWIZ CSVLog, obd_maxlog, generic CSV, native TSV) and normalizes to internal TSV before the diagnostic pipeline. Chinese→English column mapping, imperial→metric unit conversion, timestamp normalization, row deduplication, unit-suffix stripping. Frontend accepts `.csv` uploads. 36 new tests. |
+| **New in this revision** | APP-40: Structured markdown manual schema (GitHub Issue #33, parent #32). Schema spec (`docs/manual_markdown_schema.md`) defines file format for storing service manuals as structured `.md` files for agent-navigated retrieval. Covers YAML frontmatter, heading hierarchy, section anchor slugs, DTC subsections, image references with vision descriptions, page markers, and DTC cross-reference index. Reference example at `docs/examples/manual_example.md`. New section 10.3.2 in design doc. Documentation only. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v3.7 | 2026-03-30 | Structured markdown manual schema (APP-40, GitHub Issue #33, parent #32): Schema spec (`docs/manual_markdown_schema.md`) defines file format for storing service manuals as structured `.md` files for agent-navigated retrieval. YAML frontmatter (`source_pdf`, `vehicle_model`, `language`, `page_count`, `section_count`), heading hierarchy (`#`→`####`), deterministic section anchor slugs, DTC subsections (`#### DTC: P0171 — Description`), image references with vision descriptions, page markers (`<!-- page:N -->`), and optional DTC cross-reference index appendix. Reference example at `docs/examples/manual_example.md`. New section 10.3.2 in design doc describes rationale and implementation phases. Compatibility mapping to existing `RagChunk` columns documented. Documentation only — no code changes. |
 | v3.6 | 2026-03-28 | Flexible OBD log ingestion (APP-39, GitHub Issue #30): New `obd_agent/format_normalizer.py` preprocessing layer that auto-detects incoming file format and normalizes to internal TSV before the diagnostic pipeline. Supports 4 formats: native TSV (pass-through), OBDWIZ CSVLog (39 Chinese→English column mappings, 6 imperial→metric unit converters, Chinese AM/PM timestamp parsing, consecutive row deduplication), obd_maxlog (unit-suffix stripping from headers, `#`-metadata preservation, non-standard column filtering, millisecond truncation), and generic CSV (delimiter conversion + timestamp normalization). Integrated into `_run_pipeline()` with automatic normalized temp file cleanup. Frontend `FileDropZone.tsx` now accepts `.csv` file uploads. 2 test fixture files (`csvlog_sample.csv`, `maxlog_sample.csv`). 36 new tests. |
 | v3.5 | 2026-03-25 | Permanent Cloudflare Tunnel (DO-08, GitHub Issue #24): Named tunnel `stf-diagnosis` on `stf-diagnosis.dev` replaces temporary quick tunnel (`trycloudflare.com`). Tunnel config at `~/.cloudflared/config.yml`, credentials at `~/.cloudflared/<TUNNEL_ID>.json`. DNS CNAME routes domain to tunnel. Systemd user service (`cloudflared.service`) with `Restart=on-failure` and `loginctl enable-linger` for persistence across reboots and logouts. Deployment guide updated with tunnel architecture diagram, management commands, and troubleshooting. README live demo URL updated. |
 | v3.4 | 2026-03-24 | Region-blocked model handling (APP-38, GitHub Issue #23): `model_availability.py` probes curated models for 403 (PermissionDeniedError) and caches results with 1-hour TTL. `GET /v2/obd/premium/models` returns `{models, default, blocked}` filtered by availability. `POST /v2/obd/{session_id}/diagnose/premium` implements fallback loop — retries next available model on 403, emits structured SSE error events with `error_code`. Frontend shows localized region-specific error. Curated list expanded with 6 HK-accessible models (MiniMax m2.7/m2.5, GLM glm-5/glm-4.7, Kimi k2.5/k2). Regional restrictions documented in `.env.polyu.example`. 7 new tests. |
@@ -531,6 +532,31 @@ Real-world service manual PDFs contain critical diagnostic information embedded 
 | `app/rag/translator.py` | Chinese→English translation via Ollama `/api/chat` (think disabled), concurrent batch processing |
 | `app/rag/chunker.py` | Image-marker atomic blocks, `has_image` field on `ChunkedSection` |
 | `app/rag/ingest.py` | Pre-flight vision check, `--enable-ocr` / `--enable-page-render` / `--enable-translation` CLI flags |
+
+#### 10.3.2 Structured markdown manuals (alternative retrieval path)
+
+An alternative to vector-chunk retrieval: store service manuals as well-structured `.md` files and let an agentic LLM navigate them with tools (`list_manuals`, `list_sections`, `read_section`, `search_manual`) instead of relying on embedding similarity (GitHub Issues #32, #33).
+
+**Rationale:** Chunking destroys the hierarchical structure that makes service manuals useful. A mechanic navigates by system -> subsystem -> procedure, not by embedding distance. At the current corpus scale (a handful of manuals), agent-navigated structured documents provide more precise retrieval with simpler infrastructure.
+
+**Schema (v1.0, `docs/manual_markdown_schema.md`):**
+- One `.md` file per source PDF, stored in `/app/data/manuals/`
+- YAML frontmatter: `source_pdf`, `vehicle_model`, `language`, `translated`, `exported_at`, `page_count`, `section_count`
+- Heading hierarchy: `#` (doc title) -> `##` (chapter) -> `###` (section) -> `####` (subsection/DTC)
+- Deterministic section slug anchors for stable `read_section` tool references
+- DTC subsections: `#### DTC: P0171 — Description` format
+- Images: `![alt](images/{stem}/p{page}-{index}.png)` with vision descriptions
+- Page markers: `<!-- page:N -->` HTML comments for PDF page traceability
+- Optional DTC cross-reference index appendix
+
+**Coexistence with vector RAG:** Both pipelines can run simultaneously for A/B comparison. Vector RAG reads from the `rag_chunks` table; structured MD tools read from the `/app/data/manuals/` directory. Field mappings between the two are documented in the schema spec.
+
+**Implementation phases:**
+1. Phase 1a (APP-40): Schema specification (this section) — DONE
+2. Phase 1b: PDF -> structured markdown converter
+3. Phase 2a: Agent tool set (`list_manuals`, `list_sections`, `read_section`, `search_manual`)
+4. Phase 2b: A/B comparison framework (vector RAG vs agent-navigated structured MD)
+
 ### 10.4 Workflow ('golden workflow')
 1.	Start: inputs = vehicle_id, question, optional time_range.
 2.	HTTP Request → diagnostic_api `/v2/obd/analyze` (submit raw OBD log) then `/v2/obd/{session_id}/diagnose` (stream AI diagnosis).

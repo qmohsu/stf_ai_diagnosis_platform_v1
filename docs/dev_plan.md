@@ -50,6 +50,8 @@ Critical path dependency: DO‑01 → DO‑06 → (APP‑02B + APP‑03) → INT
 
 **RAG Image Parsing Path:** APP‑03 → APP‑22 (PDF image parsing: OCR + vision + page render + CJK translation + image-aware chunking).
 
+**Structured Manual Path:** APP‑40 (markdown schema spec, GitHub Issue #33) → Phase 1b converter (#32) → Phase 2a navigation tools (#32) → Phase 2b A/B comparison (#32).
+
 ### 2.3 Definition of Done (Applies to Every Ticket)
 A ticket is DONE only if:
 - It’s merged with docs and tests updated.
@@ -1741,6 +1743,57 @@ Navigation links present in header, upload page, and analysis page ✓
 All UI strings translated to EN, zh-CN, zh-TW ✓
 9 tests passing ✓
 
+#### APP‑40 — Structured Markdown Schema for Service Manuals
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: none
+Status: **DONE** (2026-03-30)
+GitHub Issue: #33 (sub-task of #32)
+
+PROMPT (task ticket):
+Title: APP‑40 Define markdown schema for structured service manuals
+
+Context:
+Issue #32 proposes storing service manuals as structured `.md` files
+instead of (or alongside) vector RAG chunks, enabling an agentic LLM
+to navigate manuals with tools (`list_sections`, `read_section`,
+`search_manual`). Before building the converter or tools, the markdown
+file format must be specified.
+
+Task:
+1) **Schema specification** — `docs/manual_markdown_schema.md` covering:
+   file naming and directory layout, YAML frontmatter fields, heading
+   hierarchy (`#`→`####`), section anchor slug algorithm, DTC subsection
+   format, image references with vision descriptions, page markers for
+   PDF traceability, markdown table format, cross-reference syntax,
+   DTC index appendix, vehicle model normalisation (aligned with
+   existing `parser.py` patterns), and compatibility mapping to
+   `RagChunk` columns.
+2) **Reference example** — `docs/examples/manual_example.md` demonstrating
+   every convention (frontmatter, headings, tables, DTC subsections,
+   images, page markers, cross-references, DTC index appendix).
+3) **Doc updates** — Update `docs/dev_plan.md` (ticket + critical path)
+   and `docs/design_doc.md` (new section 10.3.2 + version bump to v3.7).
+
+Deliverables:
+
+New `docs/manual_markdown_schema.md` (schema specification v1.0)
+New `docs/examples/manual_example.md` (reference example)
+Updated `docs/dev_plan.md` (APP‑40 ticket, Structured Manual Path, changelog)
+Updated `docs/design_doc.md` (section 10.3.2, version v3.7, revision history)
+
+Acceptance Criteria:
+
+Schema spec covers all conventions listed in GitHub Issue #33 ✓
+Reference example is valid markdown with valid YAML frontmatter ✓
+Example demonstrates all conventions (headings, DTC, images, tables, page markers) ✓
+Section anchor slugs in example match the documented slug algorithm ✓
+Vehicle model patterns align with `parser.py` `VEHICLE_MODEL_PATTERNS` ✓
+DTC code pattern matches `parser.py` `DTC_PATTERN` ✓
+RagChunk compatibility mapping is accurate ✓
+dev_plan.md and design_doc.md updated per Documentation Update Rule ✓
+No code changes required — documentation only ✓
+
 ### 3.3 Integration and Finalization Tickets
 #### INT‑01 — End-to-end demo script (“one command demo”)
 
@@ -1872,6 +1925,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-30 | v3.7 | APP-40: Structured markdown schema for service manuals (GitHub Issue #33, parent #32). Defined file format and conventions for storing service manuals as structured `.md` files for agent-navigated retrieval. Schema spec (`docs/manual_markdown_schema.md`) covers: YAML frontmatter (source_pdf, vehicle_model, language, page/section counts), heading hierarchy (`#`→`####`), section anchor slug algorithm, DTC subsection format (`#### DTC: P0171 — Description`), image references with vision descriptions, page markers (`<!-- page:N -->`), cross-reference DTC index appendix, and compatibility mapping to existing `RagChunk` columns. Reference example file (`docs/examples/manual_example.md`). Documentation only — no code changes. |
 | 2026-03-28 | v3.6 | APP-39: Flexible OBD log ingestion formats (GitHub Issue #30). New `obd_agent/format_normalizer.py` preprocessing layer auto-detects and normalizes CSV/TSV formats before the diagnostic pipeline. Supports OBDWIZ CSVLog (39 Chinese→English column mappings, 6 imperial→metric unit converters, Chinese AM/PM timestamp parsing, consecutive row deduplication), obd_maxlog (unit-suffix stripping, `#`-metadata preservation, non-standard column filtering, millisecond truncation), generic CSV (delimiter conversion), and native TSV (pass-through). Integrated into `_run_pipeline()` in `log_summary.py` with automatic temp file cleanup. Frontend `FileDropZone` now accepts `.csv` files. 2 test fixture files. 36 new tests (380 total). |
 | 2026-03-25 | v3.5 | DO-08: Permanent Cloudflare Tunnel with custom domain (GitHub Issue #24). Replaced temporary quick tunnel (`trycloudflare.com`) with named tunnel on `stf-diagnosis.dev`. Created tunnel config (`~/.cloudflared/config.yml`), DNS CNAME route, systemd user service with `enable-linger` for auto-start on reboot. Updated deployment guide with tunnel architecture, management commands, and troubleshooting. Updated README live demo URL. |
 | 2026-03-24 | v3.4 | APP-38: Region-blocked model handling (GitHub Issue #23). `model_availability.py` module probes curated models on first `/premium/models` request; models returning 403 (PermissionDeniedError) marked blocked and filtered from response. Diagnosis streaming endpoint implements fallback: if selected model returns 403, retries with next available model (up to 3 attempts) and notifies user via SSE status events. Structured SSE error events with `error_code` field (`region_blocked`, `all_models_blocked`, `stream_error`). Frontend shows localized region-specific error messages. Curated model list expanded with 6 HK-accessible models: MiniMax (m2.7, m2.5), GLM (glm-5, glm-4.7), Kimi (k2.5, k2). PolyU `.env` default changed to `deepseek/deepseek-v3.2`. Regional restrictions documented in env templates. 7 new tests. |
