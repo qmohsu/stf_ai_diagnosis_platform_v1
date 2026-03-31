@@ -1519,11 +1519,15 @@ async def generate_diagnosis(
         yield _sse_event("status", "Retrieving context and initializing LLM...")
 
         full_text_parts: list[str] = []
+        thinking_notified = False
         try:
             async for token in _expert_client.generate_obd_diagnosis_stream(
                 parsed_summary, context_str, locale=locale
             ):
                 if token == THINKING_SENTINEL:
+                    if not thinking_notified:
+                        yield _sse_event("status", "AI 正在深度推理分析中...")
+                        thinking_notified = True
                     # SSE comment keeps connection alive during
                     # the model's internal reasoning phase.
                     yield ": thinking\n\n"
