@@ -153,9 +153,9 @@ exec-postgres: ## Open psql shell in Postgres container
 shell-api: ## Open shell in diagnostic-api container
 	@docker exec -it stf-diagnostic-api /bin/bash
 
-ollama-pull: ## Pull default Ollama model (qwen3.5:9b)
+ollama-pull: ## Pull default Ollama model (qwen3.5:122b-a10b)
 	@echo "$(GREEN)Pulling Ollama model (this may take a while)...$(NC)"
-	@docker exec -it stf-ollama ollama pull $${OLLAMA_DEFAULT_MODEL:-qwen3.5:9b}
+	@docker exec -it stf-ollama ollama pull $${OLLAMA_DEFAULT_MODEL:-qwen3.5:122b-a10b}
 	@echo "$(GREEN)Model pulled successfully$(NC)"
 
 ollama-list: ## List available Ollama models

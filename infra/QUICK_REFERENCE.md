@@ -49,7 +49,7 @@ make smoke-test      # Run comprehensive tests
 make exec-postgres   # Open PostgreSQL shell
 
 # LLM Management
-make ollama-pull     # Pull default model (qwen3.5:9b)
+make ollama-pull     # Pull default model (qwen3.5:122b-a10b)
 make ollama-list     # List installed models
 
 # Maintenance

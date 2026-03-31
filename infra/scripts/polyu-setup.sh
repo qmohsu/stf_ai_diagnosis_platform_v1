@@ -111,7 +111,7 @@ sleep 10
 # ── Step 4: Pull Ollama models ───────────────────────────────────────────────
 info "Pulling Ollama models (this may take a while on first run)..."
 
-MODELS=("${OLLAMA_DEFAULT_MODEL:-qwen3.5:9b}" "${EMBEDDING_MODEL:-nomic-embed-text}")
+MODELS=("${OLLAMA_DEFAULT_MODEL:-qwen3.5:122b-a10b}" "${EMBEDDING_MODEL:-nomic-embed-text}")
 
 # Add vision model if set
 if [[ -n "${VISION_MODEL:-}" ]]; then

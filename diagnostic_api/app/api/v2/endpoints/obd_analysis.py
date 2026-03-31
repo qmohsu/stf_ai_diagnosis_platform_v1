@@ -1381,7 +1381,7 @@ def _store_diagnosis(
         session_id: Target session UUID.
         provider: ``"local"`` or ``"premium"``.
         model_name: Model identifier that produced the text
-            (e.g. ``"qwen3.5:9b"``, ``"anthropic/claude-sonnet-4.6"``).
+            (e.g. ``"qwen3.5:122b-a10b"``, ``"anthropic/claude-sonnet-4.6"``).
         text: Full diagnosis text (truncated to
             ``_MAX_DIAGNOSIS_LENGTH``).
 

@@ -158,7 +158,7 @@ The setup script will:
 1. Verify Podman, podman-compose, and NVIDIA CDI
 2. Copy `.env.polyu.example` to `.env` (prompts you to edit)
 3. Build and start all services
-4. Pull Ollama models (qwen3.5:9b, nomic-embed-text, llava)
+4. Pull Ollama models (qwen3.5:122b-a10b, nomic-embed-text, llava)
 5. Run health checks
 6. Print access URLs
 
@@ -197,7 +197,7 @@ The setup script will:
 4. **Pull Ollama models:**
 
    ```bash
-   podman exec stf-ollama ollama pull qwen3.5:9b
+   podman exec stf-ollama ollama pull qwen3.5:122b-a10b
    podman exec stf-ollama ollama pull nomic-embed-text
    podman exec stf-ollama ollama pull llava
    ```
@@ -268,8 +268,8 @@ podman exec stf-ollama ollama rm <model-name>
 podman exec stf-ollama ollama show <model-name>
 ```
 
-With 92 GB VRAM, larger models are feasible. The default `qwen3.5:9b`
-uses approximately 6 GB VRAM.
+With 96 GB VRAM, the default `qwen3.5:122b-a10b` (MoE, 122B total /
+10B active) uses approximately 76 GB VRAM.
 
 ---
 

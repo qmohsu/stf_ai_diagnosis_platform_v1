@@ -196,7 +196,7 @@ make logs
 ### 5. Pull Ollama Model
 
 ```bash
-# Pull the default model (qwen3.5:9b)
+# Pull the default model (qwen3.5:122b-a10b)
 # This may take 10-30 minutes depending on your connection
 make ollama-pull
 
@@ -241,8 +241,8 @@ APP_DB_PASSWORD=<set-strong-password>
 #### Ollama Configuration
 ```bash
 OLLAMA_VERSION=0.1.26
-OLLAMA_DEFAULT_MODEL=qwen3.5:9b
-# Dense 14B model, ~9.3 GB Q4_K_M, 128K context
+OLLAMA_DEFAULT_MODEL=qwen3.5:122b-a10b
+# MoE 122B/10B-active model, ~76 GB Q4_K_M, 256K context
 ```
 
 ### Step 2: Resource Limits (Optional)
@@ -425,7 +425,7 @@ curl -X POST "http://127.0.0.1:8000/v1/rag/retrieve" \
 #### 3. Test Ollama
 ```bash
 curl http://127.0.0.1:11434/api/generate -d '{
-  "model": "qwen3.5:9b",
+  "model": "qwen3.5:122b-a10b",
   "prompt": "What is a vehicle diagnostic code?",
   "stream": false
 }'
@@ -566,7 +566,7 @@ docker-compose logs -f ollama
 ```
 
 **Solutions:**
-- Use a smaller quantization: `qwen3.5:9b-q2_K`
+- Use a smaller quantization: `qwen3.5:122b-a10b-q2_K`
 - Download on a faster network
 - Resume interrupted downloads (Ollama handles this automatically)
 

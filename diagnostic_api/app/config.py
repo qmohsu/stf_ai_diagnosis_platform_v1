@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     # LLM Configuration
     llm_endpoint: str = os.getenv("LLM_ENDPOINT", "http://ollama:11434")
-    llm_model: str = os.getenv("LLM_MODEL", "qwen3.5:9b")
+    llm_model: str = os.getenv("LLM_MODEL", "qwen3.5:122b-a10b")
 
     # Embedding Configuration
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
