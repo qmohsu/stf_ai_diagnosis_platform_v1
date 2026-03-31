@@ -33,6 +33,8 @@ volumes:
     driver: local
   diagnostic_api_obd_logs:
     driver: local
+  diagnostic_api_manuals:
+    driver: local
 
 # ============================================================================
 # SERVICES
@@ -151,6 +153,7 @@ services:
       - diagnostic_api_logs:/app/logs
       - diagnostic_api_audio:/app/data/audio
       - diagnostic_api_obd_logs:/app/data/obd_logs
+      - diagnostic_api_manuals:/app/data/manuals
     # Note: easyocr runs on CPU (pip torch is CPU-only in slim image).
     # For GPU OCR, switch to a CUDA base image and install torch+cu121.
     healthcheck:

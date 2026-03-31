@@ -50,7 +50,7 @@ Critical path dependency: DO‑01 → DO‑06 → (APP‑02B + APP‑03) → INT
 
 **RAG Image Parsing Path:** APP‑03 → APP‑22 (PDF image parsing: OCR + vision + page render + CJK translation + image-aware chunking).
 
-**Structured Manual Path:** APP‑40 (markdown schema spec, GitHub Issue #33) → Phase 1b converter (`md_export.py`, GitHub Issue #34) ✅ → APP‑42 (parser quality fixes, GitHub Issues #41 #42 #43 #44) ✅ → APP‑43 (static manual viewer, GitHub Issue #48) → Phase 2a navigation tools (#32) → Phase 2b A/B comparison (#32).
+**Structured Manual Path:** APP‑40 (markdown schema spec, GitHub Issue #33) → Phase 1b converter (`md_export.py`, GitHub Issue #34) ✅ → APP‑42 (parser quality fixes, GitHub Issues #41 #42 #43 #44) ✅ → APP‑43 (static manual viewer, GitHub Issue #48) ✅ → Phase 2a navigation tools (#32) → Phase 2b A/B comparison (#32).
 
 **LLM Upgrade Path:** APP‑41 (upgrade to `qwen3.5:27b-q8_0`, GitHub Issue #40) ✅ → Agentic RAG (#31).
 
@@ -1899,6 +1899,53 @@ Acceptance Criteria:
 - Zero references to old model name in codebase ✓
 - dev_plan.md and design_doc.md updated ✓
 
+#### APP‑43 — Static Markdown Manual Viewer
+
+Owner: AI Engineer
+Depends on: APP‑42
+GitHub Issue: #48
+
+PROMPT (task ticket):
+Title: APP‑43 Add browser-based viewer for converted service manual markdown
+
+Task:
+Add a static HTML viewer at `/manuals/` served by the existing Nginx
+gateway. No new containers — just a single-page app with client-side
+markdown rendering via `marked.js` (CDN).
+
+Key changes:
+- `infra/nginx/manuals/index.html` — single-page viewer with sidebar
+  listing available manuals, YAML frontmatter metadata display,
+  image path rewriting, and responsive CSS
+- `infra/nginx/nginx.conf` — two new location blocks: `/manuals/`
+  (viewer app) and `/manuals/data/` (markdown + images via autoindex)
+- `infra/docker-compose.yml` — new `diagnostic_api_manuals` named
+  volume mounted at `/app/data/manuals` in diagnostic-api
+- `infra/docker-compose.polyu.yml` — mount viewer dir and shared
+  volume into nginx service
+
+Architecture:
+```
+Browser → /manuals/      → Nginx → /srv/manuals/index.html (viewer)
+       → /manuals/data/  → Nginx → /app/data/manuals/ (md + images)
+```
+
+Files changed:
+`infra/nginx/manuals/index.html` (new)
+`infra/nginx/nginx.conf` (2 location blocks)
+`infra/docker-compose.yml` (volume + mount)
+`infra/docker-compose.polyu.yml` (nginx volumes + volume def)
+`docs/dev_plan.md`, `docs/design_doc.md` (docs)
+
+Acceptance Criteria:
+- `curl -sf https://stf-diagnosis.dev/manuals/` returns viewer HTML ✓
+- `/manuals/data/` returns Nginx autoindex directory listing ✓
+- Viewer sidebar lists available `.md` files by vehicle model ✓
+- Clicking a manual renders markdown with images inline ✓
+- YAML frontmatter displayed as metadata banner ✓
+- Responsive layout works on mobile ✓
+- Only Nginx restart required (no API/UI rebuild) ✓
+
 ### 3.3 Integration and Finalization Tickets
 #### INT‑01 — End-to-end demo script (“one command demo”)
 
@@ -2030,6 +2077,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-31 | v4.1 | APP-43: Static markdown manual viewer (GitHub Issue #48). New `infra/nginx/manuals/index.html` single-page viewer app served by Nginx at `/manuals/`. Client-side markdown rendering via `marked.js` (CDN). Sidebar auto-discovers `.md` files via Nginx `autoindex` on `/manuals/data/`. YAML frontmatter parsed and displayed as metadata banner (vehicle model, source PDF, page count, language, export date). Image paths rewritten from relative to absolute for Nginx serving. Responsive CSS layout. New `diagnostic_api_manuals` Docker named volume shared between diagnostic-api (writer) and nginx (reader). Two new Nginx location blocks: `/manuals/` (viewer app from `/srv/manuals/`) and `/manuals/data/` (markdown + images from shared volume with 1h cache). Only Nginx restart required for deployment. |
 | 2026-03-31 | v4.0 | APP-42: PDF parser quality fixes (GitHub Issues #41, #42). **Section extraction** — 3 additive filters in `_classify_line()`: standalone page number filter (`^\d{1,4}$`), Honda breadcrumb filter (`^uu\w.*u\w`), and Unicode-safe alphabetic guard (`_HAS_LETTER_RE`). Updated `_fallback_page_sections()` title filter. Results on Honda Jazz 597-page PDF: sections 1,385→883 (-36%), garbage headings→0, breadcrumbs→0, `###` heading hierarchy restored (0→311). **Image extraction** — changed CMYK detection from `pix.n > 4` to `pix.colorspace.n not in (1, 3)` to correctly handle CMYK without alpha. Added try/except fallback for Separation/DeviceN colorspaces. Results: images 8→1,015, extraction warnings ~800→0. 14 new section tests + 2 new image tests. Yamaha backward-compatible. Filed follow-up issues: #43 (vehicle model), #44 (garbled symbols), #45 (TOC structure), #46 (cross-page merging), #47 (bullet-prefix stripping), #48 (static manual viewer). |
 | 2026-03-31 | v3.9 | APP-41: Upgrade local LLM from `qwen3.5:9b` to `qwen3.5:27b-q8_0` (GitHub Issue #40, prerequisite for #31 Agentic RAG). Dense 27B model with Q8 quantization (~30 GB VRAM) on 2x RTX 6000 Ada (96 GB). Attempted `qwen3.5:122b-a10b` (MoE 122B, 76 GB Q4) first but OOM-crashed — KV cache left no headroom. `ExpertLLMClient` timeout raised to 300s, `OLLAMA_KEEP_ALIVE=-1` added. Qwen3.5 thinking mode enabled for higher-quality diagnosis: SSE keep-alive comments (`": thinking\n\n"`) stream during internal reasoning phase via `delta.model_extra["reasoning"]` to prevent Cloudflare Tunnel idle timeout. Localized status messages for en/zh-CN/zh-TW ("AI is reasoning..."). Updated 17 files (config, compose, env, docs, tests). 9 commits. |
 | 2026-03-30 | v3.8 | Phase 1b: PDF-to-markdown converter (GitHub Issue #34, parent #32). New `app/rag/md_export.py` CLI tool converts PDF service manuals to structured `.md` files conforming to the schema from #33. Reuses existing pipeline: `extract_pdf_sections_async` for section extraction, `extract_images_from_page` for image saving, `translate_sections` for Chinese→English, vision service for image descriptions. Output includes YAML frontmatter, heading hierarchy with page markers (`<!-- page:N -->`), extracted images as PNG files with optional vision descriptions, and DTC cross-reference index appendix. CLI: `python -m app.rag.md_export --dir ... --output ... [--describe-images] [--enable-ocr] [--enable-translation]`. 41 new tests in `tests/test_md_export.py`. |

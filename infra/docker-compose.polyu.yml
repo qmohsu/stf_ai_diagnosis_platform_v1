@@ -117,6 +117,8 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/proxy_params_api.conf:/etc/nginx/proxy_params_api.conf:ro
+      - ./nginx/manuals:/srv/manuals:ro
+      - diagnostic_api_manuals:/app/data/manuals:ro
     depends_on:
       - obd-ui
       - diagnostic-api
@@ -127,3 +129,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+# Volume shared between diagnostic-api (writer) and nginx (reader)
+volumes:
+  diagnostic_api_manuals:
+    external: false

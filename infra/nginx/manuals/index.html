@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STF Manual Viewer</title>
+<style>
+/* ── Reset & Base ──────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --sidebar-w: 280px;
+  --header-h: 52px;
+  --bg: #f8f9fa;
+  --bg-sidebar: #ffffff;
+  --bg-content: #ffffff;
+  --border: #dee2e6;
+  --text: #212529;
+  --text-muted: #6c757d;
+  --accent: #0d6efd;
+  --accent-hover: #0a58ca;
+  --meta-bg: #e9ecef;
+}
+
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ────────────────────────────────────────────── */
+.header {
+  height: var(--header-h);
+  background: var(--bg-content);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  flex-shrink: 0;
+  gap: 12px;
+}
+.header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.toggle-btn {
+  display: none;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+/* ── Layout ────────────────────────────────────────────── */
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Sidebar ───────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 12px 0;
+  flex-shrink: 0;
+}
+.sidebar-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  padding: 8px 16px 4px;
+}
+.sidebar-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  font-size: 14px;
+  padding: 8px 16px;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.15s;
+  word-break: break-word;
+}
+.sidebar-item:hover { background: var(--bg); }
+.sidebar-item.active {
+  background: #e7f1ff;
+  color: var(--accent);
+  font-weight: 500;
+}
+.sidebar-item .sub {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.sidebar-empty {
+  padding: 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* ── Content ───────────────────────────────────────────── */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 40px;
+  max-width: 900px;
+}
+
+/* ── Metadata banner ───────────────────────────────────── */
+.meta-banner {
+  background: var(--meta-bg);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  font-size: 13px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.meta-item { display: flex; gap: 4px; }
+.meta-label {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* ── Rendered markdown ─────────────────────────────────── */
+.md-body h1 { font-size: 28px; margin: 0 0 16px; line-height: 1.3; }
+.md-body h2 {
+  font-size: 22px; margin: 32px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.md-body h3 { font-size: 18px; margin: 24px 0 8px; }
+.md-body h4 { font-size: 15px; margin: 20px 0 6px; }
+.md-body p { margin: 8px 0; line-height: 1.65; }
+.md-body ul, .md-body ol { margin: 8px 0 8px 24px; }
+.md-body li { margin: 4px 0; line-height: 1.6; }
+.md-body img {
+  max-width: 100%;
+  height: auto;
+  margin: 12px 0;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+.md-body table {
+  border-collapse: collapse;
+  margin: 12px 0;
+  width: 100%;
+  font-size: 14px;
+}
+.md-body th, .md-body td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+}
+.md-body th {
+  background: var(--meta-bg);
+  font-weight: 600;
+}
+.md-body code {
+  background: var(--meta-bg);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.md-body pre {
+  background: #282c34;
+  color: #abb2bf;
+  padding: 12px 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.md-body pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+.md-body blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 4px 16px;
+  margin: 12px 0;
+  color: var(--text-muted);
+}
+.md-body em { color: var(--text-muted); }
+
+/* ── Placeholder ───────────────────────────────────────── */
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  text-align: center;
+  gap: 8px;
+}
+.placeholder .icon { font-size: 48px; opacity: 0.3; }
+.placeholder p { font-size: 15px; }
+
+/* ── Loading / Error ───────────────────────────────────── */
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .toggle-btn { display: inline-block; }
+  .sidebar {
+    position: fixed;
+    top: var(--header-h);
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .content { padding: 20px 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="toggle-btn" onclick="toggleSidebar()"
+          aria-label="Toggle sidebar">&#9776;</button>
+  <h1>STF Manual Viewer</h1>
+</div>
+
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-title">Manuals</div>
+    <div id="manual-list">
+      <div class="sidebar-empty">Loading&hellip;</div>
+    </div>
+  </nav>
+
+  <main class="content" id="content">
+    <div class="placeholder">
+      <div class="icon">&#128214;</div>
+      <p>Select a manual from the sidebar to begin.</p>
+    </div>
+  </main>
+</div>
+
+<!-- marked.js v15.0.7 — vendored locally (no CDN, local-only runtime) -->
+<script src="/manuals/marked.min.js"></script>
+<script>
+"use strict";
+
+const DATA_BASE = "/manuals/data/";
+let manuals = [];
+let activeFile = null;
+
+/* ── Sidebar toggle (mobile) ────────────────────────── */
+function toggleSidebar() {
+  document.getElementById("sidebar").classList.toggle("open");
+}
+
+/* ── Parse YAML frontmatter ─────────────────────────── */
+function parseFrontmatter(md) {
+  const m = md.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!m) return { meta: {}, body: md };
+  const meta = {};
+  m[1].split(/\r?\n/).forEach(function(line) {
+    const idx = line.indexOf(":");
+    if (idx < 1) return;
+    const key = line.slice(0, idx).trim();
+    let val = line.slice(idx + 1).trim();
+    // Strip surrounding quotes
+    if ((val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    meta[key] = val;
+  });
+  const body = md.slice(m[0].length).replace(/^\r?\n/, "");
+  return { meta: meta, body: body };
+}
+
+/* ── Configure marked (XSS-safe, custom image renderer) ── */
+function configureMd() {
+  marked.setOptions({ breaks: false, gfm: true });
+  marked.use({
+    renderer: {
+      // Escape raw HTML blocks to prevent XSS (CRITICAL)
+      html: function(token) {
+        var d = document.createElement("div");
+        d.textContent = token.raw || token.text || "";
+        return d.innerHTML;
+      },
+      // Rewrite image paths: images/... → /manuals/data/images/...
+      image: function(token) {
+        var src = token.href || "";
+        if (src.startsWith("images/") ||
+            src.startsWith("./images/")) {
+          src = DATA_BASE + src.replace(/^\.\//, "");
+        }
+        var alt = escapeHtml(token.text || "");
+        return '<img src="' + encodeURI(src) +
+               '" alt="' + alt + '">';
+      }
+    }
+  });
+}
+
+/* ── Render metadata banner ─────────────────────────── */
+function renderMeta(meta) {
+  const items = [];
+  if (meta.vehicle_model) {
+    items.push(metaItem("Model", meta.vehicle_model));
+  }
+  if (meta.source_pdf) {
+    items.push(metaItem("Source", meta.source_pdf));
+  }
+  if (meta.page_count) {
+    items.push(metaItem("Pages", meta.page_count));
+  }
+  if (meta.section_count) {
+    items.push(metaItem("Sections", meta.section_count));
+  }
+  if (meta.language) {
+    items.push(metaItem("Language", meta.language));
+  }
+  if (meta.translated === "true") {
+    items.push(metaItem("Translated", "Yes"));
+  }
+  if (meta.exported_at) {
+    const d = new Date(meta.exported_at);
+    const dateStr = isNaN(d.getTime())
+      ? meta.exported_at
+      : d.toLocaleDateString();
+    items.push(metaItem("Exported", dateStr));
+  }
+  if (items.length === 0) return "";
+  return '<div class="meta-banner">' + items.join("") + '</div>';
+}
+
+function metaItem(label, value) {
+  return '<div class="meta-item">' +
+    '<span class="meta-label">' + escapeHtml(label) + ':</span> ' +
+    '<span>' + escapeHtml(String(value)) + '</span></div>';
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/* ── Discover manuals via autoindex ──────────────────── */
+async function discoverManuals() {
+  try {
+    const resp = await fetch(DATA_BASE);
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const html = await resp.text();
+    // Parse the Nginx autoindex HTML for .md links
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const links = doc.querySelectorAll("a");
+    const files = [];
+    links.forEach(function(a) {
+      const href = a.getAttribute("href");
+      if (href && href.endsWith(".md")) {
+        files.push(decodeURIComponent(href));
+      }
+    });
+    return files;
+  } catch (err) {
+    console.error("Failed to discover manuals:", err);
+    return [];
+  }
+}
+
+/* ── Load a manual's frontmatter for sidebar display ── */
+async function loadManualMeta(filename) {
+  try {
+    const resp = await fetch(DATA_BASE + filename);
+    if (!resp.ok) return { filename: filename, meta: {} };
+    // Read only the first 1 KB for frontmatter
+    const text = await resp.text();
+    const { meta } = parseFrontmatter(text);
+    return { filename: filename, meta: meta, fullText: text };
+  } catch (err) {
+    return { filename: filename, meta: {} };
+  }
+}
+
+/* ── Build sidebar ──────────────────────────────────── */
+function renderSidebar() {
+  const list = document.getElementById("manual-list");
+  if (manuals.length === 0) {
+    list.innerHTML =
+      '<div class="sidebar-empty">No manuals found.</div>';
+    return;
+  }
+  list.innerHTML = "";
+  manuals.forEach(function(m) {
+    const btn = document.createElement("button");
+    btn.className = "sidebar-item";
+    if (m.filename === activeFile) btn.classList.add("active");
+
+    const title = m.meta.vehicle_model
+      || m.filename.replace(/\.md$/, "").replace(/_/g, " ");
+    btn.innerHTML = escapeHtml(title) +
+      '<span class="sub">' +
+      escapeHtml(m.filename) + '</span>';
+
+    btn.addEventListener("click", function() {
+      loadManual(m);
+    });
+    list.appendChild(btn);
+  });
+}
+
+/* ── Load and render a manual ───────────────────────── */
+async function loadManual(manual) {
+  activeFile = manual.filename;
+  renderSidebar();
+
+  const content = document.getElementById("content");
+  content.innerHTML = '<div class="loading">Loading&hellip;</div>';
+
+  // Close sidebar on mobile
+  document.getElementById("sidebar").classList.remove("open");
+
+  try {
+    let text = manual.fullText;
+    if (!text) {
+      const resp = await fetch(DATA_BASE + manual.filename);
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      text = await resp.text();
+    }
+
+    const { meta, body } = parseFrontmatter(text);
+    var html = marked.parse(body);
+
+    content.innerHTML = renderMeta(meta) +
+      '<div class="md-body">' + html + '</div>';
+    content.scrollTop = 0;
+  } catch (err) {
+    content.innerHTML =
+      '<div class="loading">Failed to load manual: ' +
+      escapeHtml(err.message) + '</div>';
+  }
+}
+
+/* ── Init ───────────────────────────────────────────── */
+async function init() {
+  configureMd();
+  const files = await discoverManuals();
+  const results = await Promise.all(files.map(loadManualMeta));
+  manuals = results;
+  renderSidebar();
+
+  // Auto-select first manual if available
+  if (manuals.length > 0) {
+    loadManual(manuals[0]);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
