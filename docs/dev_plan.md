@@ -52,6 +52,8 @@ Critical path dependency: DO‑01 → DO‑06 → (APP‑02B + APP‑03) → INT
 
 **Structured Manual Path:** APP‑40 (markdown schema spec, GitHub Issue #33) → Phase 1b converter (`md_export.py`, GitHub Issue #34) ✅ → Phase 2a navigation tools (#32) → Phase 2b A/B comparison (#32).
 
+**LLM Upgrade Path:** APP‑41 (upgrade to `qwen3.5:27b-q8_0`, GitHub Issue #40) ✅ → Agentic RAG (#31).
+
 ### 2.3 Definition of Done (Applies to Every Ticket)
 A ticket is DONE only if:
 - It’s merged with docs and tests updated.
@@ -1794,6 +1796,45 @@ RagChunk compatibility mapping is accurate ✓
 dev_plan.md and design_doc.md updated per Documentation Update Rule ✓
 No code changes required — documentation only ✓
 
+#### APP‑41 — Upgrade Local LLM and SSE Thinking Support
+
+Owner: AI Engineer
+Depends on: DO‑07
+GitHub Issue: #40 (prerequisite for #31 Agentic RAG)
+
+PROMPT (task ticket):
+Title: APP‑41 Upgrade local LLM from qwen3.5:9b to qwen3.5:27b-q8_0 with thinking SSE support
+
+Task:
+Upgrade the default local LLM to `qwen3.5:27b-q8_0` (dense 27B, Q8 quantization, ~30 GB VRAM) on the PolyU server (2x RTX 6000 Ada, 96 GB VRAM). This is a prerequisite for Agentic RAG (#31) which requires stronger tool-calling and reasoning.
+
+Key changes:
+- Replaced `qwen3.5:9b` with `qwen3.5:27b-q8_0` across 17 files (config, compose, env, docs, tests)
+- `AsyncOpenAI` timeout raised from 60s to 300s for cold-load tolerance
+- `OLLAMA_KEEP_ALIVE=-1` keeps model in VRAM permanently
+- Qwen3.5 thinking mode enabled — SSE keep-alive comments (`": thinking\n\n"`) stream during internal reasoning phase to prevent Cloudflare Tunnel idle timeout (~100s). Thinking tokens detected via `delta.model_extra["reasoning"]` (Ollama OpenAI-compatible API)
+- Localized status messages (en/zh-CN/zh-TW) for both init and thinking phases
+- Server `.env` (gitignored) updated manually
+
+Failed attempt: `qwen3.5:122b-a10b` (MoE 122B, ~76 GB Q4) loaded but OOM-crashed during inference — 256K default KV cache left no headroom on 96 GB VRAM.
+
+Files changed:
+`diagnostic_api/app/expert/client.py` (THINKING_SENTINEL, model_extra detection, timeout)
+`diagnostic_api/app/api/v2/endpoints/obd_analysis.py` (SSE keep-alive + localized status)
+`diagnostic_api/app/config.py`, `infra/docker-compose*.yml`, `infra/.env*`, `infra/Makefile`, `infra/scripts/polyu-setup.sh` (model name)
+`docs/deployment_polyu.md`, `docs/design_doc.md`, `infra/README_LOCAL_SETUP.md`, `infra/QUICK_REFERENCE.md` (docs)
+`diagnostic_api/tests/test_store_diagnosis.py`, `test_obd_analysis.py`, `test_feedback_diagnosis_link.py` (fixtures)
+
+Commits: f445e8c, 556820e, 7df161c, e8df44b, b1f301a, a38bfc2, 2e2f4fb, 1b3350c, 57b4c8e
+
+Acceptance Criteria:
+- `qwen3.5:27b-q8_0` deployed and loaded on PolyU server ✓
+- All 65/65 layers on GPU, ~53 GB total, ~37 GB headroom ✓
+- Diagnosis SSE stream stays alive during thinking phase ✓
+- Status messages localized for en/zh-CN/zh-TW ✓
+- Zero references to old model name in codebase ✓
+- dev_plan.md and design_doc.md updated ✓
+
 ### 3.3 Integration and Finalization Tickets
 #### INT‑01 — End-to-end demo script (“one command demo”)
 
@@ -1925,6 +1966,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-31 | v3.9 | APP-41: Upgrade local LLM from `qwen3.5:9b` to `qwen3.5:27b-q8_0` (GitHub Issue #40, prerequisite for #31 Agentic RAG). Dense 27B model with Q8 quantization (~30 GB VRAM) on 2x RTX 6000 Ada (96 GB). Attempted `qwen3.5:122b-a10b` (MoE 122B, 76 GB Q4) first but OOM-crashed — KV cache left no headroom. `ExpertLLMClient` timeout raised to 300s, `OLLAMA_KEEP_ALIVE=-1` added. Qwen3.5 thinking mode enabled for higher-quality diagnosis: SSE keep-alive comments (`": thinking\n\n"`) stream during internal reasoning phase via `delta.model_extra["reasoning"]` to prevent Cloudflare Tunnel idle timeout. Localized status messages for en/zh-CN/zh-TW ("AI is reasoning..."). Updated 17 files (config, compose, env, docs, tests). 9 commits. |
 | 2026-03-30 | v3.8 | Phase 1b: PDF-to-markdown converter (GitHub Issue #34, parent #32). New `app/rag/md_export.py` CLI tool converts PDF service manuals to structured `.md` files conforming to the schema from #33. Reuses existing pipeline: `extract_pdf_sections_async` for section extraction, `extract_images_from_page` for image saving, `translate_sections` for Chinese→English, vision service for image descriptions. Output includes YAML frontmatter, heading hierarchy with page markers (`<!-- page:N -->`), extracted images as PNG files with optional vision descriptions, and DTC cross-reference index appendix. CLI: `python -m app.rag.md_export --dir ... --output ... [--describe-images] [--enable-ocr] [--enable-translation]`. 41 new tests in `tests/test_md_export.py`. |
 | 2026-03-30 | v3.7 | APP-40: Structured markdown schema for service manuals (GitHub Issue #33, parent #32). Defined file format and conventions for storing service manuals as structured `.md` files for agent-navigated retrieval. Schema spec (`docs/manual_markdown_schema.md`) covers: YAML frontmatter (source_pdf, vehicle_model, language, page/section counts), heading hierarchy (`#`→`####`), section anchor slug algorithm, DTC subsection format (`#### DTC: P0171 — Description`), image references with vision descriptions, page markers (`<!-- page:N -->`), cross-reference DTC index appendix, and compatibility mapping to existing `RagChunk` columns. Reference example file (`docs/examples/manual_example.md`). Documentation only — no code changes. |
 | 2026-03-28 | v3.6 | APP-39: Flexible OBD log ingestion formats (GitHub Issue #30). New `obd_agent/format_normalizer.py` preprocessing layer auto-detects and normalizes CSV/TSV formats before the diagnostic pipeline. Supports OBDWIZ CSVLog (39 Chinese→English column mappings, 6 imperial→metric unit converters, Chinese AM/PM timestamp parsing, consecutive row deduplication), obd_maxlog (unit-suffix stripping, `#`-metadata preservation, non-standard column filtering, millisecond truncation), generic CSV (delimiter conversion), and native TSV (pass-through). Integrated into `_run_pipeline()` in `log_summary.py` with automatic temp file cleanup. Frontend `FileDropZone` now accepts `.csv` files. 2 test fixture files. 36 new tests (380 total). |

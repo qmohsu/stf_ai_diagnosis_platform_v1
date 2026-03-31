@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v3.8 (PDF-to-Markdown Converter) |
+| **Status** | Draft v3.9 (LLM Upgrade + Thinking SSE) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-03-30 (v3.8) |
-| **Primary pilot stack** | FastAPI (diagnostic_api) + (Ollama or vLLM OpenAI-compatible server) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | Phase 1b: PDF-to-markdown converter (GitHub Issue #34, parent #32). New `app/rag/md_export.py` CLI tool converts PDF service manuals to structured `.md` files conforming to schema from #33. Reuses `extract_pdf_sections_async`, `extract_images_from_page`, `translate_sections`, and vision service. Output: YAML frontmatter, heading hierarchy with `<!-- page:N -->` markers, extracted PNG images with optional vision descriptions, DTC index appendix. CLI: `python -m app.rag.md_export --dir ... --output ...`. 41 tests. |
+| **Last updated** | 2026-03-31 (v3.9) |
+| **Primary pilot stack** | FastAPI (diagnostic_api) + Ollama (`qwen3.5:27b-q8_0`) + Next.js (obd-ui) + pgvector (PostgreSQL) |
+| **New in this revision** | LLM upgrade from `qwen3.5:9b` to `qwen3.5:27b-q8_0` (dense 27B, Q8 quantization, ~30 GB VRAM on 2x RTX 6000 Ada). GitHub Issue #40, prerequisite for Agentic RAG #31. `ExpertLLMClient` timeout raised to 300s, `OLLAMA_KEEP_ALIVE=-1` keeps model in VRAM permanently. Qwen3.5 thinking mode enabled for higher-quality diagnosis — SSE keep-alive comments stream during reasoning phase to prevent Cloudflare/proxy idle timeout. Thinking tokens detected via `delta.model_extra["reasoning"]` (Ollama-specific). Status messages localized (en/zh-CN/zh-TW): "AI is reasoning..." shown during thinking phase. |
 
 ### Revision history
 
@@ -123,7 +123,7 @@ Your materials reference multiple taxonomies (8 system categories; 17-class; 33 
 ## 7) Pilot architecture overview
 ### 7.1 High-level components
 •	diagnostic_api (FastAPI): workflow orchestration, REST API, LLM-safe summarization, RAG retrieval, schema validation, and tool-calling logic. Handles the full pipeline natively (HTTP tool call, retrieval, generation, schema validation).
-•	Model server (Phase 1): Ollama (OpenAI-compatible endpoints).
+•	Model server (Phase 1): Ollama (OpenAI-compatible endpoints). Default model: `qwen3.5:27b-q8_0` (dense 27B, Q8 quantization, ~30 GB VRAM). Qwen3.5 is a thinking model — internal reasoning tokens are streamed as SSE keep-alive comments during diagnosis to prevent proxy idle timeouts. `OLLAMA_KEEP_ALIVE=-1` keeps the model loaded in VRAM permanently. `AsyncOpenAI` timeout set to 300s for cold-load tolerance.
 •	Model server (Phase 1.5/2): tuned model served via vLLM/SGLang (OpenAI-compatible), or Ollama with adapters (if chosen).
 •	Vector store: pgvector (PostgreSQL extension) for SOP/manual chunks and sanitized knowledge. Chunk metadata includes `has_image` flag and `metadata_json` (JSONB) for image-containing chunks.
 •	Postgres: session persistence, diagnosis history, feedback tables, and OBD snapshot storage.
@@ -330,8 +330,9 @@ These endpoints wrap the summarization pipeline with session persistence and exp
 - Returns the stored `LogSummaryV2` from JSONB
 
 **Endpoint:** `POST /v2/obd/{session_id}/diagnose`
-- **SSE-streaming AI diagnosis** powered by Ollama (local LLM)
+- **SSE-streaming AI diagnosis** powered by Ollama (local LLM, `qwen3.5:27b-q8_0`)
 - Streams diagnostic text tokens to the client in real time via Server-Sent Events
+- Qwen3.5 thinking mode enabled: during the internal reasoning phase (~1-2 min), SSE comments (`: thinking\n\n`) are streamed to keep the connection alive through Cloudflare Tunnel and Nginx proxies. A `status` event updates the UI to show "AI is reasoning..." (localized). Thinking tokens are detected via `delta.model_extra["reasoning"]` from the Ollama OpenAI-compatible API
 - Stores the final `diagnosis_text` on the session row upon completion
 - Appends a row to `diagnosis_history` table (provider="local")
 - Returns 404 if session not found
