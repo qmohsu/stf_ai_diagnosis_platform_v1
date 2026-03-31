@@ -1,6 +1,6 @@
 # STF AI Diagnosis Platform v1
 
-> **🌐 Live Demo**: [https://stf-diagnosis.dev](https://stf-diagnosis.dev)
+> **🌐 Live Demo**: [https://stf-diagnosis.dev](https://stf-diagnosis.dev) | **📖 Manual Viewer**: [https://stf-diagnosis.dev/manuals/](https://stf-diagnosis.dev/manuals/)
 
 ## Overview
 
