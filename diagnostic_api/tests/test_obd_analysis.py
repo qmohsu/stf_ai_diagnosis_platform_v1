@@ -771,7 +771,7 @@ class TestDiagnosisHistory:
         row1.id = uuid.uuid4()
         row1.session_id = sid
         row1.provider = "local"
-        row1.model_name = "qwen3.5:122b-a10b"
+        row1.model_name = "qwen3.5:27b-q8_0"
         row1.diagnosis_text = "Local diagnosis text"
         row1.created_at = datetime(
             2026, 3, 3, 12, 0, 0, tzinfo=timezone.utc,
@@ -816,7 +816,7 @@ class TestDiagnosisHistory:
 
         item0 = body["items"][0]
         assert item0["provider"] == "local"
-        assert item0["model_name"] == "qwen3.5:122b-a10b"
+        assert item0["model_name"] == "qwen3.5:27b-q8_0"
         assert item0["diagnosis_text"] == (
             "Local diagnosis text"
         )
@@ -850,7 +850,7 @@ class TestDiagnosisHistory:
         row.id = uuid.uuid4()
         row.session_id = sid
         row.provider = "local"
-        row.model_name = "qwen3.5:122b-a10b"
+        row.model_name = "qwen3.5:27b-q8_0"
         row.diagnosis_text = "Local only"
         row.created_at = datetime(
             2026, 3, 3, 12, 0, 0, tzinfo=timezone.utc,

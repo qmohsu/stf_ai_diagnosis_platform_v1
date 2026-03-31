@@ -39,7 +39,7 @@ def _make_history_row(
     history_id: uuid.UUID,
     session_id: uuid.UUID,
     provider: str = "local",
-    model_name: str = "qwen3.5:122b-a10b",
+    model_name: str = "qwen3.5:27b-q8_0",
 ) -> MagicMock:
     """Build a mock DiagnosisHistory row."""
     h = MagicMock()

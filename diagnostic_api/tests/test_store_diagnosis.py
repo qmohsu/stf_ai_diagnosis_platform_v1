@@ -65,7 +65,7 @@ class TestStoreDiagnosisLocal:
         )
 
         sid = uuid.uuid4()
-        result = _store_diagnosis(sid, "local", "qwen3.5:122b-a10b", "diag text")
+        result = _store_diagnosis(sid, "local", "qwen3.5:27b-q8_0", "diag text")
 
         # Returns a UUID (the history row ID)
         assert isinstance(result, uuid.UUID)
@@ -79,7 +79,7 @@ class TestStoreDiagnosisLocal:
         _mock_session_local.add.assert_called_once()
         history_row = _mock_session_local.add.call_args[0][0]
         assert history_row.provider == "local"
-        assert history_row.model_name == "qwen3.5:122b-a10b"
+        assert history_row.model_name == "qwen3.5:27b-q8_0"
         assert history_row.diagnosis_text == "diag text"
         assert history_row.session_id == sid
 
@@ -145,7 +145,7 @@ class TestStoreDiagnosisEdgeCases:
 
         with pytest.raises(RuntimeError, match="DB error"):
             _store_diagnosis(
-                uuid.uuid4(), "local", "qwen3.5:122b-a10b", "text",
+                uuid.uuid4(), "local", "qwen3.5:27b-q8_0", "text",
             )
 
         _mock_session_local.rollback.assert_called_once()
@@ -165,7 +165,7 @@ class TestStoreDiagnosisEdgeCases:
 
         long_text = "x" * (_MAX_DIAGNOSIS_LENGTH + 1000)
         _store_diagnosis(
-            uuid.uuid4(), "local", "qwen3.5:122b-a10b", long_text,
+            uuid.uuid4(), "local", "qwen3.5:27b-q8_0", long_text,
         )
 
         assert (
@@ -191,7 +191,7 @@ class TestStoreDiagnosisEdgeCases:
         )
 
         result = _store_diagnosis(
-            uuid.uuid4(), "local", "qwen3.5:122b-a10b", "text",
+            uuid.uuid4(), "local", "qwen3.5:27b-q8_0", "text",
         )
 
         assert result is None

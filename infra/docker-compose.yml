@@ -118,7 +118,7 @@ services:
 
       # LLM Configuration
       LLM_ENDPOINT: ${OLLAMA_BASE_URL:-http://ollama:11434}
-      LLM_MODEL: ${OLLAMA_DEFAULT_MODEL:-qwen3.5:122b-a10b}
+      LLM_MODEL: ${OLLAMA_DEFAULT_MODEL:-qwen3.5:27b-q8_0}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
       VISION_MODEL: ${VISION_MODEL:-llava}
 

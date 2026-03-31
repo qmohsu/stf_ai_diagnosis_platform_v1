@@ -237,7 +237,7 @@ class DiagnosisHistory(Base):
     )  # "local" | "premium"
     model_name = Column(
         String(200), nullable=False,
-    )  # e.g. "qwen3.5:122b-a10b", "anthropic/claude-sonnet-4.6"
+    )  # e.g. "qwen3.5:27b-q8_0", "anthropic/claude-sonnet-4.6"
     diagnosis_text = Column(Text, nullable=False)
     created_at = Column(DateTime, default=_utcnow)
 

@@ -1,6 +1,6 @@
 """Translation service for converting Chinese manual text to English.
 
-Uses a local Ollama LLM (e.g., qwen3.5:122b-a10b) to translate Traditional
+Uses a local Ollama LLM (e.g., qwen3.5:27b-q8_0) to translate Traditional
 Chinese section text to English at ingestion time, so the entire
 pgvector store is uniform English.  Uses the Ollama ``/api/chat``
 endpoint with ``think: false`` to disable hidden reasoning tokens in

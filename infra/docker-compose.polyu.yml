@@ -53,7 +53,6 @@ services:
       OLLAMA_HOST: 0.0.0.0:11434
       OLLAMA_FLASH_ATTENTION: "true"
       OLLAMA_KEEP_ALIVE: "-1"
-      OLLAMA_CONTEXT_LENGTH: "8192"
 
   # --------------------------------------------------------------------------
   # Diagnostic API - use localhost for inter-service comms
@@ -77,7 +76,7 @@ services:
       DB_USER: ${APP_DB_USER:-stf_app_user}
       DB_PASSWORD: ${APP_DB_PASSWORD}
       LLM_ENDPOINT: http://127.0.0.1:${OLLAMA_PORT:-11434}
-      LLM_MODEL: ${OLLAMA_DEFAULT_MODEL:-qwen3.5:122b-a10b}
+      LLM_MODEL: ${OLLAMA_DEFAULT_MODEL:-qwen3.5:27b-q8_0}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
       VISION_MODEL: ${VISION_MODEL:-llava}
       PREMIUM_LLM_ENABLED: ${PREMIUM_LLM_ENABLED:-false}
