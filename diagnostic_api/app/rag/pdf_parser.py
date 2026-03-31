@@ -105,7 +105,17 @@ def extract_images_from_page(
             else:
                 active_pix = pix
 
-            png_bytes = active_pix.tobytes("png")
+            try:
+                png_bytes = active_pix.tobytes("png")
+            except Exception:
+                # Fallback for non-standard colorspaces
+                # (Separation, DeviceN) that report n=1
+                # but are not true grayscale.
+                if pix_converted is None:
+                    pix_converted = fitz.Pixmap(
+                        fitz.csRGB, pix,
+                    )
+                png_bytes = pix_converted.tobytes("png")
 
             # Skip tiny byte-size images (spacers, borders)
             if len(png_bytes) < _MIN_IMAGE_BYTES:
