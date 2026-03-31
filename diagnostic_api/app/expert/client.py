@@ -75,6 +75,7 @@ class ExpertLLMClient:
                 messages=messages,
                 temperature=0.3,
                 stream=True,
+                extra_body={"think": False},
             )
 
             async for chunk in stream:
