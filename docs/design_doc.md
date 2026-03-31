@@ -8,17 +8,18 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v3.9 (LLM Upgrade + Thinking SSE) |
+| **Status** | Draft v4.0 (PDF Parser Quality Fixes) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-03-31 (v3.9) |
+| **Last updated** | 2026-03-31 (v4.0) |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + Ollama (`qwen3.5:27b-q8_0`) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | LLM upgrade from `qwen3.5:9b` to `qwen3.5:27b-q8_0` (dense 27B, Q8 quantization, ~30 GB VRAM on 2x RTX 6000 Ada). GitHub Issue #40, prerequisite for Agentic RAG #31. `ExpertLLMClient` timeout raised to 300s, `OLLAMA_KEEP_ALIVE=-1` keeps model in VRAM permanently. Qwen3.5 thinking mode enabled for higher-quality diagnosis — SSE keep-alive comments stream during reasoning phase to prevent Cloudflare/proxy idle timeout. Thinking tokens detected via `delta.model_extra["reasoning"]` (Ollama-specific). Status messages localized (en/zh-CN/zh-TW): "AI is reasoning..." shown during thinking phase. |
+| **New in this revision** | PDF parser quality fixes (APP-42, GitHub Issues #41, #42). **Section extraction**: 3 additive filters in `_classify_line()` — standalone page numbers, Honda breadcrumbs, alphabetic guard. Honda Jazz 597-page E2E: sections 1,385→883, garbage headings eliminated, `###` hierarchy restored. **Image extraction**: CMYK colorspace detection fixed (`pix.colorspace.n` instead of `pix.n`), Separation/DeviceN fallback added. Images 8→1,015, warnings ~800→0. Follow-up issues filed: #43–#48. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v4.0 | 2026-03-31 | PDF parser quality fixes (APP-42, GitHub Issues #41, #42). **Section extraction** (`_classify_line()` in `pdf_parser.py`): added `_STANDALONE_PAGE_NUM` filter for standalone digit-only lines misclassified as headings, `_BREADCRUMB_PATTERN` filter for Honda-style `uu...u` navigation headers, and `_HAS_LETTER_RE` Unicode-safe alphabetic guard preventing pure symbols/digits from becoming headings. Updated `_fallback_page_sections()` with same filters. E2E results on Honda Jazz 597-page PDF: sections 1,385→883 (-36%), garbage page-number headings eliminated, breadcrumb noise removed, `###` sub-heading hierarchy restored (0→311). **Image extraction** (`extract_images_from_page()`): changed CMYK detection from `pix.n > 4` to `pix.colorspace.n not in (1, 3)` — fixes confusion between CMYK without alpha (`pix.n=4`, `colorspace.n=4`) and RGBA (`pix.n=4`, `colorspace.n=3`). Added try/except fallback converting to RGB for Separation/DeviceN colorspaces that report `colorspace.n=1` but fail `tobytes("png")`. E2E results: images 8→1,015, extraction warnings ~800→0. 14 new section tests, 2 new image tests. All existing Yamaha MWS150-A tests pass. Filed follow-up issues: #43 (vehicle model fallback), #44 (garbled font symbols), #45 (TOC-based structure), #46 (cross-page merging), #47 (bullet-prefix stripping), #48 (static manual viewer). |
 | v3.8 | 2026-03-30 | Phase 1b PDF-to-markdown converter (GitHub Issue #34, parent #32): New `app/rag/md_export.py` CLI module converts PDF service manuals to structured `.md` files per schema from #33. Reuses `extract_pdf_sections_async` (section extraction), `extract_images_from_page` (image saving), `translate_sections` (Chinese→English), and vision service (image descriptions). Produces YAML frontmatter, heading hierarchy with `<!-- page:N -->` markers, PNG images in `images/{stem}/` subdirectory, optional vision descriptions, and DTC cross-reference index appendix. CLI: `python -m app.rag.md_export --dir ... --output ... [--describe-images] [--enable-ocr] [--enable-translation]`. 41 new tests. Phase 1b of §10.3.2 marked DONE. |
 | v3.7 | 2026-03-30 | Structured markdown manual schema (APP-40, GitHub Issue #33, parent #32): Schema spec (`docs/manual_markdown_schema.md`) defines file format for storing service manuals as structured `.md` files for agent-navigated retrieval. YAML frontmatter (`source_pdf`, `vehicle_model`, `language`, `page_count`, `section_count`), heading hierarchy (`#`→`####`), deterministic section anchor slugs, DTC subsections (`#### DTC: P0171 — Description`), image references with vision descriptions, page markers (`<!-- page:N -->`), and optional DTC cross-reference index appendix. Reference example at `docs/examples/manual_example.md`. New section 10.3.2 in design doc describes rationale and implementation phases. Compatibility mapping to existing `RagChunk` columns documented. Documentation only — no code changes. |
 | v3.6 | 2026-03-28 | Flexible OBD log ingestion (APP-39, GitHub Issue #30): New `obd_agent/format_normalizer.py` preprocessing layer that auto-detects incoming file format and normalizes to internal TSV before the diagnostic pipeline. Supports 4 formats: native TSV (pass-through), OBDWIZ CSVLog (39 Chinese→English column mappings, 6 imperial→metric unit converters, Chinese AM/PM timestamp parsing, consecutive row deduplication), obd_maxlog (unit-suffix stripping from headers, `#`-metadata preservation, non-standard column filtering, millisecond truncation), and generic CSV (delimiter conversion + timestamp normalization). Integrated into `_run_pipeline()` with automatic normalized temp file cleanup. Frontend `FileDropZone.tsx` now accepts `.csv` file uploads. 2 test fixture files (`csvlog_sample.csv`, `maxlog_sample.csv`). 36 new tests. |
@@ -512,7 +513,7 @@ The assistant must output strict JSON with these fields (schema versioned):
 Real-world service manual PDFs contain critical diagnostic information embedded in images (exploded-part diagrams, torque specification tables, tool catalogs, procedure illustrations) that is invisible to the PDF text layer. The RAG ingestion pipeline includes an optional multi-stage image parsing pipeline to extract this information:
 
 **Pipeline stages (per page with images):**
-1. **Individual image extraction** — PyMuPDF extracts embedded images, filtering by minimum dimensions (50x50 px) and byte size (5 KB) to skip icons and decorative elements.
+1. **Individual image extraction** — PyMuPDF extracts embedded images, filtering by minimum dimensions (50x50 px) and byte size (5 KB) to skip icons and decorative elements. Non-RGB colorspaces (CMYK, Separation, DeviceN) are automatically converted to RGB via `fitz.Pixmap(fitz.csRGB, pix)` using `pix.colorspace.n` detection with try/except fallback for edge cases.
 2. **OCR on images** (`--enable-ocr`) — easyocr (Traditional Chinese `ch_tra` + English, CPU-only) extracts text from each image. Results are categorised into structured fields: part numbers (`\d{5}-[A-Z0-9]{5,7}`), torque values (`N·m`, `kgf·m`, `lb·ft`), and dimensions (`mm`, `cm`). A token-overlap deduplication step (80% threshold, CJK-aware) skips OCR text already present in the PDF text layer. Non-redundant results are inserted as `[OCR, Page M]` blocks.
 3. **Vision model description** (`--describe-images`) — Images are sent (with OCR text as context) to the local Ollama vision model (llava) for spatial/procedural descriptions, inserted as `[Image N, Page M]` blocks. An injection fence prevents the vision model from following instructions found in page text.
 4. **Full-page rendering** (`--enable-page-render`) — Entire pages are rendered at 150 DPI (~0.8 MB/page) and processed through OCR and/or vision for spatial context that individual image extraction misses. Results are inserted as `[Full Page, Page M]` blocks.
@@ -529,7 +530,7 @@ Real-world service manual PDFs contain critical diagnostic information embedded 
 | Module | Role |
 |--------|------|
 | `app/rag/ocr.py` | easyocr wrapper with structured extraction + CJK-aware overlap dedup |
-| `app/rag/pdf_parser.py` | `render_page_image()`, `has_tables_on_page()`, extended `extract_pdf_sections_async()` |
+| `app/rag/pdf_parser.py` | `render_page_image()`, `has_tables_on_page()`, extended `extract_pdf_sections_async()`, `_classify_line()` with standalone page-number / breadcrumb / alphabetic filters, CMYK/Separation colorspace conversion in `extract_images_from_page()` |
 | `app/rag/vision.py` | `check_model_ready()` health check, image description via Ollama |
 | `app/rag/translator.py` | Chinese→English translation via Ollama `/api/chat` (think disabled), concurrent batch processing |
 | `app/rag/chunker.py` | Image-marker atomic blocks, `has_image` field on `ChunkedSection` |
@@ -556,8 +557,10 @@ An alternative to vector-chunk retrieval: store service manuals as well-structur
 **Implementation phases:**
 1. Phase 1a (APP-40): Schema specification (this section) — DONE
 2. Phase 1b: PDF -> structured markdown converter (`app/rag/md_export.py`, GitHub Issue #34) — DONE
-3. Phase 2a: Agent tool set (`list_manuals`, `list_sections`, `read_section`, `search_manual`)
-4. Phase 2b: A/B comparison framework (vector RAG vs agent-navigated structured MD)
+3. Phase 1c (APP-42): Parser quality fixes (GitHub Issues #41, #42) — DONE. Section extraction filters (standalone page numbers, breadcrumbs, alphabetic guard) + CMYK/Separation colorspace image conversion. E2E validated on Honda Jazz 597-page PDF: sections 1,385→883, images 8→1,015.
+4. Static manual viewer (GitHub Issue #48): Single-page HTML viewer served via Nginx at `/manuals/` with client-side markdown rendering.
+5. Phase 2a: Agent tool set (`list_manuals`, `list_sections`, `read_section`, `search_manual`)
+6. Phase 2b: A/B comparison framework (vector RAG vs agent-navigated structured MD)
 
 ### 10.4 Workflow ('golden workflow')
 1.	Start: inputs = vehicle_id, question, optional time_range.

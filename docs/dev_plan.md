@@ -50,7 +50,7 @@ Critical path dependency: DO‑01 → DO‑06 → (APP‑02B + APP‑03) → INT
 
 **RAG Image Parsing Path:** APP‑03 → APP‑22 (PDF image parsing: OCR + vision + page render + CJK translation + image-aware chunking).
 
-**Structured Manual Path:** APP‑40 (markdown schema spec, GitHub Issue #33) → Phase 1b converter (`md_export.py`, GitHub Issue #34) ✅ → Phase 2a navigation tools (#32) → Phase 2b A/B comparison (#32).
+**Structured Manual Path:** APP‑40 (markdown schema spec, GitHub Issue #33) → Phase 1b converter (`md_export.py`, GitHub Issue #34) ✅ → APP‑42 (parser quality fixes, GitHub Issues #41 #42 #43 #44) ✅ → APP‑43 (static manual viewer, GitHub Issue #48) → Phase 2a navigation tools (#32) → Phase 2b A/B comparison (#32).
 
 **LLM Upgrade Path:** APP‑41 (upgrade to `qwen3.5:27b-q8_0`, GitHub Issue #40) ✅ → Agentic RAG (#31).
 
@@ -1796,6 +1796,70 @@ RagChunk compatibility mapping is accurate ✓
 dev_plan.md and design_doc.md updated per Documentation Update Rule ✓
 No code changes required — documentation only ✓
 
+#### APP‑42 — PDF Parser Quality Fixes (Section Extraction + Image Extraction)
+
+Owner: Full‑Stack AI Application Engineer
+Depends on: Phase 1b converter (GitHub Issue #34)
+Status: **DONE** (2026-03-31)
+GitHub Issues: #41 (section quality — closed), #42 (CMYK images — closed),
+              #43 (vehicle model — open), #44 (garbled symbols — open)
+
+PROMPT (task ticket):
+Title: APP‑42 Fix PDF parser quality issues discovered via E2E testing
+
+Context:
+E2E testing of the `md_export` converter against a Honda Jazz owner's
+manual (597 pages) revealed severe quality issues in `pdf_parser.py`.
+The converted markdown had ~500 garbage page-number headings, ~486
+breadcrumb footer lines polluting body text, flat heading hierarchy
+(all `##`, no `###`), and only 8 of ~1000 images extracted.
+
+Task:
+1) **Section extraction fixes** (GitHub Issue #41):
+   - Added `_STANDALONE_PAGE_NUM` regex (`^\d{1,4}$`) to filter
+     standalone page numbers classified as headings.
+   - Added `_BREADCRUMB_PATTERN` regex (`^uu\w.*u\w`) to filter
+     Honda-style navigation headers from body text.
+   - Added `_HAS_LETTER_RE` alphabetic guard to prevent pure
+     digits/symbols from becoming headings (Unicode-safe, supports
+     CJK, Cyrillic, Latin).
+   - Updated `_fallback_page_sections()` title filter with same
+     patterns.
+   - Results: sections 1,385→883 (-36%), garbage headings→0,
+     breadcrumbs→0, `###` headings 0→311.
+
+2) **Image extraction fix** (GitHub Issue #42):
+   - Changed CMYK detection from `pix.n > 4` to
+     `pix.colorspace.n not in (1, 3)` — correctly distinguishes
+     CMYK (colorspace.n=4) from RGBA (colorspace.n=3, pix.n=4).
+   - Added try/except fallback for Separation/DeviceN colorspaces
+     that report colorspace.n=1 but aren't true grayscale.
+   - Results: images 8→1,015, warnings ~800→0.
+
+3) **Remaining open issues** (not blocking):
+   - #43: `vehicle_model` falls back to filename stem.
+   - #44: Garbled symbols from custom PDF font encoding.
+   - #45: TOC-based structure detection.
+   - #46: Cross-page section merging.
+   - #47: Bullet-prefix stripping from heading titles.
+   - #48: Static markdown manual viewer via Nginx.
+
+Files changed:
+`diagnostic_api/app/rag/pdf_parser.py` (section filters + image colorspace)
+`diagnostic_api/tests/test_pdf_sections.py` (14 new tests, 37 total)
+`diagnostic_api/tests/test_pdf_parser.py` (2 new tests, 18 total)
+
+Commits: f63588e, 0e49974, c1703e1
+
+Acceptance Criteria:
+- Zero garbage page-number headings in Honda Jazz output ✓
+- Zero breadcrumb lines in output ✓
+- Heading hierarchy restored (## + ### levels) ✓
+- 1,015 images extracted (was 8) ✓
+- Zero image extraction warnings (was ~800) ✓
+- All existing Yamaha MWS150-A tests still pass ✓
+- 55 total tests pass (37 section + 18 parser) ✓
+
 #### APP‑41 — Upgrade Local LLM and SSE Thinking Support
 
 Owner: AI Engineer
@@ -1966,6 +2030,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-31 | v4.0 | APP-42: PDF parser quality fixes (GitHub Issues #41, #42). **Section extraction** — 3 additive filters in `_classify_line()`: standalone page number filter (`^\d{1,4}$`), Honda breadcrumb filter (`^uu\w.*u\w`), and Unicode-safe alphabetic guard (`_HAS_LETTER_RE`). Updated `_fallback_page_sections()` title filter. Results on Honda Jazz 597-page PDF: sections 1,385→883 (-36%), garbage headings→0, breadcrumbs→0, `###` heading hierarchy restored (0→311). **Image extraction** — changed CMYK detection from `pix.n > 4` to `pix.colorspace.n not in (1, 3)` to correctly handle CMYK without alpha. Added try/except fallback for Separation/DeviceN colorspaces. Results: images 8→1,015, extraction warnings ~800→0. 14 new section tests + 2 new image tests. Yamaha backward-compatible. Filed follow-up issues: #43 (vehicle model), #44 (garbled symbols), #45 (TOC structure), #46 (cross-page merging), #47 (bullet-prefix stripping), #48 (static manual viewer). |
 | 2026-03-31 | v3.9 | APP-41: Upgrade local LLM from `qwen3.5:9b` to `qwen3.5:27b-q8_0` (GitHub Issue #40, prerequisite for #31 Agentic RAG). Dense 27B model with Q8 quantization (~30 GB VRAM) on 2x RTX 6000 Ada (96 GB). Attempted `qwen3.5:122b-a10b` (MoE 122B, 76 GB Q4) first but OOM-crashed — KV cache left no headroom. `ExpertLLMClient` timeout raised to 300s, `OLLAMA_KEEP_ALIVE=-1` added. Qwen3.5 thinking mode enabled for higher-quality diagnosis: SSE keep-alive comments (`": thinking\n\n"`) stream during internal reasoning phase via `delta.model_extra["reasoning"]` to prevent Cloudflare Tunnel idle timeout. Localized status messages for en/zh-CN/zh-TW ("AI is reasoning..."). Updated 17 files (config, compose, env, docs, tests). 9 commits. |
 | 2026-03-30 | v3.8 | Phase 1b: PDF-to-markdown converter (GitHub Issue #34, parent #32). New `app/rag/md_export.py` CLI tool converts PDF service manuals to structured `.md` files conforming to the schema from #33. Reuses existing pipeline: `extract_pdf_sections_async` for section extraction, `extract_images_from_page` for image saving, `translate_sections` for Chinese→English, vision service for image descriptions. Output includes YAML frontmatter, heading hierarchy with page markers (`<!-- page:N -->`), extracted images as PNG files with optional vision descriptions, and DTC cross-reference index appendix. CLI: `python -m app.rag.md_export --dir ... --output ... [--describe-images] [--enable-ocr] [--enable-translation]`. 41 new tests in `tests/test_md_export.py`. |
 | 2026-03-30 | v3.7 | APP-40: Structured markdown schema for service manuals (GitHub Issue #33, parent #32). Defined file format and conventions for storing service manuals as structured `.md` files for agent-navigated retrieval. Schema spec (`docs/manual_markdown_schema.md`) covers: YAML frontmatter (source_pdf, vehicle_model, language, page/section counts), heading hierarchy (`#`→`####`), section anchor slug algorithm, DTC subsection format (`#### DTC: P0171 — Description`), image references with vision descriptions, page markers (`<!-- page:N -->`), cross-reference DTC index appendix, and compatibility mapping to existing `RagChunk` columns. Reference example file (`docs/examples/manual_example.md`). Documentation only — no code changes. |
