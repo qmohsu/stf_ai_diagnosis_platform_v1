@@ -11,6 +11,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.rag.pdf_parser import (
     _classify_line,
+    _clean_extracted_text,
+    _is_garbled_line,
+    _is_symbol_font,
     compute_body_font_size,
     _extract_page_lines,
     extract_pdf_sections,
@@ -241,7 +244,7 @@ class TestClassifyLine:
     # -- alphabetic content guard --
 
     def test_symbols_only_not_heading(self):
-        """Pure symbols at heading size stay body."""
+        """Pure symbols at heading size are garbled (#44)."""
         line = {
             "text": "●▲★",
             "font_size": 14.0,
@@ -249,7 +252,7 @@ class TestClassifyLine:
         }
         assert _classify_line(
             line, body_size=8.0,
-        ) == "body"
+        ) == "garbled"
 
     def test_heading_with_alpha_honda(self):
         """14pt heading with body=8.0 is heading_l1."""
@@ -1066,3 +1069,244 @@ class TestExtractPdfSectionsAsyncOCR:
         # Should return sections unmodified (no crash)
         assert len(result) == 1
         assert "[OCR, Page" not in result[0].body
+
+
+# ------------------------------------------------------------------
+# Garbled text detection tests (Issue #44)
+# ------------------------------------------------------------------
+
+class TestIsSymbolFont:
+    """Tests for _is_symbol_font helper."""
+
+    def test_zapf_dingbats(self):
+        """ZapfDingbats is a symbol font."""
+        assert _is_symbol_font("ZapfDingbats") is True
+
+    def test_subset_symbol(self):
+        """Subset prefixed Symbol font is detected."""
+        assert _is_symbol_font("ABCDEF+Symbol") is True
+
+    def test_wingdings(self):
+        """Wingdings variants are symbol fonts."""
+        assert _is_symbol_font("Wingdings") is True
+        assert _is_symbol_font("Wingdings-Regular") is True
+
+    def test_webdings(self):
+        """Webdings is a symbol font."""
+        assert _is_symbol_font("Webdings") is True
+
+    def test_normal_font_not_symbol(self):
+        """Regular text fonts are not symbol fonts."""
+        assert _is_symbol_font("Arial") is False
+        assert _is_symbol_font("TimesNewRoman") is False
+        assert _is_symbol_font("BCDEFG+Helvetica") is False
+
+    def test_empty_font_name(self):
+        """Empty font name is not a symbol font."""
+        assert _is_symbol_font("") is False
+
+
+class TestIsGarbledLine:
+    """Tests for _is_garbled_line helper."""
+
+    def test_garbled_icon_text(self):
+        """Short symbol-digit mix lines are garbled."""
+        assert _is_garbled_line("92/") is True
+        assert _is_garbled_line("+20(") is True
+        assert _is_garbled_line("0(18") is True
+        assert _is_garbled_line("%$&.") is True
+
+    def test_pure_number_not_garbled(self):
+        """Valid numbers are not garbled."""
+        assert _is_garbled_line("155") is False
+        assert _is_garbled_line("0.90") is False
+        assert _is_garbled_line("1,000") is False
+        assert _is_garbled_line("3") is False
+
+    def test_text_with_letters_not_garbled(self):
+        """Text containing letters is not garbled."""
+        assert _is_garbled_line("DANGER") is False
+        assert _is_garbled_line("P0171") is False
+        assert _is_garbled_line("10W-40") is False
+
+    def test_long_text_not_garbled(self):
+        """Lines > 15 chars are not considered garbled."""
+        assert _is_garbled_line("!@#$%^&*()_+=-[]") is False
+
+    def test_empty_not_garbled(self):
+        """Empty/whitespace lines are not garbled."""
+        assert _is_garbled_line("") is False
+        assert _is_garbled_line("   ") is False
+
+    def test_cjk_not_garbled(self):
+        """CJK text is not garbled."""
+        assert _is_garbled_line("引擎") is False
+
+
+class TestCleanExtractedText:
+    """Tests for _clean_extracted_text post-processing."""
+
+    def test_safety_label_normalization(self):
+        """Garbled safety labels are fixed."""
+        text = "3DANGER\n3WARNING\n3CAUTION"
+        result = _clean_extracted_text(text)
+        assert "DANGER" in result
+        assert "WARNING" in result
+        assert "CAUTION" in result
+        assert "3DANGER" not in result
+        assert "3WARNING" not in result
+        assert "3CAUTION" not in result
+
+    def test_garbled_lines_removed(self):
+        """Garbled icon lines are removed."""
+        text = "Normal text\n92/\n+20(\nMore text"
+        result = _clean_extracted_text(text)
+        assert "Normal text" in result
+        assert "More text" in result
+        assert "92/" not in result
+        assert "+20(" not in result
+
+    def test_valid_content_preserved(self):
+        """Valid text, numbers, and codes are preserved."""
+        text = "Engine displacement 155 cc\nDTC P0171\n0.90 L"
+        result = _clean_extracted_text(text)
+        assert "155" in result
+        assert "P0171" in result
+        assert "0.90" in result
+
+    def test_empty_lines_preserved(self):
+        """Empty lines are preserved (not treated as garbled)."""
+        text = "Line 1\n\nLine 2"
+        result = _clean_extracted_text(text)
+        assert result == "Line 1\n\nLine 2"
+
+    def test_notice_label_fixed(self):
+        """3NOTICE is normalized."""
+        result = _clean_extracted_text("3NOTICE")
+        assert result == "NOTICE"
+
+
+class TestClassifyLineGarbled:
+    """Tests for garbled classification in _classify_line."""
+
+    def test_garbled_icon_text(self):
+        """Garbled icon text is classified as garbled."""
+        line = {
+            "text": "92/",
+            "font_size": 8.0,
+            "is_bold": False,
+        }
+        assert _classify_line(line, body_size=8.0) == "garbled"
+
+    def test_garbled_symbols(self):
+        """Pure symbol text is classified as garbled."""
+        line = {
+            "text": "%$&.",
+            "font_size": 8.0,
+            "is_bold": False,
+        }
+        assert _classify_line(line, body_size=8.0) == "garbled"
+
+    def test_normal_body_not_garbled(self):
+        """Normal body text is not classified as garbled."""
+        line = {
+            "text": "Check engine oil level.",
+            "font_size": 8.0,
+            "is_bold": False,
+        }
+        assert _classify_line(
+            line, body_size=8.0,
+        ) == "body"
+
+
+class TestExtractPageLinesSymbolFont:
+    """Tests for symbol font filtering in _extract_page_lines."""
+
+    def test_symbol_font_spans_skipped(self):
+        """Spans from symbol fonts are excluded from output."""
+        page = _mock_page(
+            _make_page_dict(_make_block(
+                {
+                    "spans": [
+                        {
+                            "text": "3",
+                            "size": 14.0,
+                            "flags": 0,
+                            "font": "ZapfDingbats",
+                        },
+                        {
+                            "text": "DANGER",
+                            "size": 14.0,
+                            "flags": 16,
+                            "font": "Arial-Bold",
+                        },
+                    ],
+                },
+            )),
+        )
+        lines = _extract_page_lines(page)
+
+        assert len(lines) == 1
+        assert lines[0]["text"] == "DANGER"
+
+    def test_normal_font_preserved(self):
+        """Spans from normal fonts are kept."""
+        page = _mock_page(
+            _make_page_dict(_make_block(
+                {
+                    "spans": [
+                        {
+                            "text": "Engine oil",
+                            "size": 10.5,
+                            "flags": 0,
+                            "font": "Arial",
+                        },
+                    ],
+                },
+            )),
+        )
+        lines = _extract_page_lines(page)
+
+        assert len(lines) == 1
+        assert lines[0]["text"] == "Engine oil"
+
+    def test_all_symbol_spans_produce_empty_line(self):
+        """Line with only symbol font spans is dropped."""
+        page = _mock_page(
+            _make_page_dict(_make_block(
+                {
+                    "spans": [
+                        {
+                            "text": "3",
+                            "size": 14.0,
+                            "flags": 0,
+                            "font": "Symbol",
+                        },
+                    ],
+                },
+            )),
+        )
+        lines = _extract_page_lines(page)
+
+        assert len(lines) == 0
+
+    def test_safety_label_prefix_cleaned(self):
+        """Garbled safety label prefix is removed from line text."""
+        page = _mock_page(
+            _make_page_dict(_make_block(
+                {
+                    "spans": [
+                        {
+                            "text": "3WARNING",
+                            "size": 14.0,
+                            "flags": 16,
+                            "font": "Arial-Bold",
+                        },
+                    ],
+                },
+            )),
+        )
+        lines = _extract_page_lines(page)
+
+        assert len(lines) == 1
+        assert lines[0]["text"] == "WARNING"

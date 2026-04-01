@@ -248,7 +248,7 @@ def extract_text_from_pdf(file_path: Path) -> str:
     finally:
         doc.close()
 
-    return "\n\n".join(text_parts)
+    return _clean_extracted_text("\n\n".join(text_parts))
 
 
 async def extract_text_from_pdf_async(
@@ -334,7 +334,7 @@ async def extract_text_from_pdf_async(
     finally:
         doc.close()
 
-    return "\n\n".join(text_parts)
+    return _clean_extracted_text("\n\n".join(text_parts))
 
 
 # ------------------------------------------------------------------
@@ -369,6 +369,89 @@ _MIN_SECTION_BODY_LEN = 20
 
 # Maximum pages to sample when computing body font size mode
 _FONT_SAMPLE_PAGES = 50
+
+# ------------------------------------------------------------------
+# Custom-font garbled text detection (Issue #44)
+# ------------------------------------------------------------------
+
+# Known symbol / icon / dingbat font name fragments.
+# Spans using these fonts produce garbled characters when
+# the font has a custom ToUnicode mapping or Differences array.
+_SYMBOL_FONT_RE = re.compile(
+    r"Symbol|Dingbat|Wingding|Webdings|Marlett"
+    r"|ZapfDingbats",
+    re.IGNORECASE,
+)
+
+# Pure numeric value (digits with optional decimal/comma separators).
+# Used to distinguish valid numbers from garbled icon text.
+_PURE_NUMBER_RE = re.compile(r"^[+\-]?\d[,.\d]*$")
+
+# Garbled safety-label prefix: a single digit immediately before
+# a safety keyword (e.g., "3DANGER" -> "DANGER").  The digit is
+# a misrendered warning-triangle glyph from a custom PDF font.
+_GARBLED_SAFETY_RE = re.compile(
+    r"\b(\d)(DANGER|WARNING|CAUTION|NOTICE)\b",
+)
+
+
+def _is_symbol_font(font_name: str) -> bool:
+    """Check if a font name indicates a symbol or icon font.
+
+    Args:
+        font_name: The font name from a PyMuPDF span dict.
+
+    Returns:
+        True if the font is a known symbol/icon font.
+    """
+    return bool(_SYMBOL_FONT_RE.search(font_name))
+
+
+def _is_garbled_line(text: str) -> bool:
+    """Check if a text line is likely garbled icon/symbol output.
+
+    Heuristic: short text with no Unicode letters that is not
+    a pure number.  Catches custom-font icon glyphs rendered
+    as random ASCII (e.g., ``92/``, ``+20(``, ``%$&.``).
+
+    Args:
+        text: Stripped line text.
+
+    Returns:
+        True if the line appears to be garbled.
+    """
+    stripped = text.strip()
+    if not stripped or len(stripped) > 15:
+        return False
+    if _HAS_LETTER_RE.search(stripped):
+        return False
+    if _PURE_NUMBER_RE.match(stripped):
+        return False
+    return True
+
+
+def _clean_extracted_text(text: str) -> str:
+    """Post-process extracted text to fix custom-font artifacts.
+
+    Applies two passes:
+    1. Normalize garbled safety labels (``3DANGER`` -> ``DANGER``).
+    2. Remove short lines that are entirely garbled symbols.
+
+    Args:
+        text: Raw extracted text from PyMuPDF.
+
+    Returns:
+        Cleaned text with garbled artifacts removed.
+    """
+    lines = text.split("\n")
+    cleaned: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped and _is_garbled_line(stripped):
+            continue
+        line = _GARBLED_SAFETY_RE.sub(r"\2", line)
+        cleaned.append(line)
+    return "\n".join(cleaned)
 
 
 def compute_body_font_size(doc: fitz.Document) -> float:
@@ -417,6 +500,10 @@ def _extract_page_lines(
       - ``font_size``: maximum span font size on the line
       - ``is_bold``: True if any span on the line is bold
 
+    Spans from known symbol/icon fonts are silently dropped
+    so that garbled glyphs (e.g., warning triangles rendered
+    as ``3``) do not pollute the output.
+
     Args:
         page: A fitz.Page object.
 
@@ -434,6 +521,10 @@ def _extract_page_lines(
             max_size = 0.0
             bold = False
             for span in line.get("spans", []):
+                # Skip spans from symbol/icon fonts (#44)
+                font_name = span.get("font", "")
+                if _is_symbol_font(font_name):
+                    continue
                 line_text_parts.append(span.get("text", ""))
                 span_size = span.get("size", 0)
                 if span_size > max_size:
@@ -443,6 +534,8 @@ def _extract_page_lines(
                     bold = True
 
             text = "".join(line_text_parts).strip()
+            # Fix garbled safety-label prefixes (#44)
+            text = _GARBLED_SAFETY_RE.sub(r"\2", text)
             if text:
                 lines.append({
                     "text": text,
@@ -466,7 +559,7 @@ def _classify_line(
     Returns:
         One of ``"heading_l1"``, ``"heading_l2"``,
         ``"page_num"``, ``"eas_code"``, ``"breadcrumb"``,
-        or ``"body"``.
+        ``"garbled"``, or ``"body"``.
     """
     text = line["text"]
     size = line["font_size"]
@@ -486,6 +579,10 @@ def _classify_line(
     # Skip breadcrumb / navigation headers
     if _BREADCRUMB_PATTERN.match(text):
         return "breadcrumb"
+
+    # Skip garbled icon/symbol font output (#44)
+    if _is_garbled_line(text):
+        return "garbled"
 
     # Headings must contain at least one letter (any
     # script: Latin, CJK, Cyrillic, etc.).  Prevents
@@ -605,7 +702,7 @@ def extract_pdf_sections(
                     # Include EAS codes in body for traceability
                     current_body_parts.append(line["text"])
 
-                # page_num and breadcrumb lines skip
+                # page_num, breadcrumb, and garbled lines skip
 
         # Flush the last section
         _flush_section()
@@ -655,7 +752,9 @@ def _fallback_page_sections(
 
     for page_idx in range(doc.page_count):
         page = doc[page_idx]
-        text = page.get_text("text").strip()
+        text = _clean_extracted_text(
+            page.get_text("text").strip(),
+        )
         if not text or len(text) < _MIN_SECTION_BODY_LEN:
             continue
 

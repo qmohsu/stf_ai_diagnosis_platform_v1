@@ -8,17 +8,18 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v4.2 (Vehicle Model Detection Fix) |
+| **Status** | Draft v4.3 (PDF Garbled Symbol Fix) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-03-31 (v4.2) |
+| **Last updated** | 2026-04-01 (v4.3) |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + Ollama (`qwen3.5:27b-q8_0`) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | Vehicle model detection fix (GitHub Issue #43). `_resolve_vehicle_model()` now strips common manual suffixes (`Owners_Manual`, `Service_Manual`, etc.) via `_clean_filename_stem()` instead of returning raw filename stem. New `--vehicle-model` CLI override for `md_export.py`. `_yaml_escape` hardened against newline injection. 17 new tests (73 total in `test_md_export.py`). |
+| **New in this revision** | Fix garbled symbols from custom PDF font encoding (GitHub Issue #44). New `_is_symbol_font()` skips symbol/icon font spans, `_is_garbled_line()` heuristic detects garbled glyphs, `_clean_extracted_text()` post-processing removes garbled lines and normalizes safety labels. New "garbled" classification in `_classify_line()`. 24 new tests, 1 updated (368 total). |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v4.3 | 2026-04-01 | Fix garbled symbols from custom PDF font encoding (GitHub Issue #44). New `_is_symbol_font()` skips known symbol/icon font spans (ZapfDingbats, Wingdings, etc.) during text extraction. New `_is_garbled_line()` heuristic detects short lines with no Unicode letters that aren't pure numbers. New `_clean_extracted_text()` post-processing removes garbled lines and normalizes safety labels ("3DANGER" → "DANGER"). New "garbled" classification in `_classify_line()` excludes garbled lines from section body. Applied in `extract_text_from_pdf()`, `extract_text_from_pdf_async()`, and `_fallback_page_sections()`. 24 new tests, 1 updated test (368 total). |
 | v4.2 | 2026-03-31 | Vehicle model detection fix (GitHub Issue #43). New `_clean_filename_stem()` helper strips common manual suffixes (`Owners_Manual`, `Service_Manual`, `Workshop_Manual`, etc.) and normalises separators to spaces — `2016_Jazz_Owners_Manual` → `2016 Jazz`. `_resolve_vehicle_model()` priority chain updated: (1) `--vehicle-model` CLI override, (2) section metadata, (3) domain regex, (4) cleaned filename stem (was: raw stem). New `--vehicle-model` CLI flag on `md_export.py`. `_yaml_escape` hardened against newline injection in user-supplied values. 17 new tests (73 total in `test_md_export.py`). |
 | v4.1 | 2026-03-31 | Static markdown manual viewer (APP-43, GitHub Issue #48). New `infra/nginx/manuals/index.html` single-page viewer at `/manuals/` with client-side markdown rendering via `marked.js`. Sidebar auto-discovers `.md` files via Nginx `autoindex`. YAML frontmatter displayed as metadata banner. Image paths rewritten for Nginx serving. New `diagnostic_api_manuals` named volume shared between diagnostic-api and nginx. Two Nginx location blocks added. Responsive CSS. No new containers — only Nginx restart required. |
 | v4.0 | 2026-03-31 | PDF parser quality fixes (APP-42, GitHub Issues #41, #42). **Section extraction** (`_classify_line()` in `pdf_parser.py`): added `_STANDALONE_PAGE_NUM` filter for standalone digit-only lines misclassified as headings, `_BREADCRUMB_PATTERN` filter for Honda-style `uu...u` navigation headers, and `_HAS_LETTER_RE` Unicode-safe alphabetic guard preventing pure symbols/digits from becoming headings. Updated `_fallback_page_sections()` with same filters. E2E results on Honda Jazz 597-page PDF: sections 1,385→883 (-36%), garbage page-number headings eliminated, breadcrumb noise removed, `###` sub-heading hierarchy restored (0→311). **Image extraction** (`extract_images_from_page()`): changed CMYK detection from `pix.n > 4` to `pix.colorspace.n not in (1, 3)` — fixes confusion between CMYK without alpha (`pix.n=4`, `colorspace.n=4`) and RGBA (`pix.n=4`, `colorspace.n=3`). Added try/except fallback converting to RGB for Separation/DeviceN colorspaces that report `colorspace.n=1` but fail `tobytes("png")`. E2E results: images 8→1,015, extraction warnings ~800→0. 14 new section tests, 2 new image tests. All existing Yamaha MWS150-A tests pass. Filed follow-up issues: #43 (vehicle model fallback), #44 (garbled font symbols), #45 (TOC-based structure), #46 (cross-page merging), #47 (bullet-prefix stripping), #48 (static manual viewer). |
@@ -533,7 +534,7 @@ Real-world service manual PDFs contain critical diagnostic information embedded 
 | Module | Role |
 |--------|------|
 | `app/rag/ocr.py` | easyocr wrapper with structured extraction + CJK-aware overlap dedup |
-| `app/rag/pdf_parser.py` | `render_page_image()`, `has_tables_on_page()`, extended `extract_pdf_sections_async()`, `_classify_line()` with standalone page-number / breadcrumb / alphabetic filters, CMYK/Separation colorspace conversion in `extract_images_from_page()` |
+| `app/rag/pdf_parser.py` | `render_page_image()`, `has_tables_on_page()`, extended `extract_pdf_sections_async()`, `_classify_line()` with standalone page-number / breadcrumb / alphabetic / garbled-symbol filters, symbol-font span skipping (`_is_symbol_font()`), garbled-line heuristic (`_is_garbled_line()`), post-extraction text cleanup (`_clean_extracted_text()`), CMYK/Separation colorspace conversion in `extract_images_from_page()` |
 | `app/rag/vision.py` | `check_model_ready()` health check, image description via Ollama |
 | `app/rag/translator.py` | Chinese→English translation via Ollama `/api/chat` (think disabled), concurrent batch processing |
 | `app/rag/chunker.py` | Image-marker atomic blocks, `has_image` field on `ChunkedSection` |
