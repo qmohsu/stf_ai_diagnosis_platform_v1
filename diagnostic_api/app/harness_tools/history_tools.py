@@ -105,12 +105,6 @@ async def search_case_history(
 
         return "\n".join(lines)
 
-    except Exception as exc:
-        logger.error(
-            "search_case_history failed",
-            exc_info=exc,
-        )
-        raise
     finally:
         db.close()
 
