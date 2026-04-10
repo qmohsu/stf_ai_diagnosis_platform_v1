@@ -7,7 +7,7 @@
 | **Architecture doc** | `docs/v2_design_doc.md` |
 | **GitHub Issue** | #26 (discussion: From Context Engineering to Harness Engineering) |
 | **Version** | v1.0 |
-| **Last updated** | 2026-04-10 |
+| **Last updated** | 2026-04-10 (HARNESS-01 done) |
 
 ## 1. Scope Boundary
 
@@ -81,10 +81,11 @@ A ticket is DONE only if:
 
 ### 3.1 Phase 1: Core Harness (HARNESS-01 through HARNESS-05)
 
-#### HARNESS‑01 — Tool Registry and Tool Wrappers
+#### HARNESS‑01 — Tool Registry and Tool Wrappers ✅ DONE
 
 Owner: AI Application Engineer
 Depends on: none
+Status: **DONE** — GitHub Issue #51
 
 PROMPT (task ticket):
 Title: HARNESS‑01 Implement tool registry with dispatch map and 7 diagnostic tool wrappers
@@ -516,3 +517,4 @@ Scope: Use stored expert feedback to build a case library. Tool retrieves past c
 | Date | Version | Changes |
 |------|---------|---------|
 | 2026-04-10 | v1.0 | Initial V2 dev plan. 8 tickets (HARNESS-01 through HARNESS-08) across 2 phases. 4 future tickets (HARNESS-09 through HARNESS-12). Scope: core harness loop, 7 tools, session event log, context management, API endpoint, graduated autonomy, frontend visualization, integration tests. GitHub Issue #26. |
+| 2026-04-10 | v1.1 | HARNESS-01 implemented (GitHub Issue #51). Tool registry (`ToolRegistry`, `ToolDefinition`) with dispatch map and 7 diagnostic tool wrappers. OBD tools read from `result_payload` JSONB (no re-run). 27 unit tests passing. Files: `harness/tool_registry.py`, `harness_tools/{obd,rag,history}_tools.py`. |
