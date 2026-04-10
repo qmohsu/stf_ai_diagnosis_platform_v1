@@ -17,6 +17,35 @@ from pydantic import BaseModel
 logger = structlog.get_logger(__name__)
 
 
+_MAX_ERROR_LEN = 200  # Sanitised error message cap.
+
+
+def _sanitize_error(
+    tool_name: str, exc: Exception,
+) -> str:
+    """Build an LLM-safe error string from an exception.
+
+    Includes only the exception class name and a truncated message.
+    Internal paths, SQL details, and tracebacks are logged but
+    never returned to the LLM.
+
+    Args:
+        tool_name: Name of the tool that failed.
+        exc: The caught exception.
+
+    Returns:
+        Sanitised error string.
+    """
+    exc_name = type(exc).__name__
+    exc_msg = str(exc)
+    if len(exc_msg) > _MAX_ERROR_LEN:
+        exc_msg = exc_msg[:_MAX_ERROR_LEN] + "..."
+    return (
+        f"Error: tool '{tool_name}' failed "
+        f"({exc_name}: {exc_msg})"
+    )
+
+
 def _truncate(text: str, max_chars: int) -> str:
     """Truncate ``text`` to ``max_chars`` with a marker."""
     if len(text) <= max_chars:
@@ -236,11 +265,14 @@ class ToolRegistry:
                 duration_ms=_elapsed_ms(t0),
             )
         except Exception as exc:
-            msg = (
-                f"Error executing tool '{name}': "
-                f"{type(exc).__name__}: {exc}"
+            # Log full details internally; return sanitised
+            # message to the LLM.
+            logger.error(
+                "tool_execution_error",
+                tool=name,
+                exc_info=exc,
             )
-            logger.error(msg, exc_info=exc)
+            msg = _sanitize_error(name, exc)
             return ToolResult(
                 output=msg,
                 duration_ms=_elapsed_ms(t0),
