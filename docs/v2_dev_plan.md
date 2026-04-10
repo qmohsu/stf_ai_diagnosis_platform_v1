@@ -147,10 +147,11 @@ Acceptance Criteria:
 
 ---
 
-#### HARNESS‑02 — Core Agent Loop
+#### HARNESS‑02 — Core Agent Loop ✅ DONE
 
 Owner: AI Application Engineer
 Depends on: HARNESS-01
+Status: **DONE** — GitHub Issue #52
 
 PROMPT (task ticket):
 Title: HARNESS‑02 Implement core agent loop as async generator with dependency injection
@@ -518,3 +519,4 @@ Scope: Use stored expert feedback to build a case library. Tool retrieves past c
 |------|---------|---------|
 | 2026-04-10 | v1.0 | Initial V2 dev plan. 8 tickets (HARNESS-01 through HARNESS-08) across 2 phases. 4 future tickets (HARNESS-09 through HARNESS-12). Scope: core harness loop, 7 tools, session event log, context management, API endpoint, graduated autonomy, frontend visualization, integration tests. GitHub Issue #26. |
 | 2026-04-10 | v1.1 | HARNESS-01 implemented (GitHub Issue #51). Tool registry (`ToolRegistry`, `ToolDefinition`) with dispatch map and 7 diagnostic tool wrappers. OBD tools read from `result_payload` JSONB (no re-run). 27 unit tests passing. Files: `harness/tool_registry.py`, `harness_tools/{obd,rag,history}_tools.py`. |
+| 2026-04-10 | v1.2 | HARNESS-02 implemented (GitHub Issue #52). Core agent loop (`run_diagnosis_loop`) as async generator with DI. `HarnessDeps` container with `LLMClient` protocol, `OpenAILLMClient` adapter, `HarnessConfig`. Dynamic system prompt via `harness_prompts.py`. ReAct cycle with max-iteration guard, timeout handling, partial diagnosis extraction. 19 unit tests (golden-path, error recovery, budget limits, message history). Files: `harness/{deps,loop,harness_prompts}.py`, `tests/harness/test_loop.py`. |
