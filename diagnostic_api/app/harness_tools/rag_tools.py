@@ -11,6 +11,10 @@ import logging
 from typing import Any, Dict, List
 
 from app.harness.tool_registry import ToolDefinition
+from app.harness_tools.input_models import (
+    RefineSearchInput,
+    SearchManualInput,
+)
 from app.rag.retrieve import retrieve_context
 
 logger = logging.getLogger(__name__)
@@ -125,27 +129,9 @@ SEARCH_MANUAL_DEF = ToolDefinition(
         "cosine similarity). Returns matched sections with "
         "source doc_id, section title, and similarity score."
     ),
-    input_schema={
-        "type": "object",
-        "properties": {
-            "query": {
-                "type": "string",
-                "description": (
-                    "Search query for manual sections (e.g., "
-                    "'P0300 misfire diagnosis procedure')"
-                ),
-            },
-            "top_k": {
-                "type": "integer",
-                "default": 3,
-                "description": (
-                    "Number of results to return"
-                ),
-            },
-        },
-        "required": ["query"],
-    },
+    input_schema=SearchManualInput.model_json_schema(),
     handler=search_manual,
+    input_model=SearchManualInput,
     is_read_only=True,
 )
 
@@ -157,34 +143,8 @@ REFINE_SEARCH_DEF = ToolDefinition(
         "diagnosis findings. Supports excluding "
         "already-retrieved documents."
     ),
-    input_schema={
-        "type": "object",
-        "properties": {
-            "query": {
-                "type": "string",
-                "description": (
-                    "Refined search query based on current "
-                    "investigation findings"
-                ),
-            },
-            "top_k": {
-                "type": "integer",
-                "default": 3,
-                "description": (
-                    "Number of results to return"
-                ),
-            },
-            "exclude_doc_ids": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": (
-                    "Document IDs to exclude from results "
-                    "(already retrieved)"
-                ),
-            },
-        },
-        "required": ["query"],
-    },
+    input_schema=RefineSearchInput.model_json_schema(),
     handler=refine_search,
+    input_model=RefineSearchInput,
     is_read_only=True,
 )

@@ -14,6 +14,9 @@ from sqlalchemy.orm import Session as SASession
 
 from app.db.session import SessionLocal
 from app.harness.tool_registry import ToolDefinition
+from app.harness_tools.input_models import (
+    SearchCaseHistoryInput,
+)
 from app.models_db import DiagnosisHistory, OBDAnalysisSession
 
 logger = logging.getLogger(__name__)
@@ -122,33 +125,8 @@ SEARCH_CASE_HISTORY_DEF = ToolDefinition(
         "Returns summaries of past diagnoses with provider, "
         "model, and date."
     ),
-    input_schema={
-        "type": "object",
-        "properties": {
-            "dtc_codes": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": (
-                    "DTC codes to search for "
-                    "(e.g., ['P0300', 'P0301'])"
-                ),
-            },
-            "vehicle_id": {
-                "type": "string",
-                "description": (
-                    "Optional vehicle ID to filter by"
-                ),
-            },
-            "limit": {
-                "type": "integer",
-                "default": 5,
-                "description": (
-                    "Maximum number of past cases to return"
-                ),
-            },
-        },
-        "required": ["dtc_codes"],
-    },
+    input_schema=SearchCaseHistoryInput.model_json_schema(),
     handler=search_case_history,
+    input_model=SearchCaseHistoryInput,
     is_read_only=True,
 )

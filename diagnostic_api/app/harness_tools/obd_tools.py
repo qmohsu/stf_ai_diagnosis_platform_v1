@@ -13,6 +13,10 @@ from typing import Any, Dict, List, Optional
 
 from app.db.session import SessionLocal
 from app.harness.tool_registry import ToolDefinition
+from app.harness_tools.input_models import (
+    DetectAnomaliesInput,
+    SessionInput,
+)
 from app.models_db import OBDAnalysisSession
 
 logger = logging.getLogger(__name__)
@@ -296,19 +300,9 @@ GET_PID_STATISTICS_DEF = ToolDefinition(
         "percentiles) for the OBD session's PID data. Returns a "
         "text summary, never raw arrays."
     ),
-    input_schema={
-        "type": "object",
-        "properties": {
-            "session_id": {
-                "type": "string",
-                "description": (
-                    "UUID of the OBD analysis session"
-                ),
-            },
-        },
-        "required": ["session_id"],
-    },
+    input_schema=SessionInput.model_json_schema(),
     handler=get_pid_statistics,
+    input_model=SessionInput,
     is_read_only=True,
 )
 
@@ -319,27 +313,9 @@ DETECT_ANOMALIES_DEF = ToolDefinition(
         "text descriptions of detected anomaly events with "
         "severity, pattern, and time window."
     ),
-    input_schema={
-        "type": "object",
-        "properties": {
-            "session_id": {
-                "type": "string",
-                "description": (
-                    "UUID of the OBD analysis session"
-                ),
-            },
-            "focus_signals": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": (
-                    "Optional list of signal names to focus "
-                    "anomaly detection on"
-                ),
-            },
-        },
-        "required": ["session_id"],
-    },
+    input_schema=DetectAnomaliesInput.model_json_schema(),
     handler=detect_anomalies,
+    input_model=DetectAnomaliesInput,
     is_read_only=True,
 )
 
@@ -350,19 +326,9 @@ GENERATE_CLUES_DEF = ToolDefinition(
         "session statistics and anomalies. Returns clue text with "
         "rule ID, category, and evidence."
     ),
-    input_schema={
-        "type": "object",
-        "properties": {
-            "session_id": {
-                "type": "string",
-                "description": (
-                    "UUID of the OBD analysis session"
-                ),
-            },
-        },
-        "required": ["session_id"],
-    },
+    input_schema=SessionInput.model_json_schema(),
     handler=generate_clues,
+    input_model=SessionInput,
     is_read_only=True,
 )
 
@@ -374,18 +340,8 @@ GET_SESSION_CONTEXT_DEF = ToolDefinition(
         "summary, anomaly events, and diagnostic clues. Call "
         "this first to understand the diagnostic case."
     ),
-    input_schema={
-        "type": "object",
-        "properties": {
-            "session_id": {
-                "type": "string",
-                "description": (
-                    "UUID of the OBD analysis session"
-                ),
-            },
-        },
-        "required": ["session_id"],
-    },
+    input_schema=SessionInput.model_json_schema(),
     handler=get_session_context,
+    input_model=SessionInput,
     is_read_only=True,
 )

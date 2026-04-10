@@ -10,7 +10,9 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Dict, List
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Type
+
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +65,7 @@ class ToolDefinition:
     description: str
     input_schema: dict
     handler: Callable[[Dict[str, Any]], Awaitable[str]]
+    input_model: Optional[Type[BaseModel]] = None
     is_read_only: bool = False
     max_result_chars: int = 50_000
 
@@ -106,10 +109,11 @@ class ToolRegistry:
         tool: ToolDefinition,
         input_data: Dict[str, Any],
     ) -> str | None:
-        """Validate ``input_data`` against the tool's JSON Schema.
+        """Validate ``input_data`` against the tool's schema.
 
-        Checks required fields and basic type constraints.
-        Returns an LLM-friendly error string, or ``None`` if valid.
+        When ``input_model`` is set, validates via Pydantic for
+        type-safe error messages.  Otherwise falls back to basic
+        JSON Schema checks (required fields + types).
 
         Args:
             tool: The tool whose schema to validate against.
@@ -118,11 +122,22 @@ class ToolRegistry:
         Returns:
             Error message string if validation fails, else None.
         """
+        # Prefer Pydantic model validation when available.
+        if tool.input_model is not None:
+            try:
+                tool.input_model(**input_data)
+                return None
+            except Exception as exc:
+                return (
+                    f"Validation error for tool "
+                    f"'{tool.name}': {exc}"
+                )
+
+        # Fallback: basic JSON Schema checks.
         schema = tool.input_schema
         required = schema.get("required", [])
         properties = schema.get("properties", {})
 
-        # Check required fields.
         missing = [
             f for f in required if f not in input_data
         ]
@@ -133,7 +148,6 @@ class ToolRegistry:
                 f"missing required parameter(s): {params}."
             )
 
-        # Check basic types for provided fields.
         _TYPE_MAP = {
             "string": str,
             "integer": (int,),
