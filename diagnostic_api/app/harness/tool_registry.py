@@ -15,6 +15,16 @@ from typing import Any, Awaitable, Callable, Dict, List
 logger = logging.getLogger(__name__)
 
 
+def _truncate(text: str, max_chars: int) -> str:
+    """Truncate ``text`` to ``max_chars`` with a marker."""
+    if len(text) <= max_chars:
+        return text
+    return (
+        text[:max_chars]
+        + f"\n[truncated — {len(text)} chars total]"
+    )
+
+
 def _elapsed_ms(t0: float) -> float:
     """Milliseconds since ``t0`` (from ``time.monotonic()``)."""
     return (time.monotonic() - t0) * 1000.0
@@ -53,6 +63,7 @@ class ToolDefinition:
     description: str
     input_schema: dict
     handler: Callable[[Dict[str, Any]], Awaitable[str]]
+    max_result_chars: int = 50_000
 
 
 class ToolRegistry:
@@ -200,6 +211,7 @@ class ToolRegistry:
 
         try:
             result = await tool.handler(input_data)
+            result = _truncate(result, tool.max_result_chars)
             return ToolResult(
                 output=result,
                 duration_ms=_elapsed_ms(t0),
