@@ -174,6 +174,12 @@ class OpenAILLMClient:
             max_tokens=max_tokens,
         )
 
+        if not response.choices:
+            raise ValueError(
+                "LLM returned empty choices array "
+                "(possible rate limit or content filter)"
+            )
+
         choice = response.choices[0]
         message = choice.message
 
