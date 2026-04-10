@@ -5,6 +5,7 @@ import pytest
 from app.harness.tool_registry import (
     ToolDefinition,
     ToolRegistry,
+    ToolResult,
 )
 
 
@@ -50,52 +51,65 @@ class TestRegisterAndExecute:
 
     @pytest.mark.asyncio
     async def test_register_and_execute(self):
-        """Registering a tool and executing it returns str."""
+        """Registering a tool and executing it returns ToolResult."""
         reg = ToolRegistry()
         reg.register(_make_def("echo"))
 
         result = await reg.execute("echo", {"msg": "hi"})
 
-        assert isinstance(result, str)
-        assert "hi" in result
+        assert isinstance(result, ToolResult)
+        assert isinstance(result.output, str)
+        assert "hi" in result.output
+        assert result.is_error is False
 
     @pytest.mark.asyncio
-    async def test_execute_returns_str(self):
+    async def test_duration_ms_is_positive(self):
+        """Execution always records a positive duration."""
+        reg = ToolRegistry()
+        reg.register(_make_def("echo"))
+
+        result = await reg.execute("echo", {"msg": "x"})
+
+        assert result.duration_ms >= 0.0
+
+    @pytest.mark.asyncio
+    async def test_execute_returns_str_output(self):
         """Handler output is always str type."""
         reg = ToolRegistry()
         reg.register(_make_def("echo"))
 
-        result = await reg.execute("echo", {})
-        assert isinstance(result, str)
+        result = await reg.execute("echo", {"msg": "x"})
+        assert isinstance(result.output, str)
 
 
 class TestErrorHandling:
-    """Error paths return strings, never raise."""
+    """Error paths return ToolResult with is_error=True."""
 
     @pytest.mark.asyncio
-    async def test_unknown_tool_returns_error_string(self):
-        """Calling a non-existent tool returns an error string."""
+    async def test_unknown_tool_returns_error(self):
+        """Calling a non-existent tool returns an error result."""
         reg = ToolRegistry()
 
         result = await reg.execute("no_such_tool", {})
 
-        assert isinstance(result, str)
-        assert "unknown tool" in result.lower()
-        assert "no_such_tool" in result
+        assert isinstance(result, ToolResult)
+        assert result.is_error is True
+        assert "unknown tool" in result.output.lower()
+        assert "no_such_tool" in result.output
+        assert result.duration_ms >= 0.0
 
     @pytest.mark.asyncio
-    async def test_handler_exception_returns_error_string(
-        self,
-    ):
-        """A raising handler produces an error string."""
+    async def test_handler_exception_returns_error(self):
+        """A raising handler produces an error ToolResult."""
         reg = ToolRegistry()
         reg.register(_make_def("boom", handler=_boom_handler))
 
         result = await reg.execute("boom", {"msg": "x"})
 
-        assert isinstance(result, str)
-        assert "Error" in result
-        assert "boom" in result
+        assert isinstance(result, ToolResult)
+        assert result.is_error is True
+        assert "Error" in result.output
+        assert "boom" in result.output
 
     def test_duplicate_registration_raises(self):
         """Registering the same name twice raises ValueError."""
@@ -117,9 +131,9 @@ class TestInputValidation:
 
         result = await reg.execute("echo", {})
 
-        assert isinstance(result, str)
-        assert "missing required" in result.lower()
-        assert "`msg`" in result
+        assert result.is_error is True
+        assert "missing required" in result.output.lower()
+        assert "`msg`" in result.output
 
     @pytest.mark.asyncio
     async def test_wrong_type_returns_error(self):
@@ -129,8 +143,8 @@ class TestInputValidation:
 
         result = await reg.execute("echo", {"msg": 123})
 
-        assert isinstance(result, str)
-        assert "expected string" in result.lower()
+        assert result.is_error is True
+        assert "expected string" in result.output.lower()
 
     @pytest.mark.asyncio
     async def test_valid_input_passes(self):
@@ -140,8 +154,8 @@ class TestInputValidation:
 
         result = await reg.execute("echo", {"msg": "hello"})
 
-        assert "hello" in result
-        assert "error" not in result.lower()
+        assert result.is_error is False
+        assert "hello" in result.output
 
 
 class TestSchemas:

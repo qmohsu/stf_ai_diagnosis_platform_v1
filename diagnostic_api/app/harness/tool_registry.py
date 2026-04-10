@@ -8,10 +8,31 @@ requires one ``register()`` call — zero changes to the loop.
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, List
 
 logger = logging.getLogger(__name__)
+
+
+def _elapsed_ms(t0: float) -> float:
+    """Milliseconds since ``t0`` (from ``time.monotonic()``)."""
+    return (time.monotonic() - t0) * 1000.0
+
+
+@dataclass(frozen=True)
+class ToolResult:
+    """Result of a tool execution including timing metadata.
+
+    Attributes:
+        output: The tool's text output (always ``str``).
+        duration_ms: Wall-clock execution time in milliseconds.
+        is_error: Whether ``output`` is an error message.
+    """
+
+    output: str
+    duration_ms: float
+    is_error: bool = False
 
 
 @dataclass(frozen=True)
@@ -136,22 +157,23 @@ class ToolRegistry:
         self,
         name: str,
         input_data: Dict[str, Any],
-    ) -> str:
+    ) -> ToolResult:
         """Dispatch a tool call by name.
 
         Validates input against the tool's JSON Schema, then calls
         the handler.  Catches all exceptions and returns an error
-        string so the agent loop never crashes on a tool failure.
+        ``ToolResult`` so the agent loop never crashes on a tool
+        failure.
 
         Args:
             name: Registered tool name.
             input_data: Tool input dict.
 
         Returns:
-            Handler result string, or an error description string
-            if the tool is unknown, validation fails, or the
-            handler raises.
+            ``ToolResult`` with output string and duration_ms.
         """
+        t0 = time.monotonic()
+
         tool = self._tools.get(name)
         if tool is None:
             msg = (
@@ -159,25 +181,40 @@ class ToolRegistry:
                 f"Available: {sorted(self._tools)}"
             )
             logger.warning(msg)
-            return msg
+            return ToolResult(
+                output=msg,
+                duration_ms=_elapsed_ms(t0),
+                is_error=True,
+            )
 
         validation_error = self._validate_input(
             tool, input_data,
         )
         if validation_error is not None:
             logger.warning(validation_error)
-            return validation_error
+            return ToolResult(
+                output=validation_error,
+                duration_ms=_elapsed_ms(t0),
+                is_error=True,
+            )
 
         try:
             result = await tool.handler(input_data)
-            return result
+            return ToolResult(
+                output=result,
+                duration_ms=_elapsed_ms(t0),
+            )
         except Exception as exc:
             msg = (
                 f"Error executing tool '{name}': "
                 f"{type(exc).__name__}: {exc}"
             )
             logger.error(msg, exc_info=exc)
-            return msg
+            return ToolResult(
+                output=msg,
+                duration_ms=_elapsed_ms(t0),
+                is_error=True,
+            )
 
     @property
     def schemas(self) -> List[Dict[str, Any]]:
