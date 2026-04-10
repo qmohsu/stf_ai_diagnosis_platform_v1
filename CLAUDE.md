@@ -133,12 +133,47 @@ obd_agent/        # OBD-II edge agent
 
 ## Documentation Update Rule (Mandatory — Pre-Commit Gate)
 
-**Before EVERY commit**, you MUST check whether the changes require updates to:
+**Before EVERY commit**, you MUST check whether the changes require documentation updates. There are two doc sets — route to the correct one:
+
+### Doc routing: V1 vs V2
+
+**V1 docs** (`docs/design_doc.md` + `docs/dev_plan.md`, ticket prefix `APP‑XX`):
+- Shared infrastructure: Docker, Postgres, Ollama, Nginx, networking
+- Auth (JWT, users, session isolation)
+- RAG pipeline (ingestion, embedding, retrieval, PDF parsing, chunking)
+- OBD agent (anomaly detection, clue generation, statistics, format normalization)
+- V1 one-shot diagnosis endpoints (`/diagnose`, `/diagnose/premium`)
+- Feedback, audio recording, session dashboard
+- Model fine-tuning / LoRA / Phase 1.5 / Phase 2
+- Deployment (PolyU server, Cloudflare Tunnel)
+
+**V2 docs** (`docs/v2_design_doc.md` + `docs/v2_dev_plan.md`, ticket prefix `HARNESS‑XX`):
+- Harness loop (agent loop, ReAct cycle)
+- Tool registry and tool wrappers (`harness/`, `harness_tools/`)
+- Session event log (`HarnessEventLog`)
+- Context management (token budget, compaction)
+- Agent diagnosis endpoint (`/diagnose/agent`)
+- Graduated autonomy router (tier classification)
+- Frontend agent visualization (tool-call cards, iteration counter)
+- Sub-agents, skill loading, background tasks (future)
+
+**Both doc sets** — update both if the change touches:
+- `models_db.py` (shared DB models)
+- `config.py` (shared configuration)
+- `main.py` (router registration)
+- Any module imported by both V1 endpoints and V2 harness tools
+
+### What to update
+
 - `docs/dev_plan.md` — Add/update the relevant ticket (APP‑XX), update scope (§1.1) if needed, update critical path (§2.2) if dependencies change, and add a changelog entry.
 - `docs/design_doc.md` — Update architecture descriptions (§7.1 components, §8.3.7 endpoints/tables), update "New in this revision" field, bump version and date in document control.
+- `docs/v2_dev_plan.md` — Add/update the relevant ticket (HARNESS‑XX), update scope (§1.1) if needed, and add a changelog entry.
+- `docs/v2_design_doc.md` — Update the relevant section, bump version and date in document control, update "New in this revision" field.
 
-**Pre-commit checklist** (run mentally before every `git commit`):
-1. Does this commit add/change a feature, endpoint, config, or architecture? → Update both docs.
+### Pre-commit checklist
+
+(run mentally before every `git commit`):
+1. Does this commit add/change a feature, endpoint, config, or architecture? → Use routing table above to determine which docs to update.
 2. Does this commit fix a bug that was introduced in the current session? → Doc update optional (fold into the parent feature's doc entry).
 3. Is this a pure typo/formatting/comment-only change? → No doc update needed.
 

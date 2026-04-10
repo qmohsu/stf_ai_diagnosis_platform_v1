@@ -8,17 +8,18 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v4.3 (PDF Garbled Symbol Fix) |
+| **Status** | Draft v4.4 (V2 Harness Architecture Cross-Ref) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-04-01 (v4.3) |
+| **Last updated** | 2026-04-10 (v4.4) |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + Ollama (`qwen3.5:27b-q8_0`) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | Fix garbled symbols from custom PDF font encoding (GitHub Issue #44). New `_is_symbol_font()` skips symbol/icon font spans, `_is_garbled_line()` heuristic detects garbled glyphs, `_clean_extracted_text()` post-processing removes garbled lines and normalizes safety labels. New "garbled" classification in `_classify_line()`. 24 new tests, 1 updated (368 total). |
+| **New in this revision** | V2 harness architecture design initiated (GitHub Issue #26). New `docs/v2_design_doc.md` and `docs/v2_dev_plan.md`. V1 diagnosis orchestration (§10.4) preserved as fast-path; V2 adds agent-driven diagnosis with tool registry, session event log, and graduated autonomy. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v4.4 | 2026-04-10 | V2 harness architecture design initiated (GitHub Issue #26). New `docs/v2_design_doc.md` and `docs/v2_dev_plan.md` define agent-driven diagnosis via harness loop, tool registry, session event log, graduated autonomy. V1 diagnosis orchestration (§10.4) preserved as fast-path fallback; V2 adds parallel agent endpoints. Shared components (infra, auth, RAG, OBD pipeline) remain in this document. |
 | v4.3 | 2026-04-01 | Fix garbled symbols from custom PDF font encoding (GitHub Issue #44). New `_is_symbol_font()` skips known symbol/icon font spans (ZapfDingbats, Wingdings, etc.) during text extraction. New `_is_garbled_line()` heuristic detects short lines with no Unicode letters that aren't pure numbers. New `_clean_extracted_text()` post-processing removes garbled lines and normalizes safety labels ("3DANGER" → "DANGER"). New "garbled" classification in `_classify_line()` excludes garbled lines from section body. Applied in `extract_text_from_pdf()`, `extract_text_from_pdf_async()`, and `_fallback_page_sections()`. 24 new tests, 1 updated test (368 total). |
 | v4.2 | 2026-03-31 | Vehicle model detection fix (GitHub Issue #43). New `_clean_filename_stem()` helper strips common manual suffixes (`Owners_Manual`, `Service_Manual`, `Workshop_Manual`, etc.) and normalises separators to spaces — `2016_Jazz_Owners_Manual` → `2016 Jazz`. `_resolve_vehicle_model()` priority chain updated: (1) `--vehicle-model` CLI override, (2) section metadata, (3) domain regex, (4) cleaned filename stem (was: raw stem). New `--vehicle-model` CLI flag on `md_export.py`. `_yaml_escape` hardened against newline injection in user-supplied values. 17 new tests (73 total in `test_md_export.py`). |
 | v4.1 | 2026-03-31 | Static markdown manual viewer (APP-43, GitHub Issue #48). New `infra/nginx/manuals/index.html` single-page viewer at `/manuals/` with client-side markdown rendering via `marked.js`. Sidebar auto-discovers `.md` files via Nginx `autoindex`. YAML frontmatter displayed as metadata banner. Image paths rewritten for Nginx serving. New `diagnostic_api_manuals` named volume shared between diagnostic-api and nginx. Two Nginx location blocks added. Responsive CSS. No new containers — only Nginx restart required. |
