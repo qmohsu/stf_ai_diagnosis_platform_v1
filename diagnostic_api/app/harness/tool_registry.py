@@ -68,6 +68,70 @@ class ToolRegistry:
             )
         self._tools[tool.name] = tool
 
+    @staticmethod
+    def _validate_input(
+        tool: ToolDefinition,
+        input_data: Dict[str, Any],
+    ) -> str | None:
+        """Validate ``input_data`` against the tool's JSON Schema.
+
+        Checks required fields and basic type constraints.
+        Returns an LLM-friendly error string, or ``None`` if valid.
+
+        Args:
+            tool: The tool whose schema to validate against.
+            input_data: Caller-supplied input dict.
+
+        Returns:
+            Error message string if validation fails, else None.
+        """
+        schema = tool.input_schema
+        required = schema.get("required", [])
+        properties = schema.get("properties", {})
+
+        # Check required fields.
+        missing = [
+            f for f in required if f not in input_data
+        ]
+        if missing:
+            params = ", ".join(f"`{f}`" for f in missing)
+            return (
+                f"Validation error for tool '{tool.name}': "
+                f"missing required parameter(s): {params}."
+            )
+
+        # Check basic types for provided fields.
+        _TYPE_MAP = {
+            "string": str,
+            "integer": (int,),
+            "number": (int, float),
+            "boolean": (bool,),
+            "array": (list,),
+            "object": (dict,),
+        }
+        errors: List[str] = []
+        for key, val in input_data.items():
+            prop = properties.get(key)
+            if prop is None:
+                continue
+            expected_type = prop.get("type")
+            if expected_type is None:
+                continue
+            py_types = _TYPE_MAP.get(expected_type)
+            if py_types and not isinstance(val, py_types):
+                errors.append(
+                    f"`{key}` expected {expected_type}, "
+                    f"got {type(val).__name__}"
+                )
+        if errors:
+            detail = "; ".join(errors)
+            return (
+                f"Validation error for tool '{tool.name}': "
+                f"{detail}."
+            )
+
+        return None
+
     async def execute(
         self,
         name: str,
@@ -75,17 +139,18 @@ class ToolRegistry:
     ) -> str:
         """Dispatch a tool call by name.
 
-        Catches all handler exceptions and returns an error string
-        so the agent loop never crashes on a tool failure.
+        Validates input against the tool's JSON Schema, then calls
+        the handler.  Catches all exceptions and returns an error
+        string so the agent loop never crashes on a tool failure.
 
         Args:
             name: Registered tool name.
-            input_data: Tool input dict (validated by caller or
-                the handler itself).
+            input_data: Tool input dict.
 
         Returns:
             Handler result string, or an error description string
-            if the tool is unknown or the handler raises.
+            if the tool is unknown, validation fails, or the
+            handler raises.
         """
         tool = self._tools.get(name)
         if tool is None:
@@ -95,6 +160,13 @@ class ToolRegistry:
             )
             logger.warning(msg)
             return msg
+
+        validation_error = self._validate_input(
+            tool, input_data,
+        )
+        if validation_error is not None:
+            logger.warning(validation_error)
+            return validation_error
 
         try:
             result = await tool.handler(input_data)

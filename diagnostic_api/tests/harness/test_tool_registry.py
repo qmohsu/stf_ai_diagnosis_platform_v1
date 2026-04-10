@@ -91,7 +91,7 @@ class TestErrorHandling:
         reg = ToolRegistry()
         reg.register(_make_def("boom", handler=_boom_handler))
 
-        result = await reg.execute("boom", {})
+        result = await reg.execute("boom", {"msg": "x"})
 
         assert isinstance(result, str)
         assert "Error" in result
@@ -104,6 +104,44 @@ class TestErrorHandling:
 
         with pytest.raises(ValueError, match="already registered"):
             reg.register(_make_def("dup"))
+
+
+class TestInputValidation:
+    """Input validation before handler dispatch."""
+
+    @pytest.mark.asyncio
+    async def test_missing_required_field_returns_error(self):
+        """Missing a required param returns validation error."""
+        reg = ToolRegistry()
+        reg.register(_make_def("echo"))
+
+        result = await reg.execute("echo", {})
+
+        assert isinstance(result, str)
+        assert "missing required" in result.lower()
+        assert "`msg`" in result
+
+    @pytest.mark.asyncio
+    async def test_wrong_type_returns_error(self):
+        """Wrong type for a field returns validation error."""
+        reg = ToolRegistry()
+        reg.register(_make_def("echo"))
+
+        result = await reg.execute("echo", {"msg": 123})
+
+        assert isinstance(result, str)
+        assert "expected string" in result.lower()
+
+    @pytest.mark.asyncio
+    async def test_valid_input_passes(self):
+        """Correct input passes validation and calls handler."""
+        reg = ToolRegistry()
+        reg.register(_make_def("echo"))
+
+        result = await reg.execute("echo", {"msg": "hello"})
+
+        assert "hello" in result
+        assert "error" not in result.lower()
 
 
 class TestSchemas:
