@@ -25,6 +25,7 @@ from app.harness.loop import (
     _extract_diagnosis,
     _extract_partial_diagnosis,
     _parse_tool_arguments,
+    _sanitize_llm_error,
     run_diagnosis_loop,
 )
 from app.harness.tool_registry import (
@@ -289,6 +290,23 @@ class TestHelpers:
         assert msgs[1]["role"] == "user"
         assert "V12345" in msgs[1]["content"]
         assert str(FAKE_SESSION_ID) in msgs[1]["content"]
+
+    def test_sanitize_llm_error_short(self) -> None:
+        """Short error messages are preserved with class name."""
+        result = _sanitize_llm_error(
+            ValueError("bad input"),
+        )
+        assert "ValueError" in result
+        assert "bad input" in result
+
+    def test_sanitize_llm_error_truncated(self) -> None:
+        """Long error messages are truncated to 200 chars."""
+        long_msg = "x" * 500
+        result = _sanitize_llm_error(
+            RuntimeError(long_msg),
+        )
+        assert len(result) < 300
+        assert "..." in result
 
 
 # ── Tests: agent loop ────────────────────────────────────────────────
@@ -576,6 +594,10 @@ class TestErrorHandling:
         types = [e.event_type for e in events]
         assert types == ["error", "done"]
         assert events[0].payload["error_type"] == "llm_error"
+        # Error message is sanitised (class name + truncated msg).
+        msg = events[0].payload["message"]
+        assert "RuntimeError" in msg
+        assert "API unreachable" in msg
         assert events[1].payload["partial"] is True
 
 

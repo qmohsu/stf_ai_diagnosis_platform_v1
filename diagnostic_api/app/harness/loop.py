@@ -29,6 +29,28 @@ from app.harness.harness_prompts import (
 
 logger = structlog.get_logger(__name__)
 
+_MAX_ERROR_LEN = 200  # Cap for user-facing error messages.
+
+
+def _sanitize_llm_error(exc: Exception) -> str:
+    """Build a safe error string from an LLM exception.
+
+    Extracts only the exception class name and a truncated
+    message.  API keys, internal URLs, and stack traces are
+    logged internally but never sent to the SSE stream.
+
+    Args:
+        exc: The caught exception.
+
+    Returns:
+        Sanitised error string (max ``_MAX_ERROR_LEN`` chars).
+    """
+    exc_name = type(exc).__name__
+    exc_msg = str(exc)
+    if len(exc_msg) > _MAX_ERROR_LEN:
+        exc_msg = exc_msg[:_MAX_ERROR_LEN] + "..."
+    return f"LLM call failed ({exc_name}: {exc_msg})"
+
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -236,13 +258,14 @@ async def run_diagnosis_loop(
                         "harness_llm_error",
                         session_id=sid,
                         iteration=iteration,
-                        error=str(exc),
+                        exc_info=exc,
                     )
+                    safe_msg = _sanitize_llm_error(exc)
                     yield HarnessEvent(
                         "error",
                         {
                             "error_type": "llm_error",
-                            "message": str(exc),
+                            "message": safe_msg,
                             "iteration": iteration,
                         },
                     )
