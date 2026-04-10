@@ -7,7 +7,6 @@ summaries only — never raw sensor arrays (privacy invariant).
 
 from __future__ import annotations
 
-import logging
 import uuid
 from typing import Any, Dict, List, Optional
 
@@ -17,9 +16,11 @@ from app.harness_tools.input_models import (
     DetectAnomaliesInput,
     SessionInput,
 )
+import structlog
+
 from app.models_db import OBDAnalysisSession
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # ------------------------------------------------------------------

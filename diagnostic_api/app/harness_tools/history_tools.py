@@ -6,8 +6,9 @@ for past diagnoses with matching DTC codes.
 
 from __future__ import annotations
 
-import logging
 from typing import Any, Dict, List
+
+import structlog
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session as SASession
@@ -19,7 +20,7 @@ from app.harness_tools.input_models import (
 )
 from app.models_db import DiagnosisHistory, OBDAnalysisSession
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 _MAX_DIAG_LEN = 300  # Truncate diagnosis text in results.
 

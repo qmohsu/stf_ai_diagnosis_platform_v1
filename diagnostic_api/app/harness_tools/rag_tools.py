@@ -7,8 +7,9 @@ Both return text summaries with source metadata.
 
 from __future__ import annotations
 
-import logging
 from typing import Any, Dict, List
+
+import structlog
 
 from app.harness.tool_registry import ToolDefinition
 from app.harness_tools.input_models import (
@@ -17,7 +18,7 @@ from app.harness_tools.input_models import (
 )
 from app.rag.retrieve import retrieve_context
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 _MAX_TEXT_LEN = 500  # Truncate chunk text to this many chars.
 

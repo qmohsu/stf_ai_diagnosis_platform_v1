@@ -7,14 +7,14 @@ requires one ``register()`` call — zero changes to the loop.
 
 from __future__ import annotations
 
-import logging
 import time
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Type
 
+import structlog
 from pydantic import BaseModel
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def _truncate(text: str, max_chars: int) -> str:
