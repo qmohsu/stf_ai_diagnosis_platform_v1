@@ -66,10 +66,9 @@ def _get_session(session_id: str) -> Any:
                 f"Session {session_id} has no analysis results "
                 f"(status={session.status})."
             )
-        # Eagerly read attributes before closing the session.
-        _ = session.result_payload
-        _ = session.parsed_summary_payload
-        _ = session.vehicle_id
+        # Detach from the session so attributes remain
+        # accessible after db.close().
+        db.expunge(session)
         return session
     finally:
         db.close()
