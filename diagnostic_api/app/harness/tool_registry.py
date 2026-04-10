@@ -87,6 +87,9 @@ class ToolRegistry:
 
     def __init__(self) -> None:
         self._tools: Dict[str, ToolDefinition] = {}
+        self._schemas_cache: Optional[
+            List[Dict[str, Any]]
+        ] = None
 
     def register(self, tool: ToolDefinition) -> None:
         """Register a tool.  Raises on duplicate name.
@@ -103,6 +106,7 @@ class ToolRegistry:
                 f"Tool '{tool.name}' is already registered."
             )
         self._tools[tool.name] = tool
+        self._schemas_cache = None  # Invalidate.
 
     @staticmethod
     def _validate_input(
@@ -247,11 +251,15 @@ class ToolRegistry:
     def schemas(self) -> List[Dict[str, Any]]:
         """Return tool definitions in OpenAI function-calling format.
 
+        Cached after first build; invalidated on ``register()``.
+
         Returns:
             List of dicts, each with ``type`` and ``function`` keys
             matching the OpenAI tool-calling specification.
         """
-        return [
+        if self._schemas_cache is not None:
+            return self._schemas_cache
+        self._schemas_cache = [
             {
                 "type": "function",
                 "function": {
@@ -262,6 +270,7 @@ class ToolRegistry:
             }
             for t in self._tools.values()
         ]
+        return self._schemas_cache
 
     @property
     def tool_names(self) -> List[str]:
