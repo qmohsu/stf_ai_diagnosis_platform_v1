@@ -10,7 +10,14 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Protocol
+from typing import (
+    Any,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Protocol,
+)
 
 import structlog
 from openai import AsyncOpenAI
@@ -57,6 +64,11 @@ class LLMResponse:
     finish_reason: str
 
 
+EventType = Literal[
+    "tool_call", "tool_result", "done", "error",
+]
+
+
 @dataclass(frozen=True)
 class HarnessEvent:
     """Typed event yielded by the agent loop.
@@ -67,7 +79,7 @@ class HarnessEvent:
         payload: Event-specific data dict.
     """
 
-    event_type: str
+    event_type: EventType
     payload: Dict[str, Any]
 
 
