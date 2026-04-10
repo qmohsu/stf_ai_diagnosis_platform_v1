@@ -309,6 +309,7 @@ GET_PID_STATISTICS_DEF = ToolDefinition(
         "required": ["session_id"],
     },
     handler=get_pid_statistics,
+    is_read_only=True,
 )
 
 DETECT_ANOMALIES_DEF = ToolDefinition(
@@ -339,6 +340,7 @@ DETECT_ANOMALIES_DEF = ToolDefinition(
         "required": ["session_id"],
     },
     handler=detect_anomalies,
+    is_read_only=True,
 )
 
 GENERATE_CLUES_DEF = ToolDefinition(
@@ -361,6 +363,7 @@ GENERATE_CLUES_DEF = ToolDefinition(
         "required": ["session_id"],
     },
     handler=generate_clues,
+    is_read_only=True,
 )
 
 GET_SESSION_CONTEXT_DEF = ToolDefinition(
@@ -384,4 +387,5 @@ GET_SESSION_CONTEXT_DEF = ToolDefinition(
         "required": ["session_id"],
     },
     handler=get_session_context,
+    is_read_only=True,
 )

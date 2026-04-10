@@ -150,4 +150,5 @@ SEARCH_CASE_HISTORY_DEF = ToolDefinition(
         "required": ["dtc_codes"],
     },
     handler=search_case_history,
+    is_read_only=True,
 )

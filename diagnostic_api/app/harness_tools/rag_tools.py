@@ -146,6 +146,7 @@ SEARCH_MANUAL_DEF = ToolDefinition(
         "required": ["query"],
     },
     handler=search_manual,
+    is_read_only=True,
 )
 
 REFINE_SEARCH_DEF = ToolDefinition(
@@ -185,4 +186,5 @@ REFINE_SEARCH_DEF = ToolDefinition(
         "required": ["query"],
     },
     handler=refine_search,
+    is_read_only=True,
 )

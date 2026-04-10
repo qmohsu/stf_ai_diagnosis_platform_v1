@@ -63,6 +63,7 @@ class ToolDefinition:
     description: str
     input_schema: dict
     handler: Callable[[Dict[str, Any]], Awaitable[str]]
+    is_read_only: bool = False
     max_result_chars: int = 50_000
 
 
