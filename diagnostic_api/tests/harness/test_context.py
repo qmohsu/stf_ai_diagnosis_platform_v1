@@ -226,19 +226,29 @@ class TestTruncateToolResult:
         content = "x" * (max_chars + 100)
         result = truncate_tool_result(content, max_tokens)
         assert len(result) < len(content)
-        assert result.startswith("x" * max_chars)
 
     def test_truncation_marker_present(self) -> None:
         """Truncated result contains the marker string."""
         content = "y" * 10000
         result = truncate_tool_result(content, max_tokens=5)
-        assert "[truncated" in result
+        assert "truncated" in result
 
     def test_marker_includes_total_chars(self) -> None:
         """Truncation marker includes original character count."""
         content = "z" * 12345
         result = truncate_tool_result(content, max_tokens=5)
-        assert "12345 chars total" in result
+        assert "12345 total" in result
+
+    def test_head_and_tail_preserved(self) -> None:
+        """Both head and tail of content are preserved."""
+        head = "HEAD_" * 200   # 1000 chars
+        middle = "M" * 5000
+        tail = "_TAIL" * 200   # 1000 chars
+        content = head + middle + tail
+        # Budget: 500 tokens = 2000 chars. Content is 7000.
+        result = truncate_tool_result(content, max_tokens=500)
+        assert result.startswith("HEAD_")
+        assert result.endswith("_TAIL")
 
 
 # ── Tests: iteration identification ─────────────────────────────────

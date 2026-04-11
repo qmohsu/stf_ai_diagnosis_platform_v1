@@ -88,8 +88,10 @@ def truncate_tool_result(
     """Truncate a tool result that exceeds the token budget.
 
     If the result fits within ``max_tokens``, it is returned
-    unchanged.  Otherwise, it is cut at the character boundary
-    corresponding to ``max_tokens`` and a marker is appended.
+    unchanged.  Otherwise, a head+tail strategy preserves both
+    the beginning (most context) and the end (often contains
+    summaries, status codes, or conclusions).  The budget is
+    split 75 %% head / 25 %% tail.
 
     Args:
         content: Raw tool output string.
@@ -101,10 +103,16 @@ def truncate_tool_result(
     max_chars = max_tokens * _CHARS_PER_TOKEN
     if len(content) <= max_chars:
         return content
-    return (
-        content[:max_chars]
-        + f"\n[truncated — {len(content)} chars total]"
+    head_chars = int(max_chars * 0.75)
+    tail_chars = max_chars - head_chars
+    head = content[:head_chars]
+    tail = content[-tail_chars:] if tail_chars > 0 else ""
+    truncated_count = len(content) - head_chars - tail_chars
+    marker = (
+        f"\n[…truncated {truncated_count} chars "
+        f"({len(content)} total)…]\n"
     )
+    return head + marker + tail
 
 
 # ── Tier 2: conversation compaction ─────────────────────────────────
