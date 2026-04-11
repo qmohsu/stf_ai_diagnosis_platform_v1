@@ -239,6 +239,20 @@ class TestTruncateToolResult:
         result = truncate_tool_result(content, max_tokens=5)
         assert "12345 total" in result
 
+    def test_zero_budget_floors_to_one(self) -> None:
+        """Zero max_tokens is floored to 1 (4 chars)."""
+        content = "x" * 100
+        result = truncate_tool_result(content, max_tokens=0)
+        # Floored to 1 token = 4 chars budget.
+        assert "truncated" in result
+        assert len(result) < len(content)
+
+    def test_negative_budget_floors_to_one(self) -> None:
+        """Negative max_tokens is floored to 1."""
+        content = "x" * 100
+        result = truncate_tool_result(content, max_tokens=-5)
+        assert "truncated" in result
+
     def test_head_and_tail_preserved(self) -> None:
         """Both head and tail of content are preserved."""
         head = "HEAD_" * 200   # 1000 chars
@@ -435,3 +449,27 @@ class TestMaybeCompact:
             m for m in result if m.get("role") == "tool"
         ]
         assert len(tool_msgs) == 3
+
+    def test_negative_threshold_floors_to_one(self) -> None:
+        """Negative threshold is floored to 1."""
+        msgs = _build_conversation(
+            3, tool_result_size=100,
+        )
+        result, info = maybe_compact(
+            msgs, threshold=-10,
+        )
+        # Even with threshold=1, compaction triggers.
+        assert info is not None
+
+    def test_negative_keep_recent_floors_to_zero(self) -> None:
+        """Negative keep_recent is floored to 0."""
+        msgs = _build_conversation(
+            3, tool_result_size=5000,
+        )
+        result, info = maybe_compact(
+            msgs, threshold=1, keep_recent=-1,
+        )
+        assert info is not None
+        # All iterations compacted.
+        assert info["compacted_iterations"] == 3
+        assert info["kept_iterations"] == 0

@@ -100,6 +100,7 @@ def truncate_tool_result(
     Returns:
         Original or truncated string with marker.
     """
+    max_tokens = max(1, max_tokens)
     max_chars = max_tokens * _CHARS_PER_TOKEN
     if len(content) <= max_chars:
         return content
@@ -216,6 +217,9 @@ def maybe_compact(
         Tuple of ``(new_messages, compact_info)``.  If no
         compaction was needed, ``compact_info`` is ``None``.
     """
+    threshold = max(1, threshold)
+    keep_recent = max(0, keep_recent)
+
     before_tokens = estimate_messages_tokens(messages)
 
     if before_tokens <= threshold:
