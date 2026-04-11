@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | V2 Harness Architecture for AI-Assisted Vehicle Diagnosis |
 | **Project** | STF AI Diagnosis Platform — Phase 1 Pilot |
-| **Status** | Draft v0.4 |
+| **Status** | Draft v0.5 |
 | **Owner** | Li-Ta Hsu |
 | **Contributors** | ML engineers; backend engineers; frontend engineers |
-| **Last updated** | 2026-04-10 (v0.4) |
+| **Last updated** | 2026-04-10 (v0.5) |
 | **Primary pilot stack** | FastAPI + AsyncOpenAI (OpenRouter) + Ollama + pgvector (PostgreSQL) + Next.js |
-| **New in this revision** | HARNESS-04 implemented: 2-tier context management. `context.py` with `estimate_tokens()` (char/4 approximation), `truncate_tool_result()` (Tier 1), `maybe_compact()` (Tier 2 auto-compaction). `HarnessConfig` gains `max_tool_result_tokens` (default 2000). Agent loop integrates both tiers — truncation per tool result, compaction between iterations. `context_compact` event emitted on compaction. 28 unit tests. GitHub Issue #54. |
+| **New in this revision** | HARNESS-06 implemented: Graduated autonomy router. `autonomy.py` with `classify_complexity()` (Tier 0–3), `apply_overrides()` (`force_agent`/`force_oneshot`). `AutonomyDecision` dataclass with tier, strategy, reason, use_agent, suggested_max_iterations. Helpers: `_count_dtcs()`, `_max_severity()`, `_count_clues()`. Integrated into agent endpoint — `done` SSE event now includes real `autonomy_tier` and `autonomy_strategy`. `force_agent`/`force_oneshot` query params now functional. 44 unit tests. GitHub Issue #56. |
 
 ### Revision history
 
@@ -23,6 +23,7 @@
 | v0.2 | 2026-04-10 | HARNESS-02: Core agent loop implemented. `run_diagnosis_loop()` async generator with ReAct cycle, `HarnessDeps` DI, `LLMClient` protocol + `OpenAILLMClient` adapter, `HarnessConfig`, dynamic system prompt assembly. 19 unit tests. GitHub Issue #52. |
 | v0.3 | 2026-04-10 | HARNESS-03: Session event log. `HarnessEventLog` SQLAlchemy model + Alembic migration `p9q0`. `session_log.py` with `emit_event()`/`get_session_events()` (async, thread-pooled). Agent loop emits `session_start`, `tool_call`, `tool_result`, `diagnosis_done`, `error` events. `DiagnosisHistory.provider` CHECK now accepts `"agent"`. `EventType` Literal extended with new event types. 9 unit tests. GitHub Issue #53. |
 | v0.4 | 2026-04-10 | HARNESS-04: Context management. `context.py` with token estimator (`estimate_tokens`, char/4), tool-result truncation (`truncate_tool_result`), and auto-compaction (`maybe_compact`). `HarnessConfig.max_tool_result_tokens` (default 2000). Agent loop integrates Tier 1 (truncation per result) and Tier 2 (compaction between iterations). Emits `context_compact` event. 28 unit tests. GitHub Issue #54. |
+| v0.5 | 2026-04-10 | HARNESS-06: Graduated autonomy router. `autonomy.py` with `classify_complexity()` (deterministic Tier 0–3), `apply_overrides()` for `force_agent`/`force_oneshot` query params. `AutonomyDecision` dataclass. Helpers: `_count_dtcs()` (regex DTC extraction), `_max_severity()` (keyword-based severity grading), `_count_clues()` (tag/separator counting). Integrated into `router.py` — queries `DiagnosisHistory` for Tier 3 (follow-up), sets `max_iterations` from `suggested_max_iterations`, `done` SSE event includes `autonomy_tier` and `autonomy_strategy`. `force_oneshot` beats `force_agent` (safety-first). 44 unit tests. GitHub Issue #56. |
 | v0.5 | 2026-04-10 | HARNESS-05: API endpoint + SSE streaming. `harness/router.py` with `POST /v2/obd/{session_id}/diagnose/agent`. Wires `run_diagnosis_loop()` async generator to `StreamingResponse`. Auth via `get_current_user`, session ownership, cached diagnosis check, `force` re-diagnosis. Stores result in `DiagnosisHistory` with `provider="agent"`. SSE events: `status`, `tool_call`, `tool_result`, `hypothesis`, `done`, `error`, `cached`. 2KB padding prefix. Registered in `main.py`. 12 unit tests. GitHub Issue #55. |
 
 ### Relationship to V1

@@ -33,6 +33,15 @@ from app.api.v2.endpoints.obd_analysis import (
 )
 from app.auth.security import get_current_user
 from app.config import settings
+from app.expert.client import (
+    ExpertLLMClient,
+    THINKING_SENTINEL,
+)
+from app.harness.autonomy import (
+    apply_overrides,
+    classify_complexity,
+)
+from app.rag.retrieve import retrieve_context
 from app.harness.deps import (
     HarnessConfig,
     HarnessDeps,
@@ -48,6 +57,136 @@ from app.models_db import (
 logger = structlog.get_logger(__name__)
 
 router = APIRouter()
+
+_expert_client = ExpertLLMClient()
+
+
+# ── V1 one-shot streaming helper ────────────────────────────────────
+
+
+async def _oneshot_stream(
+    session_id: uuid.UUID,
+    parsed_summary: Dict[str, Any],
+    locale: str,
+    tier: int,
+    strategy: str,
+) -> None:
+    """V1 one-shot diagnosis stream for simple (Tier 0) cases.
+
+    Performs RAG retrieval, then streams tokens from the local
+    ``ExpertLLMClient``.  Emits the same SSE event types as the
+    V1 ``/diagnose`` endpoint (``status``, ``token``, ``done``,
+    ``error``) so the frontend can handle both paths uniformly.
+
+    Args:
+        session_id: OBD analysis session UUID.
+        parsed_summary: Flat-string summary dict.
+        locale: Response language code.
+        tier: Autonomy tier (for the ``done`` event).
+        strategy: Strategy label (for the ``done`` event).
+
+    Yields:
+        SSE event strings.
+    """
+    # 2KB padding to flush browser buffers.
+    yield ": " + " " * 2048 + "\n\n"
+
+    _init_msgs: Dict[str, str] = {
+        "zh-CN": "正在检索上下文并初始化 LLM...",
+        "zh-TW": "正在檢索上下文並初始化 LLM...",
+    }
+    _think_msgs: Dict[str, str] = {
+        "zh-CN": "AI 正在深度推理分析中...",
+        "zh-TW": "AI 正在深度推理分析中...",
+    }
+    yield _sse_event(
+        "status",
+        _init_msgs.get(
+            locale,
+            "Retrieving context and initializing LLM...",
+        ),
+    )
+
+    logger.info(
+        "oneshot_diagnosis_started",
+        session_id=str(session_id),
+        model=settings.llm_model,
+        locale=locale,
+    )
+
+    # RAG retrieval
+    rag_query = parsed_summary.get("rag_query", "")
+    context_str = ""
+    if rag_query:
+        try:
+            results = await retrieve_context(
+                rag_query, top_k=3,
+            )
+            context_str = "\n\n".join(
+                f"{r.source_type} — {r.doc_id}"
+                f" — {r.section_title}\n{r.text}"
+                for r in results
+            )
+        except Exception as exc:
+            logger.warning(
+                "oneshot_rag_retrieval_failed",
+                error=str(exc),
+            )
+
+    full_text_parts: list[str] = []
+    thinking_notified = False
+    try:
+        gen = _expert_client.generate_obd_diagnosis_stream(
+            parsed_summary, context_str, locale=locale,
+        )
+        async for token in gen:
+            if token == THINKING_SENTINEL:
+                if not thinking_notified:
+                    yield _sse_event(
+                        "status",
+                        _think_msgs.get(
+                            locale,
+                            "AI is reasoning...",
+                        ),
+                    )
+                    thinking_notified = True
+                yield ": thinking\n\n"
+                continue
+            full_text_parts.append(token)
+            yield _sse_event("token", token)
+
+        full_text = "".join(full_text_parts)
+        history_id = _store_diagnosis(
+            session_id, "local",
+            settings.llm_model, full_text,
+        )
+        logger.info(
+            "oneshot_diagnosis_completed",
+            session_id=str(session_id),
+            diagnosis_history_id=(
+                str(history_id) if history_id else None
+            ),
+        )
+        yield _sse_event("done", {
+            "text": full_text,
+            "diagnosis_history_id": (
+                str(history_id) if history_id else None
+            ),
+            "autonomy_tier": tier,
+            "autonomy_strategy": strategy,
+        })
+
+    except Exception as exc:
+        logger.error(
+            "oneshot_diagnosis_stream_error",
+            session_id=str(session_id),
+            error=str(exc),
+            exc_info=True,
+        )
+        yield _sse_event("error", {
+            "error_type": "stream_error",
+            "message": str(exc)[:200],
+        })
 
 
 # ── Endpoint ────────────────────────────────────────────────────────
@@ -92,8 +231,8 @@ async def generate_agent_diagnosis(
         force: Force re-diagnosis even if cached.
         locale: Response language (``en``, ``zh-CN``, ``zh-TW``).
         max_iterations: Override default max iterations.
-        force_agent: Force agent mode (reserved for HARNESS-06).
-        force_oneshot: Force V1 one-shot (reserved for HARNESS-06).
+        force_agent: Force agent mode even for simple cases.
+        force_oneshot: Force V1 one-shot regardless of tier.
         current_user: Authenticated user from JWT.
         db: Database session.
 
@@ -146,7 +285,57 @@ async def generate_agent_diagnosis(
             ),
         )
 
+    # --- Graduated autonomy classification ---
+    has_prior = (
+        db.query(DiagnosisHistory.id)
+        .filter(
+            DiagnosisHistory.session_id == session_id,
+        )
+        .first()
+        is not None
+    )
+    decision = classify_complexity(
+        parsed_summary,
+        has_prior_diagnosis=has_prior,
+    )
+    decision = apply_overrides(
+        decision,
+        force_agent=force_agent,
+        force_oneshot=force_oneshot,
+    )
+
+    logger.info(
+        "autonomy_routed",
+        session_id=str(session_id),
+        tier=decision.tier,
+        strategy=decision.strategy,
+        use_agent=decision.use_agent,
+    )
+
+    # --- V1 one-shot path (Tier 0 or force_oneshot) ---
+    if not decision.use_agent:
+        return StreamingResponse(
+            _oneshot_stream(
+                session_id,
+                parsed_summary,
+                locale,
+                tier=decision.tier,
+                strategy=decision.strategy,
+            ),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
     # --- Build harness dependencies ---
+    effective_max_iter = (
+        max_iterations
+        or decision.suggested_max_iterations
+        or 10
+    )
+
     openai_client = AsyncOpenAI(
         api_key=settings.premium_llm_api_key,
         base_url=settings.premium_llm_base_url,
@@ -155,7 +344,7 @@ async def generate_agent_diagnosis(
     tool_registry = create_default_registry()
     config = HarnessConfig(
         model=settings.premium_llm_model,
-        max_iterations=max_iterations or 10,
+        max_iterations=effective_max_iter,
         locale=locale,
     )
     deps = HarnessDeps(
@@ -230,7 +419,10 @@ async def generate_agent_diagnosis(
                         "tools_called": event.payload.get(
                             "tools_called", [],
                         ),
-                        "autonomy_tier": 1,
+                        "autonomy_tier": decision.tier,
+                        "autonomy_strategy": (
+                            decision.strategy
+                        ),
                     })
                 elif event.event_type == "error":
                     yield _sse_event(

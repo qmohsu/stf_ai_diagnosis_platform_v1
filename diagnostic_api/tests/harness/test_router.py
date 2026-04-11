@@ -22,7 +22,33 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from app.harness.autonomy import AutonomyDecision
 from app.harness.deps import HarnessEvent
+
+# ── Autonomy stub ───────────────────────────────────────────────────
+
+_DEFAULT_DECISION = AutonomyDecision(
+    tier=1,
+    strategy="agent loop",
+    reason="test fixture",
+    use_agent=True,
+    suggested_max_iterations=5,
+)
+
+
+@pytest.fixture()
+def patch_autonomy():
+    """Stub autonomy classifier so router tests don't depend
+    on classification logic (covered in test_autonomy.py).
+    """
+    with patch(
+        "app.harness.router.classify_complexity",
+        return_value=_DEFAULT_DECISION,
+    ), patch(
+        "app.harness.router.apply_overrides",
+        return_value=_DEFAULT_DECISION,
+    ):
+        yield
 
 
 # ── Constants ───────────────────────────────────────────────────────
@@ -196,6 +222,7 @@ class TestAgentDiagnosisAuth:
 # ── Cache Tests ─────────────────────────────────────────────────────
 
 
+@pytest.mark.usefixtures("patch_autonomy")
 class TestAgentDiagnosisCached:
     """Cached diagnosis tests."""
 
@@ -274,6 +301,7 @@ class TestAgentDiagnosisCached:
 # ── Streaming Tests ─────────────────────────────────────────────────
 
 
+@pytest.mark.usefixtures("patch_autonomy")
 class TestAgentDiagnosisStream:
     """Agent loop SSE streaming tests."""
 
@@ -384,6 +412,7 @@ class TestAgentDiagnosisStream:
         assert done["iterations"] == 2
         assert done["tools_called"] == ["search_manual"]
         assert done["autonomy_tier"] == 1
+        assert done["autonomy_strategy"] == "agent loop"
         assert done["text"] == "Final diagnosis."
 
     def test_tool_call_and_result_events(
@@ -484,6 +513,7 @@ class TestAgentDiagnosisStream:
 # ── Error Handling Tests ────────────────────────────────────────────
 
 
+@pytest.mark.usefixtures("patch_autonomy")
 class TestAgentDiagnosisErrors:
     """Error handling tests."""
 
@@ -548,6 +578,164 @@ class TestAgentDiagnosisErrors:
         ]
         assert len(error_events) >= 1
         assert "LLM connection failed" in (
+            error_events[0]["data"]["message"]
+        )
+
+
+# ── Autonomy Dispatch Tests ─────────────────────────────────────────
+
+
+_TIER0_DECISION = AutonomyDecision(
+    tier=0,
+    strategy="V1 one-shot",
+    reason="test fixture — simple case",
+    use_agent=False,
+    suggested_max_iterations=0,
+)
+
+_FORCED_ONESHOT_DECISION = AutonomyDecision(
+    tier=2,
+    strategy="V1 one-shot (forced)",
+    reason="force_oneshot override",
+    use_agent=False,
+    suggested_max_iterations=0,
+)
+
+
+class TestAutonomyDispatch:
+    """Tests for V1-vs-agent routing based on autonomy decision."""
+
+    def _setup(self, app_ref, decision):
+        """Attach mock DB and stub autonomy to given decision."""
+        from app.api.deps import get_db
+
+        mock_db = _mock_db_with_session(
+            parsed_summary=FAKE_PARSED_SUMMARY,
+            diagnosis_text=None,
+        )
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+        return decision
+
+    def test_tier0_dispatches_to_oneshot(
+        self, client, app_ref,
+    ):
+        """Tier 0 (use_agent=False) emits token events, not
+        tool_call events.
+        """
+        self._setup(app_ref, _TIER0_DECISION)
+
+        async def _fake_stream(*a, **kw):
+            yield "diagnosis chunk"
+
+        with patch(
+            "app.harness.router.classify_complexity",
+            return_value=_TIER0_DECISION,
+        ), patch(
+            "app.harness.router.apply_overrides",
+            return_value=_TIER0_DECISION,
+        ), patch(
+            "app.harness.router.retrieve_context",
+            return_value=[],
+        ), patch.object(
+            type(app_ref).__module__,
+        ) if False else patch(
+            "app.harness.router._expert_client"
+            ".generate_obd_diagnosis_stream",
+            return_value=_fake_stream(),
+        ), patch(
+            "app.harness.router._store_diagnosis",
+            return_value=FAKE_HISTORY_ID,
+        ):
+            resp = client.post(
+                f"/v2/obd/{FAKE_SESSION_ID}/diagnose/agent",
+            )
+
+        assert resp.status_code == 200
+        events = _parse_sse_events(resp.text)
+        event_types = [e["event"] for e in events]
+        # V1 path emits token events, not tool_call.
+        assert "token" in event_types
+        assert "tool_call" not in event_types
+        # done event has autonomy_tier = 0
+        done = next(
+            e for e in events if e["event"] == "done"
+        )
+        assert done["data"]["autonomy_tier"] == 0
+
+    def test_force_oneshot_dispatches_to_oneshot(
+        self, client, app_ref,
+    ):
+        """force_oneshot=True routes to V1 even for Tier 2."""
+        self._setup(app_ref, _FORCED_ONESHOT_DECISION)
+
+        async def _fake_stream(*a, **kw):
+            yield "forced oneshot chunk"
+
+        with patch(
+            "app.harness.router.classify_complexity",
+            return_value=_DEFAULT_DECISION,
+        ), patch(
+            "app.harness.router.apply_overrides",
+            return_value=_FORCED_ONESHOT_DECISION,
+        ), patch(
+            "app.harness.router.retrieve_context",
+            return_value=[],
+        ), patch(
+            "app.harness.router._expert_client"
+            ".generate_obd_diagnosis_stream",
+            return_value=_fake_stream(),
+        ), patch(
+            "app.harness.router._store_diagnosis",
+            return_value=FAKE_HISTORY_ID,
+        ):
+            resp = client.post(
+                f"/v2/obd/{FAKE_SESSION_ID}/diagnose/agent"
+                f"?force_oneshot=true",
+            )
+
+        assert resp.status_code == 200
+        events = _parse_sse_events(resp.text)
+        done = next(
+            e for e in events if e["event"] == "done"
+        )
+        # Tier is preserved from original classification.
+        assert done["data"]["autonomy_tier"] == 2
+        assert "forced" in done["data"]["autonomy_strategy"]
+
+    def test_oneshot_error_yields_error_event(
+        self, client, app_ref,
+    ):
+        """V1 one-shot path errors produce SSE error event."""
+        self._setup(app_ref, _TIER0_DECISION)
+
+        async def _failing_stream(*a, **kw):
+            raise RuntimeError("Ollama connection refused")
+            yield  # noqa: unreachable
+
+        with patch(
+            "app.harness.router.classify_complexity",
+            return_value=_TIER0_DECISION,
+        ), patch(
+            "app.harness.router.apply_overrides",
+            return_value=_TIER0_DECISION,
+        ), patch(
+            "app.harness.router.retrieve_context",
+            return_value=[],
+        ), patch(
+            "app.harness.router._expert_client"
+            ".generate_obd_diagnosis_stream",
+            return_value=_failing_stream(),
+        ):
+            resp = client.post(
+                f"/v2/obd/{FAKE_SESSION_ID}/diagnose/agent",
+            )
+
+        events = _parse_sse_events(resp.text)
+        error_events = [
+            e for e in events if e["event"] == "error"
+        ]
+        assert len(error_events) >= 1
+        assert "Ollama connection refused" in (
             error_events[0]["data"]["message"]
         )
 
