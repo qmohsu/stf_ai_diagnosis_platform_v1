@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 import structlog
 
@@ -44,6 +44,9 @@ _SEVERITY_KEYWORDS: List[tuple[str, str]] = [
 # ── Result dataclass ────────────────────────────────────────────────
 
 
+AutonomyTier = Literal[0, 1, 2, 3]
+
+
 @dataclass(frozen=True)
 class AutonomyDecision:
     """Result of the graduated autonomy classification.
@@ -59,7 +62,7 @@ class AutonomyDecision:
             ``use_agent`` is True).
     """
 
-    tier: int
+    tier: AutonomyTier
     strategy: str
     reason: str
     use_agent: bool
