@@ -33,6 +33,10 @@ from app.api.v2.endpoints.obd_analysis import (
 )
 from app.auth.security import get_current_user
 from app.config import settings
+from app.harness.autonomy import (
+    apply_overrides,
+    classify_complexity,
+)
 from app.harness.deps import (
     HarnessConfig,
     HarnessDeps,
@@ -92,8 +96,8 @@ async def generate_agent_diagnosis(
         force: Force re-diagnosis even if cached.
         locale: Response language (``en``, ``zh-CN``, ``zh-TW``).
         max_iterations: Override default max iterations.
-        force_agent: Force agent mode (reserved for HARNESS-06).
-        force_oneshot: Force V1 one-shot (reserved for HARNESS-06).
+        force_agent: Force agent mode even for simple cases.
+        force_oneshot: Force V1 one-shot regardless of tier.
         current_user: Authenticated user from JWT.
         db: Database session.
 
@@ -146,7 +150,40 @@ async def generate_agent_diagnosis(
             ),
         )
 
+    # --- Graduated autonomy classification ---
+    has_prior = (
+        db.query(DiagnosisHistory.id)
+        .filter(
+            DiagnosisHistory.session_id == session_id,
+        )
+        .first()
+        is not None
+    )
+    decision = classify_complexity(
+        parsed_summary,
+        has_prior_diagnosis=has_prior,
+    )
+    decision = apply_overrides(
+        decision,
+        force_agent=force_agent,
+        force_oneshot=force_oneshot,
+    )
+
+    logger.info(
+        "autonomy_routed",
+        session_id=str(session_id),
+        tier=decision.tier,
+        strategy=decision.strategy,
+        use_agent=decision.use_agent,
+    )
+
     # --- Build harness dependencies ---
+    effective_max_iter = (
+        max_iterations
+        or decision.suggested_max_iterations
+        or 10
+    )
+
     openai_client = AsyncOpenAI(
         api_key=settings.premium_llm_api_key,
         base_url=settings.premium_llm_base_url,
@@ -155,7 +192,7 @@ async def generate_agent_diagnosis(
     tool_registry = create_default_registry()
     config = HarnessConfig(
         model=settings.premium_llm_model,
-        max_iterations=max_iterations or 10,
+        max_iterations=effective_max_iter,
         locale=locale,
     )
     deps = HarnessDeps(
@@ -230,7 +267,10 @@ async def generate_agent_diagnosis(
                         "tools_called": event.payload.get(
                             "tools_called", [],
                         ),
-                        "autonomy_tier": 1,
+                        "autonomy_tier": decision.tier,
+                        "autonomy_strategy": (
+                            decision.strategy
+                        ),
                     })
                 elif event.event_type == "error":
                     yield _sse_event(

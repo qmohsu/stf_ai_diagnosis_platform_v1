@@ -22,7 +22,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from app.harness.autonomy import AutonomyDecision
 from app.harness.deps import HarnessEvent
+
+# ── Autonomy stub ───────────────────────────────────────────────────
+
+_DEFAULT_DECISION = AutonomyDecision(
+    tier=1,
+    strategy="agent loop",
+    reason="test fixture",
+    use_agent=True,
+    suggested_max_iterations=5,
+)
 
 
 # ── Constants ───────────────────────────────────────────────────────
@@ -199,6 +210,18 @@ class TestAgentDiagnosisAuth:
 class TestAgentDiagnosisCached:
     """Cached diagnosis tests."""
 
+    @pytest.fixture(autouse=True)
+    def _patch_autonomy(self):
+        """Stub autonomy for tests that bypass cache."""
+        with patch(
+            "app.harness.router.classify_complexity",
+            return_value=_DEFAULT_DECISION,
+        ), patch(
+            "app.harness.router.apply_overrides",
+            return_value=_DEFAULT_DECISION,
+        ):
+            yield
+
     def test_cached_diagnosis_returned(
         self, client, app_ref,
     ):
@@ -276,6 +299,20 @@ class TestAgentDiagnosisCached:
 
 class TestAgentDiagnosisStream:
     """Agent loop SSE streaming tests."""
+
+    @pytest.fixture(autouse=True)
+    def _patch_autonomy(self):
+        """Stub autonomy classifier so router tests don't depend
+        on classification logic (covered in test_autonomy.py).
+        """
+        with patch(
+            "app.harness.router.classify_complexity",
+            return_value=_DEFAULT_DECISION,
+        ), patch(
+            "app.harness.router.apply_overrides",
+            return_value=_DEFAULT_DECISION,
+        ):
+            yield
 
     def _setup_db(self, app_ref):
         """Attach mock DB with valid session (no cached diagnosis)."""
@@ -384,6 +421,7 @@ class TestAgentDiagnosisStream:
         assert done["iterations"] == 2
         assert done["tools_called"] == ["search_manual"]
         assert done["autonomy_tier"] == 1
+        assert done["autonomy_strategy"] == "agent loop"
         assert done["text"] == "Final diagnosis."
 
     def test_tool_call_and_result_events(
@@ -486,6 +524,18 @@ class TestAgentDiagnosisStream:
 
 class TestAgentDiagnosisErrors:
     """Error handling tests."""
+
+    @pytest.fixture(autouse=True)
+    def _patch_autonomy(self):
+        """Stub autonomy for error-path tests."""
+        with patch(
+            "app.harness.router.classify_complexity",
+            return_value=_DEFAULT_DECISION,
+        ), patch(
+            "app.harness.router.apply_overrides",
+            return_value=_DEFAULT_DECISION,
+        ):
+            yield
 
     def test_no_parsed_summary_returns_422(
         self, client, app_ref,
