@@ -175,8 +175,14 @@ class TestEmitEvent:
         assert added.iteration == 0
 
     @pytest.mark.asyncio
-    async def test_emit_rollback_on_error(self) -> None:
-        """DB errors trigger rollback and re-raise."""
+    async def test_emit_rollback_on_error_no_crash(
+        self,
+    ) -> None:
+        """DB errors trigger rollback but do not re-raise.
+
+        Event persistence is best-effort — a DB failure must
+        not crash the diagnosis loop.
+        """
         mock_factory = _make_mock_db()
         mock_factory.return_value.commit.side_effect = (
             RuntimeError("DB error")
@@ -185,11 +191,11 @@ class TestEmitEvent:
         with patch.object(
             session_log, "SessionLocal", mock_factory,
         ):
-            with pytest.raises(RuntimeError, match="DB error"):
-                await session_log.emit_event(
-                    FAKE_SESSION_ID, "error",
-                    {"msg": "test"},
-                )
+            # Should NOT raise — errors are logged and swallowed.
+            await session_log.emit_event(
+                FAKE_SESSION_ID, "error",
+                {"msg": "test"},
+            )
 
         mock_factory.return_value.rollback.assert_called_once()
         mock_factory.return_value.close.assert_called_once()

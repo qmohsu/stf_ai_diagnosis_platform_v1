@@ -62,7 +62,6 @@ def _sync_emit(
             event_type=event_type,
             exc_info=True,
         )
-        raise
     finally:
         db.close()
 
