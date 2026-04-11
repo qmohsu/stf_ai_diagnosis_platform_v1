@@ -115,7 +115,9 @@ def _max_severity(anomaly_events: str) -> str:
     best_rank = _SEVERITY_RANK[best]
 
     for keyword, severity in _SEVERITY_KEYWORDS:
-        if keyword in text_lower:
+        # Word-boundary match avoids false positives like
+        # "high" matching "highway" or "major" in "majority".
+        if re.search(r"\b" + keyword + r"\b", text_lower):
             rank = _SEVERITY_RANK[severity]
             if rank > best_rank:
                 best = severity

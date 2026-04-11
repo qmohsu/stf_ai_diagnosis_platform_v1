@@ -195,6 +195,20 @@ class TestMaxSeverity:
         """'severe' keyword maps to critical severity."""
         assert _max_severity("severe overheating") == "critical"
 
+    def test_highway_does_not_match_high(self) -> None:
+        """'highway' should NOT trigger 'high' severity
+        (word-boundary guard).
+        """
+        assert _max_severity(
+            "speed fluctuation at highway"
+        ) == "moderate"
+
+    def test_below_does_not_match_low(self) -> None:
+        """'below' should NOT trigger 'low' severity."""
+        assert _max_severity(
+            "catalyst efficiency below threshold"
+        ) == "moderate"
+
 
 # ── Tests: _count_clues ─────────────────────────────────────────────
 
