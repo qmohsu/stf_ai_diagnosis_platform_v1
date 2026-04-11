@@ -10,9 +10,8 @@ Wires ``run_diagnosis_loop()`` to a ``StreamingResponse`` with
 
 from __future__ import annotations
 
-import json
 import uuid
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
 import structlog
 from fastapi import (
@@ -26,9 +25,13 @@ from openai import AsyncOpenAI
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.api.v2.endpoints.obd_analysis import (
+    _get_session_data,
+    _sse_event,
+    _store_diagnosis,
+)
 from app.auth.security import get_current_user
 from app.config import settings
-from app.db.session import SessionLocal
 from app.harness.deps import (
     HarnessConfig,
     HarnessDeps,
@@ -38,129 +41,12 @@ from app.harness.loop import run_diagnosis_loop
 from app.harness.tool_registry import create_default_registry
 from app.models_db import (
     DiagnosisHistory,
-    OBDAnalysisSession,
     User,
 )
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter()
-
-_MAX_DIAGNOSIS_LENGTH: int = 50_000
-
-
-# ── Helpers ─────────────────────────────────────────────────────────
-
-
-def _sse_event(event: str, data: Union[str, dict]) -> str:
-    """Format a single SSE event frame.
-
-    Args:
-        event: SSE event type (e.g. ``"tool_call"``, ``"done"``).
-        data: Payload — a string or a dict.  Both are
-            JSON-serialised into the ``data:`` field.
-
-    Returns:
-        SSE-formatted string ready to yield.
-    """
-    escaped = json.dumps(data)
-    return f"event: {event}\ndata: {escaped}\n\n"
-
-
-def _get_owned_session(
-    session_id: uuid.UUID,
-    user: User,
-    db: Session,
-) -> OBDAnalysisSession:
-    """Fetch session owned by user or raise 404.
-
-    Returns 404 (not 403) to avoid leaking session
-    existence to unauthorised users.
-
-    Args:
-        session_id: Target session UUID.
-        user: Authenticated user from JWT.
-        db: Database session.
-
-    Returns:
-        The OBDAnalysisSession row.
-
-    Raises:
-        HTTPException: 404 if session not found or not
-            owned by the user.
-    """
-    db_session = (
-        db.query(OBDAnalysisSession)
-        .filter(
-            OBDAnalysisSession.id == session_id,
-            OBDAnalysisSession.user_id == user.id,
-        )
-        .first()
-    )
-    if db_session is None:
-        raise HTTPException(
-            status_code=404,
-            detail="OBD analysis session not found",
-        )
-    return db_session
-
-
-def _store_diagnosis(
-    session_id: uuid.UUID,
-    provider: str,
-    model_name: str,
-    text: str,
-) -> Optional[uuid.UUID]:
-    """Store diagnosis on the session row and append a history record.
-
-    Updates ``OBDAnalysisSession.diagnosis_text`` and inserts an
-    immutable row into ``diagnosis_history`` with the given provider.
-
-    Args:
-        session_id: Target session UUID.
-        provider: ``"agent"`` (or ``"local"`` / ``"premium"``).
-        model_name: Model identifier that produced the text.
-        text: Full diagnosis text (truncated to
-            ``_MAX_DIAGNOSIS_LENGTH``).
-
-    Returns:
-        The UUID of the newly created ``DiagnosisHistory`` row,
-        or ``None`` if the session was not found.
-    """
-    text = text[:_MAX_DIAGNOSIS_LENGTH]
-
-    history_id = uuid.uuid4()
-    db = SessionLocal()
-    try:
-        db_session = (
-            db.query(OBDAnalysisSession)
-            .filter(OBDAnalysisSession.id == session_id)
-            .first()
-        )
-        if db_session is not None:
-            db_session.diagnosis_text = text
-            db.add(DiagnosisHistory(
-                id=history_id,
-                session_id=session_id,
-                provider=provider,
-                model_name=model_name,
-                diagnosis_text=text,
-            ))
-            db.commit()
-            return history_id
-        return None
-    except Exception:
-        db.rollback()
-        logger.error(
-            "store_diagnosis_failed",
-            session_id=str(session_id),
-            provider=provider,
-            model_name=model_name,
-            exc_info=True,
-        )
-        raise
-    finally:
-        db.close()
 
 
 # ── Endpoint ────────────────────────────────────────────────────────
@@ -212,11 +98,11 @@ async def generate_agent_diagnosis(
         ``StreamingResponse`` with ``text/event-stream``.
     """
     # --- Pre-flight checks ---
-    db_session = _get_owned_session(
+    session_data = _get_session_data(
         session_id, current_user, db,
     )
-    parsed_summary = db_session.parsed_summary_payload
-    existing_diagnosis = db_session.diagnosis_text
+    parsed_summary = session_data.parsed_summary
+    existing_diagnosis = session_data.diagnosis_text
 
     # --- Cache check ---
     if existing_diagnosis and not force:
