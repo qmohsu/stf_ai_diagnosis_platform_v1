@@ -1,4 +1,9 @@
 import type {
+  AgentCachedEvent,
+  AgentDoneEvent,
+  AgentErrorEvent,
+  AgentToolCallEvent,
+  AgentToolResultEvent,
   DiagnosisHistoryResponse,
   FeedbackHistoryResponse,
   FeedbackResponse,
@@ -141,17 +146,25 @@ export async function retrieveRAG(
 }
 
 // ---------------------------------------------------------------------------
-// Shared SSE streaming helper
+// Shared SSE streaming infrastructure
 // ---------------------------------------------------------------------------
 
-type SSECallbacks = {
-  onToken: (token: string) => void;
-  onDone: (fullText: string, diagnosisHistoryId: string | null) => void;
-  onError: (error: string, errorCode?: string) => void;
-  onStatus?: (message: string) => void;
-};
+interface SSEFrame {
+  event: string;
+  data: unknown;
+}
 
-async function streamSSE(url: string, cb: SSECallbacks): Promise<void> {
+/**
+ * POST to a streaming endpoint and yield parsed SSE frames.
+ *
+ * Handles auth, 401 redirect, ReadableStream consumption, and
+ * frame boundary parsing.  Callers provide their own dispatch
+ * logic via the ``onFrame`` callback.
+ */
+async function consumeSSEStream(
+  url: string,
+  onFrame: (frame: SSEFrame) => void,
+): Promise<void> {
   const res = await fetch(url, {
     method: "POST",
     cache: "no-store",
@@ -181,11 +194,11 @@ async function streamSSE(url: string, cb: SSECallbacks): Promise<void> {
     // Last element may be incomplete — keep it in buffer
     buffer = frames.pop() ?? "";
 
-    for (const frame of frames) {
-      if (!frame.trim()) continue;
+    for (const raw of frames) {
+      if (!raw.trim()) continue;
 
       // Skip SSE comments (lines starting with ":")
-      const lines = frame.split("\n").filter((l) => !l.startsWith(":"));
+      const lines = raw.split("\n").filter((l) => !l.startsWith(":"));
       if (lines.length === 0) continue;
 
       let event = "";
@@ -209,34 +222,51 @@ async function streamSSE(url: string, cb: SSECallbacks): Promise<void> {
         parsed = data;
       }
 
-      switch (event) {
-        case "token":
-          cb.onToken(parsed as string);
-          break;
-        case "cached":
-        case "done":
-          if (typeof parsed === "object" && parsed !== null && "text" in parsed) {
-            const obj = parsed as { text: string; diagnosis_history_id?: string | null };
-            cb.onDone(obj.text, obj.diagnosis_history_id ?? null);
-          } else {
-            // Backward compatibility: plain string payload
-            cb.onDone(parsed as string, null);
-          }
-          break;
-        case "error":
-          if (typeof parsed === "object" && parsed !== null && "message" in parsed) {
-            const errObj = parsed as { message: string; error_code?: string };
-            cb.onError(errObj.message, errObj.error_code);
-          } else {
-            cb.onError(parsed as string);
-          }
-          break;
-        case "status":
-          cb.onStatus?.(parsed as string);
-          break;
-      }
+      onFrame({ event, data: parsed });
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// V1 SSE streaming (local / premium diagnosis)
+// ---------------------------------------------------------------------------
+
+type SSECallbacks = {
+  onToken: (token: string) => void;
+  onDone: (fullText: string, diagnosisHistoryId: string | null) => void;
+  onError: (error: string, errorCode?: string) => void;
+  onStatus?: (message: string) => void;
+};
+
+async function streamSSE(url: string, cb: SSECallbacks): Promise<void> {
+  return consumeSSEStream(url, ({ event, data: parsed }) => {
+    switch (event) {
+      case "token":
+        cb.onToken(parsed as string);
+        break;
+      case "cached":
+      case "done":
+        if (typeof parsed === "object" && parsed !== null && "text" in parsed) {
+          const obj = parsed as { text: string; diagnosis_history_id?: string | null };
+          cb.onDone(obj.text, obj.diagnosis_history_id ?? null);
+        } else {
+          // Backward compatibility: plain string payload
+          cb.onDone(parsed as string, null);
+        }
+        break;
+      case "error":
+        if (typeof parsed === "object" && parsed !== null && "message" in parsed) {
+          const errObj = parsed as { message: string; error_code?: string };
+          cb.onError(errObj.message, errObj.error_code);
+        } else {
+          cb.onError(parsed as string);
+        }
+        break;
+      case "status":
+        cb.onStatus?.(parsed as string);
+        break;
+    }
+  });
 }
 
 /**
@@ -303,6 +333,99 @@ export async function streamPremiumDiagnosis(
   const url = `${API_URL}/v2/obd/${sessionId}/diagnose/premium${qs ? `?${qs}` : ""}`;
   return streamSSE(url, { onToken, onDone, onError, onStatus });
 }
+
+// ---------------------------------------------------------------------------
+// Agent SSE streaming
+// ---------------------------------------------------------------------------
+
+export type AgentSSECallbacks = {
+  onToken: (token: string) => void;
+  onToolCall: (data: AgentToolCallEvent) => void;
+  onToolResult: (data: AgentToolResultEvent) => void;
+  onDone: (data: AgentDoneEvent) => void;
+  onError: (data: AgentErrorEvent) => void;
+  onCached: (data: AgentCachedEvent) => void;
+  onStatus?: (message: string) => void;
+  onSessionStart?: (data: { max_iterations: number }) => void;
+};
+
+async function streamAgentSSE(
+  url: string,
+  cb: AgentSSECallbacks,
+): Promise<void> {
+  return consumeSSEStream(url, ({ event, data: parsed }) => {
+    switch (event) {
+      case "token":
+        cb.onToken(parsed as string);
+        break;
+      case "tool_call":
+        cb.onToolCall(parsed as AgentToolCallEvent);
+        break;
+      case "tool_result":
+        cb.onToolResult(parsed as AgentToolResultEvent);
+        break;
+      case "done":
+        cb.onDone(parsed as AgentDoneEvent);
+        break;
+      case "cached":
+        cb.onCached(parsed as AgentCachedEvent);
+        break;
+      case "error":
+        if (typeof parsed === "object" && parsed !== null && "message" in parsed) {
+          cb.onError(parsed as AgentErrorEvent);
+        } else {
+          cb.onError({ error_type: "unknown", message: String(parsed) });
+        }
+        break;
+      case "status":
+        // session_start is mapped to "status" by the backend
+        // but carries an object with max_iterations
+        if (
+          typeof parsed === "object" &&
+          parsed !== null &&
+          "max_iterations" in parsed
+        ) {
+          const obj = parsed as { max_iterations: number };
+          cb.onSessionStart?.({ max_iterations: obj.max_iterations });
+        } else {
+          cb.onStatus?.(typeof parsed === "string" ? parsed : JSON.stringify(parsed));
+        }
+        break;
+    }
+  });
+}
+
+/**
+ * Stream agent AI diagnosis via SSE.
+ *
+ * Hits POST /v2/obd/{sessionId}/diagnose/agent which runs
+ * the ReAct agent loop with tool calling.
+ */
+export async function streamAgentDiagnosis(
+  sessionId: string,
+  callbacks: AgentSSECallbacks,
+  options?: {
+    force?: boolean;
+    locale?: string;
+    maxIterations?: number;
+    forceAgent?: boolean;
+    forceOneshot?: boolean;
+  },
+): Promise<void> {
+  const params = new URLSearchParams();
+  if (options?.force) params.set("force", "true");
+  if (options?.locale) params.set("locale", options.locale);
+  if (options?.maxIterations) params.set("max_iterations", String(options.maxIterations));
+  if (options?.forceAgent) params.set("force_agent", "true");
+  if (options?.forceOneshot) params.set("force_oneshot", "true");
+  const qs = params.toString();
+  const url = `${API_URL}/v2/obd/${sessionId}/diagnose/agent${qs ? `?${qs}` : ""}`;
+  return streamAgentSSE(url, callbacks);
+}
+
+// ---------------------------------------------------------------------------
+// Feedback
+// ---------------------------------------------------------------------------
 
 export async function submitFeedback(
   sessionId: string,

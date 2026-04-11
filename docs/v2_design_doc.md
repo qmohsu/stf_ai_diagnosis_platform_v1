@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | V2 Harness Architecture for AI-Assisted Vehicle Diagnosis |
 | **Project** | STF AI Diagnosis Platform — Phase 1 Pilot |
-| **Status** | Draft v0.5 |
+| **Status** | Draft v0.6 |
 | **Owner** | Li-Ta Hsu |
 | **Contributors** | ML engineers; backend engineers; frontend engineers |
-| **Last updated** | 2026-04-10 (v0.5) |
+| **Last updated** | 2026-04-10 (v0.6) |
 | **Primary pilot stack** | FastAPI + AsyncOpenAI (OpenRouter) + Ollama + pgvector (PostgreSQL) + Next.js |
-| **New in this revision** | HARNESS-06 implemented: Graduated autonomy router. `autonomy.py` with `classify_complexity()` (Tier 0–3), `apply_overrides()` (`force_agent`/`force_oneshot`). `AutonomyDecision` dataclass with tier, strategy, reason, use_agent, suggested_max_iterations. Helpers: `_count_dtcs()`, `_max_severity()`, `_count_clues()`. Integrated into agent endpoint — `done` SSE event now includes real `autonomy_tier` and `autonomy_strategy`. `force_agent`/`force_oneshot` query params now functional. 44 unit tests. GitHub Issue #56. |
+| **New in this revision** | HARNESS-07 implemented: Frontend agent visualization. `AgentDiagnosisView.tsx`, `ToolCallCard.tsx`, `IterationProgress.tsx`. Agent SSE handler (`streamAgentSSE`) in `api.ts` with V2 event types. Tool invocations paired in UI state. Tier badge (color-coded 0–3), iteration counter with progress bar. Tier 0 fallback renders as V1 text stream. "Agent AI" sub-tab in AnalysisLayout (premium-only). i18n: ~25 strings in EN/zh-CN/zh-TW. GitHub Issue #57. |
 
 ### Revision history
 
@@ -25,6 +25,7 @@
 | v0.4 | 2026-04-10 | HARNESS-04: Context management. `context.py` with token estimator (`estimate_tokens`, char/4), tool-result truncation (`truncate_tool_result`), and auto-compaction (`maybe_compact`). `HarnessConfig.max_tool_result_tokens` (default 2000). Agent loop integrates Tier 1 (truncation per result) and Tier 2 (compaction between iterations). Emits `context_compact` event. 28 unit tests. GitHub Issue #54. |
 | v0.5 | 2026-04-10 | HARNESS-06: Graduated autonomy router. `autonomy.py` with `classify_complexity()` (deterministic Tier 0–3), `apply_overrides()` for `force_agent`/`force_oneshot` query params. `AutonomyDecision` dataclass. Helpers: `_count_dtcs()` (regex DTC extraction), `_max_severity()` (keyword-based severity grading), `_count_clues()` (tag/separator counting). Integrated into `router.py` — queries `DiagnosisHistory` for Tier 3 (follow-up), sets `max_iterations` from `suggested_max_iterations`, `done` SSE event includes `autonomy_tier` and `autonomy_strategy`. `force_oneshot` beats `force_agent` (safety-first). 44 unit tests. GitHub Issue #56. |
 | v0.5 | 2026-04-10 | HARNESS-05: API endpoint + SSE streaming. `harness/router.py` with `POST /v2/obd/{session_id}/diagnose/agent`. Wires `run_diagnosis_loop()` async generator to `StreamingResponse`. Auth via `get_current_user`, session ownership, cached diagnosis check, `force` re-diagnosis. Stores result in `DiagnosisHistory` with `provider="agent"`. SSE events: `status`, `tool_call`, `tool_result`, `hypothesis`, `done`, `error`, `cached`. 2KB padding prefix. Registered in `main.py`. 12 unit tests. GitHub Issue #55. |
+| v0.6 | 2026-04-10 | HARNESS-07: Frontend agent visualization. `AgentDiagnosisView.tsx` (main agent streaming view), `ToolCallCard.tsx` (collapsible tool card), `IterationProgress.tsx` (iteration counter + tier badge). `streamAgentSSE()` and `streamAgentDiagnosis()` in `api.ts`. Agent types in `types.ts`. "Agent AI" sub-tab in `AnalysisLayout.tsx`. i18n: `agent.*` namespace in 3 locales. V1 untouched. GitHub Issue #57. |
 
 ### Relationship to V1
 
@@ -736,33 +737,39 @@ Event payloads in `HarnessEventLog` contain tool inputs and outputs — both are
 
 ### 11.1 Agent diagnosis view
 
-The frontend SSE handler in the analysis page needs to recognize new event types:
+**Implemented in HARNESS-07** (GitHub Issue #57).
+
+The agent SSE handler (`streamAgentSSE()` in `api.ts`) recognizes V2 event types alongside V1 events. V1 `streamSSE()` is untouched.
 
 ```typescript
-// Existing V1 events (unchanged)
-case "status": showStatusMessage(data); break;
-case "token":  appendDiagnosisText(data); break;
-case "done":   finalizeDiagnosis(data); break;
-case "error":  showError(data); break;
+// V1 events (also used for Tier 0 fallback)
+case "token":       cb.onToken(parsed); break;
+case "status":      cb.onStatus(parsed); break;
 
-// New V2 events
-case "tool_call":   appendToolCall(data); break;
-case "tool_result": appendToolResult(data); break;
-case "hypothesis":  updateHypothesis(data); break;
+// V2 agent events
+case "tool_call":   cb.onToolCall(parsed); break;
+case "tool_result": cb.onToolResult(parsed); break;
+case "done":        cb.onDone(parsed); break;  // enriched with autonomy_tier, iterations, tools_called
+case "cached":      cb.onCached(parsed); break;
+case "error":       cb.onError(parsed); break;
 ```
 
-**New component**: `AgentDiagnosisView.tsx` renders tool-call/result pairs as collapsible cards during streaming. Each card shows:
-- Tool name and input parameters
-- Expandable result text
-- Duration (if available)
+**Components**:
 
-**New component**: `ToolCallCard.tsx` — a single tool-call/result card with expand/collapse.
+- `AgentDiagnosisView.tsx` — Main agent streaming view. Manages `ToolInvocation[]` state, pairs `tool_call` → `tool_result` events by name+iteration. Renders IterationProgress + ToolCallCard list + final diagnosis text. Tier 0 fallback: renders token-by-token text identical to V1.
+- `ToolCallCard.tsx` — Collapsible card per tool invocation. Header: tool name badge, input summary, status icon (spinner/check/X), duration. Body: full input JSON, output text (truncated at 500 chars with Show more/less). Left border: blue=calling, green=done, red=error.
+- `IterationProgress.tsx` — Iteration counter ("Iteration 2/10") + autonomy tier badge (color-coded: gray=Tier 0, blue=Tier 1, amber=Tier 2, purple=Tier 3) + strategy label.
+
+**Integration**: "Agent AI" sub-tab in the AI Diagnosis section of `AnalysisLayout.tsx`, visible when `premiumLlmEnabled` is true (agent endpoint requires premium API key).
+
+**i18n**: ~25 strings under `agent.*` namespace in EN, zh-CN, zh-TW locale files.
 
 ### 11.2 Graduated autonomy UI
 
-- Display the selected autonomy tier and reason (e.g., "Agent mode: 2 DTCs detected")
-- Toggle to force agent or one-shot mode
-- Show iteration counter during agent execution
+- Autonomy tier badge displayed via `IterationProgress.tsx` (Tier 0–3 with color coding)
+- Strategy label shown in muted text next to badge
+- Iteration counter with progress bar during streaming
+- `force_agent` and `force_oneshot` query params supported by `streamAgentDiagnosis()` API function (UI toggle deferred to future iteration)
 
 ## 12) Testing strategy
 
