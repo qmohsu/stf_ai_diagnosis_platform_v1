@@ -181,6 +181,14 @@ async def generate_agent_diagnosis(
             ),
         )
 
+        logger.info(
+            "agent_diagnosis_started",
+            session_id=str(session_id),
+            model=config.model,
+            max_iterations=config.max_iterations,
+            locale=locale,
+        )
+
         diagnosis_text = ""
         try:
             async for event in run_diagnosis_loop(
@@ -195,6 +203,20 @@ async def generate_agent_diagnosis(
                         "agent",
                         config.model,
                         diagnosis_text,
+                    )
+                    logger.info(
+                        "agent_diagnosis_completed",
+                        session_id=str(session_id),
+                        diagnosis_history_id=(
+                            str(history_id)
+                            if history_id else None
+                        ),
+                        iterations=event.payload.get(
+                            "iterations", 0,
+                        ),
+                        tools_called=event.payload.get(
+                            "tools_called", [],
+                        ),
                     )
                     yield _sse_event("done", {
                         "text": diagnosis_text,
