@@ -36,6 +36,21 @@ _DEFAULT_DECISION = AutonomyDecision(
 )
 
 
+@pytest.fixture()
+def patch_autonomy():
+    """Stub autonomy classifier so router tests don't depend
+    on classification logic (covered in test_autonomy.py).
+    """
+    with patch(
+        "app.harness.router.classify_complexity",
+        return_value=_DEFAULT_DECISION,
+    ), patch(
+        "app.harness.router.apply_overrides",
+        return_value=_DEFAULT_DECISION,
+    ):
+        yield
+
+
 # ── Constants ───────────────────────────────────────────────────────
 
 FAKE_SESSION_ID = uuid.UUID(
@@ -207,20 +222,9 @@ class TestAgentDiagnosisAuth:
 # ── Cache Tests ─────────────────────────────────────────────────────
 
 
+@pytest.mark.usefixtures("patch_autonomy")
 class TestAgentDiagnosisCached:
     """Cached diagnosis tests."""
-
-    @pytest.fixture(autouse=True)
-    def _patch_autonomy(self):
-        """Stub autonomy for tests that bypass cache."""
-        with patch(
-            "app.harness.router.classify_complexity",
-            return_value=_DEFAULT_DECISION,
-        ), patch(
-            "app.harness.router.apply_overrides",
-            return_value=_DEFAULT_DECISION,
-        ):
-            yield
 
     def test_cached_diagnosis_returned(
         self, client, app_ref,
@@ -297,22 +301,9 @@ class TestAgentDiagnosisCached:
 # ── Streaming Tests ─────────────────────────────────────────────────
 
 
+@pytest.mark.usefixtures("patch_autonomy")
 class TestAgentDiagnosisStream:
     """Agent loop SSE streaming tests."""
-
-    @pytest.fixture(autouse=True)
-    def _patch_autonomy(self):
-        """Stub autonomy classifier so router tests don't depend
-        on classification logic (covered in test_autonomy.py).
-        """
-        with patch(
-            "app.harness.router.classify_complexity",
-            return_value=_DEFAULT_DECISION,
-        ), patch(
-            "app.harness.router.apply_overrides",
-            return_value=_DEFAULT_DECISION,
-        ):
-            yield
 
     def _setup_db(self, app_ref):
         """Attach mock DB with valid session (no cached diagnosis)."""
@@ -522,20 +513,9 @@ class TestAgentDiagnosisStream:
 # ── Error Handling Tests ────────────────────────────────────────────
 
 
+@pytest.mark.usefixtures("patch_autonomy")
 class TestAgentDiagnosisErrors:
     """Error handling tests."""
-
-    @pytest.fixture(autouse=True)
-    def _patch_autonomy(self):
-        """Stub autonomy for error-path tests."""
-        with patch(
-            "app.harness.router.classify_complexity",
-            return_value=_DEFAULT_DECISION,
-        ), patch(
-            "app.harness.router.apply_overrides",
-            return_value=_DEFAULT_DECISION,
-        ):
-            yield
 
     def test_no_parsed_summary_returns_422(
         self, client, app_ref,
