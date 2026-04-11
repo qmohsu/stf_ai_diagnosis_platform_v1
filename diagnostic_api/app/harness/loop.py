@@ -242,14 +242,15 @@ async def run_diagnosis_loop(
         max_iterations=cfg.max_iterations,
     )
 
+    start_payload = {
+        "session_id": sid,
+        "model": cfg.model,
+        "max_iterations": cfg.max_iterations,
+    }
     await emit_event(
-        session_id, "session_start",
-        {
-            "session_id": sid,
-            "model": cfg.model,
-            "max_iterations": cfg.max_iterations,
-        },
+        session_id, "session_start", start_payload,
     )
+    yield HarnessEvent("session_start", start_payload)
 
     try:
         async with asyncio.timeout(cfg.timeout_seconds):
