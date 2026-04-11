@@ -102,8 +102,10 @@ class HarnessConfig:
         model: OpenRouter model ID (required, no default).
         max_iterations: Hard cap on ReAct iterations.
         max_tokens: Max tokens per LLM call.
-        compact_threshold: Character count that triggers context
-            compaction (placeholder for HARNESS-04).
+        max_tool_result_tokens: Per-tool-result token budget.
+            Results exceeding this are truncated with a marker.
+        compact_threshold: Estimated token count that triggers
+            conversation auto-compaction.
         timeout_seconds: Total wall-clock budget for the loop.
         temperature: LLM sampling temperature.
     """
@@ -111,6 +113,7 @@ class HarnessConfig:
     model: str
     max_iterations: int = 10
     max_tokens: int = 8192
+    max_tool_result_tokens: int = 2000
     compact_threshold: int = 60_000
     timeout_seconds: float = 120.0
     temperature: float = 0.3
