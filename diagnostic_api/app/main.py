@@ -204,6 +204,12 @@ app.include_router(
     obd_premium_v2.router, prefix="/v2/obd", tags=["OBD Premium"],
 )
 
+# --- Harness (Agent Diagnosis) ---
+from app.harness.router import router as harness_router
+app.include_router(
+    harness_router, prefix="/v2/obd", tags=["Harness"],
+)
+
 
 if __name__ == "__main__":
     import uvicorn

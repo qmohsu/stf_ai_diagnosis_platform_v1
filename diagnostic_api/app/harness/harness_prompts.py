@@ -84,9 +84,16 @@ Session ID (use this when calling tools): {session_id}\
 """
 
 
+_LOCALE_LABELS: Dict[str, str] = {
+    "zh-CN": "Chinese (Simplified)",
+    "zh-TW": "Chinese (Traditional)",
+}
+
+
 def build_user_message(
     session_id: str,
     parsed_summary: Dict[str, Any],
+    locale: str = "en",
 ) -> str:
     """Format the initial user message from a parsed summary.
 
@@ -94,11 +101,14 @@ def build_user_message(
         session_id: OBD analysis session UUID string.
         parsed_summary: The session's ``parsed_summary_payload``
             dict with keys like ``vehicle_id``, ``dtc_codes``, etc.
+        locale: Response language code (``"en"``, ``"zh-CN"``,
+            ``"zh-TW"``).  When not English, a language
+            instruction is appended.
 
     Returns:
         Formatted user message string.
     """
-    return _USER_MESSAGE_TEMPLATE.format(
+    msg = _USER_MESSAGE_TEMPLATE.format(
         vehicle_id=parsed_summary.get(
             "vehicle_id", "unknown"
         ),
@@ -115,3 +125,7 @@ def build_user_message(
         ),
         session_id=session_id,
     )
+    label = _LOCALE_LABELS.get(locale)
+    if label:
+        msg += f"\n\nPlease respond in {label}."
+    return msg
