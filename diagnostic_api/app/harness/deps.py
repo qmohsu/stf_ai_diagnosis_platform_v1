@@ -64,7 +64,14 @@ class LLMResponse:
 
 
 EventType = Literal[
-    "tool_call", "tool_result", "done", "error",
+    "session_start",
+    "tool_call",
+    "tool_result",
+    "hypothesis",
+    "context_compact",
+    "diagnosis_done",
+    "done",
+    "error",
 ]
 
 

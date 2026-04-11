@@ -26,6 +26,7 @@ from app.harness.harness_prompts import (
     build_system_prompt,
     build_user_message,
 )
+from app.harness.session_log import emit_event
 
 logger = structlog.get_logger(__name__)
 
@@ -241,6 +242,15 @@ async def run_diagnosis_loop(
         max_iterations=cfg.max_iterations,
     )
 
+    await emit_event(
+        session_id, "session_start",
+        {
+            "session_id": sid,
+            "model": cfg.model,
+            "max_iterations": cfg.max_iterations,
+        },
+    )
+
     try:
         async with asyncio.timeout(cfg.timeout_seconds):
             while iteration < cfg.max_iterations:
@@ -261,6 +271,15 @@ async def run_diagnosis_loop(
                         exc_info=exc,
                     )
                     safe_msg = _sanitize_llm_error(exc)
+                    await emit_event(
+                        session_id, "error",
+                        {
+                            "error_type": "llm_error",
+                            "message": safe_msg,
+                            "iteration": iteration,
+                        },
+                        iteration=iteration,
+                    )
                     yield HarnessEvent(
                         "error",
                         {
@@ -269,13 +288,23 @@ async def run_diagnosis_loop(
                             "iteration": iteration,
                         },
                     )
-                    partial = _extract_partial_diagnosis(
-                        messages,
+                    partial_text = (
+                        _extract_partial_diagnosis(messages)
+                    )
+                    await emit_event(
+                        session_id, "diagnosis_done",
+                        {
+                            "diagnosis": partial_text,
+                            "partial": True,
+                            "iterations": iteration,
+                            "tools_called": total_tool_calls,
+                        },
+                        iteration=iteration,
                     )
                     yield HarnessEvent(
                         "done",
                         {
-                            "diagnosis": partial,
+                            "diagnosis": partial_text,
                             "partial": True,
                             "iterations": iteration,
                             "tools_called": total_tool_calls,
@@ -296,6 +325,16 @@ async def run_diagnosis_loop(
                         session_id=sid,
                         iterations=iteration + 1,
                         tools_called=total_tool_calls,
+                    )
+                    await emit_event(
+                        session_id, "diagnosis_done",
+                        {
+                            "diagnosis": diagnosis,
+                            "partial": False,
+                            "iterations": iteration + 1,
+                            "tools_called": total_tool_calls,
+                        },
+                        iteration=iteration,
                     )
                     yield HarnessEvent(
                         "done",
@@ -318,6 +357,15 @@ async def run_diagnosis_loop(
                         tc.arguments,
                     )
 
+                    await emit_event(
+                        session_id, "tool_call",
+                        {
+                            "name": tc.name,
+                            "input": args,
+                            "tool_call_id": tc.id,
+                        },
+                        iteration=iteration,
+                    )
                     yield HarnessEvent(
                         "tool_call",
                         {
@@ -335,6 +383,16 @@ async def run_diagnosis_loop(
                     )
                     total_tool_calls.append(tc.name)
 
+                    await emit_event(
+                        session_id, "tool_result",
+                        {
+                            "name": tc.name,
+                            "output": result.output,
+                            "duration_ms": result.duration_ms,
+                            "is_error": result.is_error,
+                        },
+                        iteration=iteration,
+                    )
                     yield HarnessEvent(
                         "tool_result",
                         {
@@ -361,6 +419,18 @@ async def run_diagnosis_loop(
             iteration=iteration,
             timeout_seconds=cfg.timeout_seconds,
         )
+        await emit_event(
+            session_id, "error",
+            {
+                "error_type": "timeout",
+                "message": (
+                    f"Agent loop timed out after "
+                    f"{cfg.timeout_seconds}s"
+                ),
+                "iteration": iteration,
+            },
+            iteration=iteration,
+        )
         yield HarnessEvent(
             "error",
             {
@@ -372,11 +442,21 @@ async def run_diagnosis_loop(
                 "iteration": iteration,
             },
         )
-        partial = _extract_partial_diagnosis(messages)
+        partial_text = _extract_partial_diagnosis(messages)
+        await emit_event(
+            session_id, "diagnosis_done",
+            {
+                "diagnosis": partial_text,
+                "partial": True,
+                "iterations": iteration,
+                "tools_called": total_tool_calls,
+            },
+            iteration=iteration,
+        )
         yield HarnessEvent(
             "done",
             {
-                "diagnosis": partial,
+                "diagnosis": partial_text,
                 "partial": True,
                 "iterations": iteration,
                 "tools_called": total_tool_calls,
@@ -390,11 +470,21 @@ async def run_diagnosis_loop(
         session_id=sid,
         max_iterations=cfg.max_iterations,
     )
-    partial = _extract_partial_diagnosis(messages)
+    partial_text = _extract_partial_diagnosis(messages)
+    await emit_event(
+        session_id, "diagnosis_done",
+        {
+            "diagnosis": partial_text,
+            "partial": True,
+            "iterations": cfg.max_iterations,
+            "tools_called": total_tool_calls,
+        },
+        iteration=cfg.max_iterations,
+    )
     yield HarnessEvent(
         "done",
         {
-            "diagnosis": partial,
+            "diagnosis": partial_text,
             "partial": True,
             "iterations": cfg.max_iterations,
             "tools_called": total_tool_calls,

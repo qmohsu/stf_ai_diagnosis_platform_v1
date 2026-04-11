@@ -9,7 +9,8 @@ from __future__ import annotations
 import asyncio
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any, AsyncIterator, Dict, List
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -36,6 +37,20 @@ from app.harness.tool_registry import (
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────
+
+
+@pytest.fixture(autouse=True)
+def _mock_emit_event():
+    """Patch emit_event to a no-op for all loop tests.
+
+    The loop tests focus on event yields and LLM interaction,
+    not database persistence (tested in test_session_log.py).
+    """
+    with patch(
+        "app.harness.loop.emit_event",
+        new_callable=AsyncMock,
+    ):
+        yield
 
 
 FAKE_SESSION_ID = uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")

@@ -17,6 +17,7 @@ from app.models_db import (
     User,
     OBDAnalysisSession, OBDSummaryFeedback, OBDDetailedFeedback, OBDRAGFeedback,
     OBDAIDiagnosisFeedback, OBDPremiumDiagnosisFeedback, DiagnosisHistory,
+    HarnessEventLog,
     RagChunk,
 )
 

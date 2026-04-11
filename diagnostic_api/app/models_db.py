@@ -13,6 +13,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -220,7 +221,7 @@ class DiagnosisHistory(Base):
     __tablename__ = "diagnosis_history"
     __table_args__ = (
         CheckConstraint(
-            "provider IN ('local', 'premium')",
+            "provider IN ('local', 'premium', 'agent')",
             name="ck_diagnosis_history_provider",
         ),
     )
@@ -245,6 +246,43 @@ class DiagnosisHistory(Base):
         "OBDAnalysisSession",
         back_populates="diagnosis_history",
     )
+
+
+class HarnessEventLog(Base):
+    """Append-only event log for agent diagnosis sessions.
+
+    Every tool call, result, and reasoning step during an agent
+    diagnosis session is persisted here for auditability, debugging,
+    and future training data extraction.  No UPDATE or DELETE
+    operations should ever be performed on this table.
+    """
+
+    __tablename__ = "harness_event_log"
+    __table_args__ = (
+        Index(
+            "ix_harness_event_session_time",
+            "session_id",
+            "created_at",
+        ),
+    )
+
+    id = Column(
+        UUID(as_uuid=True), primary_key=True, default=uuid4,
+    )
+    session_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "obd_analysis_sessions.id", ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
+    event_type = Column(
+        String(50), nullable=False, index=True,
+    )
+    iteration = Column(Integer, nullable=False, default=0)
+    payload = Column(JSONB, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class RagChunk(Base):

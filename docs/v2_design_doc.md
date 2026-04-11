@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | V2 Harness Architecture for AI-Assisted Vehicle Diagnosis |
 | **Project** | STF AI Diagnosis Platform — Phase 1 Pilot |
-| **Status** | Draft v0.2 |
+| **Status** | Draft v0.3 |
 | **Owner** | Li-Ta Hsu |
 | **Contributors** | ML engineers; backend engineers; frontend engineers |
-| **Last updated** | 2026-04-10 (v0.2) |
+| **Last updated** | 2026-04-10 (v0.3) |
 | **Primary pilot stack** | FastAPI + AsyncOpenAI (OpenRouter) + Ollama + pgvector (PostgreSQL) + Next.js |
-| **New in this revision** | HARNESS-02 implemented: core agent loop (`run_diagnosis_loop` async generator), `HarnessDeps` DI container with `LLMClient` protocol, `OpenAILLMClient` adapter, `HarnessConfig`, dynamic system prompt. GitHub Issue #52. |
+| **New in this revision** | HARNESS-03 implemented: `HarnessEventLog` table, `session_log.py` module with `emit_event()`/`get_session_events()`, event emission integrated into agent loop, `DiagnosisHistory.provider` CHECK accepts `"agent"`, Alembic migration `p9q0`. GitHub Issue #53. |
 
 ### Revision history
 
@@ -21,6 +21,7 @@
 |---------|------|---------|
 | v0.1 | 2026-04-10 | Initial draft. Defines harness architecture for agent-driven diagnosis. 5-component model (Tools, Session, Harness, Sandbox, Orchestration). 7 diagnostic tools (4 wrapped from V1 + 3 new). Graduated autonomy with 4 tiers. New API endpoint, SSE event types, HarnessEventLog table. GitHub Issue #26. |
 | v0.2 | 2026-04-10 | HARNESS-02: Core agent loop implemented. `run_diagnosis_loop()` async generator with ReAct cycle, `HarnessDeps` DI, `LLMClient` protocol + `OpenAILLMClient` adapter, `HarnessConfig`, dynamic system prompt assembly. 19 unit tests. GitHub Issue #52. |
+| v0.3 | 2026-04-10 | HARNESS-03: Session event log. `HarnessEventLog` SQLAlchemy model + Alembic migration `p9q0`. `session_log.py` with `emit_event()`/`get_session_events()` (async, thread-pooled). Agent loop emits `session_start`, `tool_call`, `tool_result`, `diagnosis_done`, `error` events. `DiagnosisHistory.provider` CHECK now accepts `"agent"`. `EventType` Literal extended with new event types. 9 unit tests. GitHub Issue #53. |
 
 ### Relationship to V1
 
