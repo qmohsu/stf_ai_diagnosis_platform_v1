@@ -329,6 +329,22 @@ class TestSummarizeIteration:
         line = _summarize_iteration(1, msgs, [0, 1])
         assert "..." in line
 
+    def test_multi_tool_iteration_shows_all(self) -> None:
+        """Multiple tool calls in one iteration show all results."""
+        msgs = [
+            _assistant_tool_msg(
+                ("tc1", "detect_anomalies", "{}"),
+                ("tc2", "search_manual", "{}"),
+            ),
+            _tool_msg("tc1", "RPM anomaly found"),
+            _tool_msg("tc2", "Manual section 3.2"),
+        ]
+        line = _summarize_iteration(1, msgs, [0, 1, 2])
+        assert "detect_anomalies" in line
+        assert "search_manual" in line
+        assert "RPM anomaly" in line
+        assert "Manual section" in line
+
 
 # ── Tests: auto-compaction ──────────────────────────────────────────
 

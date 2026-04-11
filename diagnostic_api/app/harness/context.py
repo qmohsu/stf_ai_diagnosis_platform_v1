@@ -166,6 +166,9 @@ def _summarize_iteration(
 ) -> str:
     """Build a one-line summary of a single iteration.
 
+    When multiple tools are called in one iteration, each tool's
+    name and a short result snippet are included.
+
     Args:
         iteration_num: 1-based iteration number.
         messages: Full conversation history.
@@ -173,28 +176,41 @@ def _summarize_iteration(
 
     Returns:
         Summary string like ``"Iter 1: detect_anomalies ->
-        [HIGH] RPM range_sh..."``.
+        [HIGH] RPM..., search_manual -> [0.87] MWS..."``.
     """
     assistant_msg = messages[indices[0]]
-    tool_names: List[str] = []
-    for tc in assistant_msg.get("tool_calls", []):
+    tool_calls = assistant_msg.get("tool_calls", [])
+
+    # Map tool_call_id -> tool name for correlation.
+    id_to_name: Dict[str, str] = {}
+    for tc in tool_calls:
         fn = tc.get("function", {})
-        tool_names.append(fn.get("name", "unknown"))
+        id_to_name[tc.get("id", "")] = fn.get("name", "unknown")
 
-    snippet = ""
+    # Build per-tool summaries from tool result messages.
+    parts: List[str] = []
     for idx in indices[1:]:
-        content = messages[idx].get("content", "")
-        if content:
-            snippet = content[:_SUMMARY_SNIPPET_LEN]
-            break
-
-    names_str = ", ".join(tool_names)
-    line = f"- Iter {iteration_num}: {names_str}"
-    if snippet:
-        if len(snippet) == _SUMMARY_SNIPPET_LEN:
+        msg = messages[idx]
+        tc_id = msg.get("tool_call_id", "")
+        name = id_to_name.get(tc_id, "unknown")
+        content = msg.get("content", "")
+        snippet = content[:_SUMMARY_SNIPPET_LEN]
+        if len(content) > _SUMMARY_SNIPPET_LEN:
             snippet += "..."
-        line += f" -> {snippet}"
-    return line
+        if snippet:
+            parts.append(f"{name} -> {snippet}")
+        else:
+            parts.append(name)
+
+    # Fallback: if no tool results, list tool names only.
+    if not parts:
+        names = [
+            fn.get("function", {}).get("name", "unknown")
+            for fn in tool_calls
+        ]
+        parts = names
+
+    return f"- Iter {iteration_num}: {', '.join(parts)}"
 
 
 def maybe_compact(
