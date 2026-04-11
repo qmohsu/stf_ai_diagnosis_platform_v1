@@ -69,6 +69,7 @@
     "history": "历史",
     "localLlm": "本地 LLM",
     "cloudLlm": "云端 LLM (OpenRouter)",
+    "agentLlm": "Agent AI",
     "localModel": "本地模型",
     "cloudModel": "云端模型",
     "feedback": "反馈"
@@ -291,6 +292,38 @@
     "loadFailed": "加载反馈失败",
     "generatedAt": "生成时间: {{time}}",
     "audioDuration": "{{seconds}} 秒录音"
+  },
+  "agent": {
+    "title": "Agent AI 诊断结果",
+    "description": "运行 AI Agent 使用诊断工具迭代分析您的 OBD 数据。Agent 自主决定调用哪些工具以及执行多少轮迭代。",
+    "generate": "生成 Agent 诊断",
+    "connecting": "正在连接 Agent...",
+    "generating": "Agent 正在分析中...",
+    "regenerate": "重新生成 Agent 诊断",
+    "regenerateShort": "重新生成",
+    "generateFailed": "生成 Agent 诊断失败",
+    "iteration": "迭代 {{current}}",
+    "iterationOf": "迭代 {{current}}/{{max}}",
+    "iterationsCompleted": "完成 {{count}} 轮迭代",
+    "tier": "Tier {{tier}}",
+    "strategy": "策略：{{strategy}}",
+    "toolCall": "正在调用 {{name}}...",
+    "toolResult": "{{name}} 完成",
+    "toolResultError": "{{name}} 失败",
+    "toolDuration": "{{ms}}ms",
+    "toolInput": "输入",
+    "toolOutput": "输出",
+    "showMore": "显示更多",
+    "showLess": "收起",
+    "expandTool": "展开工具详情",
+    "collapseTool": "收起工具详情",
+    "partialDiagnosis": "部分诊断（Agent 达到迭代上限）",
+    "tierLabel": {
+      "0": "简单（一次生成）",
+      "1": "Agent 循环",
+      "2": "完整 Agent",
+      "3": "Agent + 病历"
+    }
   },
   "sessions": {
     "title": "我的会话",

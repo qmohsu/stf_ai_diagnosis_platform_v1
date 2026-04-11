@@ -69,6 +69,7 @@
     "history": "History",
     "localLlm": "Local LLM",
     "cloudLlm": "Cloud LLM (OpenRouter)",
+    "agentLlm": "Agent AI",
     "localModel": "Local Model",
     "cloudModel": "Cloud Model",
     "feedback": "Feedback"
@@ -291,6 +292,38 @@
     "loadFailed": "Failed to load feedback",
     "generatedAt": "Generated: {{time}}",
     "audioDuration": "{{seconds}}s audio"
+  },
+  "agent": {
+    "title": "Agent AI Diagnostic Result",
+    "description": "Run an AI agent that iteratively investigates your OBD data using diagnostic tools. The agent autonomously decides which tools to call and how many iterations to run.",
+    "generate": "Generate Agent Diagnosis",
+    "connecting": "Connecting to agent...",
+    "generating": "Agent is investigating...",
+    "regenerate": "Regenerate Agent Diagnosis",
+    "regenerateShort": "Regenerate",
+    "generateFailed": "Failed to generate agent diagnosis",
+    "iteration": "Iteration {{current}}",
+    "iterationOf": "Iteration {{current}}/{{max}}",
+    "iterationsCompleted": "{{count}} iterations completed",
+    "tier": "Tier {{tier}}",
+    "strategy": "Strategy: {{strategy}}",
+    "toolCall": "Calling {{name}}...",
+    "toolResult": "{{name}} completed",
+    "toolResultError": "{{name}} failed",
+    "toolDuration": "{{ms}}ms",
+    "toolInput": "Input",
+    "toolOutput": "Output",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "expandTool": "Expand tool details",
+    "collapseTool": "Collapse tool details",
+    "partialDiagnosis": "Partial diagnosis (agent iteration limit reached)",
+    "tierLabel": {
+      "0": "Simple (One-shot)",
+      "1": "Agent Loop",
+      "2": "Full Agent",
+      "3": "Agent + History"
+    }
   },
   "sessions": {
     "title": "My Sessions",

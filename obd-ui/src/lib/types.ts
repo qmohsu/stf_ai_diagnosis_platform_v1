@@ -172,3 +172,55 @@ export interface SessionListResponse {
   items: SessionListItem[];
   total: number;
 }
+
+// ── Agent SSE event payloads ──────────────────────────────────
+
+export interface AgentToolCallEvent {
+  name: string;
+  input: Record<string, unknown>;
+  iteration: number;
+  tool_call_id: string;
+}
+
+export interface AgentToolResultEvent {
+  name: string;
+  output: string;
+  duration_ms: number;
+  is_error: boolean;
+  iteration: number;
+}
+
+export interface AgentDoneEvent {
+  text: string;
+  diagnosis_history_id: string | null;
+  iterations: number;
+  tools_called: string[];
+  autonomy_tier: number;
+  autonomy_strategy: string;
+  partial?: boolean;
+}
+
+export interface AgentCachedEvent {
+  text: string;
+  diagnosis_history_id: string | null;
+}
+
+export interface AgentErrorEvent {
+  error_type: string;
+  message: string;
+  iteration?: number;
+}
+
+/** Paired tool call + result for UI rendering. */
+export interface ToolInvocation {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+  iteration: number;
+  result?: {
+    output: string;
+    duration_ms: number;
+    is_error: boolean;
+  };
+  status: "calling" | "done" | "error";
+}

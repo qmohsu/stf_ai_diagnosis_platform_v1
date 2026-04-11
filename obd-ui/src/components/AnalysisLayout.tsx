@@ -9,6 +9,7 @@ import { SummaryView } from "@/components/SummaryView";
 import { DetailedView } from "@/components/DetailedView";
 import { RAGView } from "@/components/RAGView";
 import { AIDiagnosisView } from "@/components/AIDiagnosisView";
+import { AgentDiagnosisView } from "@/components/AgentDiagnosisView";
 import { DiagnosisHistoryView } from "@/components/DiagnosisHistoryView";
 import { FeedbackHistoryView } from "@/components/FeedbackHistoryView";
 import { FeedbackForm } from "@/components/FeedbackForm";
@@ -41,6 +42,8 @@ export function AnalysisLayout({
   const [premiumDiagnosisText, setPremiumDiagnosisText] = useState<string | null>(initialPremiumDiagnosisText);
   const [diagnosisHistoryId, setDiagnosisHistoryId] = useState<string | null>(initialDiagnosisHistoryId ?? null);
   const [premiumDiagnosisHistoryId, setPremiumDiagnosisHistoryId] = useState<string | null>(initialPremiumDiagnosisHistoryId ?? null);
+  const [agentDiagnosisText, setAgentDiagnosisText] = useState<string | null>(null);
+  const [agentDiagnosisHistoryId, setAgentDiagnosisHistoryId] = useState<string | null>(null);
   const [premiumModels, setPremiumModels] = useState<string[]>([]);
   const [defaultPremiumModel, setDefaultPremiumModel] = useState<string>("");
   const [activeTab, setActiveTab] = useState("summary");
@@ -116,6 +119,7 @@ export function AnalysisLayout({
               <TabsList className="mb-4">
                 <TabsTrigger value="local">{t("tabs.localLlm")}</TabsTrigger>
                 <TabsTrigger value="premium">{t("tabs.cloudLlm")}</TabsTrigger>
+                <TabsTrigger value="agent">{t("tabs.agentLlm")}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="local" forceMount className="space-y-6 data-[state=inactive]:hidden">
@@ -140,6 +144,16 @@ export function AnalysisLayout({
                   defaultModel={defaultPremiumModel}
                 />
                 <FeedbackForm sessionId={sessionId} feedbackTab="premium_diagnosis" diagnosisHistoryId={premiumDiagnosisHistoryId} />
+              </TabsContent>
+
+              <TabsContent value="agent" forceMount className="space-y-6 data-[state=inactive]:hidden">
+                <AgentDiagnosisView
+                  sessionId={sessionId}
+                  initialDiagnosisText={agentDiagnosisText}
+                  onDiagnosisGenerated={setAgentDiagnosisText}
+                  onDiagnosisHistoryIdChanged={setAgentDiagnosisHistoryId}
+                />
+                <FeedbackForm sessionId={sessionId} feedbackTab="ai_diagnosis" diagnosisHistoryId={agentDiagnosisHistoryId} />
               </TabsContent>
             </Tabs>
           ) : (

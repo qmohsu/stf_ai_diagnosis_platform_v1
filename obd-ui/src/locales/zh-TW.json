@@ -69,6 +69,7 @@
     "history": "歷史",
     "localLlm": "本機 LLM",
     "cloudLlm": "雲端 LLM (OpenRouter)",
+    "agentLlm": "Agent AI",
     "localModel": "本機模型",
     "cloudModel": "雲端模型",
     "feedback": "回饋"
@@ -291,6 +292,38 @@
     "loadFailed": "載入回饋失敗",
     "generatedAt": "生成時間: {{time}}",
     "audioDuration": "{{seconds}} 秒錄音"
+  },
+  "agent": {
+    "title": "Agent AI 診斷結果",
+    "description": "執行 AI Agent 使用診斷工具迭代分析您的 OBD 資料。Agent 自主決定呼叫哪些工具以及執行多少輪迭代。",
+    "generate": "產生 Agent 診斷",
+    "connecting": "正在連線 Agent...",
+    "generating": "Agent 正在分析中...",
+    "regenerate": "重新產生 Agent 診斷",
+    "regenerateShort": "重新產生",
+    "generateFailed": "產生 Agent 診斷失敗",
+    "iteration": "迭代 {{current}}",
+    "iterationOf": "迭代 {{current}}/{{max}}",
+    "iterationsCompleted": "完成 {{count}} 輪迭代",
+    "tier": "Tier {{tier}}",
+    "strategy": "策略：{{strategy}}",
+    "toolCall": "正在呼叫 {{name}}...",
+    "toolResult": "{{name}} 完成",
+    "toolResultError": "{{name}} 失敗",
+    "toolDuration": "{{ms}}ms",
+    "toolInput": "輸入",
+    "toolOutput": "輸出",
+    "showMore": "顯示更多",
+    "showLess": "收起",
+    "expandTool": "展開工具詳情",
+    "collapseTool": "收起工具詳情",
+    "partialDiagnosis": "部分診斷（Agent 達到迭代上限）",
+    "tierLabel": {
+      "0": "簡單（一次產生）",
+      "1": "Agent 循環",
+      "2": "完整 Agent",
+      "3": "Agent + 病歷"
+    }
   },
   "sessions": {
     "title": "我的工作階段",
