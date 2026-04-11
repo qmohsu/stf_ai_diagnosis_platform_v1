@@ -64,7 +64,14 @@ class LLMResponse:
 
 
 EventType = Literal[
-    "tool_call", "tool_result", "done", "error",
+    "session_start",
+    "tool_call",
+    "tool_result",
+    "hypothesis",
+    "context_compact",
+    "diagnosis_done",
+    "done",
+    "error",
 ]
 
 
@@ -73,8 +80,10 @@ class HarnessEvent:
     """Typed event yielded by the agent loop.
 
     Attributes:
-        event_type: One of ``tool_call``, ``tool_result``,
-            ``done``, or ``error``.
+        event_type: One of the ``EventType`` literals
+            (e.g. ``session_start``, ``tool_call``,
+            ``tool_result``, ``diagnosis_done``, ``done``,
+            ``error``).
         payload: Event-specific data dict.
     """
 

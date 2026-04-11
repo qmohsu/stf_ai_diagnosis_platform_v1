@@ -9,7 +9,8 @@ from __future__ import annotations
 import asyncio
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any, AsyncIterator, Dict, List
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -36,6 +37,20 @@ from app.harness.tool_registry import (
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────
+
+
+@pytest.fixture(autouse=True)
+def _mock_emit_event():
+    """Patch emit_event to a no-op for all loop tests.
+
+    The loop tests focus on event yields and LLM interaction,
+    not database persistence (tested in test_session_log.py).
+    """
+    with patch(
+        "app.harness.loop.emit_event",
+        new_callable=AsyncMock,
+    ):
+        yield
 
 
 FAKE_SESSION_ID = uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
@@ -319,8 +334,8 @@ class TestGoldenPath:
     async def test_three_tools_then_diagnosis(self) -> None:
         """LLM calls 3 tools then stops with a diagnosis.
 
-        Verifies correct event sequence: 3x (tool_call, tool_result)
-        then 1x done.
+        Verifies correct event sequence: session_start,
+        3x (tool_call, tool_result), then 1x done.
         """
         sid = '{"session_id": "aaa"}'
         client = MockLLMClient(
@@ -353,6 +368,7 @@ class TestGoldenPath:
 
         types = [e.event_type for e in events]
         assert types == [
+            "session_start",
             "tool_call", "tool_result",
             "tool_call", "tool_result",
             "tool_call", "tool_result",
@@ -369,7 +385,7 @@ class TestGoldenPath:
     async def test_immediate_diagnosis_no_tools(self) -> None:
         """LLM returns diagnosis on first call without tools.
 
-        Verifies single done event.
+        Verifies session_start then done event.
         """
         client = MockLLMClient(
             [_stop_response("Simple diagnosis.")]
@@ -384,10 +400,11 @@ class TestGoldenPath:
             )
         )
 
-        assert len(events) == 1
-        assert events[0].event_type == "done"
-        assert events[0].payload["partial"] is False
-        assert events[0].payload["iterations"] == 1
+        assert len(events) == 2
+        assert events[0].event_type == "session_start"
+        assert events[1].event_type == "done"
+        assert events[1].payload["partial"] is False
+        assert events[1].payload["iterations"] == 1
 
     @pytest.mark.asyncio
     async def test_multiple_tools_in_one_call(self) -> None:
@@ -418,6 +435,7 @@ class TestGoldenPath:
 
         types = [e.event_type for e in events]
         assert types == [
+            "session_start",
             "tool_call", "tool_result",
             "tool_call", "tool_result",
             "done",
@@ -463,17 +481,18 @@ class TestErrorHandling:
 
         types = [e.event_type for e in events]
         assert types == [
+            "session_start",
             "tool_call", "tool_result", "done",
         ]
 
-        tool_result = events[1]
+        tool_result = events[2]
         assert tool_result.payload["is_error"] is True
         assert (
             "unknown tool" in tool_result.payload["output"].lower()
         )
 
-        done = events[-1]
-        assert "Recovered" in done.payload["diagnosis"]
+        done_ev = events[-1]
+        assert "Recovered" in done_ev.payload["diagnosis"]
 
     @pytest.mark.asyncio
     async def test_tool_execution_error_continues(
@@ -592,13 +611,15 @@ class TestErrorHandling:
         )
 
         types = [e.event_type for e in events]
-        assert types == ["error", "done"]
-        assert events[0].payload["error_type"] == "llm_error"
+        assert types == [
+            "session_start", "error", "done",
+        ]
+        assert events[1].payload["error_type"] == "llm_error"
         # Error message is sanitised (class name + truncated msg).
-        msg = events[0].payload["message"]
+        msg = events[1].payload["message"]
         assert "RuntimeError" in msg
         assert "API unreachable" in msg
-        assert events[1].payload["partial"] is True
+        assert events[2].payload["partial"] is True
 
 
 class TestBudgetLimits:
@@ -661,6 +682,7 @@ class TestBudgetLimits:
         )
 
         types = [e.event_type for e in events]
+        assert types[0] == "session_start"
         assert "error" in types
         error_event = [
             e for e in events if e.event_type == "error"
