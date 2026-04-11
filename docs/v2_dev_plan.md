@@ -201,10 +201,11 @@ Acceptance Criteria:
 
 ---
 
-#### HARNESS‑03 — Session Event Log
+#### HARNESS‑03 — Session Event Log ✅ DONE
 
 Owner: AI Application Engineer
 Depends on: HARNESS-02
+Status: **DONE** — GitHub Issue #53
 
 PROMPT (task ticket):
 Title: HARNESS‑03 Create HarnessEventLog table and session event persistence
