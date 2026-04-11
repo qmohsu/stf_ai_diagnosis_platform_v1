@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | V2 Harness Architecture for AI-Assisted Vehicle Diagnosis |
 | **Project** | STF AI Diagnosis Platform — Phase 1 Pilot |
-| **Status** | Draft v0.3 |
+| **Status** | Draft v0.4 |
 | **Owner** | Li-Ta Hsu |
 | **Contributors** | ML engineers; backend engineers; frontend engineers |
-| **Last updated** | 2026-04-10 (v0.3) |
+| **Last updated** | 2026-04-10 (v0.4) |
 | **Primary pilot stack** | FastAPI + AsyncOpenAI (OpenRouter) + Ollama + pgvector (PostgreSQL) + Next.js |
-| **New in this revision** | HARNESS-03 implemented: `HarnessEventLog` table, `session_log.py` module with `emit_event()`/`get_session_events()`, event emission integrated into agent loop, `DiagnosisHistory.provider` CHECK accepts `"agent"`, Alembic migration `p9q0`. GitHub Issue #53. |
+| **New in this revision** | HARNESS-04 implemented: 2-tier context management. `context.py` with `estimate_tokens()` (char/4 approximation), `truncate_tool_result()` (Tier 1), `maybe_compact()` (Tier 2 auto-compaction). `HarnessConfig` gains `max_tool_result_tokens` (default 2000). Agent loop integrates both tiers — truncation per tool result, compaction between iterations. `context_compact` event emitted on compaction. 28 unit tests. GitHub Issue #54. |
 
 ### Revision history
 
@@ -22,6 +22,7 @@
 | v0.1 | 2026-04-10 | Initial draft. Defines harness architecture for agent-driven diagnosis. 5-component model (Tools, Session, Harness, Sandbox, Orchestration). 7 diagnostic tools (4 wrapped from V1 + 3 new). Graduated autonomy with 4 tiers. New API endpoint, SSE event types, HarnessEventLog table. GitHub Issue #26. |
 | v0.2 | 2026-04-10 | HARNESS-02: Core agent loop implemented. `run_diagnosis_loop()` async generator with ReAct cycle, `HarnessDeps` DI, `LLMClient` protocol + `OpenAILLMClient` adapter, `HarnessConfig`, dynamic system prompt assembly. 19 unit tests. GitHub Issue #52. |
 | v0.3 | 2026-04-10 | HARNESS-03: Session event log. `HarnessEventLog` SQLAlchemy model + Alembic migration `p9q0`. `session_log.py` with `emit_event()`/`get_session_events()` (async, thread-pooled). Agent loop emits `session_start`, `tool_call`, `tool_result`, `diagnosis_done`, `error` events. `DiagnosisHistory.provider` CHECK now accepts `"agent"`. `EventType` Literal extended with new event types. 9 unit tests. GitHub Issue #53. |
+| v0.4 | 2026-04-10 | HARNESS-04: Context management. `context.py` with token estimator (`estimate_tokens`, char/4), tool-result truncation (`truncate_tool_result`), and auto-compaction (`maybe_compact`). `HarnessConfig.max_tool_result_tokens` (default 2000). Agent loop integrates Tier 1 (truncation per result) and Tier 2 (compaction between iterations). Emits `context_compact` event. 28 unit tests. GitHub Issue #54. |
 
 ### Relationship to V1
 
@@ -537,18 +538,22 @@ Message 8: tool       — tool_result: "[0.87] MWS150-A#3.2 — Ignition ..."
 Message 9: assistant  — "Based on my investigation, the diagnosis is: ..."
 ```
 
-**Token budget**: Tracked per-iteration. The budget is the model's context window minus a reserved buffer for the system prompt and final response.
+**Token budget**: Tracked per-iteration via `estimate_tokens()` (character-based: `len(text) // 4`). Fast enough to call every iteration (~20% accuracy vs real tokenizers for English diagnostic text). `estimate_messages_tokens()` sums content + tool-call arguments + 4 tokens overhead per message.
 
 ### 7.2 Compaction strategy
 
-Two-tier compaction to prevent context overflow:
+Two-tier compaction to prevent context overflow. **Implementation**: `diagnostic_api/app/harness/context.py`.
 
-**Tier 1 — Tool result truncation**: If a single tool result exceeds `max_tool_result_tokens` (default: 2000 tokens), truncate and append `"[truncated — {total_chars} chars total]"`.
+**Tier 1 — Tool result truncation** (`truncate_tool_result()`): Applied to every tool result in the agent loop after `ToolRegistry.execute()`. If a result exceeds `HarnessConfig.max_tool_result_tokens` (default: 2000, ~8000 chars), truncate at the character boundary and append `"\n[truncated — {total_chars} chars total]"`.
 
-**Tier 2 — Auto-compact**: When estimated total tokens exceed `compact_threshold` (default: 80% of context window), compress older tool results:
-- Keep the system prompt and initial user message intact
-- Replace old tool_call/tool_result pairs with a summary: `"[Compacted] Iterations 1-3: Examined PID statistics (normal), detected RPM anomaly (high severity), retrieved 3 manual sections on ignition system."`
-- Keep the most recent 2 iterations uncompacted
+**Tier 2 — Auto-compact** (`maybe_compact()`): Called between iterations in the agent loop after all tool results are appended. When `estimate_messages_tokens(messages)` exceeds `HarnessConfig.compact_threshold` (default: 60000 tokens):
+1. Identify iteration boundaries (each = 1 assistant msg with `tool_calls` + subsequent tool msgs)
+2. Keep the system prompt and initial user message intact (messages[0:2])
+3. Keep the most recent 2 iterations uncompacted (`keep_recent=2`)
+4. Replace older iterations with a single summary: `"[Compacted] Prior iterations summary:\n- Iter 1: tool_name -> first 80 chars of result..."`
+5. Emit `context_compact` event with `before_tokens`, `after_tokens`, `compacted_iterations`, `kept_iterations`, `strategy`
+
+If there are not enough iterations to compact (≤ `keep_recent`), compaction is skipped.
 
 ### 7.3 System prompt design
 

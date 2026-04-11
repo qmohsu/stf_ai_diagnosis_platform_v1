@@ -246,10 +246,11 @@ Acceptance Criteria:
 
 ---
 
-#### HARNESS‑04 — Context Management
+#### HARNESS‑04 — Context Management ✅
 
 Owner: AI Application Engineer
 Depends on: HARNESS-02
+Status: **DONE** — GitHub Issue #54
 
 PROMPT (task ticket):
 Title: HARNESS‑04 Implement token budget tracking and 2-tier context compaction
@@ -521,3 +522,4 @@ Scope: Use stored expert feedback to build a case library. Tool retrieves past c
 | 2026-04-10 | v1.1 | HARNESS-01 implemented (GitHub Issue #51). Tool registry (`ToolRegistry`, `ToolDefinition`) with dispatch map and 7 diagnostic tool wrappers. OBD tools read from `result_payload` JSONB (no re-run). 27 unit tests passing. Files: `harness/tool_registry.py`, `harness_tools/{obd,rag,history}_tools.py`. |
 | 2026-04-10 | v1.2 | HARNESS-02 implemented (GitHub Issue #52). Core agent loop (`run_diagnosis_loop`) as async generator with DI. `HarnessDeps` container with `LLMClient` protocol, `OpenAILLMClient` adapter, `HarnessConfig`. Dynamic system prompt via `harness_prompts.py`. ReAct cycle with max-iteration guard, timeout handling, partial diagnosis extraction. 19 unit tests (golden-path, error recovery, budget limits, message history). Files: `harness/{deps,loop,harness_prompts}.py`, `tests/harness/test_loop.py`. |
 | 2026-04-10 | v1.3 | HARNESS-03 implemented (GitHub Issue #53). `HarnessEventLog` model in `models_db.py`. `session_log.py` with `emit_event()`/`get_session_events()` (async via `run_in_executor`). Agent loop emits events at each phase (session_start, tool_call, tool_result, diagnosis_done, error). `DiagnosisHistory.provider` CHECK extended to accept `"agent"`. `EventType` Literal extended with `session_start`, `hypothesis`, `context_compact`, `diagnosis_done`. Alembic migration `p9q0`. 9 unit tests. Updated `alembic/env.py` imports. Files: `harness/session_log.py`, `models_db.py`, `harness/deps.py`, `harness/loop.py`, `alembic/versions/p9q0_add_harness_event_log.py`, `tests/harness/test_session_log.py`. |
+| 2026-04-10 | v1.4 | HARNESS-04 implemented (GitHub Issue #54). 2-tier context management: `context.py` with `estimate_tokens()` (char/4 approximation), `truncate_tool_result()` (Tier 1 per-result truncation), `maybe_compact()` (Tier 2 auto-compaction with iteration-boundary detection). `HarnessConfig.max_tool_result_tokens` added (default 2000). `compact_threshold` docstring updated to "estimated token count". Agent loop integrates truncation after each tool execution and compaction between iterations. Emits `context_compact` event on compaction. 28 unit tests (token estimation, truncation, iteration identification, summarization, compaction preservation). Files: `harness/context.py`, `harness/deps.py`, `harness/loop.py`, `tests/harness/test_context.py`. |

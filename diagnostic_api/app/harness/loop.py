@@ -16,6 +16,10 @@ from typing import Any, AsyncIterator, Dict, List, Optional
 
 import structlog
 
+from app.harness.context import (
+    maybe_compact,
+    truncate_tool_result,
+)
 from app.harness.deps import (
     HarnessDeps,
     HarnessEvent,
@@ -362,9 +366,23 @@ async def run_diagnosis_loop(
                     )
                     total_tool_calls.append(tc.name)
 
+                    # Tier 1: truncate oversized tool results.
+                    output = truncate_tool_result(
+                        result.output,
+                        cfg.max_tool_result_tokens,
+                    )
+                    if len(output) < len(result.output):
+                        logger.info(
+                            "tool_result_truncated",
+                            tool=tc.name,
+                            original_chars=len(result.output),
+                            truncated_chars=len(output),
+                            iteration=iteration,
+                        )
+
                     tr_payload = {
                         "name": tc.name,
-                        "output": result.output,
+                        "output": output,
                         "duration_ms": result.duration_ms,
                         "is_error": result.is_error,
                         "iteration": iteration,
@@ -379,8 +397,21 @@ async def run_diagnosis_loop(
 
                     messages.append(
                         _make_tool_message(
-                            tc.id, result.output,
+                            tc.id, output,
                         ),
+                    )
+
+                # Tier 2: auto-compact if approaching limit.
+                messages, compact_info = maybe_compact(
+                    messages, cfg.compact_threshold,
+                )
+                if compact_info:
+                    await emit_event(
+                        session_id, "context_compact",
+                        compact_info, iteration=iteration,
+                    )
+                    yield HarnessEvent(
+                        "context_compact", compact_info,
                     )
 
                 iteration += 1
