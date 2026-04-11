@@ -18,6 +18,7 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Query,
     status,
 )
 from fastapi.responses import StreamingResponse
@@ -60,7 +61,9 @@ async def generate_agent_diagnosis(
     session_id: uuid.UUID,
     force: bool = False,
     locale: str = "en",
-    max_iterations: Optional[int] = None,
+    max_iterations: Optional[int] = Query(
+        default=None, ge=1, le=50,
+    ),
     force_agent: bool = False,
     force_oneshot: bool = False,
     current_user: User = Depends(get_current_user),

@@ -504,6 +504,17 @@ class TestAgentDiagnosisErrors:
         )
         assert resp.status_code == 422
 
+    @pytest.mark.parametrize("value", [0, -1, 51])
+    def test_invalid_max_iterations_returns_422(
+        self, value, client,
+    ):
+        """Out-of-range max_iterations rejected by FastAPI."""
+        resp = client.post(
+            f"/v2/obd/{FAKE_SESSION_ID}/diagnose/agent"
+            f"?max_iterations={value}",
+        )
+        assert resp.status_code == 422
+
     def test_agent_loop_exception_yields_error_event(
         self, client, app_ref,
     ):
