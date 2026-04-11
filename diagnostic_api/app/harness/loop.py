@@ -371,6 +371,14 @@ async def run_diagnosis_loop(
                         result.output,
                         cfg.max_tool_result_tokens,
                     )
+                    if len(output) < len(result.output):
+                        logger.info(
+                            "tool_result_truncated",
+                            tool=tc.name,
+                            original_chars=len(result.output),
+                            truncated_chars=len(output),
+                            iteration=iteration,
+                        )
 
                     tr_payload = {
                         "name": tc.name,
