@@ -108,6 +108,9 @@ class HarnessConfig:
             conversation auto-compaction.
         timeout_seconds: Total wall-clock budget for the loop.
         temperature: LLM sampling temperature.
+        locale: Response language code (``"en"``, ``"zh-CN"``,
+            ``"zh-TW"``).  Injected into the user message so the
+            LLM responds in the requested language.
     """
 
     model: str
@@ -117,6 +120,7 @@ class HarnessConfig:
     compact_threshold: int = 60_000
     timeout_seconds: float = 120.0
     temperature: float = 0.3
+    locale: str = "en"
 
 
 # ── LLM client protocol + OpenAI adapter ─────────────────────────────

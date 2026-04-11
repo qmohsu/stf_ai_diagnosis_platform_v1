@@ -156,6 +156,7 @@ async def generate_agent_diagnosis(
     config = HarnessConfig(
         model=settings.premium_llm_model,
         max_iterations=max_iterations or 10,
+        locale=locale,
     )
     deps = HarnessDeps(
         llm_client=llm_client,

@@ -64,6 +64,7 @@ def _build_initial_messages(
     session_id: str,
     parsed_summary: Dict[str, Any],
     tool_names: List[str],
+    locale: str = "en",
 ) -> List[Dict[str, Any]]:
     """Assemble the opening system + user messages.
 
@@ -71,6 +72,7 @@ def _build_initial_messages(
         session_id: OBD session UUID string.
         parsed_summary: Session's ``parsed_summary_payload``.
         tool_names: Sorted list of registered tool names.
+        locale: Response language code.
 
     Returns:
         Two-element message list (system, user).
@@ -83,7 +85,7 @@ def _build_initial_messages(
         {
             "role": "user",
             "content": build_user_message(
-                session_id, parsed_summary,
+                session_id, parsed_summary, locale,
             ),
         },
     ]
@@ -233,7 +235,7 @@ async def run_diagnosis_loop(
     tool_names = deps.tool_registry.tool_names
 
     messages = _build_initial_messages(
-        sid, parsed_summary, tool_names,
+        sid, parsed_summary, tool_names, cfg.locale,
     )
 
     iteration = 0
