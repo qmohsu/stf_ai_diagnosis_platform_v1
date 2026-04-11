@@ -18,7 +18,17 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-# Approximate characters per token for English text.
+# ── Optional tiktoken import ────────────────────────────────────────
+
+try:
+    import tiktoken as _tiktoken
+    _ENCODER = _tiktoken.get_encoding("cl100k_base")
+    _HAS_TIKTOKEN = True
+except ImportError:  # pragma: no cover
+    _ENCODER = None  # type: ignore[assignment]
+    _HAS_TIKTOKEN = False
+
+# Fallback: approximate characters per token for English text.
 _CHARS_PER_TOKEN = 4
 
 # Overhead tokens per message (role, separators, structure).
@@ -34,18 +44,20 @@ _SUMMARY_SNIPPET_LEN = 80
 def estimate_tokens(text: str) -> int:
     """Estimate the token count of a text string.
 
-    Uses a character-based approximation (``len / 4``) that is
-    fast enough to call every iteration.  Accuracy is within
-    ~20 %% of a real tokenizer for English-heavy diagnostic text.
+    When ``tiktoken`` is installed, uses the ``cl100k_base``
+    encoding for accurate counts.  Otherwise falls back to a
+    character-based approximation (``len / 4``).
 
     Args:
         text: The input string.
 
     Returns:
-        Estimated token count (minimum 1).
+        Token count (minimum 1).
     """
     if not text:
         return 1
+    if _HAS_TIKTOKEN:
+        return max(1, len(_ENCODER.encode(text)))
     return max(1, len(text) // _CHARS_PER_TOKEN)
 
 
@@ -101,9 +113,10 @@ def truncate_tool_result(
         Original or truncated string with marker.
     """
     max_tokens = max(1, max_tokens)
-    max_chars = max_tokens * _CHARS_PER_TOKEN
-    if len(content) <= max_chars:
+    if estimate_tokens(content) <= max_tokens:
         return content
+    # Use char estimate for the cut boundary.
+    max_chars = max_tokens * _CHARS_PER_TOKEN
     head_chars = int(max_chars * 0.75)
     tail_chars = max_chars - head_chars
     head = content[:head_chars]

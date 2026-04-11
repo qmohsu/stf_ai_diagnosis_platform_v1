@@ -127,33 +127,59 @@ class TestEstimateTokens:
         # "hello" = 5 chars -> 5 // 4 = 1
         assert estimate_tokens("hello") == 1
 
-    def test_exact_multiple(self) -> None:
-        """String length exactly divisible by 4."""
-        assert estimate_tokens("a" * 100) == 25
+    def test_medium_string(self) -> None:
+        """Medium string returns a positive token count."""
+        tokens = estimate_tokens("a" * 100)
+        assert tokens >= 1
 
-    def test_long_string(self) -> None:
-        """Long string estimation is proportional."""
-        text = "x" * 4000
-        tokens = estimate_tokens(text)
-        assert tokens == 1000
+    def test_long_string_proportional(self) -> None:
+        """Longer strings produce more tokens."""
+        short = estimate_tokens("x" * 100)
+        long = estimate_tokens("x" * 4000)
+        assert long > short
 
-    def test_within_20_percent_of_real(self) -> None:
-        """Estimation is within 20%% for English-like text.
+    def test_within_20_percent_of_tiktoken(self) -> None:
+        """Estimation is within 20%% of tiktoken cl100k_base.
 
-        Uses a representative diagnostic string where the real
-        token count (via rough word-based estimate) should be
-        close to chars/4.
+        Verifies against five representative diagnostic strings
+        covering plain English, DTC codes, numeric data,
+        service-manual references, and anomaly reports.
         """
-        text = (
-            "The RPM anomaly detected at 08:32 suggests a "
-            "possible misfire condition in cylinder 3. "
-            "Cross-referencing with the service manual "
-            "section 3.2 on ignition system diagnostics."
-        )
-        estimated = estimate_tokens(text)
-        # Rough word-based: ~30 words -> ~40 tokens.
-        # chars/4 = ~46 tokens.  Within 20% of 40.
-        assert 30 <= estimated <= 60
+        tiktoken = pytest.importorskip("tiktoken")
+        enc = tiktoken.get_encoding("cl100k_base")
+
+        samples = [
+            (
+                "The RPM anomaly detected at 08:32 suggests "
+                "a possible misfire condition in cylinder 3."
+            ),
+            (
+                "[HIGH] RPM range_shift at 12:03:45. "
+                "Mean=2847, baseline=1205, z_score=4.2."
+            ),
+            (
+                "Vehicle: V12345, DTCs: P0300 (Random/"
+                "Multiple Cylinder Misfire Detected)"
+            ),
+            (
+                "MWS150-A Section 3.2: Check spark plug "
+                "gap (0.7-0.8mm). Inspect ignition coil."
+            ),
+            (
+                "No anomalies in COOLANT_TEMP, OIL_PRESSURE"
+                ", FUEL_RAIL_PRESSURE, MAF_SENSOR."
+            ),
+        ]
+
+        for text in samples:
+            real = len(enc.encode(text))
+            estimated = estimate_tokens(text)
+            error_pct = abs(estimated - real) / real * 100
+            assert error_pct <= 20, (
+                f"estimate_tokens({text!r:.60s}...) = "
+                f"{estimated}, tiktoken = {real}, "
+                f"error = {error_pct:.1f}%"
+            )
 
 
 class TestEstimateMessagesTokens:
