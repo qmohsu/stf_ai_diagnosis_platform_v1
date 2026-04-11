@@ -18,6 +18,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    func,
 )
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -282,7 +283,9 @@ class HarnessEventLog(Base):
     )
     iteration = Column(Integer, nullable=False, default=0)
     payload = Column(JSONB, nullable=False)
-    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    created_at = Column(
+        DateTime, server_default=func.now(), nullable=False,
+    )
 
 
 class RagChunk(Base):
