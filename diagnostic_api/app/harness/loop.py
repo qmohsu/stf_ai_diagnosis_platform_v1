@@ -272,44 +272,33 @@ async def run_diagnosis_loop(
                         exc_info=exc,
                     )
                     safe_msg = _sanitize_llm_error(exc)
+                    err_payload = {
+                        "error_type": "llm_error",
+                        "message": safe_msg,
+                        "iteration": iteration,
+                    }
                     await emit_event(
                         session_id, "error",
-                        {
-                            "error_type": "llm_error",
-                            "message": safe_msg,
-                            "iteration": iteration,
-                        },
-                        iteration=iteration,
+                        err_payload, iteration=iteration,
                     )
                     yield HarnessEvent(
-                        "error",
-                        {
-                            "error_type": "llm_error",
-                            "message": safe_msg,
-                            "iteration": iteration,
-                        },
+                        "error", err_payload,
                     )
                     partial_text = (
                         _extract_partial_diagnosis(messages)
                     )
+                    done_payload = {
+                        "diagnosis": partial_text,
+                        "partial": True,
+                        "iterations": iteration,
+                        "tools_called": total_tool_calls,
+                    }
                     await emit_event(
                         session_id, "diagnosis_done",
-                        {
-                            "diagnosis": partial_text,
-                            "partial": True,
-                            "iterations": iteration,
-                            "tools_called": total_tool_calls,
-                        },
-                        iteration=iteration,
+                        done_payload, iteration=iteration,
                     )
                     yield HarnessEvent(
-                        "done",
-                        {
-                            "diagnosis": partial_text,
-                            "partial": True,
-                            "iterations": iteration,
-                            "tools_called": total_tool_calls,
-                        },
+                        "done", done_payload,
                     )
                     return
 
@@ -327,24 +316,18 @@ async def run_diagnosis_loop(
                         iterations=iteration + 1,
                         tools_called=total_tool_calls,
                     )
+                    done_payload = {
+                        "diagnosis": diagnosis,
+                        "partial": False,
+                        "iterations": iteration + 1,
+                        "tools_called": total_tool_calls,
+                    }
                     await emit_event(
                         session_id, "diagnosis_done",
-                        {
-                            "diagnosis": diagnosis,
-                            "partial": False,
-                            "iterations": iteration + 1,
-                            "tools_called": total_tool_calls,
-                        },
-                        iteration=iteration,
+                        done_payload, iteration=iteration,
                     )
                     yield HarnessEvent(
-                        "done",
-                        {
-                            "diagnosis": diagnosis,
-                            "partial": False,
-                            "iterations": iteration + 1,
-                            "tools_called": total_tool_calls,
-                        },
+                        "done", done_payload,
                     )
                     return
 
@@ -358,23 +341,18 @@ async def run_diagnosis_loop(
                         tc.arguments,
                     )
 
+                    tc_payload = {
+                        "name": tc.name,
+                        "input": args,
+                        "iteration": iteration,
+                        "tool_call_id": tc.id,
+                    }
                     await emit_event(
                         session_id, "tool_call",
-                        {
-                            "name": tc.name,
-                            "input": args,
-                            "tool_call_id": tc.id,
-                        },
-                        iteration=iteration,
+                        tc_payload, iteration=iteration,
                     )
                     yield HarnessEvent(
-                        "tool_call",
-                        {
-                            "name": tc.name,
-                            "input": args,
-                            "iteration": iteration,
-                            "tool_call_id": tc.id,
-                        },
+                        "tool_call", tc_payload,
                     )
 
                     result = (
@@ -384,25 +362,19 @@ async def run_diagnosis_loop(
                     )
                     total_tool_calls.append(tc.name)
 
+                    tr_payload = {
+                        "name": tc.name,
+                        "output": result.output,
+                        "duration_ms": result.duration_ms,
+                        "is_error": result.is_error,
+                        "iteration": iteration,
+                    }
                     await emit_event(
                         session_id, "tool_result",
-                        {
-                            "name": tc.name,
-                            "output": result.output,
-                            "duration_ms": result.duration_ms,
-                            "is_error": result.is_error,
-                        },
-                        iteration=iteration,
+                        tr_payload, iteration=iteration,
                     )
                     yield HarnessEvent(
-                        "tool_result",
-                        {
-                            "name": tc.name,
-                            "output": result.output,
-                            "duration_ms": result.duration_ms,
-                            "is_error": result.is_error,
-                            "iteration": iteration,
-                        },
+                        "tool_result", tr_payload,
                     )
 
                     messages.append(
@@ -420,49 +392,31 @@ async def run_diagnosis_loop(
             iteration=iteration,
             timeout_seconds=cfg.timeout_seconds,
         )
+        err_payload = {
+            "error_type": "timeout",
+            "message": (
+                f"Agent loop timed out after "
+                f"{cfg.timeout_seconds}s"
+            ),
+            "iteration": iteration,
+        }
         await emit_event(
             session_id, "error",
-            {
-                "error_type": "timeout",
-                "message": (
-                    f"Agent loop timed out after "
-                    f"{cfg.timeout_seconds}s"
-                ),
-                "iteration": iteration,
-            },
-            iteration=iteration,
+            err_payload, iteration=iteration,
         )
-        yield HarnessEvent(
-            "error",
-            {
-                "error_type": "timeout",
-                "message": (
-                    f"Agent loop timed out after "
-                    f"{cfg.timeout_seconds}s"
-                ),
-                "iteration": iteration,
-            },
-        )
+        yield HarnessEvent("error", err_payload)
         partial_text = _extract_partial_diagnosis(messages)
+        done_payload = {
+            "diagnosis": partial_text,
+            "partial": True,
+            "iterations": iteration,
+            "tools_called": total_tool_calls,
+        }
         await emit_event(
             session_id, "diagnosis_done",
-            {
-                "diagnosis": partial_text,
-                "partial": True,
-                "iterations": iteration,
-                "tools_called": total_tool_calls,
-            },
-            iteration=iteration,
+            done_payload, iteration=iteration,
         )
-        yield HarnessEvent(
-            "done",
-            {
-                "diagnosis": partial_text,
-                "partial": True,
-                "iterations": iteration,
-                "tools_called": total_tool_calls,
-            },
-        )
+        yield HarnessEvent("done", done_payload)
         return
 
     # ── Max iterations reached ───────────────────────────────────
@@ -472,22 +426,14 @@ async def run_diagnosis_loop(
         max_iterations=cfg.max_iterations,
     )
     partial_text = _extract_partial_diagnosis(messages)
+    done_payload = {
+        "diagnosis": partial_text,
+        "partial": True,
+        "iterations": cfg.max_iterations,
+        "tools_called": total_tool_calls,
+    }
     await emit_event(
         session_id, "diagnosis_done",
-        {
-            "diagnosis": partial_text,
-            "partial": True,
-            "iterations": cfg.max_iterations,
-            "tools_called": total_tool_calls,
-        },
-        iteration=cfg.max_iterations,
+        done_payload, iteration=cfg.max_iterations,
     )
-    yield HarnessEvent(
-        "done",
-        {
-            "diagnosis": partial_text,
-            "partial": True,
-            "iterations": cfg.max_iterations,
-            "tools_called": total_tool_calls,
-        },
-    )
+    yield HarnessEvent("done", done_payload)
