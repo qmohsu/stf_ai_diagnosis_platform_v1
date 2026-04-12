@@ -88,6 +88,20 @@ class Settings(BaseSettings):
             if m.strip()
         ]
 
+    # Manual Storage
+    manual_storage_path: str = os.getenv(
+        "MANUAL_STORAGE_PATH", "/app/data/manuals",
+    )
+    manual_max_file_size_bytes: int = int(
+        os.getenv(
+            "MANUAL_MAX_FILE_SIZE_BYTES", "209715200",
+        ),
+    )  # 200 MB
+    manual_use_llm: bool = (
+        os.getenv("MANUAL_USE_LLM", "false").lower()
+        == "true"
+    )
+
     # Logging Configuration
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
     log_format: str = os.getenv("LOG_FORMAT", "json")

@@ -37,12 +37,29 @@ Dependencies::
 """
 
 import argparse
+import logging
 import os
 import re
 import sys
 import time
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ConversionResult:
+    """Metadata returned after a successful conversion."""
+
+    output_path: Path
+    vehicle_model: str
+    language: str
+    page_count: int
+    section_count: int
+    image_count: int
+    dtc_codes: list[str] = field(default_factory=list)
 
 
 # ── Vehicle-model detection (copied from app.rag.parser) ────────
@@ -207,20 +224,23 @@ def convert(
     openai_api_key: str = "",
     openai_model: str = "",
     suffix: str = "",
-) -> Path:
-    """Convert a PDF using marker-pdf and add our post-processing.
+    vehicle_model_subdir: bool = False,
+) -> ConversionResult:
+    """Convert a PDF using marker-pdf and post-process.
 
     Args:
         pdf_path: Path to source PDF.
-        output_dir: Directory for output .md + images/.
+        output_dir: Base directory for output .md + images/.
         use_llm: Enable LLM-assisted conversion.
         openai_base_url: OpenAI-compatible API base URL.
         openai_api_key: API key for the LLM service.
         openai_model: Model identifier.
         suffix: Filename suffix (e.g. '_marker_llm').
+        vehicle_model_subdir: If True, nest output under
+            ``{output_dir}/{vehicle_model}/``.
 
     Returns:
-        Path to the written .md file.
+        ConversionResult with output path and metadata.
     """
     from marker.converters.pdf import PdfConverter
     from marker.config.parser import ConfigParser
@@ -228,12 +248,12 @@ def convert(
     from marker.output import text_from_rendered
 
     pdf_path_obj = Path(pdf_path)
-    out_dir = Path(output_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    base_dir = Path(output_dir)
+    base_dir.mkdir(parents=True, exist_ok=True)
 
     stem = pdf_path_obj.stem
 
-    # ── Build marker config ────────────────────────────────────
+    # ── Build marker config ──────────────────────────────
     config: dict = {
         "output_format": "markdown",
         "paginate_output": True,
@@ -249,10 +269,12 @@ def convert(
 
     config_parser = ConfigParser(config)
 
-    print(f"[marker] Loading models...")
+    logger.info("Loading marker models...")
     t0 = time.time()
     artifact_dict = create_model_dict()
-    print(f"[marker] Models loaded in {time.time() - t0:.1f}s")
+    logger.info(
+        "Models loaded in %.1fs", time.time() - t0,
+    )
 
     llm_service = None
     if use_llm:
@@ -268,16 +290,32 @@ def convert(
         llm_service=llm_service,
     )
 
-    # ── Run conversion ─────────────────────────────────────────
-    print(f"[marker] Converting {pdf_path_obj.name}...")
+    # ── Run conversion ───────────────────────────────────
+    logger.info("Converting %s...", pdf_path_obj.name)
     t0 = time.time()
     rendered = converter(str(pdf_path_obj))
     elapsed = time.time() - t0
-    print(f"[marker] Conversion done in {elapsed:.1f}s")
+    logger.info(
+        "Conversion done in %.1fs", elapsed,
+    )
 
     text, ext, images = text_from_rendered(rendered)
 
-    # ── Save images ────────────────────────────────────────────
+    # ── Resolve vehicle model early (needed for subdir) ──
+    md_text = text
+    page_count = _get_page_count(str(pdf_path_obj))
+    vehicle_model = _resolve_vehicle_model(
+        md_text, pdf_path_obj.name, stem,
+    )
+
+    # Determine actual output directory
+    if vehicle_model_subdir:
+        out_dir = base_dir / vehicle_model
+    else:
+        out_dir = base_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # ── Save images ──────────────────────────────────────
     img_dir = out_dir / "images" / f"{stem}{suffix}"
     if images:
         img_dir.mkdir(parents=True, exist_ok=True)
@@ -291,19 +329,14 @@ def convert(
             else:
                 # Raw bytes fallback
                 img_path.write_bytes(img_obj)
-        print(f"[marker] Saved {len(images)} images to {img_dir}")
+        logger.info(
+            "Saved %d images to %s",
+            len(images), img_dir,
+        )
 
-    # ── Post-process markdown ──────────────────────────────────
-    md_text = text
-
-    # Rewrite image paths for viewer
+    # ── Post-process markdown ────────────────────────────
     md_text = _rewrite_image_paths(md_text, stem, suffix)
 
-    # Gather metadata
-    page_count = _get_page_count(str(pdf_path_obj))
-    vehicle_model = _resolve_vehicle_model(
-        md_text, pdf_path_obj.name, stem,
-    )
     language = "zh-CN" if _has_cjk(md_text) else "en"
     section_count = _count_headings(md_text)
     converter_label = (
@@ -324,27 +357,33 @@ def convert(
 
     # Build DTC index
     dtc_index = _build_dtc_index(md_text)
+    dtc_codes = sorted(set(_DTC_RE.findall(md_text)))
 
     # Assemble final markdown
     final = frontmatter + "\n\n" + md_text
     if dtc_index:
         final += "\n" + dtc_index + "\n"
 
-    # ── Write output ───────────────────────────────────────────
+    # ── Write output ─────────────────────────────────────
     output_path = out_dir / f"{stem}{suffix}.md"
     output_path.write_text(final, encoding="utf-8")
 
-    print(f"[marker] Output: {output_path}")
-    print(f"[marker] Vehicle model: {vehicle_model}")
-    print(f"[marker] Language: {language}")
-    print(f"[marker] Pages: {page_count}")
-    print(f"[marker] Sections (##): {section_count}")
-    print(f"[marker] Images: {len(images)}")
-    if dtc_index:
-        codes = sorted(set(_DTC_RE.findall(md_text)))
-        print(f"[marker] DTC codes: {len(codes)}")
+    logger.info(
+        "Output: %s  model=%s  lang=%s  "
+        "pages=%d  sections=%d  images=%d",
+        output_path, vehicle_model, language,
+        page_count, section_count, len(images),
+    )
 
-    return output_path
+    return ConversionResult(
+        output_path=output_path,
+        vehicle_model=vehicle_model,
+        language=language,
+        page_count=page_count,
+        section_count=section_count,
+        image_count=len(images),
+        dtc_codes=dtc_codes,
+    )
 
 
 def main() -> None:
@@ -417,7 +456,7 @@ def main() -> None:
         )
         sys.exit(1)
 
-    convert(
+    result = convert(
         pdf_path=args.pdf,
         output_dir=args.output,
         use_llm=args.use_llm,
@@ -426,6 +465,14 @@ def main() -> None:
         openai_model=args.openai_model,
         suffix=args.suffix,
     )
+    print(f"Output: {result.output_path}")
+    print(f"Vehicle model: {result.vehicle_model}")
+    print(f"Language: {result.language}")
+    print(f"Pages: {result.page_count}")
+    print(f"Sections: {result.section_count}")
+    print(f"Images: {result.image_count}")
+    if result.dtc_codes:
+        print(f"DTC codes: {len(result.dtc_codes)}")
 
 
 if __name__ == "__main__":

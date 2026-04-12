@@ -12,12 +12,20 @@ export function HeaderAuth() {
   return (
     <div className="ml-auto flex items-center gap-3">
       {!isLoading && username && (
-        <Link
-          href="/sessions"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          {t("header.mySessions")}
-        </Link>
+        <>
+          <Link
+            href="/sessions"
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            {t("header.mySessions")}
+          </Link>
+          <Link
+            href="/manuals"
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            {t("header.manuals")}
+          </Link>
+        </>
       )}
       <LanguageSwitcher />
       {!isLoading && username && (

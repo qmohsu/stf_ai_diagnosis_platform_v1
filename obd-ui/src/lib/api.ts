@@ -7,6 +7,10 @@ import type {
   DiagnosisHistoryResponse,
   FeedbackHistoryResponse,
   FeedbackResponse,
+  ManualDetail,
+  ManualListResponse,
+  ManualStatusResponse,
+  ManualUploadResponse,
   OBDAnalysisResponse,
   OBDFeedbackRequest,
   RetrievalResult,
@@ -576,4 +580,112 @@ export async function fetchAudioBlob(
     throw new Error(`Failed to fetch audio: HTTP ${res.status}`);
   }
   return res.blob();
+}
+
+// ---------------------------------------------------------------------------
+// Manual endpoints
+// ---------------------------------------------------------------------------
+
+/**
+ * Upload a PDF manual and start background conversion.
+ */
+export async function uploadManual(
+  file: File,
+  vehicleModel?: string,
+): Promise<ManualUploadResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (vehicleModel) {
+    formData.append("vehicle_model", vehicleModel);
+  }
+  const res = await fetch(`${API_URL}/v2/manuals/upload`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: formData,
+  });
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * List all manuals with optional filters.
+ */
+export async function listManuals(
+  limit?: number,
+  offset?: number,
+  status?: string,
+  vehicleModel?: string,
+): Promise<ManualListResponse> {
+  const params = new URLSearchParams();
+  if (limit !== undefined) params.set("limit", String(limit));
+  if (offset !== undefined) params.set("offset", String(offset));
+  if (status) params.set("status", status);
+  if (vehicleModel) params.set("vehicle_model", vehicleModel);
+  const qs = params.toString();
+  const res = await fetch(
+    `${API_URL}/v2/manuals${qs ? `?${qs}` : ""}`,
+    { headers: getAuthHeaders() },
+  );
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * Get full manual details including markdown content.
+ */
+export async function getManual(
+  manualId: string,
+): Promise<ManualDetail> {
+  const res = await fetch(`${API_URL}/v2/manuals/${manualId}`, {
+    headers: getAuthHeaders(),
+  });
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * Delete a manual and all associated artefacts.
+ */
+export async function deleteManual(
+  manualId: string,
+): Promise<void> {
+  const res = await fetch(`${API_URL}/v2/manuals/${manualId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+}
+
+/**
+ * Get current conversion/ingestion status.
+ */
+export async function getManualStatus(
+  manualId: string,
+): Promise<ManualStatusResponse> {
+  const res = await fetch(
+    `${API_URL}/v2/manuals/${manualId}/status`,
+    { headers: getAuthHeaders() },
+  );
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
 }

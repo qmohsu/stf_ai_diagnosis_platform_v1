@@ -288,6 +288,58 @@ class HarnessEventLog(Base):
     )
 
 
+class Manual(Base):
+    """Uploaded service manual with conversion lifecycle.
+
+    Tracks the full pipeline from PDF upload through marker-pdf
+    conversion to RAG ingestion.  The ``file_hash`` unique
+    constraint prevents duplicate uploads of the same PDF.
+    """
+
+    __tablename__ = "manuals"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ("
+            "'uploading', 'converting', 'ingested', 'failed'"
+            ")",
+            name="ck_manual_status",
+        ),
+    )
+
+    id = Column(
+        UUID(as_uuid=True), primary_key=True, default=uuid4,
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+    filename = Column(String(500), nullable=False)
+    file_hash = Column(
+        String(64), unique=True, nullable=False, index=True,
+    )
+    vehicle_model = Column(String(100), nullable=True)
+    status = Column(
+        String(20), nullable=False, default="uploading",
+    )
+    file_size_bytes = Column(Integer, nullable=False)
+    page_count = Column(Integer, nullable=True)
+    section_count = Column(Integer, nullable=True)
+    language = Column(String(20), nullable=True)
+    converter = Column(String(100), nullable=True)
+    error_message = Column(Text, nullable=True)
+    md_file_path = Column(String(500), nullable=True)
+    pdf_file_path = Column(String(500), nullable=True)
+    chunk_count = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(
+        DateTime, default=_utcnow, onupdate=_utcnow,
+    )
+
+    user = relationship("User")
+
+
 class RagChunk(Base):
     """RAG knowledge chunk with pgvector embedding.
 

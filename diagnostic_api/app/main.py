@@ -66,6 +66,44 @@ def _cleanup_stale_staging(
         )
 
 
+def _recover_stale_conversions() -> None:
+    """Mark manuals stuck in 'converting' as failed.
+
+    Called at startup to handle processes interrupted by a
+    restart.  Uses its own DB session to avoid polluting
+    the request-scoped session.
+    """
+    from app.db.session import SessionLocal
+    from app.models_db import Manual
+
+    db = SessionLocal()
+    try:
+        stuck = (
+            db.query(Manual)
+            .filter(Manual.status == "converting")
+            .all()
+        )
+        for m in stuck:
+            m.status = "failed"
+            m.error_message = (
+                "Conversion interrupted by server restart."
+            )
+        if stuck:
+            db.commit()
+            logger.info(
+                "manual_recovery",
+                recovered=len(stuck),
+            )
+    except Exception as exc:
+        db.rollback()
+        logger.warning(
+            "manual_recovery_error",
+            error=str(exc),
+        )
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan handler.
@@ -95,6 +133,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # Cleanup stale staging files (older than 1 hour).
     _cleanup_stale_staging(staging_dir, max_age_seconds=3600)
+
+    # Ensure manual storage directories exist.
+    os.makedirs(settings.manual_storage_path, exist_ok=True)
+    os.makedirs(
+        os.path.join(
+            settings.manual_storage_path, "uploads",
+        ),
+        exist_ok=True,
+    )
+
+    # Recovery: mark interrupted conversions as failed.
+    _recover_stale_conversions()
 
     yield
 
@@ -208,6 +258,13 @@ app.include_router(
 from app.harness.router import router as harness_router
 app.include_router(
     harness_router, prefix="/v2/obd", tags=["Harness"],
+)
+
+# --- Manuals ---
+from app.api.v2.endpoints import manuals as manuals_v2
+app.include_router(
+    manuals_v2.router, prefix="/v2/manuals",
+    tags=["Manuals"],
 )
 
 

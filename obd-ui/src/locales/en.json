@@ -3,7 +3,8 @@
     "title": "OBD Expert Diagnostic",
     "subtitle": "STF AI Diagnosis Platform",
     "logout": "Logout",
-    "mySessions": "My Sessions"
+    "mySessions": "My Sessions",
+    "manuals": "Manuals"
   },
   "language": {
     "en": "EN",
@@ -354,5 +355,28 @@
     "backToSessions": "Back to Sessions",
     "backToUpload": "Back to Upload",
     "noVehicle": "N/A"
+  },
+  "manuals": {
+    "title": "Service Manual Library",
+    "upload": "Upload Manual",
+    "dropzone": "Drop PDF here or click to browse",
+    "maxSize": "Max file size: {{size}} MB",
+    "vehicleModel": "Vehicle Model (optional)",
+    "vehicleModelPlaceholder": "e.g. TRICITY-155, MWS-150-A",
+    "uploading": "Uploading...",
+    "converting": "Converting...",
+    "ingested": "Ready",
+    "failed": "Failed",
+    "noManuals": "No manuals uploaded yet.",
+    "filename": "Filename",
+    "statusLabel": "Status",
+    "pages": "Pages",
+    "chunks": "Chunks",
+    "sections": "Sections",
+    "language": "Language",
+    "uploaded": "Uploaded",
+    "deleteConfirm": "Delete this manual? This will also remove its RAG chunks.",
+    "backToList": "Back to Manual List",
+    "unsupportedType": "Only PDF files are supported."
   }
 }

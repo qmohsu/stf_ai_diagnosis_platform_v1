@@ -211,6 +211,53 @@ export interface AgentErrorEvent {
   iteration?: number;
 }
 
+// ── Manual management ───────────────────────────────────────
+
+export type ManualStatus =
+  | "uploading"
+  | "converting"
+  | "ingested"
+  | "failed";
+
+export interface ManualSummary {
+  id: string;
+  filename: string;
+  vehicle_model: string | null;
+  status: ManualStatus;
+  file_size_bytes: number;
+  page_count: number | null;
+  section_count: number | null;
+  language: string | null;
+  chunk_count: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ManualListResponse {
+  items: ManualSummary[];
+  total: number;
+}
+
+export interface ManualDetail extends ManualSummary {
+  content: string | null;
+  converter: string | null;
+  error_message: string | null;
+  md_file_path: string | null;
+}
+
+export interface ManualUploadResponse {
+  manual_id: string;
+  status: string;
+  filename: string;
+}
+
+export interface ManualStatusResponse {
+  status: string;
+  error_message: string | null;
+  page_count: number | null;
+  chunk_count: number | null;
+}
+
 /** Paired tool call + result for UI rendering. */
 export interface ToolInvocation {
   id: string;

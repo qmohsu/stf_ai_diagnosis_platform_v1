@@ -3,7 +3,8 @@
     "title": "OBD 專家診斷",
     "subtitle": "STF AI 診斷平台",
     "logout": "登出",
-    "mySessions": "我的工作階段"
+    "mySessions": "我的工作階段",
+    "manuals": "維修手冊"
   },
   "language": {
     "en": "EN",
@@ -354,5 +355,28 @@
     "backToSessions": "返回工作階段列表",
     "backToUpload": "返回上傳",
     "noVehicle": "N/A"
+  },
+  "manuals": {
+    "title": "維修手冊庫",
+    "upload": "上傳手冊",
+    "dropzone": "拖放PDF檔案到此處，或點擊瀏覽",
+    "maxSize": "最大檔案大小：{{size}} MB",
+    "vehicleModel": "車型（選填）",
+    "vehicleModelPlaceholder": "例如 TRICITY-155, MWS-150-A",
+    "uploading": "上傳中...",
+    "converting": "轉換中...",
+    "ingested": "就緒",
+    "failed": "失敗",
+    "noManuals": "尚未上傳任何手冊。",
+    "filename": "檔案名稱",
+    "statusLabel": "狀態",
+    "pages": "頁數",
+    "chunks": "分塊",
+    "sections": "章節",
+    "language": "語言",
+    "uploaded": "上傳時間",
+    "deleteConfirm": "確定刪除此手冊？這將同時刪除其RAG分塊。",
+    "backToList": "返回手冊列表",
+    "unsupportedType": "僅支援PDF檔案。"
   }
 }

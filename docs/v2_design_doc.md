@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | V2 Harness Architecture for AI-Assisted Vehicle Diagnosis |
 | **Project** | STF AI Diagnosis Platform — Phase 1 Pilot |
-| **Status** | Draft v0.7 |
+| **Status** | Draft v0.8 |
 | **Owner** | Li-Ta Hsu |
 | **Contributors** | ML engineers; backend engineers; frontend engineers |
-| **Last updated** | 2026-04-12 (v0.8) |
+| **Last updated** | 2026-04-12 (v0.9) |
 | **Primary pilot stack** | FastAPI + AsyncOpenAI (OpenRouter) + Ollama + pgvector (PostgreSQL) + Next.js |
-| **New in this revision** | HARNESS-09: Toolset redesign (GitHub Issue #69). Replaced 7 V1-wrapper tools with 2 agent-native tools: `read_obd_data` (parameterized OBD log reader) and `search_manual` (redesigned with vehicle_model filter). Agent loop auto-injects `_session_id`. System prompt rewritten as flexible investigation guide. User message simplified to vehicle + time range + DTCs. See §5 for updated tool definitions. |
+| **New in this revision** | HARNESS-10: Manual ingestion pipeline (GitHub Issue #70). New `Manual` DB model + Alembic migration `q1r2`. Background conversion pipeline: PDF upload → marker-pdf → per-vehicle-model filesystem storage → pgvector RAG ingestion. 5 CRUD endpoints under `/v2/manuals`. Frontend `/manuals` page with drag-drop upload, status-polling list, and manual viewer. See §9 (Manual Ingestion Pipeline). |
 
 ### Revision history
 
@@ -27,6 +27,7 @@
 | v0.5 | 2026-04-10 | HARNESS-05: API endpoint + SSE streaming. `harness/router.py` with `POST /v2/obd/{session_id}/diagnose/agent`. Wires `run_diagnosis_loop()` async generator to `StreamingResponse`. Auth via `get_current_user`, session ownership, cached diagnosis check, `force` re-diagnosis. Stores result in `DiagnosisHistory` with `provider="agent"`. SSE events: `status`, `tool_call`, `tool_result`, `hypothesis`, `done`, `error`, `cached`. 2KB padding prefix. Registered in `main.py`. 12 unit tests. GitHub Issue #55. |
 | v0.6 | 2026-04-10 | HARNESS-07: Frontend agent visualization. `AgentDiagnosisView.tsx` (main agent streaming view), `ToolCallCard.tsx` (collapsible tool card), `IterationProgress.tsx` (iteration counter + tier badge). `streamAgentSSE()` and `streamAgentDiagnosis()` in `api.ts`. Agent types in `types.ts`. "Agent AI" sub-tab in `AnalysisLayout.tsx`. i18n: `agent.*` namespace in 3 locales. V1 untouched. GitHub Issue #57. |
 | v0.7 | 2026-04-12 | HARNESS-08: Integration and E2E tests. `test_integration.py` (golden-path, event log, autonomy routing, fallback). `test_e2e_agent.py` (HTTP E2E: stream, history, cache, force, fallback). JSON fixtures: `golden_path_responses.json` (4 tool-call sequence), `fallback_responses.json`. Fixture loader in `fixtures/__init__.py`. Agent-to-V1 fallback in `router.py`: `_stream()` except block now falls back to `_oneshot_stream(skip_padding=True)` after error event. `e2e_real_llm` pytest marker. 182 total harness tests. GitHub Issue #58. |
+| v0.9 | 2026-04-12 | HARNESS-10: Manual ingestion pipeline (GitHub Issue #70). `Manual` DB model + Alembic migration `q1r2`. Background pipeline: upload PDF → marker-pdf conversion (GPU-serialized via semaphore) → per-vehicle-model filesystem storage → pgvector RAG ingestion. 5 endpoints under `/v2/manuals` (upload, list, get, delete, status). Refactored `marker_convert.py` with `ConversionResult` dataclass and `vehicle_model_subdir` param. Frontend `/manuals` page: `ManualUploadForm` (drag-drop), `ManualList` (auto-polling status), `ManualViewer`. Startup recovery marks stuck conversions as failed. Config: `manual_storage_path`, `manual_max_file_size_bytes`, `manual_use_llm`. i18n (EN, zh-CN, zh-TW). 16 unit tests. |
 
 ### Relationship to V1
 
@@ -997,5 +998,76 @@ ALTER TABLE diagnosis_history
 | Summary formatting | `format_summary_flat_strings()` | `obd_agent/summary_formatter.py:25` | `get_session_context` | `harness_tools/obd_tools.py` |
 | (none — new) | — | — | `refine_search` | `harness_tools/rag_tools.py` |
 | (none — new) | — | — | `search_case_history` | `harness_tools/history_tools.py` |
+
+## 9. Manual Ingestion Pipeline (HARNESS-10)
+
+### 9.1 Overview
+
+End-to-end pipeline for uploading PDF service manuals, converting them to structured markdown via marker-pdf, storing them in per-vehicle-model directories, and ingesting into pgvector for agent RAG retrieval.
+
+### 9.2 Filesystem Structure
+
+```
+/app/data/manuals/           (Docker volume: diagnostic_api_manuals)
+  uploads/                   Staging area for uploaded PDFs
+  TRICITY-155/               Per-vehicle-model subdirectory
+    MWS150A_Service_Manual.md
+    images/MWS150A_Service_Manual/
+  MWS-150-A/
+    ...
+  Generic/                   Fallback for undetected models
+```
+
+### 9.3 Database Schema
+
+**Table: `manuals`** (Alembic migration `q1r2`)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID PK | Primary key |
+| `user_id` | UUID FK → users | Uploader |
+| `filename` | String(500) | Original PDF filename |
+| `file_hash` | String(64), unique | SHA-256 for dedup |
+| `vehicle_model` | String(100) | Detected or user-provided |
+| `status` | String(20) | `uploading` / `converting` / `ingested` / `failed` |
+| `file_size_bytes` | Integer | Upload size |
+| `page_count` | Integer | PDF page count |
+| `section_count` | Integer | `##` heading count |
+| `language` | String(20) | `en` / `zh-CN` |
+| `converter` | String(100) | `marker-pdf` or `marker-pdf (LLM)` |
+| `error_message` | Text | Failure details |
+| `md_file_path` | String(500) | Relative path to output .md |
+| `pdf_file_path` | String(500) | Relative path to source PDF |
+| `chunk_count` | Integer | RagChunks ingested |
+| `created_at` | DateTime | |
+| `updated_at` | DateTime | |
+
+### 9.4 API Endpoints
+
+All under `/v2/manuals`, all require JWT auth.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/upload` | Upload PDF, start background conversion (201) |
+| GET | `/` | List manuals with filters (status, vehicle_model) |
+| GET | `/{id}` | Manual detail + markdown content |
+| DELETE | `/{id}` | Delete manual, files, and RAG chunks |
+| GET | `/{id}/status` | Conversion status snapshot |
+
+### 9.5 Background Pipeline
+
+1. **Upload**: validate PDF magic bytes + size, compute SHA-256, save to `uploads/`
+2. **Convert**: marker-pdf (GPU-serialized via `asyncio.Semaphore(1)`) → `.md` + images under `{vehicle_model}/`
+3. **Ingest**: existing `process_file()` → chunk + embed → insert `rag_chunks`
+4. **Recovery**: on startup, mark `status="converting"` rows as `"failed"`
+
+### 9.6 Frontend
+
+New page at `/manuals` (Next.js App Router):
+- `ManualUploadForm`: drag-drop PDF upload with optional vehicle model input
+- `ManualList`: table with status badges, auto-polls converting items every 5s
+- `ManualViewer`: displays markdown content with metadata banner
+
+Navigation: "Manuals" link in header (after "My Sessions").
 
 — End of document —

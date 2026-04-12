@@ -7,7 +7,7 @@
 | **Architecture doc** | `docs/v2_design_doc.md` |
 | **GitHub Issue** | #26 (discussion: From Context Engineering to Harness Engineering) |
 | **Version** | v1.0 |
-| **Last updated** | 2026-04-10 (HARNESS-06 done) |
+| **Last updated** | 2026-04-12 (HARNESS-10 in progress) |
 
 ## 1. Scope Boundary
 
@@ -34,7 +34,6 @@
 - Real-time OBD streaming or live sensor data
 - MCP server protocol (direct tool handlers sufficient for V2)
 - Infrastructure changes (Docker, Postgres, Ollama, Nginx — all unchanged)
-- Skill loading system (domain-specific MD files — future HARNESS-10)
 - Background/async agent tasks (future HARNESS-11)
 
 ## 2. Engineer Order and Dependencies
@@ -497,11 +496,32 @@ Depends on: HARNESS-08
 Scope: Spawn isolated sub-agents for multi-subsystem faults. Each sub-agent investigates one subsystem (engine, transmission, electrical) with a fresh context window. Parent agent synthesizes sub-agent findings.
 Reference: `v2_design_doc.md` §8.3, learning notes S04.
 
-#### HARNESS‑10 — Skill Loading (Domain-Specific Knowledge)
+#### HARNESS‑10 — Manual Ingestion Pipeline 🔧 IN PROGRESS
 
-Depends on: HARNESS-02
-Scope: On-demand domain knowledge injection. Skill descriptions in system prompt; full skill content loaded via `load_skill` tool when the LLM requests it. Example: `engine-diagnosis.md`, `transmission-diagnosis.md`.
-Reference: Learning notes S05.
+Depends on: none (standalone)
+Status: **IN PROGRESS** — GitHub Issue #70
+
+Scope: End-to-end pipeline for service manual PDF upload, conversion (marker-pdf), per-vehicle-model filesystem storage, and pgvector RAG ingestion. New dashboard page in obd-ui for uploading, viewing, and managing manuals. Background conversion with status polling.
+
+Key files:
+- `app/models_db.py` — `Manual` model
+- `app/services/manual_pipeline.py` — background conversion + ingestion
+- `app/api/v2/endpoints/manuals.py` — CRUD endpoints under `/v2/manuals`
+- `scripts/marker_convert.py` — refactored with `ConversionResult` and `vehicle_model_subdir`
+- `obd-ui/src/app/manuals/page.tsx` — frontend dashboard
+- Alembic migration `q1r2` — `manuals` table
+
+Acceptance criteria:
+- [x] Manual model + migration
+- [x] Upload, list, get, delete, status endpoints
+- [x] Background marker-pdf conversion with GPU semaphore
+- [x] Per-vehicle-model directory structure
+- [x] RAG ingestion via existing `process_file()`
+- [x] Frontend: upload form, manual list with status badges, manual viewer
+- [x] i18n (EN, zh-CN, zh-TW)
+- [x] 16 unit tests passing
+- [ ] Integration test with real PDF conversion (requires marker-pdf)
+- [ ] Deploy to server
 
 #### HARNESS‑11 — Background Agent Tasks
 
@@ -535,4 +555,5 @@ Scope: Use stored expert feedback to build a case library. Tool retrieves past c
 | 2026-04-10 | v1.6 | HARNESS-06 implemented (GitHub Issue #56). Graduated autonomy router: `autonomy.py` with `classify_complexity()` (Tier 0–3 deterministic classification), `apply_overrides()` (`force_agent`/`force_oneshot`), `AutonomyDecision` dataclass. Helpers: `_count_dtcs()` (regex DTC extraction + dedup), `_max_severity()` (keyword-based severity from anomaly text), `_count_clues()` (STAT/RULE tags or separator counting). Integrated into `router.py`: queries `DiagnosisHistory` for prior diagnosis (Tier 3 follow-up), `suggested_max_iterations` drives agent budget, `done` SSE event now emits real `autonomy_tier` + `autonomy_strategy`. `force_oneshot` takes precedence over `force_agent` (safety-first). Router test suite updated with autonomy mocks. 44 unit tests (8 DTC counting, 8 severity, 8 clues, 12 classification, 8 overrides). Files: `harness/autonomy.py`, `tests/harness/test_autonomy.py`, updated `harness/router.py` and `tests/harness/test_router.py`. |
 | 2026-04-12 | v1.8 | HARNESS-08 implemented (GitHub Issue #58). Integration and E2E tests: `test_integration.py` (7 tests: golden-path loop with mocked LLM, event log completeness, iteration monotonicity, Tier 0→oneshot routing, Tier 1→agent routing, agent-to-V1 fallback, double-failure resilience), `test_e2e_agent.py` (6 tests: full HTTP golden-path stream, diagnosis history storage, cache behavior, force bypass, fallback E2E, optional real-LLM test). JSON fixtures: `golden_path_responses.json` (4 LLM responses: get_session_context→detect_anomalies+search_manual→generate_clues→diagnosis), `fallback_responses.json` (agent error + V1 tokens). Fixture loader: `fixtures/__init__.py` with `load_llm_responses()` and `load_fallback_fixture()`. New feature: agent-to-V1 fallback in `router.py` — when agent loop raises, emits error SSE event then falls back to `_oneshot_stream()` with `skip_padding=True`. Added `e2e_real_llm` pytest marker in `conftest.py`. Also marked HARNESS-06 as DONE. All 182 harness tests pass (12 new + 1 skipped real-LLM). |
 | 2026-04-10 | v1.7 | HARNESS-07 implemented (GitHub Issue #57). Frontend agent visualization: `AgentDiagnosisView.tsx` (main agent streaming view with state machine), `ToolCallCard.tsx` (collapsible card per tool invocation with name/input/output/duration), `IterationProgress.tsx` (iteration counter + autonomy tier badge). Extended `api.ts` with `streamAgentSSE()` and `streamAgentDiagnosis()` supporting V2 event types (`tool_call`, `tool_result`, `session_start`). Agent SSE callbacks: `onToolCall`, `onToolResult`, `onDone`, `onSessionStart`, etc. Tool invocations paired by name+iteration in UI state. Tier 0 fallback: token-by-token text (same as V1). "Agent AI" sub-tab added to `AnalysisLayout.tsx` (visible when premium enabled). i18n: ~25 new strings in `agent.*` namespace across EN, zh-CN, zh-TW. Types: `AgentToolCallEvent`, `AgentToolResultEvent`, `AgentDoneEvent`, `ToolInvocation` in `types.ts`. V1 `AIDiagnosisView.tsx` untouched. Build passes. |
+| 2026-04-12 | v2.0 | HARNESS-10 in progress (GitHub Issue #70). Manual ingestion pipeline: `Manual` DB model + Alembic `q1r2` migration, `manual_pipeline.py` background service (marker-pdf conversion + RAG ingestion with GPU semaphore), 5 API endpoints under `/v2/manuals` (upload, list, get, delete, status), refactored `marker_convert.py` (ConversionResult + vehicle_model_subdir), per-vehicle-model directory structure. Frontend: `/manuals` page with ManualUploadForm (drag-drop PDF), ManualList (status badges, auto-polling), ManualViewer. Nav link in HeaderAuth. i18n (EN, zh-CN, zh-TW). Config: `manual_storage_path`, `manual_max_file_size_bytes`, `manual_use_llm`. Startup recovery for interrupted conversions. 16 unit tests passing. |
 | 2026-04-12 | v1.9 | HARNESS-09: Toolset redesign (GitHub Issue #69). Replaced 7 V1-wrapper tools with 2 agent-native tools: `read_obd_data` (parameterized OBD log reader with overview + signal query modes) and `search_manual` (redesigned with vehicle_model filter + exclude_chunk_ids). Removed: `get_pid_statistics`, `detect_anomalies`, `generate_clues`, `get_session_context`, `refine_search`, `search_case_history`. New: `obd_data_tools.py` reads raw TSV files via `log_parser.parse_log_file()`. `retrieve.py` now accepts `vehicle_model` and `exclude_chunk_ids` filters. Agent loop auto-injects `_session_id` so LLM never passes UUIDs. System prompt rewritten as flexible investigation guide (no rigid 7-step script). User message simplified to vehicle + time range + DTCs only. 172 tests pass (1 pre-existing DB-env failure). Files: created `harness_tools/obd_data_tools.py`; rewrote `harness_tools/rag_tools.py`, `harness_tools/input_models.py`, `harness/harness_prompts.py`; modified `harness/loop.py`, `harness/tool_registry.py`, `app/rag/retrieve.py`; deleted `harness_tools/obd_tools.py`, `harness_tools/history_tools.py`. |
