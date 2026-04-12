@@ -75,7 +75,7 @@ export function ManualList({ refreshKey, onSelect }: ManualListProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval>>();
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchManuals = useCallback(async () => {
     try {
