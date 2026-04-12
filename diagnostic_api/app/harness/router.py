@@ -203,7 +203,7 @@ async def generate_agent_diagnosis(
     force: bool = False,
     locale: str = "en",
     max_iterations: Optional[int] = Query(
-        default=None, ge=1, le=50,
+        default=None, ge=1, le=500,
     ),
     force_agent: bool = False,
     force_oneshot: bool = False,
@@ -335,7 +335,7 @@ async def generate_agent_diagnosis(
     effective_max_iter = (
         max_iterations
         or decision.suggested_max_iterations
-        or 10
+        or 500
     )
 
     openai_client = AsyncOpenAI(
