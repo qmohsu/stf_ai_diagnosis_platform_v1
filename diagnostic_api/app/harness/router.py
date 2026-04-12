@@ -332,11 +332,7 @@ async def generate_agent_diagnosis(
         )
 
     # --- Build harness dependencies ---
-    effective_max_iter = (
-        max_iterations
-        or decision.suggested_max_iterations
-        or 500
-    )
+    effective_max_iter = max_iterations or 500
 
     openai_client = AsyncOpenAI(
         api_key=settings.premium_llm_api_key,
