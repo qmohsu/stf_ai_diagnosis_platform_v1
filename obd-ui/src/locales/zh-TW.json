@@ -297,6 +297,7 @@
     "title": "Agent AI 診斷結果",
     "description": "執行 AI Agent 使用診斷工具迭代分析您的 OBD 資料。Agent 自主決定呼叫哪些工具以及執行多少輪迭代。",
     "generate": "產生 Agent 診斷",
+    "forceAgent": "強制使用 Agent 模式（跳過簡單案例的單次診斷）",
     "connecting": "正在連線 Agent...",
     "generating": "Agent 正在分析中...",
     "regenerate": "重新產生 Agent 診斷",

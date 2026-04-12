@@ -297,6 +297,7 @@
     "title": "Agent AI Diagnostic Result",
     "description": "Run an AI agent that iteratively investigates your OBD data using diagnostic tools. The agent autonomously decides which tools to call and how many iterations to run.",
     "generate": "Generate Agent Diagnosis",
+    "forceAgent": "Force agent mode (skip one-shot for simple cases)",
     "connecting": "Connecting to agent...",
     "generating": "Agent is investigating...",
     "regenerate": "Regenerate Agent Diagnosis",

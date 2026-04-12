@@ -297,6 +297,7 @@
     "title": "Agent AI 诊断结果",
     "description": "运行 AI Agent 使用诊断工具迭代分析您的 OBD 数据。Agent 自主决定调用哪些工具以及执行多少轮迭代。",
     "generate": "生成 Agent 诊断",
+    "forceAgent": "强制使用 Agent 模式（跳过简单案例的单次诊断）",
     "connecting": "正在连接 Agent...",
     "generating": "Agent 正在分析中...",
     "regenerate": "重新生成 Agent 诊断",

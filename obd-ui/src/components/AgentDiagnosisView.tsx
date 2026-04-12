@@ -45,6 +45,7 @@ export function AgentDiagnosisView({
   const [maxIterations, setMaxIterations] = useState<number | null>(null);
   const [autonomyTier, setAutonomyTier] = useState<number | null>(null);
   const [autonomyStrategy, setAutonomyStrategy] = useState<string | null>(null);
+  const [forceAgent, setForceAgent] = useState(false);
 
   // Refs for accumulating text (Tier 0 fallback) and
   // tracking whether onDone already fired (avoids stale closure).
@@ -152,7 +153,7 @@ export function AgentDiagnosisView({
               setMaxIterations(data.max_iterations);
             },
           },
-          { force, locale: i18n.language },
+          { force, locale: i18n.language, forceAgent },
         );
 
         // Stream ended (connection closed without done event)
@@ -172,7 +173,7 @@ export function AgentDiagnosisView({
         setStatusMsg(null);
       }
     },
-    [sessionId, onDiagnosisGenerated, onDiagnosisHistoryIdChanged, t, i18n.language],
+    [sessionId, onDiagnosisGenerated, onDiagnosisHistoryIdChanged, t, i18n.language, forceAgent],
   );
 
   const hasToolCalls = toolInvocations.length > 0;
@@ -188,6 +189,15 @@ export function AgentDiagnosisView({
           <p className="text-sm text-muted-foreground">
             {t("agent.description")}
           </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={forceAgent}
+              onChange={(e) => setForceAgent(e.target.checked)}
+              className="rounded border-gray-300"
+            />
+            {t("agent.forceAgent")}
+          </label>
           <Button onClick={() => handleGenerate()} className="w-full">
             {t("agent.generate")}
           </Button>
