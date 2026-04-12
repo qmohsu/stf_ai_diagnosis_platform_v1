@@ -11,9 +11,9 @@
 | **Status** | Draft v0.7 |
 | **Owner** | Li-Ta Hsu |
 | **Contributors** | ML engineers; backend engineers; frontend engineers |
-| **Last updated** | 2026-04-12 (v0.7) |
+| **Last updated** | 2026-04-12 (v0.8) |
 | **Primary pilot stack** | FastAPI + AsyncOpenAI (OpenRouter) + Ollama + pgvector (PostgreSQL) + Next.js |
-| **New in this revision** | HARNESS-08 implemented: Integration and E2E tests. `test_integration.py` (7 tests covering golden-path agent loop, event log completeness, autonomy routing, fallback). `test_e2e_agent.py` (6 tests covering full HTTP E2E). JSON fixtures for deterministic LLM replay. Agent-to-V1 fallback in `router.py` `_stream()` except block: emits error event then falls back to `_oneshot_stream()`. `e2e_real_llm` pytest marker. 182 harness tests total. GitHub Issue #58. |
+| **New in this revision** | HARNESS-09: Toolset redesign (GitHub Issue #69). Replaced 7 V1-wrapper tools with 2 agent-native tools: `read_obd_data` (parameterized OBD log reader) and `search_manual` (redesigned with vehicle_model filter). Agent loop auto-injects `_session_id`. System prompt rewritten as flexible investigation guide. User message simplified to vehicle + time range + DTCs. See §5 for updated tool definitions. |
 
 ### Revision history
 
@@ -362,78 +362,47 @@ class ToolDefinition:
 
 **Privacy invariant**: Every tool handler returns a **text string** — summaries, scores, descriptions. No tool ever returns raw sensor arrays, binary data, or time-series DataFrames. This architecturally enforces the data boundary from V1 `design_doc.md` §13.1.
 
-### 5.2 Diagnostic tools (wrapping existing functions)
+### 5.2 Agent-native tools
 
-These tools wrap existing V1 pipeline functions. The underlying code is unchanged; only the interface is new.
+These tools give the agent direct access to data and knowledge. The agent does its own analysis — no pre-computed statistics, anomalies, or clues. `session_id` is auto-injected by the loop; the LLM never passes UUIDs.
 
-#### `get_pid_statistics`
+> **Design principle**: The LLM is the diagnostic expert. Tools provide data access and knowledge retrieval, not pre-digested analysis. (HARNESS-09, GitHub Issue #69)
 
-| Field | Value |
-|-------|-------|
-| **Wraps** | `extract_statistics()` from `obd_agent/statistics_extractor.py:212` |
-| **Input** | `{ "session_id": "uuid" }` |
-| **Output** | Text summary of per-signal statistics (mean, std, min, max, percentiles) |
-| **Example output** | `"RPM: mean=2100 std=340 min=780 max=4200 | COOLANT_TEMP: mean=92 std=3 ..."` |
-| **Privacy** | Returns summary statistics only; no raw time-series data |
-
-#### `detect_anomalies`
+#### `read_obd_data`
 
 | Field | Value |
 |-------|-------|
-| **Wraps** | `detect_anomalies()` from `obd_agent/anomaly_detector.py:529` |
-| **Input** | `{ "session_id": "uuid", "focus_signals": ["signal1", "signal2"] }` (optional focus) |
-| **Output** | Text list of anomaly events with severity, pattern, and context |
-| **Example output** | `"[HIGH] RPM range_shift at 12:03-12:05: sudden drop from 2100 to 780 rpm (score: 0.87)"` |
-| **Privacy** | Returns event descriptions; no raw waveforms |
-
-#### `generate_clues`
-
-| Field | Value |
-|-------|-------|
-| **Wraps** | `generate_clues()` from `obd_agent/clue_generator.py:552` |
-| **Input** | `{ "session_id": "uuid" }` |
-| **Output** | Text list of diagnostic clues with rule ID, category, and evidence |
-| **Example output** | `"STAT_001 [ENGINE] Engine RPM at zero when vehicle is running. Evidence: RPM min=0 during active period"` |
-| **Privacy** | Returns rule-based clue text; no raw data |
+| **Purpose** | Read OBD-II sensor data from the session's raw log file |
+| **Input** | `{ "signals": ["RPM", "COOLANT_TEMP"], "start_time": "...", "end_time": "...", "every_nth": N }` |
+| **Overview mode** | Omit `signals` to get available PIDs, time range, DTCs, and row count |
+| **Signal query mode** | Provide `signals` to get a filtered table of PID values over time |
+| **Implementation** | Reads raw TSV via `obd_agent.log_parser.parse_log_file()`, filters to numeric PIDs |
+| **Name resolution** | Accepts both PID names (RPM) and semantic names (engine_rpm) |
+| **Privacy** | Returns filtered numeric values only; max 50 rows per call with truncation notice |
+| **File** | `harness_tools/obd_data_tools.py` |
 
 #### `search_manual`
 
 | Field | Value |
 |-------|-------|
-| **Wraps** | `retrieve_context()` from `diagnostic_api/app/rag/retrieve.py:115` |
-| **Input** | `{ "query": "search text", "top_k": 3 }` |
-| **Output** | Text of matched manual sections with source metadata (doc_id, section_title, similarity score) |
+| **Purpose** | Search vehicle service manuals via RAG (pgvector cosine similarity) |
+| **Input** | `{ "query": "search text", "vehicle_model": "MWS-150-A", "top_k": 5, "exclude_chunk_ids": [10, 20] }` |
+| **Output** | Text of matched manual sections with doc_id, section_title, and similarity score |
 | **Example output** | `"[0.87] MWS150-A#3.2 — Fuel System Inspection: Check fuel pressure regulator..."` |
-| **Privacy** | Returns manual text chunks (public knowledge); no sensor data |
+| **Vehicle model filter** | Restricts search to chunks from a specific vehicle model (uses indexed `RagChunk.vehicle_model` column) |
+| **Chunk exclusion** | `exclude_chunk_ids` for follow-up searches to get fresh results |
+| **File** | `harness_tools/rag_tools.py` |
 
-### 5.3 New tools (V2-only)
+### 5.3 Removed tools (V1 wrappers, removed in HARNESS-09)
 
-#### `refine_search`
+The following tools were removed because they read pre-computed V1 pipeline results from JSONB, giving the agent no investigative capability. The agent now reads raw data directly via `read_obd_data`.
 
-| Field | Value |
-|-------|-------|
-| **Purpose** | Adaptive RAG — LLM generates a refined query based on intermediate findings |
-| **Input** | `{ "query": "LLM-generated query", "top_k": 3, "exclude_doc_ids": ["already_seen"] }` |
-| **Output** | Same format as `search_manual` but with LLM-chosen query and dedup |
-| **Difference from `search_manual`** | Accepts `exclude_doc_ids` to avoid retrieving chunks already in context |
-
-#### `search_case_history`
-
-| Field | Value |
-|-------|-------|
-| **Purpose** | Retrieve similar past diagnoses from `diagnosis_history` table |
-| **Input** | `{ "dtc_codes": ["P0300"], "vehicle_id": "optional", "limit": 5 }` |
-| **Output** | Text summaries of past diagnosis results, with provider, model, and date |
-| **Implementation** | Query `DiagnosisHistory` joined with `OBDAnalysisSession` for DTC matching |
-
-#### `get_session_context`
-
-| Field | Value |
-|-------|-------|
-| **Purpose** | Retrieve current session's parsed summary (vehicle_id, time_range, DTCs, clues) |
-| **Input** | `{ "session_id": "uuid" }` |
-| **Output** | Formatted text of the session's `parsed_summary_payload` |
-| **Usage** | Called by the LLM as its first tool call to understand the diagnostic case |
+- `get_pid_statistics` — read cached statistics from `result_payload`
+- `detect_anomalies` — read cached anomaly events from `result_payload`
+- `generate_clues` — read cached clues from `result_payload`
+- `get_session_context` — read `parsed_summary_payload` (same data as user message)
+- `refine_search` — merged into `search_manual` via `exclude_chunk_ids`
+- `search_case_history` — deferred to future issue
 
 ### 5.4 Tool dispatch
 

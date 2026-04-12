@@ -59,9 +59,6 @@ FAKE_PARSED_SUMMARY: Dict[str, Any] = {
     "vehicle_id": "V12345",
     "time_range": "2026-04-01 08:00 – 2026-04-01 09:00",
     "dtc_codes": "P0300 (Random/Multiple Cylinder Misfire)",
-    "pid_summary": "RPM: 780-4200, COOLANT_TEMP: 89-95",
-    "anomaly_events": "RPM range_shift at 08:32",
-    "diagnostic_clues": "STAT_001 Engine misfire pattern",
 }
 
 
@@ -147,10 +144,7 @@ def _echo_tool(name: str) -> ToolDefinition:
         description=f"Echo tool: {name}",
         input_schema={
             "type": "object",
-            "properties": {
-                "session_id": {"type": "string"},
-            },
-            "required": ["session_id"],
+            "properties": {},
         },
         handler=handler,
     )
@@ -174,8 +168,7 @@ def _make_deps(
     """Build HarnessDeps with sensible test defaults."""
     if registry is None:
         registry = _make_registry(
-            "get_session_context",
-            "detect_anomalies",
+            "read_obd_data",
             "search_manual",
         )
     config_kwargs: Dict[str, Any] = {
@@ -298,13 +291,15 @@ class TestHelpers:
         msgs = _build_initial_messages(
             str(FAKE_SESSION_ID),
             FAKE_PARSED_SUMMARY,
-            ["detect_anomalies", "search_manual"],
+            ["read_obd_data", "search_manual"],
         )
         assert len(msgs) == 2
         assert msgs[0]["role"] == "system"
         assert msgs[1]["role"] == "user"
         assert "V12345" in msgs[1]["content"]
-        assert str(FAKE_SESSION_ID) in msgs[1]["content"]
+        # session_id is no longer in the user message
+        # (auto-injected into tool calls by the loop).
+        assert "P0300" in msgs[1]["content"]
 
     def test_sanitize_llm_error_short(self) -> None:
         """Short error messages are preserved with class name."""
@@ -331,23 +326,19 @@ class TestGoldenPath:
     """Golden-path tests: LLM calls tools then produces diagnosis."""
 
     @pytest.mark.asyncio
-    async def test_three_tools_then_diagnosis(self) -> None:
-        """LLM calls 3 tools then stops with a diagnosis.
+    async def test_two_tools_then_diagnosis(self) -> None:
+        """LLM calls 2 tools then stops with a diagnosis.
 
         Verifies correct event sequence: session_start,
-        3x (tool_call, tool_result), then 1x done.
+        2x (tool_call, tool_result), then 1x done.
         """
-        sid = '{"session_id": "aaa"}'
         client = MockLLMClient(
             [
                 _tool_call_response(
-                    ("tc1", "get_session_context", sid),
+                    ("tc1", "read_obd_data", "{}"),
                 ),
                 _tool_call_response(
-                    ("tc2", "detect_anomalies", sid),
-                ),
-                _tool_call_response(
-                    ("tc3", "search_manual",
+                    ("tc2", "search_manual",
                      '{"query": "misfire"}'),
                 ),
                 _stop_response(
@@ -371,15 +362,14 @@ class TestGoldenPath:
             "session_start",
             "tool_call", "tool_result",
             "tool_call", "tool_result",
-            "tool_call", "tool_result",
             "done",
         ]
 
         done = events[-1]
         assert done.payload["partial"] is False
         assert "P0300" in done.payload["diagnosis"]
-        assert done.payload["iterations"] == 4
-        assert len(done.payload["tools_called"]) == 3
+        assert done.payload["iterations"] == 3
+        assert len(done.payload["tools_called"]) == 2
 
     @pytest.mark.asyncio
     async def test_immediate_diagnosis_no_tools(self) -> None:
@@ -415,8 +405,8 @@ class TestGoldenPath:
         client = MockLLMClient(
             [
                 _tool_call_response(
-                    ("tc1", "detect_anomalies",
-                     '{"session_id": "x"}'),
+                    ("tc1", "read_obd_data",
+                     '{}'),
                     ("tc2", "search_manual",
                      '{"query": "rpm"}'),
                 ),
@@ -441,7 +431,7 @@ class TestGoldenPath:
             "done",
         ]
         assert events[-1].payload["tools_called"] == [
-            "detect_anomalies",
+            "read_obd_data",
             "search_manual",
         ]
 
@@ -462,7 +452,7 @@ class TestErrorHandling:
             [
                 _tool_call_response(
                     ("tc1", "nonexistent_tool",
-                     '{"session_id": "x"}'),
+                     '{}'),
                 ),
                 _stop_response(
                     "Recovered diagnosis after error."
@@ -564,7 +554,7 @@ class TestErrorHandling:
                     tool_calls=[
                         ToolCallInfo(
                             id="tc1",
-                            name="get_session_context",
+                            name="read_obd_data",
                             arguments="not valid json!!!",
                         ),
                     ],
@@ -636,8 +626,8 @@ class TestBudgetLimits:
         """
         responses = [
             _tool_call_response(
-                (f"tc{i}", "detect_anomalies",
-                 '{"session_id": "x"}'),
+                (f"tc{i}", "read_obd_data",
+                 '{}'),
             )
             for i in range(5)
         ]
@@ -709,8 +699,8 @@ class TestMessageHistory:
         client = MockLLMClient(
             [
                 _tool_call_response(
-                    ("tc1", "detect_anomalies",
-                     '{"session_id": "x"}'),
+                    ("tc1", "read_obd_data",
+                     '{}'),
                 ),
                 _stop_response("Final."),
             ]

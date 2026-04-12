@@ -3,9 +3,9 @@
     "content": null,
     "tool_calls": [
       {
-        "id": "tc_gsc_1",
-        "name": "get_session_context",
-        "arguments": "{\"session_id\": \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\"}"
+        "id": "tc_obd_1",
+        "name": "read_obd_data",
+        "arguments": "{}"
       }
     ],
     "finish_reason": "tool_calls"
@@ -14,9 +14,9 @@
     "content": null,
     "tool_calls": [
       {
-        "id": "tc_da_2",
-        "name": "detect_anomalies",
-        "arguments": "{\"session_id\": \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\"}"
+        "id": "tc_obd_2",
+        "name": "read_obd_data",
+        "arguments": "{\"signals\": [\"RPM\", \"COOLANT_TEMP\"]}"
       },
       {
         "id": "tc_sm_3",
@@ -27,18 +27,7 @@
     "finish_reason": "tool_calls"
   },
   {
-    "content": null,
-    "tool_calls": [
-      {
-        "id": "tc_gc_4",
-        "name": "generate_clues",
-        "arguments": "{\"session_id\": \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\"}"
-      }
-    ],
-    "finish_reason": "tool_calls"
-  },
-  {
-    "content": "## Diagnostic Report: P0300 Random/Multiple Cylinder Misfire\n\n**Fault ID:** P0300\n**Root Cause:** Ignition coil degradation causing intermittent misfire across multiple cylinders.\n\n**Supporting Evidence:**\n- RPM instability detected (range_shift at 08:32) correlating with misfire events\n- STAT_001 confirms engine misfire pattern consistent with ignition system fault\n- Service manual MWS150-A#3.2 identifies ignition coil as primary suspect for P0300 in this engine family\n\n**Recommended Actions:**\n1. Inspect ignition coils for cracks or carbon tracking\n2. Measure coil primary/secondary resistance per MWS150-A#3.2 specifications\n3. Check spark plug condition and gap\n\n**Limitations:**\n- No Mode 06 test data available for cylinder-specific misfire counts",
+    "content": "## Diagnostic Report: P0300 Random/Multiple Cylinder Misfire\n\n**Fault ID:** P0300\n**Root Cause:** Ignition coil degradation causing intermittent misfire across multiple cylinders.\n\n**Supporting Evidence:**\n- RPM instability detected during cruise phase, with sudden drops from 2100 to 780 rpm\n- Coolant temperature spike to 98°C at idle correlates with misfire-induced thermal stress\n- Service manual MWS150-A#3.2 identifies ignition coil as primary suspect for P0300 in this engine family\n\n**Recommended Actions:**\n1. Inspect ignition coils for cracks or carbon tracking\n2. Measure coil primary/secondary resistance per MWS150-A#3.2 specifications\n3. Check spark plug condition and gap\n\n**Limitations:**\n- No Mode 06 test data available for cylinder-specific misfire counts",
     "tool_calls": [],
     "finish_reason": "stop"
   }

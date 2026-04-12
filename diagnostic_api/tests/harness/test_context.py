@@ -201,7 +201,7 @@ class TestEstimateMessagesTokens:
             _system_msg(),
             _user_msg(),
             _assistant_tool_msg(
-                ("tc1", "detect_anomalies",
+                ("tc1", "read_obd_data",
                  '{"session_id": "abc"}'),
             ),
         ]
@@ -327,12 +327,12 @@ class TestSummarizeIteration:
         """Summary line includes the tool name."""
         msgs = [
             _assistant_tool_msg(
-                ("tc1", "detect_anomalies", "{}"),
+                ("tc1", "read_obd_data", "{}"),
             ),
             _tool_msg("tc1", "RPM anomaly found"),
         ]
         line = _summarize_iteration(1, msgs, [0, 1])
-        assert "detect_anomalies" in line
+        assert "read_obd_data" in line
         assert "Iter 1" in line
 
     def test_summary_contains_result_snippet(self) -> None:
@@ -359,14 +359,14 @@ class TestSummarizeIteration:
         """Multiple tool calls in one iteration show all results."""
         msgs = [
             _assistant_tool_msg(
-                ("tc1", "detect_anomalies", "{}"),
+                ("tc1", "read_obd_data", "{}"),
                 ("tc2", "search_manual", "{}"),
             ),
             _tool_msg("tc1", "RPM anomaly found"),
             _tool_msg("tc2", "Manual section 3.2"),
         ]
         line = _summarize_iteration(1, msgs, [0, 1, 2])
-        assert "detect_anomalies" in line
+        assert "read_obd_data" in line
         assert "search_manual" in line
         assert "RPM anomaly" in line
         assert "Manual section" in line

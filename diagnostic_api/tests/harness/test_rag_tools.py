@@ -1,4 +1,4 @@
-"""Tests for RAG tool wrappers (search_manual, refine_search)."""
+"""Tests for the redesigned search_manual RAG tool."""
 
 from unittest.mock import AsyncMock, patch
 
@@ -8,6 +8,7 @@ import pytest
 # ------------------------------------------------------------------
 # Fake RetrievalResult objects
 # ------------------------------------------------------------------
+
 
 class _FakeResult:
     """Minimal stand-in for ``RetrievalResult``."""
@@ -62,7 +63,7 @@ class TestSearchManual:
             return_value=FAKE_RESULTS,
         ):
             result = await search_manual(
-                {"query": "fuel pressure", "top_k": 3},
+                {"query": "fuel pressure", "top_k": 5},
             )
 
         assert isinstance(result, str)
@@ -71,8 +72,8 @@ class TestSearchManual:
         assert "Check fuel pressure" in result
 
     @pytest.mark.asyncio
-    async def test_empty_results(self):
-        """No matches returns descriptive message."""
+    async def test_empty_results_generic(self):
+        """No matches without vehicle_model returns guidance."""
         from app.harness_tools.rag_tools import search_manual
 
         with patch(
@@ -84,12 +85,30 @@ class TestSearchManual:
                 {"query": "nonexistent"},
             )
 
-        assert isinstance(result, str)
-        assert "No matching" in result
+        assert "No manual sections found" in result
+        assert "Try different keywords" in result
+
+    @pytest.mark.asyncio
+    async def test_empty_results_with_model(self):
+        """No matches with vehicle_model mentions the model."""
+        from app.harness_tools.rag_tools import search_manual
+
+        with patch(
+            "app.harness_tools.rag_tools.retrieve_context",
+            new_callable=AsyncMock,
+            return_value=[],
+        ):
+            result = await search_manual({
+                "query": "fuel system",
+                "vehicle_model": "STF-850",
+            })
+
+        assert "STF-850" in result
+        assert "No service manual sections found" in result
 
     @pytest.mark.asyncio
     async def test_default_top_k(self):
-        """Default top_k is 3 when not specified."""
+        """Default top_k is 5 when not specified."""
         from app.harness_tools.rag_tools import search_manual
 
         mock_retrieve = AsyncMock(return_value=[])
@@ -100,7 +119,54 @@ class TestSearchManual:
             await search_manual({"query": "test"})
 
         mock_retrieve.assert_awaited_once_with(
-            "test", top_k=3,
+            "test",
+            top_k=5,
+            vehicle_model=None,
+            exclude_chunk_ids=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_vehicle_model_passed_through(self):
+        """vehicle_model is forwarded to retrieve_context."""
+        from app.harness_tools.rag_tools import search_manual
+
+        mock_retrieve = AsyncMock(return_value=[])
+        with patch(
+            "app.harness_tools.rag_tools.retrieve_context",
+            mock_retrieve,
+        ):
+            await search_manual({
+                "query": "fuel",
+                "vehicle_model": "MWS-150-A",
+            })
+
+        mock_retrieve.assert_awaited_once_with(
+            "fuel",
+            top_k=5,
+            vehicle_model="MWS-150-A",
+            exclude_chunk_ids=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_exclude_chunk_ids_passed(self):
+        """exclude_chunk_ids is forwarded to retrieve_context."""
+        from app.harness_tools.rag_tools import search_manual
+
+        mock_retrieve = AsyncMock(return_value=[])
+        with patch(
+            "app.harness_tools.rag_tools.retrieve_context",
+            mock_retrieve,
+        ):
+            await search_manual({
+                "query": "fuel",
+                "exclude_chunk_ids": [10, 20, 30],
+            })
+
+        mock_retrieve.assert_awaited_once_with(
+            "fuel",
+            top_k=5,
+            vehicle_model=None,
+            exclude_chunk_ids=[10, 20, 30],
         )
 
     @pytest.mark.asyncio
@@ -127,95 +193,4 @@ class TestSearchManual:
             )
 
         assert "..." in result
-        # The truncated text should be _MAX_TEXT_LEN chars
-        # plus the "..." suffix.
         assert "x" * _MAX_TEXT_LEN in result
-
-
-# ------------------------------------------------------------------
-# Tests: refine_search
-# ------------------------------------------------------------------
-
-
-class TestRefineSearch:
-    """Tests for the refine_search tool handler."""
-
-    @pytest.mark.asyncio
-    async def test_excludes_doc_ids(self):
-        """Results with excluded doc_ids are filtered out."""
-        from app.harness_tools.rag_tools import refine_search
-
-        with patch(
-            "app.harness_tools.rag_tools.retrieve_context",
-            new_callable=AsyncMock,
-            return_value=FAKE_RESULTS,
-        ):
-            result = await refine_search({
-                "query": "fuel system",
-                "top_k": 3,
-                "exclude_doc_ids": ["MWS150-A"],
-            })
-
-        assert isinstance(result, str)
-        # MWS150-A results should be excluded.
-        assert "MWS150-A" not in result
-        # MWS150-B should remain.
-        assert "MWS150-B" in result
-
-    @pytest.mark.asyncio
-    async def test_over_fetches(self):
-        """retrieve_context is called with top_k + len(exclude)."""
-        from app.harness_tools.rag_tools import refine_search
-
-        mock_retrieve = AsyncMock(return_value=[])
-        with patch(
-            "app.harness_tools.rag_tools.retrieve_context",
-            mock_retrieve,
-        ):
-            await refine_search({
-                "query": "test",
-                "top_k": 3,
-                "exclude_doc_ids": ["A", "B"],
-            })
-
-        mock_retrieve.assert_awaited_once_with(
-            "test", top_k=5,  # 3 + 2 excluded
-        )
-
-    @pytest.mark.asyncio
-    async def test_no_exclude(self):
-        """Without exclude_doc_ids, behaves like search_manual."""
-        from app.harness_tools.rag_tools import refine_search
-
-        with patch(
-            "app.harness_tools.rag_tools.retrieve_context",
-            new_callable=AsyncMock,
-            return_value=FAKE_RESULTS,
-        ):
-            result = await refine_search(
-                {"query": "fuel", "top_k": 3},
-            )
-
-        assert isinstance(result, str)
-        assert "MWS150-A" in result
-        assert "MWS150-B" in result
-
-    @pytest.mark.asyncio
-    async def test_all_excluded_returns_message(self):
-        """All results excluded returns 'No matching' message."""
-        from app.harness_tools.rag_tools import refine_search
-
-        with patch(
-            "app.harness_tools.rag_tools.retrieve_context",
-            new_callable=AsyncMock,
-            return_value=FAKE_RESULTS,
-        ):
-            result = await refine_search({
-                "query": "fuel",
-                "top_k": 3,
-                "exclude_doc_ids": [
-                    "MWS150-A", "MWS150-B",
-                ],
-            })
-
-        assert "No matching" in result

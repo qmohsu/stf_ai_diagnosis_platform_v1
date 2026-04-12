@@ -173,12 +173,7 @@ def _echo_tool(
 def _make_golden_registry() -> ToolRegistry:
     """Build a registry matching golden-path fixture tools."""
     registry = ToolRegistry()
-    for name in (
-        "get_session_context",
-        "detect_anomalies",
-        "generate_clues",
-    ):
-        registry.register(_echo_tool(name))
+    registry.register(_echo_tool("read_obd_data"))
     registry.register(
         _echo_tool("search_manual", ["query"]),
     )

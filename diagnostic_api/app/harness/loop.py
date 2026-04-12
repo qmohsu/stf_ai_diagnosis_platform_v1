@@ -361,11 +361,31 @@ async def run_diagnosis_loop(
                         "tool_call", tc_payload,
                     )
 
-                    result = (
-                        await deps.tool_registry.execute(
-                            tc.name, args,
+                    # Short-circuit on parse errors before
+                    # injecting session context.
+                    if "_parse_error" in args:
+                        from app.harness.tool_registry import (
+                            ToolResult,
                         )
-                    )
+                        result = ToolResult(
+                            output=(
+                                "Error: could not parse "
+                                "tool arguments — "
+                                + args["_parse_error"]
+                            ),
+                            duration_ms=0.0,
+                            is_error=True,
+                        )
+                    else:
+                        # Inject session_id so tools can
+                        # access the session without the
+                        # LLM passing it.
+                        args["_session_id"] = sid
+                        result = (
+                            await deps.tool_registry.execute(
+                                tc.name, args,
+                            )
+                        )
                     total_tool_calls.append(tc.name)
 
                     # Tier 1: truncate oversized tool results.

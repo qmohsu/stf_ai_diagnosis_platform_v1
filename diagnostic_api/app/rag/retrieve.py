@@ -48,13 +48,19 @@ class RetrievalService:
 
 
 def _sync_query(
-    vector: list, top_k: int,
+    vector: list,
+    top_k: int,
+    vehicle_model: Optional[str] = None,
+    exclude_chunk_ids: Optional[List[int]] = None,
 ) -> List[RetrievalResult]:
     """Run pgvector cosine-distance query synchronously.
 
     Args:
         vector: Query embedding (768-dim float list).
         top_k: Maximum number of results.
+        vehicle_model: Optional vehicle model filter
+            (e.g. ``"MWS-150-A"``).
+        exclude_chunk_ids: Optional chunk indices to exclude.
 
     Returns:
         List of RetrievalResult sorted by relevance.
@@ -65,16 +71,29 @@ def _sync_query(
             vector,
         ).label("distance")
 
-        rows = (
-            db.query(
-                RagChunk.text,
-                RagChunk.doc_id,
-                RagChunk.source_type,
-                RagChunk.section_title,
-                RagChunk.chunk_index,
-                RagChunk.metadata_json,
-                distance_col,
+        query = db.query(
+            RagChunk.text,
+            RagChunk.doc_id,
+            RagChunk.source_type,
+            RagChunk.section_title,
+            RagChunk.chunk_index,
+            RagChunk.metadata_json,
+            distance_col,
+        )
+
+        if vehicle_model:
+            query = query.filter(
+                RagChunk.vehicle_model == vehicle_model,
             )
+        if exclude_chunk_ids:
+            query = query.filter(
+                RagChunk.chunk_index.notin_(
+                    exclude_chunk_ids,
+                ),
+            )
+
+        rows = (
+            query
             .order_by(distance_col)
             .limit(top_k)
             .all()
@@ -116,6 +135,8 @@ async def retrieve_context(
     query: str,
     top_k: int = 3,
     filters: Optional[Dict[str, Any]] = None,
+    vehicle_model: Optional[str] = None,
+    exclude_chunk_ids: Optional[List[int]] = None,
 ) -> List[RetrievalResult]:
     """Retrieve relevant chunks from pgvector.
 
@@ -124,6 +145,10 @@ async def retrieve_context(
         top_k: Maximum number of results to return.
         filters: Optional filter criteria (reserved for
             future use).
+        vehicle_model: Optional vehicle model to restrict
+            search to (e.g. ``"MWS-150-A"``).
+        exclude_chunk_ids: Optional chunk indices to exclude
+            from results.
 
     Returns:
         List of RetrievalResult items sorted by relevance.
@@ -143,5 +168,12 @@ async def retrieve_context(
     #    blocking the event loop.
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(
-        _executor, partial(_sync_query, vector, top_k),
+        _executor,
+        partial(
+            _sync_query,
+            vector,
+            top_k,
+            vehicle_model=vehicle_model,
+            exclude_chunk_ids=exclude_chunk_ids,
+        ),
     )

@@ -3,6 +3,10 @@
 Each model defines the expected input for a tool handler.
 JSON Schema is auto-generated via ``model_json_schema()``
 and used in the OpenAI function-calling ``parameters`` field.
+
+Note: ``_session_id`` is injected by the agent loop before
+dispatch — it is NOT part of the tool schema and the LLM
+never sees or passes it.
 """
 
 from __future__ import annotations
@@ -12,27 +16,38 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-class SessionInput(BaseModel):
-    """Input for tools that operate on a single session."""
+class ReadOBDDataInput(BaseModel):
+    """Input for the read_obd_data tool."""
 
-    session_id: str = Field(
-        ...,
-        description="UUID of the OBD analysis session",
-    )
-
-
-class DetectAnomaliesInput(BaseModel):
-    """Input for the detect_anomalies tool."""
-
-    session_id: str = Field(
-        ...,
-        description="UUID of the OBD analysis session",
-    )
-    focus_signals: Optional[List[str]] = Field(
+    signals: Optional[List[str]] = Field(
         default=None,
         description=(
-            "Optional list of signal names to focus "
-            "anomaly detection on"
+            "PID names to read (e.g. ['RPM', 'COOLANT_TEMP',"
+            " 'SPEED']). Also accepts semantic names like "
+            "'engine_rpm'. Omit to get an overview of "
+            "available signals."
+        ),
+    )
+    start_time: Optional[str] = Field(
+        default=None,
+        description=(
+            "Start of time window (ISO format, e.g. "
+            "'2025-01-15T10:30:00'). Omit to read from "
+            "beginning."
+        ),
+    )
+    end_time: Optional[str] = Field(
+        default=None,
+        description=(
+            "End of time window (ISO format). Omit to "
+            "read to end."
+        ),
+    )
+    every_nth: Optional[int] = Field(
+        default=None,
+        description=(
+            "Return every Nth row (downsampling). Use for "
+            "long time ranges to avoid output overflow."
         ),
     )
 
@@ -43,56 +58,28 @@ class SearchManualInput(BaseModel):
     query: str = Field(
         ...,
         description=(
-            "Search query for manual sections (e.g., "
-            "'P0300 misfire diagnosis procedure')"
+            "Search query — use DTC codes, symptom "
+            "descriptions, or component names "
+            "(e.g. 'P0300 misfire', 'fuel pressure low', "
+            "'coolant thermostat replacement procedure')."
         ),
     )
-    top_k: int = Field(
-        default=3,
-        description="Number of results to return",
-    )
-
-
-class RefineSearchInput(BaseModel):
-    """Input for the refine_search tool."""
-
-    query: str = Field(
-        ...,
-        description=(
-            "Refined search query based on current "
-            "investigation findings"
-        ),
-    )
-    top_k: int = Field(
-        default=3,
-        description="Number of results to return",
-    )
-    exclude_doc_ids: List[str] = Field(
-        default_factory=list,
-        description=(
-            "Document IDs to exclude from results "
-            "(already retrieved)"
-        ),
-    )
-
-
-class SearchCaseHistoryInput(BaseModel):
-    """Input for the search_case_history tool."""
-
-    dtc_codes: List[str] = Field(
-        ...,
-        description=(
-            "DTC codes to search for "
-            "(e.g., ['P0300', 'P0301'])"
-        ),
-    )
-    vehicle_id: Optional[str] = Field(
+    vehicle_model: Optional[str] = Field(
         default=None,
-        description="Optional vehicle ID to filter by",
-    )
-    limit: int = Field(
-        default=5,
         description=(
-            "Maximum number of past cases to return"
+            "Filter to a specific vehicle model "
+            "(e.g. 'MWS-150-A'). Omit to search all "
+            "manuals."
+        ),
+    )
+    top_k: int = Field(
+        default=5,
+        description="Number of results to return.",
+    )
+    exclude_chunk_ids: Optional[List[int]] = Field(
+        default=None,
+        description=(
+            "Chunk indices to exclude (for follow-up "
+            "searches to get fresh results)."
         ),
     )

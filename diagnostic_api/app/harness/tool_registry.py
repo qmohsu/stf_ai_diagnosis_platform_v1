@@ -311,34 +311,27 @@ class ToolRegistry:
 
 
 def create_default_registry() -> ToolRegistry:
-    """Build a registry pre-loaded with all 7 diagnostic tools.
+    """Build a registry with the 2 agent-native tools.
+
+    Tools:
+        - ``read_obd_data``: parameterized OBD log reader
+        - ``search_manual``: RAG manual search with filters
 
     Returns:
-        A fully populated ``ToolRegistry`` ready for the agent loop.
+        A fully populated ``ToolRegistry`` ready for the
+        agent loop.
     """
-    from app.harness_tools.history_tools import (
-        SEARCH_CASE_HISTORY_DEF,
-    )
-    from app.harness_tools.obd_tools import (
-        DETECT_ANOMALIES_DEF,
-        GENERATE_CLUES_DEF,
-        GET_PID_STATISTICS_DEF,
-        GET_SESSION_CONTEXT_DEF,
+    from app.harness_tools.obd_data_tools import (
+        READ_OBD_DATA_DEF,
     )
     from app.harness_tools.rag_tools import (
-        REFINE_SEARCH_DEF,
         SEARCH_MANUAL_DEF,
     )
 
     registry = ToolRegistry()
     for tool_def in (
-        GET_PID_STATISTICS_DEF,
-        DETECT_ANOMALIES_DEF,
-        GENERATE_CLUES_DEF,
+        READ_OBD_DATA_DEF,
         SEARCH_MANUAL_DEF,
-        REFINE_SEARCH_DEF,
-        SEARCH_CASE_HISTORY_DEF,
-        GET_SESSION_CONTEXT_DEF,
     ):
         registry.register(tool_def)
     return registry
