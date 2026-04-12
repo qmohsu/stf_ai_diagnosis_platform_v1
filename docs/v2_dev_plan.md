@@ -342,10 +342,12 @@ Acceptance Criteria:
 
 ### 3.2 Phase 2: Orchestration and Frontend (HARNESS-06 through HARNESS-08)
 
-#### HARNESS‑06 — Graduated Autonomy Router
+#### HARNESS‑06 — Graduated Autonomy Router ✅ DONE
 
 Owner: AI Application Engineer
 Depends on: HARNESS-05
+
+Status: **DONE** — GitHub Issue #56
 
 PROMPT (task ticket):
 Title: HARNESS‑06 Implement complexity classifier and graduated autonomy routing
@@ -437,10 +439,12 @@ Acceptance Criteria:
 
 ---
 
-#### HARNESS‑08 — Integration and E2E Tests
+#### HARNESS‑08 — Integration and E2E Tests ✅ DONE
 
 Owner: AI Application Engineer
 Depends on: HARNESS-05, HARNESS-06
+
+Status: **DONE** — GitHub Issue #58
 
 PROMPT (task ticket):
 Title: HARNESS‑08 Create integration test suite and E2E golden-path tests
@@ -529,4 +533,5 @@ Scope: Use stored expert feedback to build a case library. Tool retrieves past c
 | 2026-04-10 | v1.4 | HARNESS-04 implemented (GitHub Issue #54). 2-tier context management: `context.py` with `estimate_tokens()` (char/4 approximation), `truncate_tool_result()` (Tier 1 per-result truncation), `maybe_compact()` (Tier 2 auto-compaction with iteration-boundary detection). `HarnessConfig.max_tool_result_tokens` added (default 2000). `compact_threshold` docstring updated to "estimated token count". Agent loop integrates truncation after each tool execution and compaction between iterations. Emits `context_compact` event on compaction. 28 unit tests (token estimation, truncation, iteration identification, summarization, compaction preservation). Files: `harness/context.py`, `harness/deps.py`, `harness/loop.py`, `tests/harness/test_context.py`. |
 | 2026-04-10 | v1.5 | HARNESS-05 implemented (GitHub Issue #55). `harness/router.py` with `POST /v2/obd/{session_id}/diagnose/agent`. Wires `run_diagnosis_loop()` to `StreamingResponse` with `text/event-stream`. Auth via `get_current_user`, session ownership check, cached diagnosis (force=false), 2KB padding prefix. Stores result in `DiagnosisHistory` with `provider="agent"` and updates `OBDAnalysisSession.diagnosis_text`. SSE event mapping: `session_start`→`status`, `tool_call`/`tool_result` pass-through, `context_compact`→`status`, `done` enriched with `diagnosis_history_id`/`iterations`/`tools_called`/`autonomy_tier`. Query params: `force`, `locale`, `max_iterations`, `force_agent`, `force_oneshot` (last two reserved for HARNESS-06). Registered in `main.py`. 12 unit tests (auth, cache, SSE format, done event, tool events, error handling, V1 regression). Files: `harness/router.py`, `main.py`, `tests/harness/test_router.py`. |
 | 2026-04-10 | v1.6 | HARNESS-06 implemented (GitHub Issue #56). Graduated autonomy router: `autonomy.py` with `classify_complexity()` (Tier 0–3 deterministic classification), `apply_overrides()` (`force_agent`/`force_oneshot`), `AutonomyDecision` dataclass. Helpers: `_count_dtcs()` (regex DTC extraction + dedup), `_max_severity()` (keyword-based severity from anomaly text), `_count_clues()` (STAT/RULE tags or separator counting). Integrated into `router.py`: queries `DiagnosisHistory` for prior diagnosis (Tier 3 follow-up), `suggested_max_iterations` drives agent budget, `done` SSE event now emits real `autonomy_tier` + `autonomy_strategy`. `force_oneshot` takes precedence over `force_agent` (safety-first). Router test suite updated with autonomy mocks. 44 unit tests (8 DTC counting, 8 severity, 8 clues, 12 classification, 8 overrides). Files: `harness/autonomy.py`, `tests/harness/test_autonomy.py`, updated `harness/router.py` and `tests/harness/test_router.py`. |
+| 2026-04-12 | v1.8 | HARNESS-08 implemented (GitHub Issue #58). Integration and E2E tests: `test_integration.py` (7 tests: golden-path loop with mocked LLM, event log completeness, iteration monotonicity, Tier 0→oneshot routing, Tier 1→agent routing, agent-to-V1 fallback, double-failure resilience), `test_e2e_agent.py` (6 tests: full HTTP golden-path stream, diagnosis history storage, cache behavior, force bypass, fallback E2E, optional real-LLM test). JSON fixtures: `golden_path_responses.json` (4 LLM responses: get_session_context→detect_anomalies+search_manual→generate_clues→diagnosis), `fallback_responses.json` (agent error + V1 tokens). Fixture loader: `fixtures/__init__.py` with `load_llm_responses()` and `load_fallback_fixture()`. New feature: agent-to-V1 fallback in `router.py` — when agent loop raises, emits error SSE event then falls back to `_oneshot_stream()` with `skip_padding=True`. Added `e2e_real_llm` pytest marker in `conftest.py`. Also marked HARNESS-06 as DONE. All 182 harness tests pass (12 new + 1 skipped real-LLM). |
 | 2026-04-10 | v1.7 | HARNESS-07 implemented (GitHub Issue #57). Frontend agent visualization: `AgentDiagnosisView.tsx` (main agent streaming view with state machine), `ToolCallCard.tsx` (collapsible card per tool invocation with name/input/output/duration), `IterationProgress.tsx` (iteration counter + autonomy tier badge). Extended `api.ts` with `streamAgentSSE()` and `streamAgentDiagnosis()` supporting V2 event types (`tool_call`, `tool_result`, `session_start`). Agent SSE callbacks: `onToolCall`, `onToolResult`, `onDone`, `onSessionStart`, etc. Tool invocations paired by name+iteration in UI state. Tier 0 fallback: token-by-token text (same as V1). "Agent AI" sub-tab added to `AnalysisLayout.tsx` (visible when premium enabled). i18n: ~25 new strings in `agent.*` namespace across EN, zh-CN, zh-TW. Types: `AgentToolCallEvent`, `AgentToolResultEvent`, `AgentDoneEvent`, `ToolInvocation` in `types.ts`. V1 `AIDiagnosisView.tsx` untouched. Build passes. |

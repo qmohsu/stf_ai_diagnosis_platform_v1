@@ -20,6 +20,11 @@ def pytest_configure(config):
         "integration: marks tests that require external services "
         "(Ollama, PostgreSQL, etc.)",
     )
+    config.addinivalue_line(
+        "markers",
+        "e2e_real_llm: marks tests that require real LLM access "
+        "(skip with: pytest -m 'not e2e_real_llm')",
+    )
 
 
 MOCK_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")

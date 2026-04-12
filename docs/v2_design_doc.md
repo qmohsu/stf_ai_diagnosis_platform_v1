@@ -8,12 +8,12 @@
 |-------|-------|
 | **Doc title** | V2 Harness Architecture for AI-Assisted Vehicle Diagnosis |
 | **Project** | STF AI Diagnosis Platform — Phase 1 Pilot |
-| **Status** | Draft v0.6 |
+| **Status** | Draft v0.7 |
 | **Owner** | Li-Ta Hsu |
 | **Contributors** | ML engineers; backend engineers; frontend engineers |
-| **Last updated** | 2026-04-10 (v0.6) |
+| **Last updated** | 2026-04-12 (v0.7) |
 | **Primary pilot stack** | FastAPI + AsyncOpenAI (OpenRouter) + Ollama + pgvector (PostgreSQL) + Next.js |
-| **New in this revision** | HARNESS-07 implemented: Frontend agent visualization. `AgentDiagnosisView.tsx`, `ToolCallCard.tsx`, `IterationProgress.tsx`. Agent SSE handler (`streamAgentSSE`) in `api.ts` with V2 event types. Tool invocations paired in UI state. Tier badge (color-coded 0–3), iteration counter with progress bar. Tier 0 fallback renders as V1 text stream. "Agent AI" sub-tab in AnalysisLayout (premium-only). i18n: ~25 strings in EN/zh-CN/zh-TW. GitHub Issue #57. |
+| **New in this revision** | HARNESS-08 implemented: Integration and E2E tests. `test_integration.py` (7 tests covering golden-path agent loop, event log completeness, autonomy routing, fallback). `test_e2e_agent.py` (6 tests covering full HTTP E2E). JSON fixtures for deterministic LLM replay. Agent-to-V1 fallback in `router.py` `_stream()` except block: emits error event then falls back to `_oneshot_stream()`. `e2e_real_llm` pytest marker. 182 harness tests total. GitHub Issue #58. |
 
 ### Revision history
 
@@ -26,6 +26,7 @@
 | v0.5 | 2026-04-10 | HARNESS-06: Graduated autonomy router. `autonomy.py` with `classify_complexity()` (deterministic Tier 0–3), `apply_overrides()` for `force_agent`/`force_oneshot` query params. `AutonomyDecision` dataclass. Helpers: `_count_dtcs()` (regex DTC extraction), `_max_severity()` (keyword-based severity grading), `_count_clues()` (tag/separator counting). Integrated into `router.py` — queries `DiagnosisHistory` for Tier 3 (follow-up), sets `max_iterations` from `suggested_max_iterations`, `done` SSE event includes `autonomy_tier` and `autonomy_strategy`. `force_oneshot` beats `force_agent` (safety-first). 44 unit tests. GitHub Issue #56. |
 | v0.5 | 2026-04-10 | HARNESS-05: API endpoint + SSE streaming. `harness/router.py` with `POST /v2/obd/{session_id}/diagnose/agent`. Wires `run_diagnosis_loop()` async generator to `StreamingResponse`. Auth via `get_current_user`, session ownership, cached diagnosis check, `force` re-diagnosis. Stores result in `DiagnosisHistory` with `provider="agent"`. SSE events: `status`, `tool_call`, `tool_result`, `hypothesis`, `done`, `error`, `cached`. 2KB padding prefix. Registered in `main.py`. 12 unit tests. GitHub Issue #55. |
 | v0.6 | 2026-04-10 | HARNESS-07: Frontend agent visualization. `AgentDiagnosisView.tsx` (main agent streaming view), `ToolCallCard.tsx` (collapsible tool card), `IterationProgress.tsx` (iteration counter + tier badge). `streamAgentSSE()` and `streamAgentDiagnosis()` in `api.ts`. Agent types in `types.ts`. "Agent AI" sub-tab in `AnalysisLayout.tsx`. i18n: `agent.*` namespace in 3 locales. V1 untouched. GitHub Issue #57. |
+| v0.7 | 2026-04-12 | HARNESS-08: Integration and E2E tests. `test_integration.py` (golden-path, event log, autonomy routing, fallback). `test_e2e_agent.py` (HTTP E2E: stream, history, cache, force, fallback). JSON fixtures: `golden_path_responses.json` (4 tool-call sequence), `fallback_responses.json`. Fixture loader in `fixtures/__init__.py`. Agent-to-V1 fallback in `router.py`: `_stream()` except block now falls back to `_oneshot_stream(skip_padding=True)` after error event. `e2e_real_llm` pytest marker. 182 total harness tests. GitHub Issue #58. |
 
 ### Relationship to V1
 
@@ -339,7 +340,7 @@ response = await client.chat.completions.create(
 | LLM timeout (no response) | After 60s, yield partial diagnosis from conversation | SSE `error` event with partial diagnosis |
 | LLM returns unknown tool name | Error string: "Unknown tool: {name}" | Agent self-corrects on next iteration |
 | Max iterations reached | Extract best diagnosis from conversation history | SSE `done` event with `"partial": true` flag |
-| Agent loop fails entirely | Fall back to V1 one-shot diagnosis | SSE `error` event with fallback offer; frontend can auto-retry via V1 |
+| Agent loop fails entirely | Fall back to V1 one-shot diagnosis | SSE `error` event, then automatic fallback to `_oneshot_stream()` (implemented HARNESS-08) |
 
 ## 5) Tool registry
 
@@ -799,7 +800,7 @@ case "error":       cb.onError(parsed); break;
 | **Adaptive RAG** | LLM calls `search_manual`, then calls `refine_search` with a more specific query |
 | **Max iterations** | After 10 iterations, agent returns partial diagnosis with `"partial": true` |
 | **Tool error** | Tool returns error string; LLM self-corrects or skips |
-| **Fallback** | Agent loop raises exception; system falls back to V1 one-shot |
+| **Fallback** | Agent loop raises exception; system falls back to V1 one-shot. Implemented in `router.py` `_stream()` except block (HARNESS-08). |
 | **Unknown tool** | LLM calls non-existent tool; receives error; continues with valid tools |
 
 ### 12.4 End-to-end tests

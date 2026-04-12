@@ -70,6 +70,7 @@ async def _oneshot_stream(
     locale: str,
     tier: int,
     strategy: str,
+    skip_padding: bool = False,
 ) -> None:
     """V1 one-shot diagnosis stream for simple (Tier 0) cases.
 
@@ -89,7 +90,8 @@ async def _oneshot_stream(
         SSE event strings.
     """
     # 2KB padding to flush browser buffers.
-    yield ": " + " " * 2048 + "\n\n"
+    if not skip_padding:
+        yield ": " + " " * 2048 + "\n\n"
 
     _init_msgs: Dict[str, str] = {
         "zh-CN": "正在检索上下文并初始化 LLM...",
@@ -454,6 +456,39 @@ async def generate_agent_diagnosis(
                 "error_type": "stream_error",
                 "message": str(exc)[:200],
             })
+
+            # --- Fallback to V1 one-shot ---
+            logger.warning(
+                "agent_fallback_to_oneshot",
+                session_id=str(session_id),
+                original_error=str(exc)[:200],
+            )
+            _fb_msgs: Dict[str, str] = {
+                "zh-CN": "Agent 诊断失败，"
+                         "正在回退到单次诊断...",
+                "zh-TW": "Agent 診斷失敗，"
+                         "正在回退到單次診斷...",
+            }
+            yield _sse_event(
+                "status",
+                _fb_msgs.get(
+                    locale,
+                    "Agent diagnosis failed. "
+                    "Falling back to one-shot "
+                    "diagnosis...",
+                ),
+            )
+            async for fb_event in _oneshot_stream(
+                session_id,
+                parsed_summary,
+                locale,
+                tier=decision.tier,
+                strategy=(
+                    f"{decision.strategy} (fallback)"
+                ),
+                skip_padding=True,
+            ):
+                yield fb_event
 
     return StreamingResponse(
         _stream(),

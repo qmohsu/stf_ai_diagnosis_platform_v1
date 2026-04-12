@@ -1,0 +1,10 @@
+{
+  "agent_error": "Simulated LLM connection timeout",
+  "oneshot_tokens": [
+    "Based on the OBD-II data, ",
+    "the P0300 random misfire code indicates ",
+    "a likely ignition system fault. ",
+    "RPM instability at 08:32 correlates with misfire events. ",
+    "Recommend checking spark plugs and ignition coils."
+  ]
+}
