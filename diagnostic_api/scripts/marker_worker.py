@@ -95,6 +95,9 @@ def _process_request(
     vehicle_model_subdir = request.get(
         "vehicle_model_subdir", True,
     )
+    openai_api_key = request.get("openai_api_key", "")
+    openai_base_url = request.get("openai_base_url", "")
+    openai_model = request.get("openai_model", "")
 
     # Resolve the absolute PDF path.
     pdf_abs = os.path.join(output_dir, pdf_rel)
@@ -108,48 +111,86 @@ def _process_request(
         _safe_unlink(req_path)
         return
 
-    # Run marker-pdf conversion.
-    try:
-        from marker_convert import convert
+    # Run marker-pdf conversion (LLM mode with fallback).
+    from marker_convert import convert
 
-        result = convert(
-            pdf_path=pdf_abs,
-            output_dir=output_dir,
-            use_llm=use_llm,
-            vehicle_model_subdir=vehicle_model_subdir,
-        )
+    result = None
+    used_llm = False
 
-        # Build relative output path for the container.
-        rel_output = os.path.relpath(
-            str(result.output_path), output_dir,
-        )
+    if use_llm:
+        try:
+            logger.info(
+                "Attempting LLM-assisted conversion "
+                "(model=%s)", openai_model,
+            )
+            result = convert(
+                pdf_path=pdf_abs,
+                output_dir=output_dir,
+                use_llm=True,
+                openai_api_key=openai_api_key,
+                openai_base_url=openai_base_url,
+                openai_model=openai_model,
+                vehicle_model_subdir=vehicle_model_subdir,
+            )
+            used_llm = True
+            logger.info("LLM-assisted conversion succeeded")
+        except Exception as exc:
+            logger.warning(
+                "LLM conversion failed, falling back to "
+                "non-LLM mode: %s", exc,
+            )
 
-        _write_result(res_path, {
-            "status": "ok",
-            "output_path": rel_output,
-            "vehicle_model": result.vehicle_model,
-            "language": result.language,
-            "page_count": result.page_count,
-            "section_count": result.section_count,
-            "image_count": result.image_count,
-            "dtc_codes": result.dtc_codes,
-        })
-        logger.info(
-            "Conversion complete: %s → %s "
-            "(model=%s, pages=%d)",
-            pdf_rel,
-            rel_output,
-            result.vehicle_model,
-            result.page_count,
-        )
+    if result is None:
+        try:
+            result = convert(
+                pdf_path=pdf_abs,
+                output_dir=output_dir,
+                use_llm=False,
+                vehicle_model_subdir=vehicle_model_subdir,
+            )
+        except Exception as exc:
+            msg = f"Conversion failed: {exc}"
+            logger.error(msg, exc_info=True)
+            _write_result(res_path, {
+                "status": "error",
+                "message": msg[:1000],
+            })
+            _safe_unlink(req_path)
+            return
 
-    except Exception as exc:
-        msg = f"Conversion failed: {exc}"
-        logger.error(msg, exc_info=True)
-        _write_result(res_path, {
-            "status": "error",
-            "message": msg[:1000],
-        })
+    # Build relative output path for the container.
+    rel_output = os.path.relpath(
+        str(result.output_path), output_dir,
+    )
+
+    converter_label = (
+        f"marker-pdf (LLM: {openai_model})"
+        if used_llm
+        else "marker-pdf"
+    )
+    if use_llm and not used_llm:
+        converter_label = "marker-pdf (LLM fallback)"
+
+    _write_result(res_path, {
+        "status": "ok",
+        "output_path": rel_output,
+        "vehicle_model": result.vehicle_model,
+        "language": result.language,
+        "page_count": result.page_count,
+        "section_count": result.section_count,
+        "image_count": result.image_count,
+        "dtc_codes": result.dtc_codes,
+        "converter": converter_label,
+    })
+    logger.info(
+        "Conversion complete: %s → %s "
+        "(model=%s, pages=%d, llm=%s)",
+        pdf_rel,
+        rel_output,
+        result.vehicle_model,
+        result.page_count,
+        used_llm,
+    )
 
     # Delete the request file after processing.
     _safe_unlink(req_path)

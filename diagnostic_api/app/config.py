@@ -101,6 +101,10 @@ class Settings(BaseSettings):
         os.getenv("MANUAL_USE_LLM", "false").lower()
         == "true"
     )
+    manual_llm_model: str = os.getenv(
+        "MANUAL_LLM_MODEL",
+        "qwen/qwen3.5-flash-02-23",
+    )
     marker_poll_interval_seconds: int = int(
         os.getenv("MARKER_POLL_INTERVAL_SECONDS", "2"),
     )

@@ -139,10 +139,8 @@ async def run_conversion_and_ingestion(
         manual.page_count = result.get("page_count")
         manual.section_count = result.get("section_count")
         manual.language = result.get("language")
-        manual.converter = (
-            "marker-pdf"
-            if not settings.manual_use_llm
-            else "marker-pdf (LLM)"
+        manual.converter = result.get(
+            "converter", "marker-pdf",
         )
         db.commit()
         log.info(
@@ -236,11 +234,22 @@ async def _run_marker_convert(
     )
 
     # Write conversion request.
-    request = {
+    request: dict = {
         "pdf_path": pdf_rel,
         "use_llm": settings.manual_use_llm,
         "vehicle_model_subdir": True,
     }
+    # Pass LLM credentials if LLM mode is enabled.
+    if settings.manual_use_llm:
+        request["openai_api_key"] = (
+            settings.premium_llm_api_key
+        )
+        request["openai_base_url"] = (
+            settings.premium_llm_base_url
+        )
+        request["openai_model"] = (
+            settings.manual_llm_model
+        )
     with open(req_path, "w", encoding="utf-8") as f:
         json.dump(request, f)
 
