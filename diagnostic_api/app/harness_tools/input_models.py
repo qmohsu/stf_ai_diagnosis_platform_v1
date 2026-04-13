@@ -83,3 +83,52 @@ class SearchManualInput(BaseModel):
             "searches to get fresh results)."
         ),
     )
+
+
+class ListManualsInput(BaseModel):
+    """Input for the list_manuals tool."""
+
+    vehicle_model: Optional[str] = Field(
+        default=None,
+        description=(
+            "Filter by vehicle model (e.g. 'MWS-150-A'). "
+            "Omit to list all available manuals."
+        ),
+    )
+
+
+class GetManualTocInput(BaseModel):
+    """Input for the get_manual_toc tool."""
+
+    manual_id: str = Field(
+        ...,
+        description=(
+            "Manual filename stem "
+            "(e.g. 'MWS150A_Service_Manual'). "
+            "Use list_manuals to discover available IDs."
+        ),
+    )
+
+
+class ReadManualSectionInput(BaseModel):
+    """Input for the read_manual_section tool."""
+
+    manual_id: str = Field(
+        ...,
+        description="Manual filename stem.",
+    )
+    section: str = Field(
+        ...,
+        description=(
+            "Section heading text or slug "
+            "(e.g. '3-2-fuel-system-troubleshooting' or "
+            "'Fuel System Troubleshooting'). "
+            "Use get_manual_toc to find available sections."
+        ),
+    )
+    include_subsections: bool = Field(
+        default=True,
+        description=(
+            "Include child subsections in the result."
+        ),
+    )
