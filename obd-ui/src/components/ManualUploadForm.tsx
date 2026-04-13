@@ -86,7 +86,20 @@ export function ManualUploadForm({ onUploaded }: ManualUploadFormProps) {
           <p className="mt-2 text-sm text-muted-foreground">
             {uploading ? t("manuals.uploading") : t("manuals.dropzone")}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            disabled={uploading}
+            onClick={(e) => {
+              e.stopPropagation();
+              fileInputRef.current?.click();
+            }}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            {t("manuals.upload")}
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2">
             {t("manuals.maxSize", { size: "200" })}
           </p>
           <input
