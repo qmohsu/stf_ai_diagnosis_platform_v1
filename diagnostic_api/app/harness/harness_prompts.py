@@ -26,7 +26,21 @@ investigate patterns and anomalies.
 - `search_manual` — Search vehicle service manuals for \
 diagnostic procedures, specifications, and repair instructions. \
 Use DTC codes, symptom descriptions, or component names as \
-search queries.
+search queries. Returns short text chunks ranked by relevance.
+
+- `list_manuals` — List available service manuals. Use to \
+discover what manuals exist for a vehicle model before \
+reading them.
+
+- `get_manual_toc` — Get the table of contents (heading \
+structure) of a specific manual. Returns section titles with \
+slugs and a DTC quick-reference index. Use this to find the \
+right section before calling read_manual_section.
+
+- `read_manual_section` — Read a specific section from a \
+manual by heading slug or title. Returns the full section \
+text with embedded images (diagrams, wiring schematics). Use \
+get_manual_toc first to find section slugs.
 
 ## How to investigate
 
