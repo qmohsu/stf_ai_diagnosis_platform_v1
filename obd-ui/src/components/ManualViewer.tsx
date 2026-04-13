@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, BookOpen, Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +30,8 @@ function stripFrontmatter(md: string): string {
   return md.slice(end + 3).trimStart();
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+
 export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
   const { t } = useTranslation();
   const [manual, setManual] = useState<ManualDetail | null>(null);
@@ -52,6 +56,15 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
       cancelled = true;
     };
   }, [manualId]);
+
+  // Compute the base URL for rewriting relative image paths.
+  // md_file_path is like "MWS-150-A/manual.md", so the base
+  // directory is "MWS-150-A/".
+  const imageBaseUrl = useMemo(() => {
+    if (!manual?.md_file_path) return "/manuals/data/";
+    const dir = manual.md_file_path.replace(/[^/]*$/, "");
+    return `/manuals/data/${dir}`;
+  }, [manual?.md_file_path]);
 
   if (loading) {
     return (
@@ -121,8 +134,46 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
         </CardHeader>
         <CardContent>
           {body ? (
-            <article className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap break-words">
-              {body}
+            <article className="prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  // Rewrite relative image paths to serve
+                  // from the nginx /manuals/data/ endpoint.
+                  img: ({ node, src, alt, ...props }) => {
+                    let resolvedSrc = src || "";
+                    if (
+                      resolvedSrc &&
+                      !resolvedSrc.startsWith("http") &&
+                      !resolvedSrc.startsWith("/")
+                    ) {
+                      resolvedSrc = imageBaseUrl + resolvedSrc;
+                    }
+                    return (
+                      <img
+                        src={resolvedSrc}
+                        alt={alt || ""}
+                        loading="lazy"
+                        className="max-w-full h-auto rounded"
+                        {...props}
+                      />
+                    );
+                  },
+                  // Open external links in new tab.
+                  a: ({ node, href, children, ...props }) => (
+                    <a
+                      href={href}
+                      target={href?.startsWith("http") ? "_blank" : undefined}
+                      rel={href?.startsWith("http") ? "noopener noreferrer" : undefined}
+                      {...props}
+                    >
+                      {children}
+                    </a>
+                  ),
+                }}
+              >
+                {body}
+              </ReactMarkdown>
             </article>
           ) : (
             <p className="text-sm text-muted-foreground">
