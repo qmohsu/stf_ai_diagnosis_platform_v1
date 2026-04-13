@@ -7,14 +7,14 @@
 | **Architecture doc** | `docs/v2_design_doc.md` |
 | **GitHub Issue** | #26 (discussion: From Context Engineering to Harness Engineering) |
 | **Version** | v1.0 |
-| **Last updated** | 2026-04-12 (HARNESS-10 in progress) |
+| **Last updated** | 2026-04-13 (HARNESS-11 implemented) |
 
 ## 1. Scope Boundary
 
 ### 1.1 In Scope
 
 - Core harness loop (agent loop pattern, async generator)
-- Tool registry with dispatch map + 7 tool wrappers (4 existing + 3 new)
+- Tool registry with dispatch map + 5 agent-native tools (multimodal-capable)
 - Session event log (new `harness_event_log` Postgres table)
 - Context management (token budget tracking + 2-tier compaction)
 - New API endpoint: `POST /v2/obd/{session_id}/diagnose/agent`
@@ -523,13 +523,25 @@ Acceptance criteria:
 - [ ] Integration test with real PDF conversion (requires marker-pdf)
 - [ ] Deploy to server
 
-#### HARNESS‑11 — Background Agent Tasks
+#### HARNESS‑11 — Multimodal Manual Navigation Tools ✅ DONE
+
+Depends on: HARNESS-09, HARNESS-10
+GitHub Issue: #71
+Status: **DONE** (2026-04-13)
+
+Scope: 3 filesystem navigation tools (`list_manuals`, `get_manual_toc`, `read_manual_section`) that complement `search_manual` with structural navigation. Multimodal infrastructure enabling tool handlers to return `List[ContentBlock]` (interleaved text + base64 images). Context management updated for multimodal token estimation, truncation, and compaction. Design informed by [Anthropic tool design guide](https://www.anthropic.com/engineering/writing-tools-for-agents): 3 tools (not 1) because each maps to a distinct cognitive step at different token costs. Images mandatory because service manuals contain wiring diagrams, exploded views, and diagnostic flowcharts.
+
+Files created: `harness_tools/manual_tools.py`, `harness_tools/manual_fs.py`, `tests/harness/test_manual_tools.py`, `tests/harness/test_manual_fs.py`, `tests/harness/test_multimodal_loop.py`.
+Files modified: `harness/tool_registry.py`, `harness/loop.py`, `harness/context.py`, `harness/harness_prompts.py`, `harness_tools/input_models.py`.
+Tests: 70 new (22 infrastructure + 31 utilities + 17 handlers), 242 total harness tests passing.
+
+#### HARNESS‑12 — Background Agent Tasks
 
 Depends on: HARNESS-08
 Scope: Long-running agent sessions that execute in the background. Notification when complete. For multi-vehicle fleet analysis or overnight batch diagnosis.
 Reference: Learning notes S08.
 
-#### HARNESS‑12 — Case Library Tool (Feedback-Driven Learning)
+#### HARNESS‑13 — Case Library Tool (Feedback-Driven Learning)
 
 Depends on: HARNESS-08
 Scope: Use stored expert feedback to build a case library. Tool retrieves past cases where feedback was positive (helpful=true, rating≥4) and includes the expert-validated root cause.
@@ -557,3 +569,4 @@ Scope: Use stored expert feedback to build a case library. Tool retrieves past c
 | 2026-04-10 | v1.7 | HARNESS-07 implemented (GitHub Issue #57). Frontend agent visualization: `AgentDiagnosisView.tsx` (main agent streaming view with state machine), `ToolCallCard.tsx` (collapsible card per tool invocation with name/input/output/duration), `IterationProgress.tsx` (iteration counter + autonomy tier badge). Extended `api.ts` with `streamAgentSSE()` and `streamAgentDiagnosis()` supporting V2 event types (`tool_call`, `tool_result`, `session_start`). Agent SSE callbacks: `onToolCall`, `onToolResult`, `onDone`, `onSessionStart`, etc. Tool invocations paired by name+iteration in UI state. Tier 0 fallback: token-by-token text (same as V1). "Agent AI" sub-tab added to `AnalysisLayout.tsx` (visible when premium enabled). i18n: ~25 new strings in `agent.*` namespace across EN, zh-CN, zh-TW. Types: `AgentToolCallEvent`, `AgentToolResultEvent`, `AgentDoneEvent`, `ToolInvocation` in `types.ts`. V1 `AIDiagnosisView.tsx` untouched. Build passes. |
 | 2026-04-12 | v2.0 | HARNESS-10 in progress (GitHub Issue #70). Manual ingestion pipeline: `Manual` DB model + Alembic `q1r2` migration, `manual_pipeline.py` background service (marker-pdf conversion + RAG ingestion with GPU semaphore), 5 API endpoints under `/v2/manuals` (upload, list, get, delete, status), refactored `marker_convert.py` (ConversionResult + vehicle_model_subdir), per-vehicle-model directory structure. Frontend: `/manuals` page with ManualUploadForm (drag-drop PDF), ManualList (status badges, auto-polling), ManualViewer. Nav link in HeaderAuth. i18n (EN, zh-CN, zh-TW). Config: `manual_storage_path`, `manual_max_file_size_bytes`, `manual_use_llm`. Startup recovery for interrupted conversions. 16 unit tests passing. |
 | 2026-04-12 | v1.9 | HARNESS-09: Toolset redesign (GitHub Issue #69). Replaced 7 V1-wrapper tools with 2 agent-native tools: `read_obd_data` (parameterized OBD log reader with overview + signal query modes) and `search_manual` (redesigned with vehicle_model filter + exclude_chunk_ids). Removed: `get_pid_statistics`, `detect_anomalies`, `generate_clues`, `get_session_context`, `refine_search`, `search_case_history`. New: `obd_data_tools.py` reads raw TSV files via `log_parser.parse_log_file()`. `retrieve.py` now accepts `vehicle_model` and `exclude_chunk_ids` filters. Agent loop auto-injects `_session_id` so LLM never passes UUIDs. System prompt rewritten as flexible investigation guide (no rigid 7-step script). User message simplified to vehicle + time range + DTCs only. 172 tests pass (1 pre-existing DB-env failure). Files: created `harness_tools/obd_data_tools.py`; rewrote `harness_tools/rag_tools.py`, `harness_tools/input_models.py`, `harness/harness_prompts.py`; modified `harness/loop.py`, `harness/tool_registry.py`, `app/rag/retrieve.py`; deleted `harness_tools/obd_tools.py`, `harness_tools/history_tools.py`. |
+| 2026-04-13 | v2.1 | HARNESS-11: Multimodal manual navigation tools (GitHub Issue #71). 3 new filesystem tools: `list_manuals` (discover manuals, filter by vehicle model), `get_manual_toc` (heading tree with slugs + DTC quick index), `read_manual_section` (full section with base64 images). Multimodal infrastructure: `ToolOutput = str | List[ContentBlock]`, `ToolResult.output` accepts multimodal, `_make_tool_message()` passes list content to OpenAI format, `_extract_text_for_sse()` strips images from SSE. Context: `estimate_content_tokens()` for multimodal (images at 1000 tokens), `truncate_tool_result()` preserves images while truncating text, `_summarize_iteration()` drops images during compaction. Shared utils: `manual_fs.py` (`slugify`, `parse_frontmatter`, `parse_heading_tree`, `extract_section`, `find_closest_slug`, `resolve_image_refs`, `load_image_as_content_block`, `build_multimodal_section`). Security: path traversal protection, 5 MB image cap. System prompt updated with 5 tool descriptions. 70 new tests (22 infra + 31 utils + 17 handlers), 242 total harness tests pass. Files: created `harness_tools/manual_tools.py`, `harness_tools/manual_fs.py`; modified `harness/tool_registry.py`, `harness/loop.py`, `harness/context.py`, `harness/harness_prompts.py`, `harness_tools/input_models.py`. |

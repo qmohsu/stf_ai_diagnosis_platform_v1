@@ -11,9 +11,9 @@
 | **Status** | Draft v0.8 |
 | **Owner** | Li-Ta Hsu |
 | **Contributors** | ML engineers; backend engineers; frontend engineers |
-| **Last updated** | 2026-04-12 (v0.9) |
+| **Last updated** | 2026-04-13 (v1.0) |
 | **Primary pilot stack** | FastAPI + AsyncOpenAI (OpenRouter) + Ollama + pgvector (PostgreSQL) + Next.js |
-| **New in this revision** | HARNESS-10: Manual ingestion pipeline (GitHub Issue #70). New `Manual` DB model + Alembic migration `q1r2`. Background conversion pipeline: PDF upload → marker-pdf → per-vehicle-model filesystem storage → pgvector RAG ingestion. 5 CRUD endpoints under `/v2/manuals`. Frontend `/manuals` page with drag-drop upload, status-polling list, and manual viewer. See §9 (Manual Ingestion Pipeline). |
+| **New in this revision** | HARNESS-11: Multimodal manual navigation tools (GitHub Issue #71). 3 new tools: `list_manuals`, `get_manual_toc`, `read_manual_section`. Multimodal tool result infrastructure (`ToolOutput = str | List[ContentBlock]`) enabling image content blocks in tool results. Updated context management (token estimation, truncation, compaction) for multimodal content. See §5.2 and §7.1. |
 
 ### Revision history
 
@@ -28,6 +28,7 @@
 | v0.6 | 2026-04-10 | HARNESS-07: Frontend agent visualization. `AgentDiagnosisView.tsx` (main agent streaming view), `ToolCallCard.tsx` (collapsible tool card), `IterationProgress.tsx` (iteration counter + tier badge). `streamAgentSSE()` and `streamAgentDiagnosis()` in `api.ts`. Agent types in `types.ts`. "Agent AI" sub-tab in `AnalysisLayout.tsx`. i18n: `agent.*` namespace in 3 locales. V1 untouched. GitHub Issue #57. |
 | v0.7 | 2026-04-12 | HARNESS-08: Integration and E2E tests. `test_integration.py` (golden-path, event log, autonomy routing, fallback). `test_e2e_agent.py` (HTTP E2E: stream, history, cache, force, fallback). JSON fixtures: `golden_path_responses.json` (4 tool-call sequence), `fallback_responses.json`. Fixture loader in `fixtures/__init__.py`. Agent-to-V1 fallback in `router.py`: `_stream()` except block now falls back to `_oneshot_stream(skip_padding=True)` after error event. `e2e_real_llm` pytest marker. 182 total harness tests. GitHub Issue #58. |
 | v0.9 | 2026-04-12 | HARNESS-10: Manual ingestion pipeline (GitHub Issue #70). `Manual` DB model + Alembic migration `q1r2`. Background pipeline: upload PDF → marker-pdf conversion (GPU-serialized via semaphore) → per-vehicle-model filesystem storage → pgvector RAG ingestion. 5 endpoints under `/v2/manuals` (upload, list, get, delete, status). Refactored `marker_convert.py` with `ConversionResult` dataclass and `vehicle_model_subdir` param. Frontend `/manuals` page: `ManualUploadForm` (drag-drop), `ManualList` (auto-polling status), `ManualViewer`. Startup recovery marks stuck conversions as failed. Config: `manual_storage_path`, `manual_max_file_size_bytes`, `manual_use_llm`. i18n (EN, zh-CN, zh-TW). 16 unit tests. |
+| v1.0 | 2026-04-13 | HARNESS-11: Multimodal manual navigation tools (GitHub Issue #71). 3 new filesystem tools: `list_manuals` (discover manuals, filter by vehicle model), `get_manual_toc` (heading tree with slugs + DTC index), `read_manual_section` (full section content with images as base64 content blocks). Multimodal infrastructure: `ToolOutput = str | List[ContentBlock]`, `ToolResult.output` accepts multimodal content, `_make_tool_message()` passes list content to OpenAI format, `_extract_text_for_sse()` strips images from SSE events. Context management: `estimate_content_tokens()` for multimodal token counting (images at 1000 tokens each), `truncate_tool_result()` handles list content (preserves images, truncates text), `_summarize_iteration()` extracts text snippets and drops images during compaction. Shared utilities in `manual_fs.py`: `slugify`, `parse_frontmatter`, `parse_heading_tree`, `extract_section`, `find_closest_slug`, `resolve_image_refs`, `load_image_as_content_block`, `build_multimodal_section`. Security: path traversal protection in image resolution, 5 MB per-image cap. 70 unit tests. |
 
 ### Relationship to V1
 
@@ -347,9 +348,12 @@ response = await client.chat.completions.create(
 
 ### 5.1 Tool interface
 
-Every tool follows the universal interface: `execute(name: str, input: dict) → str`
+Every tool follows the universal interface: `execute(name: str, input: dict) → ToolResult`
 
 ```python
+ContentBlock = Dict[str, Any]   # {"type": "text", "text": "..."} or {"type": "image_url", ...}
+ToolOutput = Union[str, List[ContentBlock]]
+
 @dataclass(frozen=True)
 class ToolDefinition:
     """Schema and handler for a single diagnostic tool."""
@@ -357,11 +361,13 @@ class ToolDefinition:
     name: str
     description: str
     input_schema: dict          # JSON Schema for function calling
-    handler: Callable           # async (input: dict) -> str
-    is_async: bool = True
+    handler: Callable           # async (input: dict) -> ToolOutput
+    max_result_chars: int = 50_000
 ```
 
-**Privacy invariant**: Every tool handler returns a **text string** — summaries, scores, descriptions. No tool ever returns raw sensor arrays, binary data, or time-series DataFrames. This architecturally enforces the data boundary from V1 `design_doc.md` §13.1.
+**Multimodal support (HARNESS-11)**: Tool handlers may return plain `str` (text-only) or `List[ContentBlock]` for multimodal results containing images. The loop passes list content directly to the OpenAI-compatible API. SSE events strip base64 images via `_extract_text_for_sse()`.
+
+**Privacy invariant**: Tool handlers return text summaries, scores, or multimodal content blocks (text + images from local filesystem). No tool ever returns raw sensor arrays or time-series DataFrames. Images come only from locally stored service manuals.
 
 ### 5.2 Agent-native tools
 
@@ -393,6 +399,37 @@ These tools give the agent direct access to data and knowledge. The agent does i
 | **Vehicle model filter** | Restricts search to chunks from a specific vehicle model (uses indexed `RagChunk.vehicle_model` column) |
 | **Chunk exclusion** | `exclude_chunk_ids` for follow-up searches to get fresh results |
 | **File** | `harness_tools/rag_tools.py` |
+
+#### `list_manuals`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Discover available service manuals in the filesystem |
+| **Input** | `{ "vehicle_model": "MWS-150-A" }` (optional filter) |
+| **Output** | Text listing each manual's ID, vehicle model, page count, and section count |
+| **Implementation** | Scans `manual_storage_path` for `.md` files, parses YAML frontmatter |
+| **File** | `harness_tools/manual_tools.py` |
+
+#### `get_manual_toc`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Get the heading structure of a specific manual for targeted section reading |
+| **Input** | `{ "manual_id": "MWS150A_Service_Manual" }` |
+| **Output** | Indented heading tree with slugs + DTC quick-reference index |
+| **Implementation** | Parses markdown headings, builds tree with `parse_heading_tree()`, extracts DTC index from Appendix |
+| **File** | `harness_tools/manual_tools.py` |
+
+#### `read_manual_section`
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Read a full manual section with embedded images (wiring diagrams, exploded views) |
+| **Input** | `{ "manual_id": "MWS150A_Service_Manual", "section": "3-2-fuel-system-troubleshooting", "include_subsections": true }` |
+| **Output** | **Multimodal**: `List[ContentBlock]` with interleaved text and base64-encoded PNG images |
+| **Section matching** | Exact slug → slugified text → substring match. Actionable error with suggestions on miss. |
+| **Image loading** | Resolves `![alt](images/...)` references, loads PNGs from disk, 5 MB per-image cap, path traversal protection |
+| **File** | `harness_tools/manual_tools.py` + `harness_tools/manual_fs.py` (shared helpers) |
 
 ### 5.3 Removed tools (V1 wrappers, removed in HARNESS-09)
 
@@ -512,13 +549,13 @@ Message 8: tool       — tool_result: "[0.87] MWS150-A#3.2 — Ignition ..."
 Message 9: assistant  — "Based on my investigation, the diagnosis is: ..."
 ```
 
-**Token budget**: Tracked per-iteration via `estimate_tokens()` (character-based: `len(text) // 4`). Fast enough to call every iteration (~20% accuracy vs real tokenizers for English diagnostic text). `estimate_messages_tokens()` sums content + tool-call arguments + 4 tokens overhead per message.
+**Token budget**: Tracked per-iteration via `estimate_tokens()` (character-based: `len(text) // 4`). Fast enough to call every iteration (~20% accuracy vs real tokenizers for English diagnostic text). `estimate_messages_tokens()` sums content + tool-call arguments + 4 tokens overhead per message. **Multimodal**: `estimate_content_tokens()` handles both string and `List[ContentBlock]` content — text blocks use char/4 estimation, image blocks add a fixed 1000-token estimate each.
 
 ### 7.2 Compaction strategy
 
 Two-tier compaction to prevent context overflow. **Implementation**: `diagnostic_api/app/harness/context.py`.
 
-**Tier 1 — Tool result truncation** (`truncate_tool_result()`): Applied to every tool result in the agent loop after `ToolRegistry.execute()`. If a result exceeds `HarnessConfig.max_tool_result_tokens` (default: 2000, ~8000 chars), truncate at the character boundary and append `"\n[truncated — {total_chars} chars total]"`.
+**Tier 1 — Tool result truncation** (`truncate_tool_result()`): Applied to every tool result in the agent loop after `ToolRegistry.execute()`. For string results: head+tail truncation with marker. For multimodal list results: subtracts image token cost from budget, truncates text blocks only (images are preserved intact since they cannot be meaningfully split).
 
 **Tier 2 — Auto-compact** (`maybe_compact()`): Called between iterations in the agent loop after all tool results are appended. When `estimate_messages_tokens(messages)` exceeds `HarnessConfig.compact_threshold` (default: 60000 tokens):
 1. Identify iteration boundaries (each = 1 assistant msg with `tool_calls` + subsequent tool msgs)
