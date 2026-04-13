@@ -157,8 +157,8 @@ def _make_tool_message(
 
     Args:
         tool_call_id: Correlating ID from the tool call.
-        output: Tool execution output — ``str`` or
-            ``List[ContentBlock]``.
+        output: Tool execution output (``str`` or
+            ``List[ContentBlock]``).
 
     Returns:
         OpenAI-format tool message dict.
@@ -178,13 +178,16 @@ def _extract_text_for_sse(output: Any) -> str:
     replace images with ``[image]`` markers.
 
     Args:
-        output: Tool output — ``str`` or ``List[ContentBlock]``.
+        output: Tool output (``str``, ``List[ContentBlock]``,
+            or any fallback type).
 
     Returns:
         Text-only string suitable for SSE serialization.
     """
     if isinstance(output, str):
         return output
+    if not isinstance(output, list):
+        return str(output)
     parts: List[str] = []
     for block in output:
         block_type = block.get("type", "")
@@ -423,6 +426,12 @@ async def run_diagnosis_loop(
                         result.output,
                         cfg.max_tool_result_tokens,
                     )
+                    if output is not result.output:
+                        logger.info(
+                            "tool_result_truncated",
+                            tool=tc.name,
+                            iteration=iteration,
+                        )
 
                     # SSE payload uses text-only summary
                     # (no base64 images in event stream).
