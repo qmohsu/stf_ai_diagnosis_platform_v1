@@ -363,6 +363,7 @@
     "maxSize": "Max file size: {{size}} MB",
     "vehicleModel": "Vehicle Model (optional)",
     "vehicleModelPlaceholder": "e.g. TRICITY-155, MWS-150-A",
+    "selectFile": "Select PDF",
     "uploading": "Uploading...",
     "converting": "Converting...",
     "ingested": "Ready",

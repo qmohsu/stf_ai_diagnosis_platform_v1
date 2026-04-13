@@ -363,6 +363,7 @@
     "maxSize": "最大文件大小：{{size}} MB",
     "vehicleModel": "车型（可选）",
     "vehicleModelPlaceholder": "例如 TRICITY-155, MWS-150-A",
+    "selectFile": "选择PDF文件",
     "uploading": "上传中...",
     "converting": "转换中...",
     "ingested": "就绪",
