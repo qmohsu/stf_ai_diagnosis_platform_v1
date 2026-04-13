@@ -8,11 +8,15 @@ Two-tier strategy:
      ``max_tool_result_tokens``.
   2. **Tier 2** — Auto-compact older conversation turns when the
      estimated total exceeds ``compact_threshold``.
+
+Supports both plain-string and multimodal (``List[ContentBlock]``)
+tool results.  Image blocks use a fixed token estimate since their
+actual token cost depends on the LLM's vision encoder.
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import structlog
 
@@ -36,6 +40,10 @@ _MSG_OVERHEAD = 4
 
 # Max chars kept from a tool result in the compacted summary.
 _SUMMARY_SNIPPET_LEN = 80
+
+# Fixed token estimate per image in multimodal content.
+# OpenAI charges ~1000 tokens for low-detail images.
+_IMAGE_TOKEN_ESTIMATE = 1000
 
 
 # ── Token estimation ────────────────────────────────────────────────
@@ -61,6 +69,33 @@ def estimate_tokens(text: str) -> int:
     return max(1, len(text) // _CHARS_PER_TOKEN)
 
 
+def estimate_content_tokens(
+    content: Union[str, List[Dict[str, Any]]],
+) -> int:
+    """Estimate tokens for plain string or multimodal content.
+
+    For strings, delegates to ``estimate_tokens()``.  For
+    multimodal content-block lists, sums text block tokens and
+    adds a fixed estimate per image block.
+
+    Args:
+        content: Plain string or OpenAI content-block list.
+
+    Returns:
+        Estimated token count.
+    """
+    if isinstance(content, str):
+        return estimate_tokens(content)
+    total = 0
+    for block in content:
+        block_type = block.get("type", "")
+        if block_type == "text":
+            total += estimate_tokens(block.get("text", ""))
+        elif block_type == "image_url":
+            total += _IMAGE_TOKEN_ESTIMATE
+    return max(1, total)
+
+
 def estimate_messages_tokens(
     messages: List[Dict[str, Any]],
 ) -> int:
@@ -69,6 +104,9 @@ def estimate_messages_tokens(
     Counts ``content`` fields for all roles, plus ``arguments``
     strings inside ``tool_calls`` for assistant messages.  Adds
     a small per-message overhead for role and structure tokens.
+
+    Handles both plain-string and multimodal (list) content
+    fields in tool-result messages.
 
     Args:
         messages: OpenAI-format conversation list.
@@ -81,7 +119,7 @@ def estimate_messages_tokens(
         total += _MSG_OVERHEAD
         content = msg.get("content")
         if content:
-            total += estimate_tokens(content)
+            total += estimate_content_tokens(content)
         for tc in msg.get("tool_calls", []):
             fn = tc.get("function", {})
             args = fn.get("arguments", "")
@@ -94,39 +132,78 @@ def estimate_messages_tokens(
 
 
 def truncate_tool_result(
-    content: str,
+    content: Union[str, List[Dict[str, Any]]],
     max_tokens: int,
-) -> str:
+) -> Union[str, List[Dict[str, Any]]]:
     """Truncate a tool result that exceeds the token budget.
 
-    If the result fits within ``max_tokens``, it is returned
-    unchanged.  Otherwise, a head+tail strategy preserves both
-    the beginning (most context) and the end (often contains
-    summaries, status codes, or conclusions).  The budget is
-    split 75 %% head / 25 %% tail.
+    For plain strings: head+tail strategy preserves both the
+    beginning and end.  For multimodal lists: truncates text
+    blocks only; image blocks are kept intact (each counts as
+    ``_IMAGE_TOKEN_ESTIMATE`` tokens against the budget).
 
     Args:
-        content: Raw tool output string.
+        content: Raw tool output (string or content-block list).
         max_tokens: Per-result token budget.
 
     Returns:
-        Original or truncated string with marker.
+        Original or truncated content in the same format.
     """
     max_tokens = max(1, max_tokens)
-    if estimate_tokens(content) <= max_tokens:
+    if estimate_content_tokens(content) <= max_tokens:
         return content
-    # Use char estimate for the cut boundary.
-    max_chars = max_tokens * _CHARS_PER_TOKEN
-    head_chars = int(max_chars * 0.75)
-    tail_chars = max_chars - head_chars
-    head = content[:head_chars]
-    tail = content[-tail_chars:] if tail_chars > 0 else ""
-    truncated_count = len(content) - head_chars - tail_chars
-    marker = (
-        f"\n[…truncated {truncated_count} chars "
-        f"({len(content)} total)…]\n"
+
+    if isinstance(content, str):
+        # Use char estimate for the cut boundary.
+        max_chars = max_tokens * _CHARS_PER_TOKEN
+        head_chars = int(max_chars * 0.75)
+        tail_chars = max_chars - head_chars
+        head = content[:head_chars]
+        tail = (
+            content[-tail_chars:] if tail_chars > 0 else ""
+        )
+        truncated_count = (
+            len(content) - head_chars - tail_chars
+        )
+        marker = (
+            f"\n[…truncated {truncated_count} chars "
+            f"({len(content)} total)…]\n"
+        )
+        return head + marker + tail
+
+    # Multimodal: subtract image token cost from budget,
+    # then truncate text blocks with remaining budget.
+    image_count = sum(
+        1 for b in content
+        if b.get("type") == "image_url"
     )
-    return head + marker + tail
+    text_budget = max(
+        1,
+        max_tokens - image_count * _IMAGE_TOKEN_ESTIMATE,
+    )
+    text_max_chars = text_budget * _CHARS_PER_TOKEN
+    remaining = text_max_chars
+    result: List[Dict[str, Any]] = []
+    for block in content:
+        if block.get("type") != "text":
+            result.append(block)
+            continue
+        text = block.get("text", "")
+        if remaining <= 0:
+            continue
+        if len(text) <= remaining:
+            result.append(block)
+            remaining -= len(text)
+        else:
+            result.append({
+                "type": "text",
+                "text": (
+                    text[:remaining]
+                    + "\n[…truncated…]"
+                ),
+            })
+            remaining = 0
+    return result
 
 
 # ── Tier 2: conversation compaction ─────────────────────────────────
@@ -207,6 +284,22 @@ def _summarize_iteration(
         tc_id = msg.get("tool_call_id", "")
         name = id_to_name.get(tc_id, "unknown")
         content = msg.get("content", "")
+        # Extract text from multimodal content.
+        if isinstance(content, list):
+            text_parts = []
+            image_count = 0
+            for block in content:
+                if block.get("type") == "text":
+                    text_parts.append(
+                        block.get("text", ""),
+                    )
+                elif block.get("type") == "image_url":
+                    image_count += 1
+            content = " ".join(text_parts)
+            if image_count:
+                content += (
+                    f" [{image_count} image(s)]"
+                )
         snippet = content[:_SUMMARY_SNIPPET_LEN]
         if len(content) > _SUMMARY_SNIPPET_LEN:
             snippet += "..."

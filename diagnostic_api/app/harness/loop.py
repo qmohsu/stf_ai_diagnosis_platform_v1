@@ -147,13 +147,18 @@ def _make_assistant_message(
 
 def _make_tool_message(
     tool_call_id: str,
-    output: str,
+    output: Any,
 ) -> Dict[str, Any]:
     """Build a tool-result message for the conversation.
 
+    Supports both plain string and multimodal content-block list
+    outputs.  When ``output`` is a list, it is passed directly as
+    the ``content`` field (OpenAI multimodal format).
+
     Args:
         tool_call_id: Correlating ID from the tool call.
-        output: Tool execution output string.
+        output: Tool execution output — ``str`` or
+            ``List[ContentBlock]``.
 
     Returns:
         OpenAI-format tool message dict.
@@ -163,6 +168,31 @@ def _make_tool_message(
         "tool_call_id": tool_call_id,
         "content": output,
     }
+
+
+def _extract_text_for_sse(output: Any) -> str:
+    """Extract text-only summary from a tool output for SSE events.
+
+    SSE payloads should not contain base64-encoded images.  For
+    multimodal list outputs, concatenate only text blocks and
+    replace images with ``[image]`` markers.
+
+    Args:
+        output: Tool output — ``str`` or ``List[ContentBlock]``.
+
+    Returns:
+        Text-only string suitable for SSE serialization.
+    """
+    if isinstance(output, str):
+        return output
+    parts: List[str] = []
+    for block in output:
+        block_type = block.get("type", "")
+        if block_type == "text":
+            parts.append(block.get("text", ""))
+        elif block_type == "image_url":
+            parts.append("[image]")
+    return "\n".join(parts)
 
 
 def _extract_diagnosis(content: Optional[str]) -> str:
@@ -393,18 +423,14 @@ async def run_diagnosis_loop(
                         result.output,
                         cfg.max_tool_result_tokens,
                     )
-                    if len(output) < len(result.output):
-                        logger.info(
-                            "tool_result_truncated",
-                            tool=tc.name,
-                            original_chars=len(result.output),
-                            truncated_chars=len(output),
-                            iteration=iteration,
-                        )
+
+                    # SSE payload uses text-only summary
+                    # (no base64 images in event stream).
+                    sse_output = _extract_text_for_sse(output)
 
                     tr_payload = {
                         "name": tc.name,
-                        "output": output,
+                        "output": sse_output,
                         "duration_ms": result.duration_ms,
                         "is_error": result.is_error,
                         "iteration": iteration,

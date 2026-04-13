@@ -1,20 +1,40 @@
 """Tool registry with dispatch map for harness diagnostic tools.
 
-Provides a universal ``execute(name, input) -> str`` interface that
-the agent loop uses to call any registered tool.  Adding a tool
+Provides a universal ``execute(name, input) -> ToolResult`` interface
+that the agent loop uses to call any registered tool.  Adding a tool
 requires one ``register()`` call — zero changes to the loop.
+
+Tool handlers may return plain ``str`` (text-only result) or
+``List[ContentBlock]`` for multimodal results containing images.
 """
 
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Type
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Type, Union
 
 import structlog
 from pydantic import BaseModel
 
 logger = structlog.get_logger(__name__)
+
+# ── Type aliases for multimodal tool results ──────────────────────
+
+ContentBlock = Dict[str, Any]
+"""Single content block in a multimodal tool result.
+
+Either ``{"type": "text", "text": "..."}`` or
+``{"type": "image_url", "image_url": {"url": "data:..."}}``
+following the OpenAI content-array format.
+"""
+
+ToolOutput = Union[str, List[ContentBlock]]
+"""Return type for tool handlers.
+
+Plain ``str`` for text-only tools; ``List[ContentBlock]`` for
+multimodal tools that return interleaved text and images.
+"""
 
 
 _MAX_ERROR_LEN = 200  # Sanitised error message cap.
@@ -46,14 +66,63 @@ def _sanitize_error(
     )
 
 
-def _truncate(text: str, max_chars: int) -> str:
-    """Truncate ``text`` to ``max_chars`` with a marker."""
-    if len(text) <= max_chars:
-        return text
-    return (
-        text[:max_chars]
-        + f"\n[truncated — {len(text)} chars total]"
+def _truncate(
+    content: ToolOutput, max_chars: int,
+) -> ToolOutput:
+    """Truncate tool output to ``max_chars`` with a marker.
+
+    For plain strings, truncates with a length marker.  For
+    multimodal lists, truncates only ``text`` blocks (image blocks
+    are kept intact since they cannot be meaningfully split).
+
+    Args:
+        content: Tool output (string or content-block list).
+        max_chars: Maximum total characters for text content.
+
+    Returns:
+        Truncated output in the same format as the input.
+    """
+    if isinstance(content, str):
+        if len(content) <= max_chars:
+            return content
+        return (
+            content[:max_chars]
+            + f"\n[truncated — {len(content)} chars total]"
+        )
+
+    # Multimodal list: truncate text blocks only.
+    total_text_chars = sum(
+        len(block.get("text", ""))
+        for block in content
+        if block.get("type") == "text"
     )
+    if total_text_chars <= max_chars:
+        return content
+
+    # Rebuild with truncated text blocks.
+    remaining = max_chars
+    result: List[ContentBlock] = []
+    for block in content:
+        if block.get("type") != "text":
+            result.append(block)
+            continue
+        text = block.get("text", "")
+        if remaining <= 0:
+            continue
+        if len(text) <= remaining:
+            result.append(block)
+            remaining -= len(text)
+        else:
+            result.append({
+                "type": "text",
+                "text": (
+                    text[:remaining]
+                    + f"\n[truncated — {total_text_chars}"
+                    " text chars total]"
+                ),
+            })
+            remaining = 0
+    return result
 
 
 def _elapsed_ms(t0: float) -> float:
@@ -66,12 +135,14 @@ class ToolResult:
     """Result of a tool execution including timing metadata.
 
     Attributes:
-        output: The tool's text output (always ``str``).
+        output: The tool's output — plain ``str`` for text-only
+            tools, or ``List[ContentBlock]`` for multimodal tools
+            that return interleaved text and images.
         duration_ms: Wall-clock execution time in milliseconds.
         is_error: Whether ``output`` is an error message.
     """
 
-    output: str
+    output: ToolOutput
     duration_ms: float
     is_error: bool = False
 
@@ -86,14 +157,15 @@ class ToolDefinition:
             function-calling schema sent to the LLM.
         input_schema: JSON Schema ``parameters`` object describing
             the tool's accepted input.
-        handler: Async callable ``(dict) -> str``.  Must always
-            return a plain string (privacy invariant).
+        handler: Async callable ``(dict) -> ToolOutput``.  Returns
+            plain ``str`` for text-only tools, or
+            ``List[ContentBlock]`` for multimodal results.
     """
 
     name: str
     description: str
     input_schema: dict
-    handler: Callable[[Dict[str, Any]], Awaitable[str]]
+    handler: Callable[[Dict[str, Any]], Awaitable[ToolOutput]]
     input_model: Optional[Type[BaseModel]] = None
     is_read_only: bool = False
     max_result_chars: int = 50_000
@@ -311,16 +383,24 @@ class ToolRegistry:
 
 
 def create_default_registry() -> ToolRegistry:
-    """Build a registry with the 2 agent-native tools.
+    """Build a registry with all agent-native tools.
 
     Tools:
         - ``read_obd_data``: parameterized OBD log reader
         - ``search_manual``: RAG manual search with filters
+        - ``list_manuals``: discover available manuals
+        - ``get_manual_toc``: manual heading structure
+        - ``read_manual_section``: full section with images
 
     Returns:
         A fully populated ``ToolRegistry`` ready for the
         agent loop.
     """
+    from app.harness_tools.manual_tools import (
+        GET_MANUAL_TOC_DEF,
+        LIST_MANUALS_DEF,
+        READ_MANUAL_SECTION_DEF,
+    )
     from app.harness_tools.obd_data_tools import (
         READ_OBD_DATA_DEF,
     )
@@ -332,6 +412,9 @@ def create_default_registry() -> ToolRegistry:
     for tool_def in (
         READ_OBD_DATA_DEF,
         SEARCH_MANUAL_DEF,
+        LIST_MANUALS_DEF,
+        GET_MANUAL_TOC_DEF,
+        READ_MANUAL_SECTION_DEF,
     ):
         registry.register(tool_def)
     return registry
