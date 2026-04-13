@@ -141,7 +141,8 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
                   // Rewrite relative image paths to serve
                   // from the nginx /manuals/data/ endpoint.
                   img: ({ node, src, alt, ...props }) => {
-                    let resolvedSrc = src || "";
+                    const rawSrc = typeof src === "string" ? src : "";
+                    let resolvedSrc = rawSrc;
                     if (
                       resolvedSrc &&
                       !resolvedSrc.startsWith("http") &&
