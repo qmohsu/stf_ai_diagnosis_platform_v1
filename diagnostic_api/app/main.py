@@ -152,6 +152,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Recovery: mark interrupted conversions as failed.
     _recover_stale_conversions()
 
+    # Clean orphan manual files (stale failures, missing rows).
+    from app.services.manual_pipeline import (
+        cleanup_orphan_files,
+    )
+    cleanup_orphan_files()
+
     yield
 
     # --- Shutdown ---

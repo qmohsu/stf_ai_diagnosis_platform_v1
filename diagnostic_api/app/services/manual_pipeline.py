@@ -373,6 +373,150 @@ def delete_manual_files(manual: Manual) -> None:
             )
 
 
+def cleanup_orphan_files(
+    grace_seconds: int = 3600,
+) -> dict:
+    """Remove orphaned manual files not backed by DB rows.
+
+    Scans ``uploads/`` and vehicle-model subdirectories for
+    files whose manual_id does not exist in the ``manuals``
+    table, or whose row has ``status='failed'`` and is older
+    than *grace_seconds*.
+
+    Also removes empty vehicle-model directories.
+
+    Args:
+        grace_seconds: Keep failed rows for this many seconds
+            so the user can see the error in the UI.
+            Defaults to 1 hour.
+
+    Returns:
+        Dict with ``files_removed`` and ``dirs_removed`` counts.
+    """
+    from datetime import datetime, timezone
+
+    base = settings.manual_storage_path
+    db = SessionLocal()
+    files_removed = 0
+    dirs_removed = 0
+
+    try:
+        # Build sets of valid manual IDs and their paths.
+        all_manuals = db.query(Manual).all()
+        now = datetime.now(timezone.utc)
+
+        # IDs that are actively in use (not stale-failed).
+        active_ids: set[str] = set()
+        # Paths referenced by active manuals.
+        active_pdf_paths: set[str] = set()
+        active_md_paths: set[str] = set()
+
+        for m in all_manuals:
+            # Keep failed rows within grace period.
+            if m.status == "failed":
+                age = (now - m.updated_at).total_seconds()
+                if age < grace_seconds:
+                    active_ids.add(str(m.id))
+                    if m.pdf_file_path:
+                        active_pdf_paths.add(
+                            m.pdf_file_path,
+                        )
+                    continue
+                # Stale failed — delete row + files.
+                delete_manual_files(m)
+                doc_id = Path(m.filename).stem
+                delete_manual_chunks(doc_id, db)
+                db.delete(m)
+                files_removed += 1
+                logger.info(
+                    "cleanup.stale_failed_removed",
+                    manual_id=str(m.id),
+                )
+                continue
+
+            active_ids.add(str(m.id))
+            if m.pdf_file_path:
+                active_pdf_paths.add(m.pdf_file_path)
+            if m.md_file_path:
+                active_md_paths.add(m.md_file_path)
+
+        db.commit()
+
+        # Clean orphan PDFs in uploads/.
+        uploads_dir = os.path.join(base, "uploads")
+        if os.path.isdir(uploads_dir):
+            for name in os.listdir(uploads_dir):
+                rel = f"uploads/{name}"
+                if rel not in active_pdf_paths:
+                    abs_path = os.path.join(base, rel)
+                    os.unlink(abs_path)
+                    files_removed += 1
+                    logger.info(
+                        "cleanup.orphan_pdf",
+                        path=rel,
+                    )
+
+        # Clean orphan vehicle-model dirs.
+        skip_dirs = {"uploads", ".queue"}
+        for entry in os.listdir(base):
+            if entry.startswith(".") or entry in skip_dirs:
+                continue
+            entry_path = os.path.join(base, entry)
+            if not os.path.isdir(entry_path):
+                continue
+
+            # Check if any active manual references
+            # a path under this directory.
+            has_active = any(
+                p.startswith(entry + "/")
+                for p in active_md_paths
+            )
+            if not has_active:
+                shutil.rmtree(
+                    entry_path, ignore_errors=True,
+                )
+                dirs_removed += 1
+                logger.info(
+                    "cleanup.orphan_dir",
+                    path=entry,
+                )
+
+        # Clean stale queue files (older than 1 hour).
+        queue_dir = os.path.join(base, _QUEUE_DIR)
+        if os.path.isdir(queue_dir):
+            for name in os.listdir(queue_dir):
+                fp = os.path.join(queue_dir, name)
+                if not os.path.isfile(fp):
+                    continue
+                age = now.timestamp() - os.path.getmtime(fp)
+                if age > grace_seconds:
+                    os.unlink(fp)
+                    files_removed += 1
+                    logger.info(
+                        "cleanup.stale_queue_file",
+                        path=name,
+                    )
+
+    except Exception as exc:
+        db.rollback()
+        logger.error(
+            "cleanup.error", error=str(exc),
+        )
+    finally:
+        db.close()
+
+    if files_removed or dirs_removed:
+        logger.info(
+            "cleanup.done",
+            files_removed=files_removed,
+            dirs_removed=dirs_removed,
+        )
+    return {
+        "files_removed": files_removed,
+        "dirs_removed": dirs_removed,
+    }
+
+
 def delete_manual_chunks(
     doc_id: str, db: "Session",
 ) -> int:

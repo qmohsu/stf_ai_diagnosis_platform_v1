@@ -34,6 +34,7 @@ from app.auth.security import get_current_user
 from app.config import settings
 from app.models_db import Manual, User
 from app.services.manual_pipeline import (
+    cleanup_orphan_files,
     compute_file_hash,
     delete_manual_chunks,
     delete_manual_files,
@@ -205,6 +206,11 @@ async def upload_manual(
     # Kick off background conversion.
     asyncio.create_task(
         run_conversion_and_ingestion(manual_id),
+    )
+
+    # Background cleanup of orphan files from past failures.
+    asyncio.get_event_loop().run_in_executor(
+        None, cleanup_orphan_files,
     )
 
     logger.info(
