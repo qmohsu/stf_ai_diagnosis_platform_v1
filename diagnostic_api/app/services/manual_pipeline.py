@@ -5,8 +5,11 @@ storage → pgvector RAG ingestion.  All heavy work runs in a
 background ``asyncio`` task so the upload endpoint returns
 immediately.
 
-A module-level semaphore serialises GPU-intensive conversions
-to avoid OOM under concurrent uploads.
+Conversion is performed by a **host-side worker** process
+(``scripts/marker_worker.py``) that watches a shared queue
+directory.  The container writes a request JSON and polls for
+the result JSON, avoiding the need to install marker-pdf
+(+ PyTorch) inside the container image.
 
 Author: Li-Ta Hsu
 Date: April 2026
@@ -14,6 +17,7 @@ Date: April 2026
 
 import asyncio
 import hashlib
+import json
 import os
 import shutil
 from pathlib import Path
@@ -28,12 +32,12 @@ from app.rag.chunker import Chunker
 
 logger = structlog.get_logger(__name__)
 
-# Serialise marker-pdf conversions (GPU-bound).
-_conversion_semaphore = asyncio.Semaphore(1)
-
 # Default chunker for RAG ingestion.
 _DEFAULT_CHUNK_SIZE = 500
 _DEFAULT_OVERLAP = 50
+
+# Queue subdirectory inside manual_storage_path.
+_QUEUE_DIR = ".queue"
 
 
 def compute_file_hash(data: bytes) -> str:
@@ -109,14 +113,11 @@ async def run_conversion_and_ingestion(
         db.commit()
         log.info("manual.converting")
 
-        pdf_abs = os.path.join(
-            settings.manual_storage_path,
-            manual.pdf_file_path,
-        )
-
         try:
             result = await _run_marker_convert(
-                pdf_abs, log,
+                manual.pdf_file_path,
+                manual_id,
+                log,
             )
         except Exception as exc:
             manual.status = "failed"
@@ -131,32 +132,32 @@ async def run_conversion_and_ingestion(
             return
 
         # Update manual with conversion metadata.
-        vehicle_model = result.vehicle_model
-        rel_md = os.path.relpath(
-            str(result.output_path),
-            settings.manual_storage_path,
-        )
-        manual.md_file_path = rel_md
+        vehicle_model = result.get("vehicle_model", "")
+        output_path = result.get("output_path", "")
+        manual.md_file_path = output_path
         manual.vehicle_model = vehicle_model
-        manual.page_count = result.page_count
-        manual.section_count = result.section_count
-        manual.language = result.language
+        manual.page_count = result.get("page_count")
+        manual.section_count = result.get("section_count")
+        manual.language = result.get("language")
         manual.converter = (
-            f"marker-pdf"
+            "marker-pdf"
             if not settings.manual_use_llm
-            else f"marker-pdf (LLM)"
+            else "marker-pdf (LLM)"
         )
         db.commit()
         log.info(
             "manual.converted",
             vehicle_model=vehicle_model,
-            pages=result.page_count,
+            pages=manual.page_count,
         )
 
         # ── Stage 2: RAG ingestion ──────────────────
+        md_abs = os.path.join(
+            settings.manual_storage_path, output_path,
+        )
         try:
             chunk_count = await _run_ingestion(
-                result.output_path, db, log,
+                Path(md_abs), db, log,
             )
         except Exception as exc:
             manual.status = "failed"
@@ -196,33 +197,102 @@ async def run_conversion_and_ingestion(
 
 
 async def _run_marker_convert(
-    pdf_abs: str,
+    pdf_rel: str,
+    manual_id: UUID,
     log: structlog.BoundLogger,
-) -> "ConversionResult":
-    """Run marker-pdf conversion under the GPU semaphore.
+) -> dict:
+    """Request marker-pdf conversion via the host worker.
+
+    Writes a request JSON to the shared ``.queue/`` directory
+    and polls for a result JSON written by the host-side
+    ``marker_worker.py``.
 
     Args:
-        pdf_abs: Absolute path to the source PDF.
+        pdf_rel: Relative path to the PDF inside
+            ``manual_storage_path`` (e.g. ``uploads/xxx.pdf``).
+        manual_id: UUID used as the queue filename.
         log: Bound logger.
 
     Returns:
-        ConversionResult from marker_convert.convert().
-    """
-    from scripts.marker_convert import convert
+        Dict with conversion metadata (vehicle_model,
+        language, page_count, section_count, image_count,
+        output_path, dtc_codes).
 
-    async with _conversion_semaphore:
-        log.info("manual.marker_started")
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            None,
-            lambda: convert(
-                pdf_path=pdf_abs,
-                output_dir=settings.manual_storage_path,
-                use_llm=settings.manual_use_llm,
-                vehicle_model_subdir=True,
-            ),
+    Raises:
+        TimeoutError: If the worker doesn't respond within
+            the configured timeout.
+        RuntimeError: If the worker reports an error.
+    """
+    queue_dir = os.path.join(
+        settings.manual_storage_path, _QUEUE_DIR,
+    )
+    os.makedirs(queue_dir, exist_ok=True)
+
+    req_path = os.path.join(
+        queue_dir, f"{manual_id}.request.json",
+    )
+    res_path = os.path.join(
+        queue_dir, f"{manual_id}.result.json",
+    )
+
+    # Write conversion request.
+    request = {
+        "pdf_path": pdf_rel,
+        "use_llm": settings.manual_use_llm,
+        "vehicle_model_subdir": True,
+    }
+    with open(req_path, "w", encoding="utf-8") as f:
+        json.dump(request, f)
+
+    log.info(
+        "manual.conversion_requested",
+        request_path=req_path,
+    )
+
+    # Poll for result.
+    poll_interval = settings.marker_poll_interval_seconds
+    timeout = settings.marker_timeout_seconds
+    elapsed = 0
+
+    while elapsed < timeout:
+        await asyncio.sleep(poll_interval)
+        elapsed += poll_interval
+
+        if not os.path.isfile(res_path):
+            continue
+
+        with open(res_path, "r", encoding="utf-8") as f:
+            result = json.load(f)
+
+        # Clean up queue files.
+        for p in (req_path, res_path):
+            try:
+                os.unlink(p)
+            except OSError:
+                pass
+
+        if result.get("status") == "error":
+            raise RuntimeError(
+                result.get("message", "Unknown error"),
+            )
+
+        log.info(
+            "manual.conversion_complete",
+            vehicle_model=result.get("vehicle_model"),
+            elapsed=elapsed,
         )
         return result
+
+    # Timeout — clean up request file.
+    try:
+        os.unlink(req_path)
+    except OSError:
+        pass
+
+    raise TimeoutError(
+        f"Marker worker did not respond within "
+        f"{timeout}s. Is marker-worker running?",
+    )
 
 
 async def _run_ingestion(

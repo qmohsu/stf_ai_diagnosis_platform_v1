@@ -142,6 +142,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         ),
         exist_ok=True,
     )
+    os.makedirs(
+        os.path.join(
+            settings.manual_storage_path, ".queue",
+        ),
+        exist_ok=True,
+    )
 
     # Recovery: mark interrupted conversions as failed.
     _recover_stale_conversions()
