@@ -30,6 +30,22 @@ function stripFrontmatter(md: string): string {
   return md.slice(end + 3).trimStart();
 }
 
+/**
+ * Clean marker-pdf pagination markers from markdown.
+ *
+ * marker-pdf with ``paginate_output=True`` inserts lines like
+ * ``{0}------------------------------------------------`` between
+ * pages.  These break react-markdown parsing (the dashes are
+ * interpreted as setext heading underlines).  Replace them with
+ * a simple horizontal rule.
+ */
+function cleanPageMarkers(md: string): string {
+  return md.replace(
+    /\{(\d+)\}-{3,}\n/g,
+    "\n---\n\n",
+  );
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
@@ -89,7 +105,9 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
     );
   }
 
-  const body = manual.content ? stripFrontmatter(manual.content) : null;
+  const body = manual.content
+    ? cleanPageMarkers(stripFrontmatter(manual.content))
+    : null;
 
   return (
     <div className="space-y-4">
