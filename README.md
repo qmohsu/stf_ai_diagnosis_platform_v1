@@ -1,6 +1,6 @@
 # STF AI Diagnosis Platform v1
 
-> **🌐 Live Demo**: [https://stf-diagnosis.dev](https://stf-diagnosis.dev) | **📖 Manual Viewer**: [https://stf-diagnosis.dev/manuals/](https://stf-diagnosis.dev/manuals/)
+> **🌐 Live Demo**: [https://stf-diagnosis.dev](https://stf-diagnosis.dev)
 
 ## Overview
 
@@ -86,7 +86,6 @@ The STF AI Diagnosis Platform is now ready for local deployment! 🚀
    ```
 5. **Access the platform:**
    - OBD UI: http://127.0.0.1:3001
-   - Manual Viewer: http://127.0.0.1:8080/manuals/
    - Diagnostic API: http://127.0.0.1:8000/docs
    - API Health: http://127.0.0.1:8000/health
 
