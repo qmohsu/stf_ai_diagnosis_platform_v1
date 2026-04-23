@@ -1,0 +1,157 @@
+"""Pytest fixtures and helpers for the manual-agent eval suite.
+
+Provides:
+  - ``load_golden()``: parse a ``golden/{version}/{manual}.jsonl``
+    file into a list of ``GoldenEntry`` objects.
+  - ``eval_report``: session-scoped fixture that accumulates per-
+    test records and writes a JSON artifact to ``reports/`` at
+    session teardown.
+
+The ``--run-eval`` CLI flag and ``eval`` marker are registered in
+the root ``tests/conftest.py`` so that plain ``pytest`` runs skip
+the (slow, costly) eval suite by default.
+
+Author: Li-Ta Hsu
+"""
+
+from __future__ import annotations
+
+import json
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List
+
+import pytest
+
+from tests.harness.evals.schemas import (
+    GoldenEntry,
+    Grade,
+    ManualAgentResult,
+)
+
+# Directory containing this file — golden/ and reports/ are
+# resolved relative to it.
+_EVAL_DIR = Path(__file__).resolve().parent
+_GOLDEN_DIR = _EVAL_DIR / "golden"
+_REPORTS_DIR = _EVAL_DIR / "reports"
+
+
+# ── Golden loader ─────────────────────────────────────────────────
+
+
+def load_golden(rel_path: str) -> List[GoldenEntry]:
+    """Parse a golden JSONL file into validated ``GoldenEntry`` list.
+
+    Args:
+        rel_path: Path relative to the ``golden/`` directory, e.g.
+            ``"v1/mws150a.jsonl"``.
+
+    Returns:
+        List of ``GoldenEntry`` objects in file order.
+
+    Raises:
+        FileNotFoundError: If the golden file does not exist.
+        pydantic.ValidationError: If any line fails schema
+            validation.
+    """
+    path = _GOLDEN_DIR / rel_path
+    entries: List[GoldenEntry] = []
+    with open(path, "r", encoding="utf-8") as handle:
+        for line_num, line in enumerate(handle, start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                entries.append(
+                    GoldenEntry.model_validate_json(stripped),
+                )
+            except Exception as exc:
+                raise ValueError(
+                    f"Golden file {rel_path} line {line_num} "
+                    f"failed validation: {exc}",
+                ) from exc
+    return entries
+
+
+# ── Eval report accumulator ──────────────────────────────────────
+
+
+@dataclass
+class EvalReport:
+    """In-memory accumulator for one eval run.
+
+    Each call to ``record()`` captures one (entry, result, grade)
+    triple.  At session teardown, ``write()`` serialises the
+    accumulated records to a timestamped JSON file under
+    ``reports/``.
+
+    Attributes:
+        started_at: Unix timestamp when the report was created.
+        records: Accumulated eval triples.
+    """
+
+    started_at: float = field(default_factory=time.time)
+    records: List[Dict[str, Any]] = field(default_factory=list)
+
+    def record(
+        self,
+        entry: GoldenEntry,
+        result: ManualAgentResult,
+        grade: Grade,
+    ) -> None:
+        """Append one graded run to the report."""
+        self.records.append({
+            "entry": entry.model_dump(),
+            "result": result.model_dump(),
+            "grade": grade.model_dump(),
+        })
+
+    def write(self) -> Path:
+        """Serialise the report to ``reports/eval_{timestamp}.json``.
+
+        Returns:
+            The absolute path written.
+        """
+        _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        ts = int(self.started_at)
+        out_path = _REPORTS_DIR / f"eval_{ts}.json"
+        payload = {
+            "started_at": self.started_at,
+            "ended_at": time.time(),
+            "count": len(self.records),
+            "records": self.records,
+        }
+        with open(out_path, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2, default=str)
+        return out_path
+
+
+@pytest.fixture(scope="session")
+def eval_report() -> EvalReport:
+    """Session-scoped accumulator that writes JSON on teardown.
+
+    Usage in a test::
+
+        async def test_foo(entry, eval_report):
+            result = await run_manual_agent(entry.question)
+            grade = await judge_result(entry, result)
+            eval_report.record(entry, result, grade)
+            assert grade.overall >= 0.7
+
+    At the end of the pytest session, the accumulated records are
+    serialised to ``reports/eval_{timestamp}.json``.
+
+    Yields:
+        ``EvalReport`` instance.
+    """
+    report = EvalReport()
+    yield report
+    if report.records:
+        out_path = report.write()
+        # Leave a breadcrumb on the terminal so the user can find
+        # the report without rummaging through the directory.
+        print(
+            f"\n[eval_report] wrote {len(report.records)} "
+            f"records to {out_path}",
+        )

@@ -11,9 +11,9 @@
 | **Status** | Draft v0.8 |
 | **Owner** | Li-Ta Hsu |
 | **Contributors** | ML engineers; backend engineers; frontend engineers |
-| **Last updated** | 2026-04-13 (v1.0) |
+| **Last updated** | 2026-04-23 (v1.1) |
 | **Primary pilot stack** | FastAPI + AsyncOpenAI (OpenRouter) + Ollama + pgvector (PostgreSQL) + Next.js |
-| **New in this revision** | HARNESS-11: Multimodal manual navigation tools (GitHub Issue #71). 3 new tools: `list_manuals`, `get_manual_toc`, `read_manual_section`. Multimodal tool result infrastructure (`ToolOutput = str | List[ContentBlock]`) enabling image content blocks in tool results. Updated context management (token estimation, truncation, compaction) for multimodal content. See §5.2 and §7.1. |
+| **New in this revision** | HARNESS-14 phase 1: scaffolding for the manual-agent evaluation suite (GitHub Issue #73). Adds §12.5 describing a restricted manual-search sub-agent graded by `z-ai/glm-5.1` (HK-accessible, Claude/OpenAI/Gemini geo-blocked per #23) against a human-reviewed frozen golden set. Phase-1 deliverables: Pydantic schemas (`GoldenEntry`, `ManualAgentResult`, `Grade`), stub runner + judge, parametrized pytest with `--run-eval` CLI gate, session-scoped `eval_report` fixture, 3 dummy golden entries. Immutable-version strategy (`v1/` → `v2/`) prevents silent eval-set drift. Known limitation: one-manual corpus (MWS150A only) until a second manual is acquired. |
 
 ### Revision history
 
@@ -29,6 +29,7 @@
 | v0.7 | 2026-04-12 | HARNESS-08: Integration and E2E tests. `test_integration.py` (golden-path, event log, autonomy routing, fallback). `test_e2e_agent.py` (HTTP E2E: stream, history, cache, force, fallback). JSON fixtures: `golden_path_responses.json` (4 tool-call sequence), `fallback_responses.json`. Fixture loader in `fixtures/__init__.py`. Agent-to-V1 fallback in `router.py`: `_stream()` except block now falls back to `_oneshot_stream(skip_padding=True)` after error event. `e2e_real_llm` pytest marker. 182 total harness tests. GitHub Issue #58. |
 | v0.9 | 2026-04-12 | HARNESS-10: Manual ingestion pipeline (GitHub Issue #70). `Manual` DB model + Alembic migration `q1r2`. Background pipeline: upload PDF → marker-pdf conversion (GPU-serialized via semaphore) → per-vehicle-model filesystem storage → pgvector RAG ingestion. 5 endpoints under `/v2/manuals` (upload, list, get, delete, status). Refactored `marker_convert.py` with `ConversionResult` dataclass and `vehicle_model_subdir` param. Frontend `/manuals` page: `ManualUploadForm` (drag-drop), `ManualList` (auto-polling status), `ManualViewer`. Startup recovery marks stuck conversions as failed. Config: `manual_storage_path`, `manual_max_file_size_bytes`, `manual_use_llm`. i18n (EN, zh-CN, zh-TW). 16 unit tests. |
 | v1.0 | 2026-04-13 | HARNESS-11: Multimodal manual navigation tools (GitHub Issue #71). 3 new filesystem tools: `list_manuals` (discover manuals, filter by vehicle model), `get_manual_toc` (heading tree with slugs + DTC index), `read_manual_section` (full section content with images as base64 content blocks). Multimodal infrastructure: `ToolOutput = str | List[ContentBlock]`, `ToolResult.output` accepts multimodal content, `_make_tool_message()` passes list content to OpenAI format, `_extract_text_for_sse()` strips images from SSE events. Context management: `estimate_content_tokens()` for multimodal token counting (images at 1000 tokens each), `truncate_tool_result()` handles list content (preserves images, truncates text), `_summarize_iteration()` extracts text snippets and drops images during compaction. Shared utilities in `manual_fs.py`: `slugify`, `parse_frontmatter`, `parse_heading_tree`, `extract_section`, `find_closest_slug`, `resolve_image_refs`, `load_image_as_content_block`, `build_multimodal_section`. Security: path traversal protection in image resolution, 5 MB per-image cap. 70 unit tests. |
+| v1.1 | 2026-04-23 | HARNESS-14 phase 1: manual-agent evaluation suite scaffolding (GitHub Issue #73). New §12.5 documents the approach: a restricted ReAct sub-agent (4 manual tools, no `read_obd_data`) produces `ManualAgentResult` (summary + citations + raw_sections + tool_trace); `z-ai/glm-5.1` via OpenRouter grades it against a frozen `GoldenEntry` with a 5-dimension rubric (`section_match`, `fact_recall`, `hallucination`, `citation_present`, `trajectory_ok`) + weighted `overall`. HK model-selection constraint locks judge = `glm-5.1`, agent primary = local `qwen3.5:27b-q8_0`. Phase-1 deliverables: Pydantic schemas, stub runner + judge (no LLM calls), parametrized pytest with `--run-eval` CLI gate registered in `tests/conftest.py`, session-scoped `eval_report` fixture that writes `reports/eval_{timestamp}.json` at teardown, 3 dummy `v1/mws150a.jsonl` entries. Goldens are immutable once frozen (corrections bump `v1/` → `v2/`). All 3 phase-1 eval tests pass with `--run-eval`; 242 pre-existing harness tests unchanged. Known limitation: one-manual corpus (MWS150A only) — adversarial category swapped to intra-manual edge cases until a second manual is acquired. |
 
 ### Relationship to V1
 
@@ -819,6 +820,26 @@ Full flow with real premium model (run manually, not in CI):
 3. Verify SSE events include `tool_call` and `tool_result`
 4. Verify `diagnosis_history` row with `provider="agent"`
 5. Verify `harness_event_log` has complete event sequence
+
+### 12.5 Manual-agent evaluation suite (HARNESS-14)
+
+Separate from the unit / integration / E2E layers above, this suite measures how well a **restricted manual-search sub-agent** uses the 4 manual-navigation tools (`list_manuals`, `get_manual_toc`, `read_manual_section`, `search_manual`) to answer diagnostic inquiries. It isolates tool-use quality from OBD analysis quality and catches behaviours that deterministic unit tests miss — hallucinations, parameter misunderstanding, inefficient tool-call sequences, and omitted information.
+
+**Architecture.** A thin restricted ReAct loop (max ~8 iterations, ~12K output tokens) calls only the 4 manual tools — `read_obd_data` is explicitly excluded. The agent returns a structured `ManualAgentResult` (summary, citations, raw_sections, tool_trace, iterations, total_tokens). The output is graded by `z-ai/glm-5.1` via OpenRouter (temperature 0, JSON mode) against a human-reviewed golden entry (`GoldenEntry` — question, golden_summary, golden_citations, must_contain, must_not_contain, expected_tool_trace).
+
+**Judge rubric.** The judge returns a `Grade` with five dimensions: `section_match` (did the agent cite the golden slug?), `fact_recall` (fraction of `must_contain` items present), `hallucination` (any `must_not_contain` found?), `citation_present`, and `trajectory_ok` (≤1.5× expected tool count, no brute-force read-all). Overall = 0.4·section_match + 0.3·fact_recall + 0.2·(1−hallucination) + 0.1·citation_present. Trajectory is reported but not enforced in the pass threshold so cost regressions surface without failing tests.
+
+**Model selection under HK constraint.** The PolyU server is in Hong Kong; Claude, OpenAI, and Gemini are geo-blocked (see §10 of `docs/v2_dev_plan.md` and Issue #23). Locked choices: judge = `z-ai/glm-5.1`; agent primary = local `qwen3.5:27b-q8_0` (what ships); phase-5 ceiling comparison = `z-ai/glm-5.1` or `moonshotai/kimi-k2`.
+
+**Golden set immutability.** Goldens live under `tests/harness/evals/golden/v{N}/`. Once `v1/` is frozen, entries are immutable — corrections bump to `v2/`. This prevents silent eval-set drift and keeps historical eval reports comparable. Generation is grounded: Claude reads a specific manual section and emits one `(question, summary, citations)` tuple, then a human accepts / edits / rejects before promotion from `candidates/` to `v{N}/`.
+
+**Run mode.** The eval suite is gated behind `--run-eval` (pytest CLI flag registered in `tests/conftest.py`). Default `pytest` runs skip it so normal development stays fast and free. The session fixture `eval_report` accumulates `(entry, result, grade)` triples and writes a timestamped JSON artifact to `tests/harness/evals/reports/` at session teardown — enables regression tracking across branches. Intended cadence: nightly (not per-commit).
+
+**Taxonomy — v1 distribution (30 entries):** DTC easy (8) / Symptom medium (6) / Component medium (6) / Image-required medium (4) / Adversarial hard (6, intra-manual: fake DTC `P9999`, out-of-scope query, typo'd slug, multi-section answer).
+
+**Known limitation.** Only `MWS150A_Service_Manual` is ingested. Cross-manual adversarial scenarios are deferred to `v2/` once a second manual becomes available; `list_manuals` is therefore tested only at the unit level in v1.
+
+See `docs/v2_dev_plan.md` HARNESS-14 and GitHub Issue #73 for the full plan and phasing.
 
 ## 13) Open questions
 

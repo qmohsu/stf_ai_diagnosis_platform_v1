@@ -1,0 +1,3 @@
+# Gitignore all generated eval reports; keep the directory itself
+# so the report writer can land files without needing to mkdir.
+eval_*.json

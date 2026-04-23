@@ -14,6 +14,19 @@ os.environ.setdefault(
 )
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--run-eval",
+        action="store_true",
+        default=False,
+        help=(
+            "run the manual-agent eval suite "
+            "(slow, requires LLM access); otherwise "
+            "eval-marked tests are skipped"
+        ),
+    )
+
+
 def pytest_configure(config):
     config.addinivalue_line(
         "markers",
@@ -25,6 +38,23 @@ def pytest_configure(config):
         "e2e_real_llm: marks tests that require real LLM access "
         "(skip with: pytest -m 'not e2e_real_llm')",
     )
+    config.addinivalue_line(
+        "markers",
+        "eval: marks tests in the manual-agent evaluation suite "
+        "(run with: pytest --run-eval)",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip eval-marked tests unless --run-eval is passed."""
+    if config.getoption("--run-eval"):
+        return
+    skip_eval = pytest.mark.skip(
+        reason="use --run-eval to run eval suite",
+    )
+    for item in items:
+        if "eval" in item.keywords:
+            item.add_marker(skip_eval)
 
 
 MOCK_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")

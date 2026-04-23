@@ -7,7 +7,7 @@
 | **Architecture doc** | `docs/v2_design_doc.md` |
 | **GitHub Issue** | #26 (discussion: From Context Engineering to Harness Engineering) |
 | **Version** | v1.0 |
-| **Last updated** | 2026-04-13 (HARNESS-11 implemented) |
+| **Last updated** | 2026-04-23 (HARNESS-14 phase 1 scaffolding) |
 
 ## 1. Scope Boundary
 
@@ -546,6 +546,34 @@ Reference: Learning notes S08.
 Depends on: HARNESS-08
 Scope: Use stored expert feedback to build a case library. Tool retrieves past cases where feedback was positive (helpful=true, rating≥4) and includes the expert-validated root cause.
 
+#### HARNESS‑14 — Manual-Agent Evaluation Suite 🔧 IN PROGRESS
+
+Depends on: HARNESS-11
+GitHub Issue: #73
+Status: **IN PROGRESS** — Phase 1 (scaffolding) complete (2026-04-23)
+
+Scope: Standalone LLM-as-judge evaluation suite that measures how well a restricted manual-search sub-agent uses the 4 manual navigation tools (`list_manuals`, `get_manual_toc`, `read_manual_section`, `search_manual`) to answer diagnostic inquiries. Grades each run with `z-ai/glm-5.1` via OpenRouter against a human-reviewed frozen golden set stored under `tests/harness/evals/golden/v1/`. Isolates tool-use quality from OBD analysis quality. Design informed by [Anthropic guide: develop your tests](https://platform.claude.com/docs/en/test-and-evaluate/develop-tests).
+
+Key design decisions (locked 2026-04-23):
+- **Judge model**: `z-ai/glm-5.1` via OpenRouter (HK-accessible; Claude/OpenAI/Gemini geo-blocked per #23). Temperature 0, `response_format={"type": "json_object"}`, Pydantic-validated + retry-once on parse failure.
+- **Agent under test (primary)**: local `qwen3.5:27b-q8_0` (what ships). **Ceiling comparison (phase 5)**: `z-ai/glm-5.1` or `moonshotai/kimi-k2`.
+- **Rubric, not yes/no**: 5 dimensions (`section_match`, `fact_recall`, `hallucination`, `citation_present`, `trajectory_ok`) + weighted `overall`. Trajectory is reported but not enforced in the pass threshold.
+- **Immutable goldens**: `golden/v1/` is append-only closed once frozen. Corrections bump to `v2/`. Prevents silent eval-set drift.
+- **Grounded golden generation** (phase 3): Claude reads a specific manual section and emits one `(question, summary, citations, must_contain)` tuple; human reviewer accepts/edits/rejects before promotion to `v1/`.
+
+Known limitation: only `MWS150A_Service_Manual` is currently ingested. Cross-manual adversarial scenarios (wrong `vehicle_model` filter) are deferred until a second manual becomes available — `v2/` will add them. Taxonomy adjusted: adversarial category uses intra-manual edge cases (fake DTC `P9999`, out-of-scope query, typo'd slug, multi-section answer).
+
+Phasing:
+1. **Scaffolding** ✅ DONE — schemas, runner stub, judge stub, pytest plumbing, 3 dummy golden entries, `--run-eval` CLI flag. No LLM calls. Verifies end-to-end pipeline.
+2. **Real judge + manual agent** — GLM 5.1 judge wrapper; restricted ReAct loop with structured output validation.
+3. **Generator + 10 seed entries** — `scripts/generate_golden_candidates.py`, `scripts/review_golden_candidates.py`, human review → `v1/`.
+4. **Expand to 30 entries** — fill taxonomy (DTC 8 / Symptom 6 / Component 6 / Image 4 / Adversarial 6).
+5. **Baseline + iterate** — run against local Qwen; read failures; tune `harness_prompts.py`; optional ceiling run (`glm-5.1` or `kimi-k2` as agent).
+
+Pre-requisite config change (for phase 2+): add `z-ai/glm-5.1` to server `.env` `PREMIUM_LLM_CURATED_MODELS`.
+
+Files (Phase 1): `tests/harness/evals/schemas.py`, `tests/harness/evals/runner.py`, `tests/harness/evals/judge.py`, `tests/harness/evals/conftest.py`, `tests/harness/evals/test_manual_agent_eval.py`, `tests/harness/evals/golden/v1/mws150a.jsonl`, `tests/harness/evals/golden/README.md`, `tests/harness/evals/reports/.gitignore`. Modified: `tests/conftest.py` (registered `eval` marker + `--run-eval` CLI flag + `pytest_collection_modifyitems` skip behavior).
+
 ## 5. Notes
 
 ### What this plan deliberately avoids
@@ -570,3 +598,4 @@ Scope: Use stored expert feedback to build a case library. Tool retrieves past c
 | 2026-04-12 | v2.0 | HARNESS-10 in progress (GitHub Issue #70). Manual ingestion pipeline: `Manual` DB model + Alembic `q1r2` migration, `manual_pipeline.py` background service (marker-pdf conversion + RAG ingestion with GPU semaphore), 5 API endpoints under `/v2/manuals` (upload, list, get, delete, status), refactored `marker_convert.py` (ConversionResult + vehicle_model_subdir), per-vehicle-model directory structure. Frontend: `/manuals` page with ManualUploadForm (drag-drop PDF), ManualList (status badges, auto-polling), ManualViewer. Nav link in HeaderAuth. i18n (EN, zh-CN, zh-TW). Config: `manual_storage_path`, `manual_max_file_size_bytes`, `manual_use_llm`. Startup recovery for interrupted conversions. 16 unit tests passing. |
 | 2026-04-12 | v1.9 | HARNESS-09: Toolset redesign (GitHub Issue #69). Replaced 7 V1-wrapper tools with 2 agent-native tools: `read_obd_data` (parameterized OBD log reader with overview + signal query modes) and `search_manual` (redesigned with vehicle_model filter + exclude_chunk_ids). Removed: `get_pid_statistics`, `detect_anomalies`, `generate_clues`, `get_session_context`, `refine_search`, `search_case_history`. New: `obd_data_tools.py` reads raw TSV files via `log_parser.parse_log_file()`. `retrieve.py` now accepts `vehicle_model` and `exclude_chunk_ids` filters. Agent loop auto-injects `_session_id` so LLM never passes UUIDs. System prompt rewritten as flexible investigation guide (no rigid 7-step script). User message simplified to vehicle + time range + DTCs only. 172 tests pass (1 pre-existing DB-env failure). Files: created `harness_tools/obd_data_tools.py`; rewrote `harness_tools/rag_tools.py`, `harness_tools/input_models.py`, `harness/harness_prompts.py`; modified `harness/loop.py`, `harness/tool_registry.py`, `app/rag/retrieve.py`; deleted `harness_tools/obd_tools.py`, `harness_tools/history_tools.py`. |
 | 2026-04-13 | v2.1 | HARNESS-11: Multimodal manual navigation tools (GitHub Issue #71). 3 new filesystem tools: `list_manuals` (discover manuals, filter by vehicle model), `get_manual_toc` (heading tree with slugs + DTC quick index), `read_manual_section` (full section with base64 images). Multimodal infrastructure: `ToolOutput = str | List[ContentBlock]`, `ToolResult.output` accepts multimodal, `_make_tool_message()` passes list content to OpenAI format, `_extract_text_for_sse()` strips images from SSE. Context: `estimate_content_tokens()` for multimodal (images at 1000 tokens), `truncate_tool_result()` preserves images while truncating text, `_summarize_iteration()` drops images during compaction. Shared utils: `manual_fs.py` (`slugify`, `parse_frontmatter`, `parse_heading_tree`, `extract_section`, `find_closest_slug`, `resolve_image_refs`, `load_image_as_content_block`, `build_multimodal_section`). Security: path traversal protection, 5 MB image cap. System prompt updated with 5 tool descriptions. 70 new tests (22 infra + 31 utils + 17 handlers), 242 total harness tests pass. Files: created `harness_tools/manual_tools.py`, `harness_tools/manual_fs.py`; modified `harness/tool_registry.py`, `harness/loop.py`, `harness/context.py`, `harness/harness_prompts.py`, `harness_tools/input_models.py`. |
+| 2026-04-23 | v2.2 | HARNESS-14 phase 1: scaffolding for the manual-agent evaluation suite (GitHub Issue #73). Locked model choices for HK constraint: judge = `z-ai/glm-5.1` via OpenRouter (Claude/OpenAI/Gemini geo-blocked, see #23); agent primary = local `qwen3.5:27b-q8_0`; ceiling comparison (phase 5) = `glm-5.1`/`kimi-k2`. Pydantic schemas (`GoldenEntry`, `GoldenCitation`, `Citation`, `SectionRef`, `ToolCallTrace`, `ManualAgentResult`, `Grade`) define contracts between golden set, agent, and judge. Phase-1 stubs for `run_manual_agent()` and `judge_result()` return deterministic dummy output so the end-to-end pytest pipeline (parametrization + session-scoped `eval_report` fixture → timestamped JSON artifact) can be verified without LLM cost. Goldens are immutable once frozen; corrections bump to `v2/` (rules in `golden/README.md`). 3 phase-1 dummy entries in `v1/mws150a.jsonl` (DTC easy, component medium, adversarial hard). Root conftest extended with `--run-eval` CLI flag + `pytest_collection_modifyitems` so eval-marked tests are skipped unless the flag is passed (keeps default `pytest` runs fast/free). Known limitation: one-manual corpus until a second manual is acquired — adversarial category swapped from cross-manual to intra-manual edge cases (fake DTC `P9999`, out-of-scope query, typo'd slug, multi-section answer). Files created: `tests/harness/evals/{__init__.py,schemas.py,runner.py,judge.py,conftest.py,test_manual_agent_eval.py}`, `tests/harness/evals/golden/{README.md,v1/mws150a.jsonl}`, `tests/harness/evals/reports/.gitignore`. Modified: `tests/conftest.py`. All 3 eval tests pass with `--run-eval`; 242 pre-existing harness tests unchanged (1 pre-existing DB-env failure). |
