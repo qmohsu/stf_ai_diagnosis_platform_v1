@@ -550,7 +550,7 @@ Scope: Use stored expert feedback to build a case library. Tool retrieves past c
 
 Depends on: HARNESS-11
 GitHub Issue: #73
-Status: **IN PROGRESS** — Phase 3 scripts landed 2026-04-23 (pending real golden generation)
+Status: **IN PROGRESS** — Phase 5 baseline run 2026-04-23: 3/10 passed (0.534 mean overall). See `docs/harness_14_phase5_baseline.md` for failure patterns + next iterations.
 
 Scope: Standalone LLM-as-judge evaluation suite that measures how well a restricted manual-search sub-agent uses the 4 manual navigation tools (`list_manuals`, `get_manual_toc`, `read_manual_section`, `search_manual`) to answer diagnostic inquiries. Grades each run with `z-ai/glm-5.1` via OpenRouter against a human-reviewed frozen golden set stored under `tests/harness/evals/golden/v1/`. Isolates tool-use quality from OBD analysis quality. Design informed by [Anthropic guide: develop your tests](https://platform.claude.com/docs/en/test-and-evaluate/develop-tests).
 
