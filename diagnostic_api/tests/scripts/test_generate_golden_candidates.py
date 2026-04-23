@@ -402,6 +402,86 @@ class TestValidateAndGround:
         assert cand is None
         assert err and "quote not found" in err
 
+    def test_quote_with_whitespace_differences_accepted(
+        self,
+    ) -> None:
+        """Quote matches modulo whitespace — e.g. LLM joined
+        a line-wrapped source passage with '\\n' while the
+        original has the same text split across lines.  This
+        is the dominant failure mode on Chinese manuals where
+        the PDF converter leaves mid-sentence line breaks."""
+        section = (
+            "Spark plug torque:\n"
+            "12.5    N-m.\n\n"
+            "Replace every 6000 km."
+        )
+        payload = self._minimal_payload(
+            "MWS150A_Service_Manual",
+            "1-1-specifications",
+            # Single-line quote with one space between
+            # tokens — does NOT appear verbatim in the
+            # section, but should match after whitespace
+            # normalisation.
+            "Spark plug torque: 12.5 N-m.",
+        )
+        cand, err = _validate_and_ground(
+            payload,
+            "MWS150A_Service_Manual",
+            "1-1-specifications",
+            section,
+            "component",
+        )
+        assert err is None, f"unexpected error: {err}"
+        assert cand is not None
+
+    def test_cjk_quote_with_mid_word_line_break_accepted(
+        self,
+    ) -> None:
+        """CJK gap dropping: a Chinese word split across a line
+        break in the source must still match the LLM's
+        single-line reconstruction.  Without the CJK-aware
+        normalisation, ``"節流閥位置感\\n知器"`` would collapse
+        to ``"節流閥位置感 知器"`` which is invalid Chinese
+        (no word boundaries)."""
+        section = "P0122 節流閥位置感\n知器 搭鐵短路"
+        payload = self._minimal_payload(
+            "MWS150A_Service_Manual",
+            "3-2-fuel-system",
+            # LLM reconstruction — no embedded newline.
+            "節流閥位置感知器",
+        )
+        cand, err = _validate_and_ground(
+            payload,
+            "MWS150A_Service_Manual",
+            "3-2-fuel-system",
+            section,
+            "component",
+        )
+        assert err is None, f"unexpected error: {err}"
+        assert cand is not None
+
+    def test_cjk_quote_preserves_latin_space_boundaries(
+        self,
+    ) -> None:
+        """Space between Latin and CJK is preserved — ``"DTC
+        P0122"`` should NOT collapse into a single token."""
+        section = "See DTC P0122 節流閥."
+        # Quote contains the Latin-CJK boundary intact.
+        payload = self._minimal_payload(
+            "MWS150A_Service_Manual",
+            "sec",
+            "DTC P0122 節流閥",
+        )
+        cand, err = _validate_and_ground(
+            payload,
+            "MWS150A_Service_Manual",
+            "sec",
+            section,
+            "component",
+        )
+        assert err is None, f"unexpected error: {err}"
+        assert cand is not None
+
     def test_manual_id_mismatch_rejected(self) -> None:
         payload = self._minimal_payload(
             "WRONG_MANUAL",

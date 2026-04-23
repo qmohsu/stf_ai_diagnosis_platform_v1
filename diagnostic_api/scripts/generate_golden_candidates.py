@@ -130,6 +130,61 @@ _SYMPTOM_HINT_RE = re.compile(
 )
 _IMAGE_REF_RE = re.compile(r"!\[[^\]]*\]\(images/")
 
+_WHITESPACE_RE = re.compile(r"\s+")
+
+# CJK character ranges.  Covers the Unified Ideographs block
+# (Chinese/Japanese/Korean Han characters), CJK symbols &
+# punctuation, and fullwidth forms.  When a run of whitespace
+# appears BETWEEN two CJK characters it almost always means
+# the source PDF was line-wrapped mid-word — Chinese has no
+# word boundaries, so collapse the whitespace rather than
+# substituting a space.
+_CJK_CLASS = (
+    r"[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]"
+)
+_CJK_WS_CJK_RE = re.compile(
+    rf"({_CJK_CLASS})\s+(?={_CJK_CLASS})",
+)
+
+
+def _normalize_ws(text: str) -> str:
+    """Whitespace-normalise text for grounding-check substring match.
+
+    Two-stage normalisation:
+
+    1. **CJK gap dropping**: whitespace that sits between two CJK
+       characters is deleted.  This handles the dominant failure
+       mode on Chinese manuals where the PDF extractor wraps a
+       Chinese word across a line: ``"節流閥位置感\\n知器"``
+       becomes ``"節流閥位置感知器"`` on both sides of the check.
+       Without this step a naive space-collapse would produce
+       ``"節流閥位置感 知器"`` — which is invalid Chinese since
+       there are no word boundaries.
+    2. **Whitespace run collapse**: any remaining runs of
+       whitespace are collapsed to a single space; leading and
+       trailing whitespace is stripped.  Preserves intentional
+       space separators between CJK and Latin/digit tokens
+       (e.g. ``"DTC P0107"`` stays a two-token phrase).
+
+    For English-only manuals the first stage never fires, so
+    behaviour is identical to the original ``re.sub(r"\\s+",
+    " ", s)`` approach.
+
+    Args:
+        text: Raw string.
+
+    Returns:
+        Normalised copy suitable for substring comparison.
+    """
+    # Iterate until stable: a single pass only collapses the
+    # first gap between any three-character CJK run
+    # (A \s B \s C -> A B C in one pass), so we loop.
+    prev: Optional[str] = None
+    while prev != text:
+        prev = text
+        text = _CJK_WS_CJK_RE.sub(r"\1", text)
+    return _WHITESPACE_RE.sub(" ", text).strip()
+
 
 # ── Prompt builders ───────────────────────────────────────────────
 
@@ -509,7 +564,14 @@ def _validate_and_ground(
                 )
             if not isinstance(quote, str) or not quote:
                 return None, "citation quote missing"
-            if section_text and quote not in section_text:
+            # Whitespace-normalise both sides: the LLM often
+            # reconstructs quotes across line breaks or with
+            # different spacing than the source, but the
+            # semantic content matches.
+            if section_text and (
+                _normalize_ws(quote)
+                not in _normalize_ws(section_text)
+            ):
                 return None, (
                     f"quote not found in section: "
                     f"{quote[:60]!r}"
