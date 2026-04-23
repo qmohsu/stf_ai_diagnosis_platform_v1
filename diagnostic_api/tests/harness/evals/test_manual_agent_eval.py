@@ -52,6 +52,7 @@ async def test_manual_agent(
     entry: GoldenEntry,
     eval_report: EvalReport,
     judge_client: Optional[Any],
+    manual_agent_deps: Optional[Any],
 ) -> None:
     """Run the manual agent and grade it against the golden entry.
 
@@ -60,9 +61,13 @@ async def test_manual_agent(
         eval_report: Session-scoped report accumulator.
         judge_client: ``None`` for the real GLM 5.1 judge, or a
             mock client when ``--mock-judge`` is passed.
+        manual_agent_deps: ``None`` for real deps pointing at
+            local Ollama, or a stub deps object when
+            ``--mock-agent`` is passed.
     """
     result = await run_manual_agent(
         entry.question, entry.obd_context,
+        deps=manual_agent_deps,
     )
     grade = await judge_result(entry, result, client=judge_client)
     eval_report.record(entry, result, grade)

@@ -189,6 +189,74 @@ def judge_client(request: pytest.FixtureRequest) -> Optional[Any]:
     return None
 
 
+def _build_mock_agent_deps() -> Any:
+    """Build a ``ManualAgentDeps`` whose LLM returns a canned answer.
+
+    Used when ``--mock-agent`` is passed.  The fake client replies
+    with a valid final-JSON payload on the first call, so the
+    agent loop terminates immediately with ``stopped_reason =
+    "complete"`` and a non-empty summary.  Exercises the full
+    parsing + ``ManualAgentResult`` construction path without
+    requiring a running Ollama instance.
+
+    Returns:
+        A ``ManualAgentDeps`` instance ready to pass to
+        ``run_manual_agent`` via the ``deps`` kwarg.
+    """
+    # Import lazily so conftest stays importable even if one of
+    # these modules has an issue (e.g., during very early setup).
+    from app.harness.deps import LLMResponse
+    from app.harness_agents.manual_agent import (
+        ManualAgentConfig,
+        ManualAgentDeps,
+        create_manual_agent_registry,
+    )
+
+    canned = json.dumps({
+        "summary": (
+            "[mock-agent] plumbing response — no real "
+            "investigation performed."
+        ),
+        "citations": [],
+    })
+
+    class _CannedLLMClient:
+        async def chat(self, **kwargs: Any) -> LLMResponse:
+            return LLMResponse(
+                content=canned,
+                tool_calls=[],
+                finish_reason="stop",
+            )
+
+    return ManualAgentDeps(
+        llm_client=_CannedLLMClient(),  # type: ignore[arg-type]
+        tool_registry=create_manual_agent_registry(),
+        config=ManualAgentConfig(),
+    )
+
+
+@pytest.fixture
+def manual_agent_deps(
+    request: pytest.FixtureRequest,
+) -> Optional[Any]:
+    """Provide manual-agent deps (real or mocked).
+
+    Returns ``None`` when no flag is passed so ``run_manual_agent``
+    falls back to its default deps pointing at local Ollama.
+    Returns a canned-response deps object when ``--mock-agent`` is
+    set, letting plumbing runs complete without a running LLM.
+
+    Args:
+        request: Injected by pytest.
+
+    Returns:
+        ``None`` for real deps, else a stub ``ManualAgentDeps``.
+    """
+    if request.config.getoption("--mock-agent"):
+        return _build_mock_agent_deps()
+    return None
+
+
 @pytest.fixture(scope="session")
 def eval_report() -> EvalReport:
     """Session-scoped accumulator that writes JSON on teardown.

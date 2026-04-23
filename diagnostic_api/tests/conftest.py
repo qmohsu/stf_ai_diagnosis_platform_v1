@@ -35,6 +35,16 @@ def pytest_addoption(parser):
             "API keys)"
         ),
     )
+    parser.addoption(
+        "--mock-agent",
+        action="store_true",
+        default=False,
+        help=(
+            "use a stub manual agent that returns a fixed "
+            "result without hitting the local Ollama LLM "
+            "(for --run-eval plumbing verification)"
+        ),
+    )
 
 
 def pytest_configure(config):

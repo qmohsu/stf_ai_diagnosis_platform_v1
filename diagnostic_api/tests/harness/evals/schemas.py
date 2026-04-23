@@ -7,7 +7,9 @@ Defines the contract between three layers:
   JSONL under ``golden/v1/``.
 - **Agent output** (``ManualAgentResult``): what the manual sub-agent
   produces for a given question — a summary, citations, raw section
-  text, and a trace of tool calls.
+  text, and a trace of tool calls.  Re-exported from
+  ``app.harness_agents.types`` so production code and the eval suite
+  share one source of truth.
 - **Judge output** (``Grade``): the LLM-as-judge's structured score
   against the golden entry, returned as JSON per the rubric.
 
@@ -20,9 +22,20 @@ Author: Li-Ta Hsu
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
+
+# Re-export production shapes so existing imports under
+# ``tests/harness/evals`` (and golden JSONL loaders) keep working
+# while the definitions live next to the code that produces them.
+from app.harness_agents.types import (  # noqa: F401
+    Citation,
+    ManualAgentResult,
+    SectionRef,
+    StoppedReason,
+    ToolCallTrace,
+)
 
 
 # ── Golden dataset models ─────────────────────────────────────────
@@ -106,81 +119,10 @@ class GoldenEntry(BaseModel):
 
 
 # ── Agent output models ───────────────────────────────────────────
-
-
-class Citation(BaseModel):
-    """Citation produced by the agent in its final output.
-
-    Attributes:
-        manual_id: Manual filename stem the agent cited.
-        slug: Section slug the agent cited.
-        quote: Optional verbatim span the agent references.
-    """
-
-    manual_id: str
-    slug: str
-    quote: str = ""
-
-
-class SectionRef(BaseModel):
-    """Raw manual content the agent pulled during investigation.
-
-    Attributes:
-        manual_id: Manual filename stem.
-        slug: Section slug.
-        text: Full section text (images stripped — the agent may
-            separately record whether image blocks were present).
-        had_images: Whether the original content block list
-            included at least one ``image_url`` block.
-    """
-
-    manual_id: str
-    slug: str
-    text: str
-    had_images: bool = False
-
-
-class ToolCallTrace(BaseModel):
-    """One tool invocation recorded during the agent run.
-
-    Attributes:
-        name: Registered tool name (e.g. ``get_manual_toc``).
-        input: Tool input dict passed through the registry.
-        latency_ms: Wall-clock duration of the tool call.
-        is_error: Whether the registry flagged the result as an
-            error.
-    """
-
-    name: str
-    input: Dict[str, Any]
-    latency_ms: float
-    is_error: bool = False
-
-
-class ManualAgentResult(BaseModel):
-    """Full output of one manual-agent run.
-
-    Attributes:
-        summary: Agent's final summary answering the question.
-        citations: Sections the agent explicitly cited.
-        raw_sections: Full section text the agent pulled.
-        tool_trace: Ordered list of tool invocations.
-        iterations: Number of ReAct cycles consumed.
-        total_tokens: Approximate input + output token total
-            across all LLM calls in the agent run.
-        stopped_reason: Why the loop ended — ``"complete"``,
-            ``"max_iterations"``, ``"timeout"``, or ``"error"``.
-    """
-
-    summary: str
-    citations: List[Citation] = Field(default_factory=list)
-    raw_sections: List[SectionRef] = Field(default_factory=list)
-    tool_trace: List[ToolCallTrace] = Field(default_factory=list)
-    iterations: int = 0
-    total_tokens: int = 0
-    stopped_reason: Literal[
-        "complete", "max_iterations", "timeout", "error",
-    ] = "complete"
+# ``Citation``, ``SectionRef``, ``ToolCallTrace``, ``ManualAgentResult``
+# are re-exported from ``app.harness_agents.types`` at the top of
+# this module.  Eval code should import them from here to keep the
+# eval dependency surface flat.
 
 
 # ── Judge output ──────────────────────────────────────────────────
