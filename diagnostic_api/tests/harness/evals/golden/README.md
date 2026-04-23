@@ -44,21 +44,25 @@ Neither script exists yet; see HARNESS-14 phase 3 in
 
 ## Known limitations (2026-04-23)
 
-- **One-manual corpus.** Only `MWS150A_Service_Manual` is currently
-  ingested. Acquiring a second manual is blocked by external
-  physical availability. Consequences:
+- **One-manual corpus.** Only the `MWS150-A` (TRICITY 155 zh-CN)
+  service manual is currently ingested. Acquiring a second manual
+  is blocked by external physical availability. Consequences:
   - `list_manuals` is tested only at the unit level; at the agent
     level it is trivially correct (one manual to pick from).
   - Cross-manual disambiguation scenarios (e.g. "wrong
     `vehicle_model` filter") are **not** part of `v1/`.
   - When a second manual becomes available, bump goldens to `v2/`
     and add cross-manual scenarios.
-- **Phase 1 dummies.** `v1/mws150a.jsonl` currently contains three
-  placeholder entries with `notes: "Phase 1 dummy — plumbing
-  verification only."` These exist solely to exercise the
-  parametrized pytest + judge + report pipeline. They will be
-  replaced by grounded, human-reviewed entries in HARNESS-14
-  phase 3. Do not treat phase-1 scores as meaningful.
+- **Below target on DTC.** v1 has 1 dtc entry (target 8). Only one
+  non-trivial DTC-procedure section survived generation +
+  human review; the DTC Index appendix dominated the other
+  candidates with low-value occurrence-count lookups. Raising
+  DTC coverage requires either generator-heuristic improvements
+  (skip appendix) or hand-written additions to v1. Tracked as a
+  follow-up in HARNESS-14.
+- **Small corpus for v1.** 10 entries total vs the 30-entry taxonomy
+  target. Prioritised quality over quantity for the first freeze —
+  additions permitted until v1 is declared frozen in the dev plan.
 
 ## Running the suite
 
