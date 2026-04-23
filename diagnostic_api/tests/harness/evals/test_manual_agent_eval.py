@@ -17,6 +17,8 @@ Author: Li-Ta Hsu
 
 from __future__ import annotations
 
+from typing import Any, Optional
+
 import pytest
 
 from tests.harness.evals.conftest import (
@@ -49,17 +51,20 @@ _V1_ENTRIES = load_golden("v1/mws150a.jsonl")
 async def test_manual_agent(
     entry: GoldenEntry,
     eval_report: EvalReport,
+    judge_client: Optional[Any],
 ) -> None:
     """Run the manual agent and grade it against the golden entry.
 
     Args:
         entry: One ``GoldenEntry`` from ``golden/v1/mws150a.jsonl``.
         eval_report: Session-scoped report accumulator.
+        judge_client: ``None`` for the real GLM 5.1 judge, or a
+            mock client when ``--mock-judge`` is passed.
     """
     result = await run_manual_agent(
         entry.question, entry.obd_context,
     )
-    grade = await judge_result(entry, result)
+    grade = await judge_result(entry, result, client=judge_client)
     eval_report.record(entry, result, grade)
 
     assert grade.overall >= _PASS_THRESHOLD, (

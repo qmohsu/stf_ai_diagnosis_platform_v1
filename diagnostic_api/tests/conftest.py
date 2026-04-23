@@ -25,6 +25,16 @@ def pytest_addoption(parser):
             "eval-marked tests are skipped"
         ),
     )
+    parser.addoption(
+        "--mock-judge",
+        action="store_true",
+        default=False,
+        help=(
+            "use a stub judge that returns a perfect Grade "
+            "(for --run-eval plumbing verification without "
+            "API keys)"
+        ),
+    )
 
 
 def pytest_configure(config):

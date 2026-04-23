@@ -20,7 +20,8 @@ import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -125,6 +126,67 @@ class EvalReport:
         with open(out_path, "w", encoding="utf-8") as handle:
             json.dump(payload, handle, indent=2, default=str)
         return out_path
+
+
+def _build_mock_judge_client() -> Any:
+    """Build a fake ``AsyncOpenAI`` client returning a perfect Grade.
+
+    Used when ``--mock-judge`` is passed so engineers can exercise
+    the eval plumbing without consuming OpenRouter credits.  Every
+    request returns the same canned JSON payload — a
+    plumbing-verification aid, NOT a meaningful score.
+
+    Returns:
+        A ``MagicMock`` shaped like the ``AsyncOpenAI`` client
+        surface used by the judge.
+    """
+    canned = json.dumps({
+        "section_match": 1,
+        "fact_recall": 1.0,
+        "hallucination": 0,
+        "citation_present": 1,
+        "trajectory_ok": 1,
+        "overall": 1.0,
+        "reasoning": (
+            "[mock-judge] plumbing verification — no real "
+            "grading performed."
+        ),
+    })
+
+    msg = MagicMock()
+    msg.content = canned
+    choice = MagicMock()
+    choice.message = msg
+    completion = MagicMock()
+    completion.choices = [choice]
+
+    client = MagicMock()
+    client.chat = MagicMock()
+    client.chat.completions = MagicMock()
+    client.chat.completions.create = AsyncMock(
+        return_value=completion,
+    )
+    return client
+
+
+@pytest.fixture
+def judge_client(request: pytest.FixtureRequest) -> Optional[Any]:
+    """Provide a judge OpenAI client (real or mocked).
+
+    Returns ``None`` when no flag is passed so ``judge_result``
+    builds its default real client from ``settings``.  Returns a
+    fake client when ``--mock-judge`` is set, letting plumbing
+    runs complete without API access.
+
+    Args:
+        request: Injected by pytest; used to read CLI options.
+
+    Returns:
+        ``None`` for a real client, else a fake client object.
+    """
+    if request.config.getoption("--mock-judge"):
+        return _build_mock_judge_client()
+    return None
 
 
 @pytest.fixture(scope="session")
