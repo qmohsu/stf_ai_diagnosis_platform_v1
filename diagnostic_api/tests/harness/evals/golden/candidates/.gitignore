@@ -1,0 +1,7 @@
+# Candidates are LLM-generated drafts for human review.
+# They should never be committed — only approved entries make it
+# into v1/ via the review_golden_candidates.py TUI.
+# REVIEW.md is a transient review artifact — also ignored.
+*.jsonl
+*.jsonl.review-state.json
+REVIEW.md
