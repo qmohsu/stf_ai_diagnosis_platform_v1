@@ -1,0 +1,3 @@
+# Human-authored draft entries staged before promotion to v2/mws150a.jsonl.
+# Treated identically to v1 candidates/: not committed until reviewer-approved.
+*.json

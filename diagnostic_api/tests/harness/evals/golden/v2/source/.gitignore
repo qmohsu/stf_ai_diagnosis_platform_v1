@@ -1,0 +1,13 @@
+# Source manual copies pulled from the PolyU server for v2
+# section-plan drafting and human review.  These are large
+# binary-ish artefacts (markdown + sidecar images) that already
+# live in the production manual volume on the server — committing
+# them duplicates ~MB-scale content that would bloat git history.
+#
+# Reviewers can re-fetch with:
+#   scp polyu-gpu:/home/talon/.local/share/containers/storage/\
+#     volumes/infra_diagnostic_api_manuals/_data/MWS150-A/\
+#     90c229ff-de32-441e-8dea-11607859e00f.md MWS150-A.md
+*.md
+*.txt
+images/
