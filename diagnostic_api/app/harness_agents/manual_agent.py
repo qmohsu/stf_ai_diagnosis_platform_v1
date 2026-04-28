@@ -40,10 +40,15 @@ from app.harness_agents.types import (
     SectionRef,
     ToolCallTrace,
 )
+from app.harness_tools.manual_fs import (
+    parse_heading_tree,
+    slugify,
+)
 from app.harness_tools.manual_tools import (
     GET_MANUAL_TOC_DEF,
     LIST_MANUALS_DEF,
     READ_MANUAL_SECTION_DEF,
+    _read_manual_file,
 )
 from app.harness_tools.rag_tools import SEARCH_MANUAL_DEF
 
@@ -214,6 +219,70 @@ def _make_tool_message(
     }
 
 
+def _canonicalise_slug(
+    candidate: str,
+    known_slugs: List[str],
+) -> str:
+    """Resolve a free-form section reference to a canonical slug.
+
+    LLMs frequently echo a section's display title (e.g. "故障代碼
+    編號 P0117、P0118") into citation/argument fields where the
+    eval suite expects the parser-produced slug ("p0117-p0118").
+    This helper applies the same matching strategies the
+    ``read_manual_section`` tool uses internally so both sides
+    converge on the canonical form.
+
+    Strategy order:
+
+    1. Exact match against ``known_slugs``.
+    2. Slugify the candidate and re-check for an exact match.
+    3. Substring fallback — first slug that contains the
+       slugified candidate.
+
+    Args:
+        candidate: Free-form section reference from the LLM.
+        known_slugs: All canonical slugs from the manual's
+            heading tree.
+
+    Returns:
+        The canonical slug if any strategy matches, otherwise the
+        original ``candidate`` unchanged so callers can still
+        serialise something readable for diagnostics.
+    """
+    if candidate in known_slugs:
+        return candidate
+    slugified = slugify(candidate)
+    if slugified in known_slugs:
+        return slugified
+    if slugified:
+        for slug in known_slugs:
+            if slugified in slug:
+                return slug
+    return candidate
+
+
+def _slugs_for_manual(manual_id: str) -> List[str]:
+    """Return all canonical slugs for a manual, or an empty list.
+
+    Helper that loads the manual markdown via the same code path
+    the tool uses, parses the heading tree, and returns the flat
+    slug list.  Returns ``[]`` if the manual cannot be loaded —
+    callers fall back to the LLM's raw input in that case.
+    """
+    md_text = _read_manual_file(manual_id)
+    if md_text is None:
+        return []
+    tree = parse_heading_tree(md_text)
+    out: List[str] = []
+    stack: List[Any] = list(tree)
+    while stack:
+        node = stack.pop()
+        if node.slug:
+            out.append(node.slug)
+        stack.extend(node.children)
+    return out
+
+
 def _extract_section_ref(
     input_data: Dict[str, Any],
     output: Any,
@@ -225,6 +294,13 @@ def _extract_section_ref(
     ``None`` if the section identity cannot be determined from the
     tool input (shouldn't happen in practice — both ``manual_id``
     and ``section`` are required fields).
+
+    The recorded ``slug`` is the *canonical* slug produced by
+    ``parse_heading_tree``, not whatever free-form string the LLM
+    happened to pass in.  This is a deliberate divergence from
+    "input echo": the LLM frequently passes a heading title
+    (because that's what ``get_manual_toc`` shows it) and we want
+    the eval pipeline to grade against the parser-stable slug.
 
     Args:
         input_data: Arguments passed to the tool (minus the
@@ -238,9 +314,14 @@ def _extract_section_ref(
         or ``None`` if inputs are malformed.
     """
     manual_id = input_data.get("manual_id")
-    slug = input_data.get("section")
-    if not manual_id or not slug:
+    raw_slug = input_data.get("section")
+    if not manual_id or not raw_slug:
         return None
+
+    canonical = _canonicalise_slug(
+        str(raw_slug),
+        _slugs_for_manual(str(manual_id)),
+    )
 
     had_images = False
     if isinstance(output, str):
@@ -259,7 +340,7 @@ def _extract_section_ref(
 
     return SectionRef(
         manual_id=str(manual_id),
-        slug=str(slug),
+        slug=canonical,
         text=text,
         had_images=had_images,
     )
@@ -285,6 +366,7 @@ def _strip_markdown_fence(content: str) -> str:
 
 def _parse_final_json(
     content: Optional[str],
+    raw_sections: Optional[List[SectionRef]] = None,
 ) -> Tuple[str, List[Citation]]:
     """Parse the LLM's final answer into (summary, citations).
 
@@ -292,9 +374,21 @@ def _parse_final_json(
     leading/trailing prose, single quotes (not supported —
     falls through to raw-content fallback).
 
+    Each emitted citation's ``slug`` is canonicalised against the
+    set of slugs the agent already retrieved into ``raw_sections``
+    when one is supplied — protecting against the common LLM
+    failure mode of echoing a section's display title back into
+    the citation field instead of the parser slug.  When the LLM
+    cites a slug that was never retrieved, the value is left
+    unchanged so the judge sees what the model actually said.
+
     Args:
         content: The ``content`` field of the terminal LLM
             response (when ``finish_reason == "stop"``).
+        raw_sections: Sections retrieved during the run.  Their
+            ``.slug`` values seed the canonicalisation table.
+            Optional so existing call sites that only need
+            ``(summary, citations)`` from a string still compile.
 
     Returns:
         ``(summary, citations)`` tuple.  If parsing fails, returns
@@ -343,6 +437,18 @@ def _parse_final_json(
         payload.get("summary", "")
     )[:_MAX_FINAL_SUMMARY_CHARS]
 
+    # Build a per-manual canonical-slug table from raw_sections.
+    # The LLM frequently echoes a section's display title (which
+    # it saw in get_manual_toc output) back into citation slugs —
+    # this lookup repairs that to the parser-canonical form so
+    # the judge's section_match check works.
+    known_slugs_by_manual: Dict[str, List[str]] = {}
+    if raw_sections:
+        for sec in raw_sections:
+            known_slugs_by_manual.setdefault(
+                sec.manual_id, [],
+            ).append(sec.slug)
+
     citations: List[Citation] = []
     raw_cits = payload.get("citations", [])
     if isinstance(raw_cits, list):
@@ -350,9 +456,18 @@ def _parse_final_json(
             if not isinstance(cit, dict):
                 continue
             try:
+                cit_manual = str(cit.get("manual_id", ""))
+                raw_slug = str(cit.get("slug", ""))
+                known = known_slugs_by_manual.get(
+                    cit_manual, [],
+                )
+                canonical = (
+                    _canonicalise_slug(raw_slug, known)
+                    if known else raw_slug
+                )
                 citations.append(Citation(
-                    manual_id=str(cit.get("manual_id", "")),
-                    slug=str(cit.get("slug", "")),
+                    manual_id=cit_manual,
+                    slug=canonical,
                     quote=str(cit.get("quote", "")),
                 ))
             except Exception:  # noqa: BLE001
@@ -460,7 +575,9 @@ async def run_manual_agent(
                     or not response.tool_calls
                 ):
                     final_summary, final_citations = (
-                        _parse_final_json(response.content)
+                        _parse_final_json(
+                            response.content, raw_sections,
+                        )
                     )
                     stopped_reason = "complete"
                     break
