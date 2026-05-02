@@ -4,7 +4,7 @@
 **Source:** `tests/harness/evals/golden/v2/source/MWS150-A.md` (14,962 lines, 633 sections, 434 pages, zh-CN)
 **Parser:** `app.harness_tools.manual_fs.parse_heading_tree` (production)
 **Drafted:** 2026-04-25
-**Status:** DRAFT — DTC bucket only. Symptom / Component / Image / Adversarial buckets pending.
+**Status:** IN PROGRESS — DTC 2/8 entries validated and committed (overall=1.0 each); 6 DTC + symptom/component/image/adversarial buckets pending.
 
 ---
 
@@ -18,14 +18,14 @@ Once this file is signed off, every row drives one V4-Pro candidate-generation c
 
 ## Distribution target (30 entries)
 
-| Bucket | Target | Drafted | Status |
+| Bucket | Target | Validated | Status |
 |---|---|---|---|
-| DTC procedures | 8 | 8 | DRAFT — awaiting review |
-| Symptom flows | 6 | 0 | pending |
-| Component specs | 6 | 0 | pending |
-| Image / figure | 4 | 0 | pending |
-| Adversarial | 6 | 0 | pending |
-| **Total** | **30** | **8** | |
+| DTC procedures | 8 | 2 | dtc-001, dtc-002 committed at overall=1.0; 6 remaining |
+| Symptom flows | 6 | 0 | pending — section plan TBD |
+| Component specs | 6 | 0 | pending — section plan TBD |
+| Image / figure | 4 | 0 | pending — section plan TBD |
+| Adversarial | 6 | 0 | pending — section plan TBD |
+| **Total** | **30** | **2** | |
 
 ---
 
