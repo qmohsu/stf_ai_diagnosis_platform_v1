@@ -233,6 +233,8 @@ export interface ManualSummary {
   chunk_count: number | null;
   pages_processed: number | null;
   pages_total: number | null;
+  /** Current marker-pdf stage label (e.g. "Layout", "OCR"). */
+  pages_phase: string | null;
   /** LLM-degradation events captured during conversion. */
   warnings: ManualWarning[] | null;
   created_at: string;
@@ -272,6 +274,7 @@ export interface ManualStatusResponse {
   chunk_count: number | null;
   pages_processed: number | null;
   pages_total: number | null;
+  pages_phase: string | null;
 }
 
 /** Paired tool call + result for UI rendering. */

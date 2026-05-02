@@ -123,6 +123,7 @@ class TestSyncProgressToDb:
             progress_path,
             uuid.uuid4(),
             last_processed=-1,
+            last_phase="",
             log=log,
         )
         assert result is None
@@ -140,6 +141,7 @@ class TestSyncProgressToDb:
             str(progress_path),
             uuid.uuid4(),
             last_processed=-1,
+            last_phase="",
             log=MagicMock(),
         )
         assert result is None
@@ -157,18 +159,21 @@ class TestSyncProgressToDb:
             str(progress_path),
             uuid.uuid4(),
             last_processed=-1,
+            last_phase="",
             log=MagicMock(),
         )
         assert result is None
 
-    def test_skips_when_processed_unchanged(self, tmp_path):
-        """If processed == last_processed, no DB write."""
+    def test_skips_when_both_axes_unchanged(self, tmp_path):
+        """processed unchanged AND phase unchanged → no DB write."""
         from app.services.manual_pipeline import (
             _sync_progress_to_db,
         )
         progress_path = tmp_path / "p.progress.json"
         progress_path.write_text(
-            json.dumps({"processed": 7, "total": 10}),
+            json.dumps({
+                "processed": 7, "total": 10, "phase": "OCR",
+            }),
             encoding="utf-8",
         )
         with patch(
@@ -178,6 +183,7 @@ class TestSyncProgressToDb:
                 str(progress_path),
                 uuid.uuid4(),
                 last_processed=7,
+                last_phase="OCR",
                 log=MagicMock(),
             )
         assert result is None
@@ -192,13 +198,16 @@ class TestSyncProgressToDb:
         )
         progress_path = tmp_path / "p.progress.json"
         progress_path.write_text(
-            json.dumps({"processed": 12, "total": 20}),
+            json.dumps({
+                "processed": 12, "total": 20, "phase": "OCR",
+            }),
             encoding="utf-8",
         )
 
         manual = MagicMock()
         manual.pages_processed = None
         manual.pages_total = None
+        manual.pages_phase = None
 
         mock_db = MagicMock()
         mock_db.query.return_value.get.return_value = manual
@@ -212,14 +221,67 @@ class TestSyncProgressToDb:
                 str(progress_path),
                 manual_id,
                 last_processed=5,
+                last_phase="OCR",
                 log=MagicMock(),
             )
 
-        assert result == 12
+        assert result == (12, "OCR")
         assert manual.pages_processed == 12
         assert manual.pages_total == 20
+        assert manual.pages_phase == "OCR"
         mock_db.commit.assert_called_once()
         mock_db.close.assert_called_once()
+
+    def test_phase_change_triggers_write_even_when_processed_resets(
+        self, tmp_path,
+    ):
+        """A stage transition isn't silently dropped.
+
+        Marker rolls between processors; ``processed`` resets to a
+        low number while ``phase`` changes.  Without the phase
+        check, the API would skip the new-stage progress entirely
+        until ``processed`` exceeded the prior stage's max.
+        """
+        from app.services.manual_pipeline import (
+            _sync_progress_to_db,
+        )
+        progress_path = tmp_path / "p.progress.json"
+        # New stage starting: processed=2 (lower than previous
+        # stage's last_processed=434), phase moved OCR → Recognition.
+        progress_path.write_text(
+            json.dumps({
+                "processed": 2,
+                "total": 555,
+                "phase": "Recognition",
+            }),
+            encoding="utf-8",
+        )
+
+        manual = MagicMock()
+        manual.pages_processed = 434
+        manual.pages_total = 434
+        manual.pages_phase = "OCR"
+
+        mock_db = MagicMock()
+        mock_db.query.return_value.get.return_value = manual
+
+        with patch(
+            "app.services.manual_pipeline.SessionLocal",
+            return_value=mock_db,
+        ):
+            result = _sync_progress_to_db(
+                str(progress_path),
+                uuid.uuid4(),
+                last_processed=434,
+                last_phase="OCR",
+                log=MagicMock(),
+            )
+
+        assert result == (2, "Recognition")
+        assert manual.pages_processed == 2
+        assert manual.pages_total == 555
+        assert manual.pages_phase == "Recognition"
+        mock_db.commit.assert_called_once()
 
     def test_returns_none_when_manual_row_missing(
         self, tmp_path,
@@ -243,6 +305,7 @@ class TestSyncProgressToDb:
                 str(progress_path),
                 uuid.uuid4(),
                 last_processed=-1,
+                last_phase="",
                 log=MagicMock(),
             )
         assert result is None
@@ -279,7 +342,7 @@ class TestProgressReporter:
     def test_throttle_blocks_second_immediate_write(
         self, tmp_path,
     ):
-        """Two writes within 1.5s without force → only first sticks."""
+        """Two writes within 0.3s without force → only first sticks."""
         worker = _load_marker_worker()
         progress_path = tmp_path / "x.progress.json"
         rep = worker._ProgressReporter(progress_path)
@@ -291,6 +354,27 @@ class TestProgressReporter:
         # throttled by elapsed-time, so the file content stays
         # at the first write.
         assert first_payload == second_payload
+
+    def test_phase_change_bypasses_throttle(self, tmp_path):
+        """A new phase forces an immediate write.
+
+        Marker rolls between processors; without this, the new
+        stage's progress would be invisible until ``processed``
+        exceeds the prior stage's max.
+        """
+        worker = _load_marker_worker()
+        progress_path = tmp_path / "x.progress.json"
+        rep = worker._ProgressReporter(progress_path)
+        rep.report(processed=434, total=434, phase="OCR", force=True)
+        # Same throttle window (no sleep), but a new phase: the
+        # next write should still land.
+        rep.report(processed=2, total=555, phase="Recognition")
+        payload = json.loads(progress_path.read_text())
+        assert payload == {
+            "processed": 2,
+            "total": 555,
+            "phase": "Recognition",
+        }
 
     def test_no_write_when_page_unchanged(self, tmp_path):
         """Reporting the same page twice is a no-op."""
@@ -443,7 +527,7 @@ class TestStatusResponseSerialization:
         assert resp.pages_total is None
 
     def test_summary_includes_progress_fields(self):
-        """_to_summary surfaces pages_processed / pages_total."""
+        """_to_summary surfaces all progress + warnings fields."""
         from app.api.v2.endpoints.manuals import _to_summary
         from datetime import datetime, timezone
         manual = MagicMock()
@@ -458,9 +542,26 @@ class TestStatusResponseSerialization:
         manual.chunk_count = None
         manual.pages_processed = 7
         manual.pages_total = 12
+        manual.pages_phase = "OCR"
+        manual.warnings = None
         manual.created_at = datetime.now(timezone.utc)
         manual.updated_at = datetime.now(timezone.utc)
 
         summary = _to_summary(manual)
         assert summary.pages_processed == 7
         assert summary.pages_total == 12
+        assert summary.pages_phase == "OCR"
+        assert summary.warnings is None
+
+    def test_status_response_includes_phase(self):
+        """ManualStatusResponse exposes pages_phase too."""
+        from app.api.v2.endpoints.manuals import (
+            ManualStatusResponse,
+        )
+        resp = ManualStatusResponse(
+            status="converting",
+            pages_processed=3,
+            pages_total=10,
+            pages_phase="Layout",
+        )
+        assert resp.pages_phase == "Layout"

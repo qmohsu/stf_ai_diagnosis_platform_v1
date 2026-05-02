@@ -44,19 +44,28 @@ function statusBadge(
         </Badge>
       );
     case "converting": {
-      // Show "{processed}/{total}" once the worker has reported
-      // at least one page; otherwise fall back to the bare
-      // "Converting…" label.
+      // Show "{phase} {processed}/{total}" once the worker has
+      // reported at least one tick; otherwise fall back to the
+      // bare "Converting…" label.  Marker runs multiple stages
+      // (layout → OCR → recognition → LLM section header → …)
+      // sequentially; without the phase the total appears to
+      // shift mid-conversion which looks like a regression.
       const processed = manual.pages_processed;
       const total = manual.pages_total;
+      const phase = manual.pages_phase;
       const showProgress =
         processed != null && total != null && total > 0;
       return (
         <Badge variant="secondary" className="gap-1 tabular-nums">
           <Loader2 className="h-3 w-3 animate-spin" />
-          {showProgress
-            ? `${processed}/${total}`
-            : t("manuals.converting")}
+          {showProgress ? (
+            <span>
+              {phase ? <span className="mr-1">{phase}</span> : null}
+              {processed}/{total}
+            </span>
+          ) : (
+            t("manuals.converting")
+          )}
         </Badge>
       );
     }

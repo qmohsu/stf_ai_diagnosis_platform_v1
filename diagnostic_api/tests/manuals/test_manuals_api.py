@@ -41,6 +41,10 @@ def _make_manual(**overrides):
         "md_file_path": "TRICITY-155/test_manual.md",
         "pdf_file_path": "uploads/test.pdf",
         "chunk_count": 100,
+        "pages_processed": None,
+        "pages_total": None,
+        "pages_phase": None,
+        "warnings": None,
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
     }

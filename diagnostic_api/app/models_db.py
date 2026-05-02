@@ -340,6 +340,11 @@ class Manual(Base):
     # written from marker's result.json.
     pages_processed = Column(Integer, nullable=True)
     pages_total = Column(Integer, nullable=True)
+    # Current marker-pdf pipeline stage label (e.g. "Layout",
+    # "OCR", "Recognition") taken from the active ``tqdm.desc``.
+    # Lets the UI render "OCR 283/434" instead of the bare
+    # counter and explains when the total shifts between stages.
+    pages_phase = Column(String(50), nullable=True)
     # Ingestion-quality warnings captured during marker-pdf
     # conversion (LLM retry / fallback events).  Schema:
     # ``[{"event": str, "page": int|None, "processor": str|None,

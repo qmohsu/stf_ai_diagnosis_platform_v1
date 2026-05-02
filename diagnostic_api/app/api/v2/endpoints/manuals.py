@@ -67,6 +67,10 @@ class ManualSummary(BaseModel):
     # N/N briefly during the chunking handoff).
     pages_processed: Optional[int] = None
     pages_total: Optional[int] = None
+    # Current marker-pdf pipeline stage label (e.g. "Layout",
+    # "OCR", "Recognition").  Populated only while
+    # ``status='converting'``; the API clears it on success.
+    pages_phase: Optional[str] = None
     # Ingestion-quality warnings captured during conversion (e.g.
     # silent LLM fallbacks).  ``None`` or empty list = clean.
     warnings: Optional[list] = None
@@ -107,6 +111,7 @@ class ManualStatusResponse(BaseModel):
     chunk_count: Optional[int] = None
     pages_processed: Optional[int] = None
     pages_total: Optional[int] = None
+    pages_phase: Optional[str] = None
 
 
 # ── Helpers ──────────────────────────────────────────────────
@@ -128,6 +133,7 @@ def _to_summary(m: Manual) -> ManualSummary:
         chunk_count=m.chunk_count,
         pages_processed=m.pages_processed,
         pages_total=m.pages_total,
+        pages_phase=m.pages_phase,
         warnings=m.warnings,
         created_at=m.created_at.isoformat(),
         updated_at=m.updated_at.isoformat(),
@@ -424,6 +430,7 @@ async def get_manual_status(
         chunk_count=manual.chunk_count,
         pages_processed=manual.pages_processed,
         pages_total=manual.pages_total,
+        pages_phase=manual.pages_phase,
     )
 
 
@@ -515,4 +522,5 @@ async def reingest_manual(
         chunk_count=manual.chunk_count,
         pages_processed=manual.pages_processed,
         pages_total=manual.pages_total,
+        pages_phase=manual.pages_phase,
     )

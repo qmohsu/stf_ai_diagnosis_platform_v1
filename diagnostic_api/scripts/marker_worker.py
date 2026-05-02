@@ -147,6 +147,7 @@ class _ProgressReporter:
         self._tmp_path = progress_path.with_suffix(".tmp")
         self._last_write_ts: float = 0.0
         self._last_processed: int = -1
+        self._last_phase: str = ""
 
     def report(
         self,
@@ -171,10 +172,16 @@ class _ProgressReporter:
             now - self._last_write_ts
             >= _PROGRESS_THROTTLE_SECONDS
         )
+        # Detect a stage transition: marker started a new tqdm
+        # bar, ``processed`` resets to a low number and ``phase``
+        # changes.  Bypass the throttle so the new stage shows up
+        # immediately instead of waiting for ``processed`` to
+        # surpass the prior stage's max.
+        phase_changed = phase and phase != self._last_phase
 
-        # Skip unless: forced, or both a new page AND throttle expired,
-        # or first ever write (last_write_ts == 0.0 implies neither).
-        if not force:
+        # Skip unless: forced, phase transition, or both a new
+        # page AND throttle expired.
+        if not force and not phase_changed:
             if not (page_advanced and time_elapsed):
                 return
 
@@ -193,6 +200,7 @@ class _ProgressReporter:
             os.replace(str(self._tmp_path), str(self._path))
             self._last_write_ts = now
             self._last_processed = processed
+            self._last_phase = phase
         except OSError as exc:
             logger.warning(
                 "progress write failed: %s", exc,
@@ -259,10 +267,17 @@ def _install_tqdm_hook(
                 try:
                     total = getattr(self, "total", None)
                     current = getattr(self, "n", None)
+                    # ``desc`` is the bar label set by marker
+                    # (e.g. "Layout", "OCR").  Strip trailing
+                    # ASCII colon/space common in tqdm prefixes.
+                    desc = (
+                        getattr(self, "desc", "") or ""
+                    ).strip().rstrip(":").strip()
                     if total and current is not None:
                         reporter.report(
                             processed=int(current),
                             total=int(total),
+                            phase=desc[:50],
                         )
                 except (TypeError, ValueError):
                     # Defensive: never let progress reporting

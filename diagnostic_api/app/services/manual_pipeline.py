@@ -174,6 +174,10 @@ async def run_conversion_and_ingestion(
         if manual.page_count:
             manual.pages_processed = manual.page_count
             manual.pages_total = manual.page_count
+        # Clear the in-flight stage label — conversion is done,
+        # the next stage transition is to 'chunking' and the UI
+        # renders a different pill from there onward.
+        manual.pages_phase = None
         db.commit()
         log.info(
             "manual.converted",
@@ -315,18 +319,26 @@ async def _run_marker_convert(
     # the diagnostic-api container restarts.
     poll_interval = settings.marker_poll_interval_seconds
     last_processed: int = -1
+    last_phase: str = ""
 
     while True:
         await asyncio.sleep(poll_interval)
 
         # Mirror any worker-reported progress to the DB.  Done on
         # every tick (cheap stat + small JSON read) so the UI sees
-        # fresh numbers within one polling interval.
-        new_processed = _sync_progress_to_db(
-            progress_path, manual_id, last_processed, log,
+        # fresh numbers within one polling interval.  Tracking
+        # ``phase`` in addition to ``processed`` so a marker stage
+        # transition (processed resets to a low number but phase
+        # changes) still triggers a DB update.
+        sync_result = _sync_progress_to_db(
+            progress_path,
+            manual_id,
+            last_processed,
+            last_phase,
+            log,
         )
-        if new_processed is not None:
-            last_processed = new_processed
+        if sync_result is not None:
+            last_processed, last_phase = sync_result
 
         if not os.path.isfile(res_path):
             continue
@@ -358,27 +370,28 @@ def _sync_progress_to_db(
     progress_path: str,
     manual_id: UUID,
     last_processed: int,
+    last_phase: str,
     log: structlog.BoundLogger,
-) -> "int | None":
+) -> "tuple[int, str] | None":
     """Read a ``.progress.json`` and persist it to ``manuals``.
 
     Uses a fresh short-lived ``SessionLocal`` rather than the
     pipeline's main session so a transient DB error during a
     progress update doesn't poison the long-running conversion
-    transaction.  Skips writes when ``processed`` hasn't moved
-    since the previous tick.
+    transaction.  Skips writes when neither ``processed`` nor
+    ``phase`` has changed since the previous tick.
 
     Args:
         progress_path: Path to the ``.progress.json`` file.
         manual_id: UUID of the parent ``Manual`` row.
-        last_processed: Most recent value persisted; used to
-            short-circuit duplicate writes.
+        last_processed: Most recent ``processed`` persisted.
+        last_phase: Most recent ``phase`` string persisted.
         log: Bound logger.
 
     Returns:
-        The new ``processed`` value if the DB was updated,
-        otherwise ``None`` (file missing, malformed, or
-        unchanged).
+        ``(processed, phase)`` if the DB was updated, otherwise
+        ``None`` (file missing, malformed, or unchanged on both
+        axes).
     """
     if not os.path.isfile(progress_path):
         return None
@@ -397,8 +410,14 @@ def _sync_progress_to_db(
         total, int,
     ):
         return None
+    phase = payload.get("phase") or ""
+    if not isinstance(phase, str):
+        phase = ""
 
-    if processed == last_processed:
+    # Update DB only if either axis advanced.  Without the phase
+    # check, a stage transition (processed resets to a low value
+    # but phase changes) would be silently dropped.
+    if processed == last_processed and phase == last_phase:
         return None
 
     db = SessionLocal()
@@ -408,13 +427,15 @@ def _sync_progress_to_db(
             return None
         manual.pages_processed = processed
         manual.pages_total = total
+        manual.pages_phase = phase or None
         db.commit()
         log.info(
             "manual.progress",
             processed=processed,
             total=total,
+            phase=phase,
         )
-        return processed
+        return (processed, phase)
     except Exception as exc:
         db.rollback()
         log.warning(
