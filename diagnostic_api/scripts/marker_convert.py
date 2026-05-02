@@ -80,7 +80,19 @@ _MANUAL_SUFFIX_RE = re.compile(
     re.I,
 )
 
-_DTC_RE = re.compile(r"\b[PBCU]\d{4}\b")
+# SAE J2012 + ISO 15031-6 + UDS (ISO 14229) DTC formats:
+#   - 5-char classic:        P0301, U0100, B1A23, C10AF
+#   - 6/7-char extended:     P019100, U010087
+#   - With FTB / sub-byte:   P0420-64, B1A21:08, C0561 87
+# Lookarounds (not \b) so dash/colon/space suffixes still match.
+_DTC_RE = re.compile(
+    r"(?<![A-Z0-9])"
+    r"[PBCU][0-9][0-9A-F]{3}"
+    r"(?:[0-9A-F]{2})?"
+    r"(?:[\s\-:][0-9A-F]{2})?"
+    r"(?![A-Z0-9])",
+    re.IGNORECASE,
+)
 
 
 def _extract_vehicle_model(text: str) -> str:
@@ -164,19 +176,27 @@ def _count_headings(md_text: str) -> int:
     return len(re.findall(r"^##\s", md_text, re.MULTILINE))
 
 
+def _normalize_dtc(code: str) -> str:
+    """Canonicalize a DTC: uppercase, collapse separators to '-'."""
+    return re.sub(r"\s+", "-", code.strip().upper())
+
+
 def _build_dtc_index(md_text: str) -> str | None:
     """Build a DTC cross-reference appendix if codes exist."""
-    codes = sorted(set(_DTC_RE.findall(md_text)))
-    if not codes:
+    raw_codes = _DTC_RE.findall(md_text)
+    if not raw_codes:
         return None
+    counts: dict[str, int] = {}
+    for raw in raw_codes:
+        key = _normalize_dtc(raw)
+        counts[key] = counts.get(key, 0) + 1
     lines = [
         "\n## Appendix: DTC Index\n",
         "| DTC | Occurrences |",
         "|-----|-------------|",
     ]
-    for code in codes:
-        count = len(re.findall(re.escape(code), md_text))
-        lines.append(f"| {code} | {count} |")
+    for code in sorted(counts):
+        lines.append(f"| {code} | {counts[code]} |")
     return "\n".join(lines)
 
 
@@ -357,7 +377,9 @@ def convert(
 
     # Build DTC index
     dtc_index = _build_dtc_index(md_text)
-    dtc_codes = sorted(set(_DTC_RE.findall(md_text)))
+    dtc_codes = sorted({
+        _normalize_dtc(c) for c in _DTC_RE.findall(md_text)
+    })
 
     # Assemble final markdown
     final = frontmatter + "\n\n" + md_text

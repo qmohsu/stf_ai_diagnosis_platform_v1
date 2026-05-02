@@ -8,17 +8,18 @@
 |-------|-------|
 | **Doc title** | Pilot Expert Model Training Pipeline (LLM + RAG + Tooling) for Vehicle Predictive Diagnosis |
 | **Project** | AI-assisted vehicle self-diagnosis + fleet management (edge + cloud) |
-| **Status** | Draft v4.4 (V2 Harness Architecture Cross-Ref) |
+| **Status** | Draft v4.5 (Generalized DTC Index for Manuals) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-04-10 (v4.4) |
+| **Last updated** | 2026-05-02 (v4.5) |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + Ollama (`qwen3.5:27b-q8_0`) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | V2 harness architecture design initiated (GitHub Issue #26). New `docs/v2_design_doc.md` and `docs/v2_dev_plan.md`. V1 diagnosis orchestration (§10.4) preserved as fast-path; V2 adds agent-driven diagnosis with tool registry, session event log, and graduated autonomy. |
+| **New in this revision** | APP-44: DTC index appendix in marker-pdf converter generalized for cross-OEM, cross-language coverage. `_DTC_RE` widened to SAE J2012 / ISO 15031-6 / UDS pattern (hex variants like `P062F`, 6/7-char extended codes, FTB suffixes, case-insensitive). New `_normalize_dtc()` for stable dedup. Helper script `rebuild_dtc_appendix.py` re-applies the appendix to existing markdown without re-running marker-pdf. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v4.5 | 2026-05-02 | APP-44: Generalize DTC regex in marker-pdf converter (`diagnostic_api/scripts/marker_convert.py`). Widened `_DTC_RE` from `\b[PBCU]\d{4}\b` to a SAE J2012 / ISO 15031-6 / UDS-aware pattern that captures classic 5-char codes, manufacturer-specific hex variants (e.g. `P062F`, `B1A23`), 6/7-char extended codes, and FTB / sub-byte suffixes (`P0420-64`, `B1A21:08`, `C0561 87`), case-insensitive. Lookarounds replace `\b` so dash-separated codes are not split. New `_normalize_dtc()` canonicalizes to uppercase + dash-separated form for stable dedup. New `diagnostic_api/scripts/rebuild_dtc_appendix.py` helper re-applies the appendix logic to existing markdown files (single file or recursive directory) without re-running marker-pdf, supporting `--dry-run`. Verified on MWS150-A Yamaha service manual: surfaces previously-missed `P062F` (7 occurrences) and zero regressions on the 21 codes already indexed. |
 | v4.4 | 2026-04-10 | V2 harness architecture design initiated (GitHub Issue #26). New `docs/v2_design_doc.md` and `docs/v2_dev_plan.md` define agent-driven diagnosis via harness loop, tool registry, session event log, graduated autonomy. V1 diagnosis orchestration (§10.4) preserved as fast-path fallback; V2 adds parallel agent endpoints. Shared components (infra, auth, RAG, OBD pipeline) remain in this document. |
 | v4.3 | 2026-04-01 | Fix garbled symbols from custom PDF font encoding (GitHub Issue #44). New `_is_symbol_font()` skips known symbol/icon font spans (ZapfDingbats, Wingdings, etc.) during text extraction. New `_is_garbled_line()` heuristic detects short lines with no Unicode letters that aren't pure numbers. New `_clean_extracted_text()` post-processing removes garbled lines and normalizes safety labels ("3DANGER" → "DANGER"). New "garbled" classification in `_classify_line()` excludes garbled lines from section body. Applied in `extract_text_from_pdf()`, `extract_text_from_pdf_async()`, and `_fallback_page_sections()`. 24 new tests, 1 updated test (368 total). |
 | v4.2 | 2026-03-31 | Vehicle model detection fix (GitHub Issue #43). New `_clean_filename_stem()` helper strips common manual suffixes (`Owners_Manual`, `Service_Manual`, `Workshop_Manual`, etc.) and normalises separators to spaces — `2016_Jazz_Owners_Manual` → `2016 Jazz`. `_resolve_vehicle_model()` priority chain updated: (1) `--vehicle-model` CLI override, (2) section metadata, (3) domain regex, (4) cleaned filename stem (was: raw stem). New `--vehicle-model` CLI flag on `md_export.py`. `_yaml_escape` hardened against newline injection in user-supplied values. 17 new tests (73 total in `test_md_export.py`). |
@@ -555,7 +556,7 @@ An alternative to vector-chunk retrieval: store service manuals as well-structur
 - DTC subsections: `#### DTC: P0171 — Description` format
 - Images: `![alt](images/{stem}/p{page}-{index}.png)` with vision descriptions
 - Page markers: `<!-- page:N -->` HTML comments for PDF page traceability
-- Optional DTC cross-reference index appendix
+- Optional DTC cross-reference index appendix. Appendix builder (`diagnostic_api/scripts/marker_convert.py::_build_dtc_index`) uses a SAE J2012 / ISO 15031-6 / UDS-aware regex that captures classic 5-char codes, manufacturer-specific hex variants (e.g. `P062F`, `B1A23`), 6/7-char extended codes, and FTB / sub-byte suffixes (`P0420-64`, `B1A21:08`). Codes are normalized to uppercase + dash-separated form for stable dedup across OEMs and languages. Existing converted manuals can be re-indexed in place (no LLM re-billing) via `diagnostic_api/scripts/rebuild_dtc_appendix.py`.
 
 **Coexistence with vector RAG:** Both pipelines can run simultaneously for A/B comparison. Vector RAG reads from the `rag_chunks` table; structured MD tools read from the `/app/data/manuals/` directory. Field mappings between the two are documented in the schema spec.
 
