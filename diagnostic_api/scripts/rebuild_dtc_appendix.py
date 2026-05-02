@@ -98,6 +98,13 @@ def _rebuild_one(
 
     if not dry_run and final != text:
         # Atomic write: tmp file in same dir, then os.replace.
+        # Preserve the source file's mode/uid/gid — `tempfile`
+        # defaults to 0600, which would lock out the Nginx user
+        # serving these files at /manuals/data/.
+        try:
+            src_stat = md_path.stat()
+        except FileNotFoundError:
+            src_stat = None
         tmp = tempfile.NamedTemporaryFile(
             "w",
             encoding="utf-8",
@@ -108,6 +115,20 @@ def _rebuild_one(
         try:
             tmp.write(final)
             tmp.close()
+            if src_stat is not None:
+                try:
+                    os.chmod(tmp.name, src_stat.st_mode & 0o777)
+                except OSError:
+                    pass
+                if hasattr(os, "chown"):
+                    try:
+                        os.chown(
+                            tmp.name,
+                            src_stat.st_uid,
+                            src_stat.st_gid,
+                        )
+                    except (OSError, PermissionError):
+                        pass
             os.replace(tmp.name, md_path)
         except Exception:
             Path(tmp.name).unlink(missing_ok=True)
