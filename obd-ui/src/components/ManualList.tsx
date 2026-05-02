@@ -226,7 +226,21 @@ export function ManualList({ refreshKey, onSelect }: ManualListProps) {
             <TableCell className="text-sm">
               {m.vehicle_model || "-"}
             </TableCell>
-            <TableCell>{statusBadge(m, t)}</TableCell>
+            <TableCell className="space-x-1">
+              {statusBadge(m, t)}
+              {m.warnings && m.warnings.length > 0 && (
+                <Badge
+                  variant="outline"
+                  className="gap-1 border-amber-500 text-amber-600"
+                  title={t("manuals.warningsTooltip", {
+                    count: m.warnings.length,
+                  })}
+                >
+                  <AlertTriangle className="h-3 w-3" />
+                  {m.warnings.length}
+                </Badge>
+              )}
+            </TableCell>
             <TableCell className="text-right text-sm text-muted-foreground">
               {m.page_count ?? "-"}
             </TableCell>

@@ -370,6 +370,7 @@
     "embedding": "向量化中...",
     "ingested": "就緒",
     "failed": "失敗",
+    "warningsTooltip": "{{count}} 項擷取品質告警 — 部分頁面可能已回退到非 LLM 擷取。",
     "noManuals": "尚未上傳任何手冊。",
     "filename": "檔案名稱",
     "statusLabel": "狀態",

@@ -39,6 +39,7 @@ import logging
 import os
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -60,8 +61,70 @@ logger = logging.getLogger("marker_worker")
 
 
 # Minimum seconds between consecutive .progress.json writes.
-# Throttles fs hammering on large PDFs where pages tick rapidly.
-_PROGRESS_THROTTLE_SECONDS = 1.5
+# Originally 1.5s; lowered to 0.3s so short-running bars on small
+# PDFs still produce at least one observable progress write.  At
+# 0.3s the worst case is ~3 writes/sec to the volume — negligible.
+_PROGRESS_THROTTLE_SECONDS = 0.3
+
+
+# Patterns for marker log records we treat as degradation events.
+# Marker's LLM processors silently fall back to non-LLM extraction
+# when an LLM call returns malformed JSON; without capturing these
+# the user has no visibility into ingestion quality.  Each tuple is
+# ``(event_tag, substring_match)``; the first match wins.
+_WARNING_PATTERNS = (
+    (
+        "llm_invalid_response",
+        "did not return a valid response",
+    ),
+    ("llm_inference_failed", "OpenAI inference failed"),
+    (
+        "llm_table_rewrite_low_score",
+        "Table rewriting low score",
+    ),
+)
+
+
+class _WarningCollector(logging.Handler):
+    """Capture marker LLM degradation events for the manual row.
+
+    Installed as a handler on the ``marker`` logger during a
+    conversion.  Each LLM-related WARNING/ERROR record is tagged
+    and stashed; at the end of conversion the events are included
+    in ``result.json`` under a ``warnings`` key so the API can
+    persist them to ``Manual.warnings``.
+
+    The handler runs in addition to the worker's normal logger —
+    it does not suppress or modify records, only observes them.
+    """
+
+    def __init__(self) -> None:
+        """Initialize at WARNING level (captures both W and E)."""
+        super().__init__(level=logging.WARNING)
+        self.events: list[dict] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """Match the record against known degradation patterns."""
+        # Only marker.* records are interesting; ignore anything
+        # else that may bubble up to the root logger.
+        if not record.name.startswith("marker"):
+            return
+        try:
+            msg = record.getMessage()
+        except Exception:
+            return
+        for tag, needle in _WARNING_PATTERNS:
+            if needle in msg:
+                self.events.append({
+                    "event": tag,
+                    "logger": record.name,
+                    "level": record.levelname,
+                    "message": msg[:500],
+                    "ts": datetime.now(timezone.utc).isoformat(
+                        timespec="seconds",
+                    ),
+                })
+                return
 
 
 class _ProgressReporter:
@@ -138,14 +201,19 @@ class _ProgressReporter:
 
 def _install_tqdm_hook(
     reporter: _ProgressReporter,
-) -> "Optional[object]":
-    """Monkey-patch tqdm so each ``update()`` writes progress.
+) -> "Optional[list]":
+    """Monkey-patch ``tqdm.update`` across all known namespaces.
 
     Marker-pdf does not expose a clean per-page callback hook on
-    ``PdfConverter``; its internal processors drive a ``tqdm``
-    progress bar instead.  We wrap ``tqdm.tqdm.update`` (which is
-    the parent class used by every ``trange`` and bare-``tqdm``)
-    so that each tick mirrors to our progress file.
+    ``PdfConverter``; its internal processors drive ``tqdm``
+    progress bars instead.  Different processors import via
+    different routes — ``from tqdm import tqdm``,
+    ``from tqdm.auto import tqdm``, ``from tqdm.std import tqdm``
+    — so we patch every namespace we can find.  In practice
+    these usually all point at the same underlying class, but the
+    earlier hook only patched ``tqdm.tqdm.update`` and silently
+    failed when the class identity differed (or when a subclass
+    overrode ``update``).
 
     The first ``tqdm`` instance we see drives the progress
     estimate.  We use the bar's ``total`` as ``pages_total`` and
@@ -154,57 +222,83 @@ def _install_tqdm_hook(
     ``result.json`` is the authoritative number.
 
     Returns:
-        The original ``tqdm.update`` method so the caller can
-        restore it after conversion.  ``None`` if tqdm is not
-        importable (in which case progress reporting is a no-op).
+        A list of ``(class, original_update)`` tuples so the
+        caller can restore each patch after conversion.  ``None``
+        if tqdm could not be imported at all (no progress).
     """
-    try:
-        import tqdm as _tqdm_mod
-    except ImportError:
+    import importlib
+
+    candidates = [
+        ("tqdm", "tqdm"),
+        ("tqdm.std", "tqdm"),
+        ("tqdm.auto", "tqdm"),
+        ("tqdm.notebook", "tqdm"),
+        ("tqdm.asyncio", "tqdm"),
+    ]
+
+    patched: list = []
+    seen: set = set()
+
+    for module_name, class_name in candidates:
+        try:
+            module = importlib.import_module(module_name)
+        except (ImportError, Exception):
+            continue
+        cls = getattr(module, class_name, None)
+        if cls is None or id(cls) in seen:
+            continue
+        seen.add(id(cls))
+
+        original_update = cls.update
+
+        def _make_patched(orig):
+            def _patched_update(self, n: int = 1):
+                # Defer to the real implementation first so
+                # ``self.n`` reflects post-update state.
+                result = orig(self, n)
+                try:
+                    total = getattr(self, "total", None)
+                    current = getattr(self, "n", None)
+                    if total and current is not None:
+                        reporter.report(
+                            processed=int(current),
+                            total=int(total),
+                        )
+                except (TypeError, ValueError):
+                    # Defensive: never let progress reporting
+                    # break the underlying conversion.
+                    pass
+                return result
+            return _patched_update
+
+        cls.update = _make_patched(original_update)
+        patched.append((cls, original_update))
+
+    if not patched:
         logger.warning(
             "tqdm not installed; progress reporting disabled",
         )
         return None
 
-    original_update = _tqdm_mod.tqdm.update
-
-    def _patched_update(self, n: int = 1) -> None:
-        # Defer to the real implementation first so ``self.n``
-        # reflects post-update state.
-        result = original_update(self, n)
-        try:
-            total = getattr(self, "total", None)
-            current = getattr(self, "n", None)
-            if total and current is not None:
-                reporter.report(
-                    processed=int(current),
-                    total=int(total),
-                )
-        except (TypeError, ValueError):
-            # Defensive: never let progress reporting break the
-            # underlying conversion.
-            pass
-        return result
-
-    _tqdm_mod.tqdm.update = _patched_update
-    return original_update
+    return patched
 
 
-def _restore_tqdm_hook(original_update: "Optional[object]") -> None:
-    """Undo the tqdm monkey-patch.
+def _restore_tqdm_hook(original_state: "Optional[list]") -> None:
+    """Undo every ``tqdm.update`` monkey-patch.
 
     Args:
-        original_update: The pre-patch ``tqdm.update`` method,
-            as returned by ``_install_tqdm_hook``.  May be
-            ``None`` if the install was a no-op.
+        original_state: The list returned by
+            ``_install_tqdm_hook``.  Each entry is a
+            ``(class, original_update)`` tuple.  ``None`` /
+            empty list is a no-op.
     """
-    if original_update is None:
+    if not original_state:
         return
-    try:
-        import tqdm as _tqdm_mod
-        _tqdm_mod.tqdm.update = original_update
-    except ImportError:
-        pass
+    for cls, original_update in original_state:
+        try:
+            cls.update = original_update
+        except Exception:
+            pass
 
 
 def _process_request(
@@ -256,6 +350,13 @@ def _process_request(
     openai_api_key = request.get("openai_api_key", "")
     openai_base_url = request.get("openai_base_url", "")
     openai_model = request.get("openai_model", "")
+    # User-supplied vehicle-model label; wins over heuristics.
+    vehicle_model_override = request.get(
+        "vehicle_model_override", "",
+    )
+    # Human-friendly upload filename used in place of the on-disk
+    # UUID for filename-based extraction and frontmatter.
+    original_filename = request.get("original_filename", "")
 
     # Resolve the absolute PDF path.
     pdf_abs = os.path.join(output_dir, pdf_rel)
@@ -275,6 +376,14 @@ def _process_request(
     # so we don't write an initial 0/0 stub.
     reporter = _ProgressReporter(progress_path)
     original_update = _install_tqdm_hook(reporter)
+
+    # Install the warning collector on marker's logger.  Captures
+    # silent LLM degradation events (malformed JSON, low rewrite
+    # scores) that marker would otherwise hide behind a
+    # successful ``status='ingested'``.
+    warning_collector = _WarningCollector()
+    marker_logger = logging.getLogger("marker")
+    marker_logger.addHandler(warning_collector)
 
     # Run marker-pdf conversion (LLM mode with fallback).
     from marker_convert import convert
@@ -297,6 +406,10 @@ def _process_request(
                     openai_base_url=openai_base_url,
                     openai_model=openai_model,
                     vehicle_model_subdir=vehicle_model_subdir,
+                    vehicle_model_override=(
+                        vehicle_model_override
+                    ),
+                    original_filename=original_filename,
                 )
                 used_llm = True
                 logger.info("LLM-assisted conversion succeeded")
@@ -313,6 +426,10 @@ def _process_request(
                     output_dir=output_dir,
                     use_llm=False,
                     vehicle_model_subdir=vehicle_model_subdir,
+                    vehicle_model_override=(
+                        vehicle_model_override
+                    ),
+                    original_filename=original_filename,
                 )
             except Exception as exc:
                 msg = f"Conversion failed: {exc}"
@@ -326,6 +443,7 @@ def _process_request(
                 return
     finally:
         _restore_tqdm_hook(original_update)
+        marker_logger.removeHandler(warning_collector)
 
     # Build relative output path for the container.
     rel_output = os.path.relpath(
@@ -351,6 +469,16 @@ def _process_request(
             force=True,
         )
 
+    # Persist captured LLM-degradation events so the API can
+    # surface them on ``Manual.warnings``.  Empty list = clean
+    # conversion (no warnings shown to the user).
+    warnings_payload = list(warning_collector.events)
+    if warnings_payload:
+        logger.warning(
+            "Captured %d ingestion-quality warning(s) during "
+            "conversion", len(warnings_payload),
+        )
+
     _write_result(res_path, {
         "status": "ok",
         "output_path": rel_output,
@@ -361,6 +489,7 @@ def _process_request(
         "image_count": result.image_count,
         "dtc_codes": result.dtc_codes,
         "converter": converter_label,
+        "warnings": warnings_payload,
     })
     logger.info(
         "Conversion complete: %s → %s "

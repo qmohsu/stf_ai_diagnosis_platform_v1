@@ -340,6 +340,12 @@ class Manual(Base):
     # written from marker's result.json.
     pages_processed = Column(Integer, nullable=True)
     pages_total = Column(Integer, nullable=True)
+    # Ingestion-quality warnings captured during marker-pdf
+    # conversion (LLM retry / fallback events).  Schema:
+    # ``[{"event": str, "page": int|None, "processor": str|None,
+    #     "reason": str|None, "ts": iso8601}]``.  ``None`` means
+    # no warnings (clean conversion).
+    warnings = Column(JSONB, nullable=True)
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(
         DateTime, default=_utcnow, onupdate=_utcnow,

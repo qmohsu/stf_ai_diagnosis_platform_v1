@@ -233,8 +233,18 @@ export interface ManualSummary {
   chunk_count: number | null;
   pages_processed: number | null;
   pages_total: number | null;
+  /** LLM-degradation events captured during conversion. */
+  warnings: ManualWarning[] | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ManualWarning {
+  event: string;
+  logger?: string;
+  level?: string;
+  message?: string;
+  ts?: string;
 }
 
 export interface ManualListResponse {

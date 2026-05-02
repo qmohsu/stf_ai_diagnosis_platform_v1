@@ -13,6 +13,50 @@ from pydantic import BaseModel
 DTC_PATTERN = re.compile(r"\b[PBCU]\d{4}\b")
 HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+)$", re.MULTILINE)
 
+# YAML frontmatter delimiter pattern.  Marker-pdf-produced manuals
+# begin with a fenced ``---`` block; we strip it before heading
+# extraction so it does not become a phantom first chunk.
+_FRONTMATTER_RE = re.compile(
+    r"\A---\s*\r?\n(?P<body>.*?)\r?\n---\s*\r?\n",
+    re.DOTALL,
+)
+# Flat key/value within frontmatter (one line each).  Skips list /
+# nested YAML — our schema is intentionally flat.
+_FRONTMATTER_KV_RE = re.compile(
+    r"^([a-zA-Z_][a-zA-Z0-9_]*):\s*(.*?)\s*$",
+    re.MULTILINE,
+)
+
+
+def _strip_yaml_frontmatter(text: str) -> Tuple[dict, str]:
+    """Extract and strip a leading YAML frontmatter block.
+
+    Marker-pdf-produced manuals begin with a fenced ``---`` block
+    containing ``source_pdf``, ``vehicle_model``, ``language`` and
+    similar metadata.  Without stripping, the parser would treat
+    the block as content and emit a junk first chunk.
+
+    Args:
+        text: Full document text (possibly with frontmatter).
+
+    Returns:
+        Tuple of ``(frontmatter_dict, body)``.  When no frontmatter
+        is present, returns ``({}, text)`` unchanged.
+    """
+    match = _FRONTMATTER_RE.match(text)
+    if match is None:
+        return {}, text
+
+    fm: dict = {}
+    for key, value in _FRONTMATTER_KV_RE.findall(match.group("body")):
+        # Strip surrounding ASCII quotes if present.
+        v = value.strip()
+        if len(v) >= 2 and v[0] == v[-1] and v[0] in ("'", '"'):
+            v = v[1:-1]
+        fm[key] = v
+
+    return fm, text[match.end():]
+
 # Vehicle model patterns: (compiled regex, normalization format).
 # Format placeholders: {raw} = matched text as-is,
 #                      {digits} = first digit group extracted.
@@ -98,8 +142,22 @@ def parse_manual(text: str, filename: str = "") -> List[Section]:
     Returns:
         List of Section objects.
     """
-    # Extract document-level vehicle model (often in first line / title)
+    # Strip YAML frontmatter so it doesn't pollute heading extraction
+    # or become a phantom first chunk.  The frontmatter's metadata
+    # (especially ``vehicle_model``) is treated as a high-priority
+    # source for the doc-level vehicle model when the body regex
+    # comes up empty.
+    frontmatter, text = _strip_yaml_frontmatter(text)
+
+    # Document-level vehicle model resolution priority:
+    #   1. body regex match (specific OEM patterns)
+    #   2. frontmatter ``vehicle_model`` field (if it isn't itself
+    #      ``"Generic"`` or an obviously non-model placeholder).
     doc_vehicle_model = extract_vehicle_model(text)
+    if doc_vehicle_model == "Generic":
+        fm_model = frontmatter.get("vehicle_model", "").strip()
+        if fm_model and fm_model.lower() != "generic":
+            doc_vehicle_model = fm_model
 
     headings = list(HEADING_PATTERN.finditer(text))
 
@@ -172,6 +230,10 @@ def parse_log(text: str, filename: str = "") -> List[Section]:
     Returns:
         List containing a single Section.
     """
+    # Logs typically don't carry frontmatter, but strip defensively
+    # in case a future producer prepends one.
+    _, text = _strip_yaml_frontmatter(text)
+
     # Try to build a title from Date and Service fields
     date_match = re.search(r"\*\*Date:\*\*\s*(.+)", text)
     service_match = re.search(r"\*\*Service:\*\*\s*(.+)", text)

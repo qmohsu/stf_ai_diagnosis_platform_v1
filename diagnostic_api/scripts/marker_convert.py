@@ -115,19 +115,75 @@ def _clean_filename_stem(stem: str) -> str:
     return cleaned if cleaned else stem
 
 
+# UUID v1/v4-style filename — produced by our upload pipeline,
+# never a meaningful vehicle-model label.
+_UUID_STEM_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-"
+    r"[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
 def _resolve_vehicle_model(
     md_text: str,
     filename: str,
     stem: str,
+    *,
+    vehicle_model_override: str = "",
+    original_filename: str = "",
 ) -> str:
-    """Best-effort vehicle-model resolution."""
+    """Best-effort vehicle-model resolution.
+
+    Priority:
+      1. User-supplied ``vehicle_model_override`` (from upload form).
+      2. Regex match against the markdown body (first 5KB).
+      3. Regex match against the user-supplied original filename
+         (or, if missing, the on-disk filename).
+      4. Cleaned stem of the original filename — only when the
+         stem is not a UUID and contains a digit (heuristic for
+         "looks like a vehicle model").
+      5. ``"Generic"``.
+
+    Args:
+        md_text: Marker-pdf output (full markdown, frontmatter
+            already absent at this point).
+        filename: On-disk filename of the source PDF (typically a
+            ``{uuid}.pdf`` from our upload pipeline).
+        stem: ``Path(pdf_path).stem`` of the on-disk file.
+        vehicle_model_override: Optional caller-supplied label
+            (e.g. from an upload form).  Wins over all heuristics.
+        original_filename: Optional human-friendly filename the
+            user uploaded (e.g.
+            ``MWS150A_Service_Manual.pdf``).  Used in place of the
+            on-disk UUID for filename-based extraction.
+
+    Returns:
+        Resolved vehicle-model label.
+    """
+    if vehicle_model_override and vehicle_model_override.strip():
+        return vehicle_model_override.strip()
+
     model = _extract_vehicle_model(md_text[:5000])
     if model != "Generic":
         return model
-    model = _extract_vehicle_model(filename)
+
+    name_for_match = original_filename or filename
+    model = _extract_vehicle_model(name_for_match)
     if model != "Generic":
         return model
-    return _clean_filename_stem(stem)
+
+    # Clean-stem fallback only if we have a meaningful stem.
+    candidate_stem = (
+        Path(original_filename).stem
+        if original_filename else stem
+    )
+    if _UUID_STEM_RE.match(candidate_stem):
+        return "Generic"
+
+    cleaned = _clean_filename_stem(candidate_stem)
+    if re.search(r"\d", cleaned):
+        return cleaned
+    return "Generic"
 
 
 def _has_cjk(text: str) -> bool:
@@ -245,6 +301,8 @@ def convert(
     openai_model: str = "",
     suffix: str = "",
     vehicle_model_subdir: bool = False,
+    vehicle_model_override: str = "",
+    original_filename: str = "",
 ) -> ConversionResult:
     """Convert a PDF using marker-pdf and post-process.
 
@@ -258,6 +316,12 @@ def convert(
         suffix: Filename suffix (e.g. '_marker_llm').
         vehicle_model_subdir: If True, nest output under
             ``{output_dir}/{vehicle_model}/``.
+        vehicle_model_override: Caller-supplied vehicle-model
+            label that wins over all heuristics.  Pass ``""`` to
+            let the resolver guess from filename / body.
+        original_filename: Human-friendly upload filename used
+            for filename-based extraction when the on-disk file is
+            named with a UUID by the upload pipeline.
 
     Returns:
         ConversionResult with output path and metadata.
@@ -326,6 +390,8 @@ def convert(
     page_count = _get_page_count(str(pdf_path_obj))
     vehicle_model = _resolve_vehicle_model(
         md_text, pdf_path_obj.name, stem,
+        vehicle_model_override=vehicle_model_override,
+        original_filename=original_filename,
     )
 
     # Determine actual output directory
@@ -365,9 +431,11 @@ def convert(
         else "marker-pdf"
     )
 
-    # Build frontmatter
+    # Build frontmatter.  Prefer the user-supplied original
+    # filename (e.g. "MWS150A_Service_Manual.pdf") over the
+    # on-disk UUID name set by the upload pipeline.
     frontmatter = _build_frontmatter(
-        source_pdf=pdf_path_obj.name,
+        source_pdf=original_filename or pdf_path_obj.name,
         vehicle_model=vehicle_model,
         language=language,
         page_count=page_count,

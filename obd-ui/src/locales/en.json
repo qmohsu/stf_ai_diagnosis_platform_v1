@@ -370,6 +370,7 @@
     "embedding": "Embedding...",
     "ingested": "Ready",
     "failed": "Failed",
+    "warningsTooltip": "{{count}} ingestion-quality warning(s) — some pages may have fallen back to non-LLM extraction.",
     "noManuals": "No manuals uploaded yet.",
     "filename": "Filename",
     "statusLabel": "Status",

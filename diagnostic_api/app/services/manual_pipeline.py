@@ -113,11 +113,19 @@ async def run_conversion_and_ingestion(
         db.commit()
         log.info("manual.converting")
 
+        # Capture user-supplied values BEFORE the conversion call
+        # so they can be passed to the worker.  ``manual.filename``
+        # is the original upload name; the on-disk PDF is named
+        # ``{uuid}.pdf`` and would otherwise be marker's only signal.
         try:
             result = await _run_marker_convert(
                 manual.pdf_file_path,
                 manual_id,
                 log,
+                original_filename=manual.filename or "",
+                vehicle_model_override=(
+                    manual.vehicle_model or ""
+                ),
             )
         except Exception as exc:
             manual.status = "failed"
@@ -131,11 +139,27 @@ async def run_conversion_and_ingestion(
             )
             return
 
-        # Update manual with conversion metadata.
+        # Update manual with conversion metadata.  ``vehicle_model``
+        # only gets overwritten when the user did not supply one
+        # (and the resolver's best guess was non-empty and
+        # non-Generic), so a user-supplied label survives the round
+        # trip.  ``"Generic"`` from the resolver is treated as
+        # "no useful guess" and left as NULL so the UI shows "—".
         vehicle_model = result.get("vehicle_model", "")
         output_path = result.get("output_path", "")
         manual.md_file_path = output_path
-        manual.vehicle_model = vehicle_model
+        if not manual.vehicle_model:
+            if vehicle_model and vehicle_model != "Generic":
+                manual.vehicle_model = vehicle_model
+        # Persist any LLM-degradation events captured by the
+        # marker-worker.  Stored as a list of structured records
+        # (see ``_WarningCollector`` in scripts/marker_worker.py).
+        # ``None`` = clean conversion; empty list = clean too,
+        # but normalise to None so the UI's "is non-empty?" check
+        # is unambiguous.
+        warnings_list = result.get("warnings") or None
+        if warnings_list:
+            manual.warnings = warnings_list
         manual.page_count = result.get("page_count")
         manual.section_count = result.get("section_count")
         manual.language = result.get("language")
@@ -210,6 +234,9 @@ async def _run_marker_convert(
     pdf_rel: str,
     manual_id: UUID,
     log: structlog.BoundLogger,
+    *,
+    original_filename: str = "",
+    vehicle_model_override: str = "",
 ) -> dict:
     """Request marker-pdf conversion via the host worker.
 
@@ -225,6 +252,14 @@ async def _run_marker_convert(
             ``manual_storage_path`` (e.g. ``uploads/xxx.pdf``).
         manual_id: UUID used as the queue filename.
         log: Bound logger.
+        original_filename: Human-friendly upload filename used by
+            the worker for ``source_pdf`` frontmatter and
+            filename-based vehicle-model extraction.  The on-disk
+            file is named with ``manual_id`` so this is the only
+            way the worker can see the user's original name.
+        vehicle_model_override: User-supplied vehicle-model label
+            from the upload form.  When non-empty, wins over all
+            heuristics in the worker's resolver.
 
     Returns:
         Dict with conversion metadata (vehicle_model,
@@ -261,6 +296,8 @@ async def _run_marker_convert(
         "openai_api_key": settings.premium_llm_api_key,
         "openai_base_url": settings.premium_llm_base_url,
         "openai_model": settings.manual_llm_model,
+        "original_filename": original_filename,
+        "vehicle_model_override": vehicle_model_override,
     }
     with open(req_path, "w", encoding="utf-8") as f:
         json.dump(request, f)

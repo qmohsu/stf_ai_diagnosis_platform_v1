@@ -370,6 +370,7 @@
     "embedding": "向量化中...",
     "ingested": "就绪",
     "failed": "失败",
+    "warningsTooltip": "{{count}} 项摄取质量告警 — 部分页面可能已回退到非 LLM 抽取。",
     "noManuals": "尚未上传任何手册。",
     "filename": "文件名",
     "statusLabel": "状态",

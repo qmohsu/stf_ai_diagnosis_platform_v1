@@ -67,6 +67,9 @@ class ManualSummary(BaseModel):
     # N/N briefly during the chunking handoff).
     pages_processed: Optional[int] = None
     pages_total: Optional[int] = None
+    # Ingestion-quality warnings captured during conversion (e.g.
+    # silent LLM fallbacks).  ``None`` or empty list = clean.
+    warnings: Optional[list] = None
     created_at: str
     updated_at: str
 
@@ -125,6 +128,7 @@ def _to_summary(m: Manual) -> ManualSummary:
         chunk_count=m.chunk_count,
         pages_processed=m.pages_processed,
         pages_total=m.pages_total,
+        warnings=m.warnings,
         created_at=m.created_at.isoformat(),
         updated_at=m.updated_at.isoformat(),
     )
