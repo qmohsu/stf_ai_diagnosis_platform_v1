@@ -121,6 +121,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info(f"Strict Mode: {settings.strict_mode}")
     settings.validate_jwt_secret()
 
+    # Marker-pdf LLM-assisted conversion is always-on, so a
+    # premium LLM API key is required for manual ingestion.
+    # Refuse to boot if missing rather than letting uploads
+    # fail later with a confusing error.
+    if not settings.premium_llm_api_key:
+        raise RuntimeError(
+            "PREMIUM_LLM_API_KEY is not set.  This key is "
+            "required for marker-pdf LLM-assisted manual "
+            "conversion (always-on).  Set it in the "
+            "environment before starting the API."
+        )
+
     # Ensure OBD log storage directory exists.
     os.makedirs(settings.obd_log_storage_path, exist_ok=True)
 

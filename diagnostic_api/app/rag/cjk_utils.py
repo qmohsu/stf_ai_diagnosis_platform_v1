@@ -1,7 +1,7 @@
-"""Shared CJK detection utilities for RAG pipeline modules.
+"""Shared CJK and markdown utilities for the RAG chunker.
 
-Centralises CJK character-range detection and image-marker
-patterns used by chunker, translator, and OCR modules.
+Centralises CJK character-range detection and the markdown
+image-marker pattern used by the chunker.
 """
 
 import re
@@ -11,17 +11,11 @@ CJK_RANGE = re.compile(
     r"[\u2E80-\u9FFF\uF900-\uFAFF\U00020000-\U0002FA1F]"
 )
 
-# Markers inserted by pdf_parser (vision + OCR enrichment).
-# Use with .search() to test, or wrap in a capturing group and
-# .split() to break text around markers.
-IMAGE_MARKER_PATTERN = (
-    r"\[(?:Image \d+, Page \d+"
-    r"|OCR, Page \d+"
-    r"|Full Page, Page \d+)\]"
-)
-
-IMAGE_MARKER = re.compile(IMAGE_MARKER_PATTERN)
-IMAGE_MARKER_SPLIT = re.compile(f"({IMAGE_MARKER_PATTERN})")
+# Standard markdown image syntax: ``![alt text](path/to/image.png)``.
+# Marker-pdf produces this format for every extracted figure;
+# the chunker uses it to flag chunks containing images and to
+# keep image-reference paragraphs atomic during splitting.
+IMAGE_MARKER = re.compile(r"!\[[^\]]*\]\([^)]+\)")
 
 
 def has_cjk(text: str) -> bool:

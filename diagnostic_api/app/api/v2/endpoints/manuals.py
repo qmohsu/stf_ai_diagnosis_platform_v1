@@ -36,9 +36,9 @@ from app.models_db import Manual, User
 from app.services.manual_pipeline import (
     cleanup_orphan_files,
     compute_file_hash,
-    delete_manual_chunks,
     delete_manual_files,
     run_conversion_and_ingestion,
+    run_reingestion,
     save_uploaded_pdf,
 )
 
@@ -361,11 +361,8 @@ async def delete_manual(
     # Delete filesystem artefacts.
     delete_manual_files(manual)
 
-    # Delete RAG chunks by doc_id (filename stem).
-    doc_id = Path(manual.filename).stem
-    delete_manual_chunks(doc_id, db)
-
-    # Delete the Manual row.
+    # Delete the Manual row.  RAG chunks are removed
+    # automatically via the manual_id FK ON DELETE CASCADE.
     db.delete(manual)
     db.commit()
 
@@ -405,6 +402,95 @@ async def get_manual_status(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Manual not found.",
         )
+
+    return ManualStatusResponse(
+        status=manual.status,
+        error_message=manual.error_message,
+        page_count=manual.page_count,
+        chunk_count=manual.chunk_count,
+    )
+
+
+_REINGEST_BLOCKED_STATUSES = frozenset(
+    {"uploading", "converting", "chunking", "embedding"},
+)
+
+
+@router.post(
+    "/{manual_id}/reingest",
+    response_model=ManualStatusResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def reingest_manual(
+    manual_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ManualStatusResponse:
+    """Re-chunk and re-embed an existing manual's markdown.
+
+    Reuses the previously-converted ``.md`` artefact — does NOT
+    re-run marker-pdf.  If the manual has no markdown (Stage 1
+    failed or never ran), the user must re-upload the PDF
+    instead.  The reingest is atomic: old chunks are deleted
+    and new chunks inserted in one transaction.
+
+    Pre-conditions:
+
+    * ``manual.md_file_path`` is not NULL — otherwise 409.
+    * ``manual.status`` is in ``{'ingested', 'failed'}`` —
+      otherwise 409 (ingestion already in progress).
+
+    Args:
+        manual_id: UUID of the manual to reingest.
+        current_user: Authenticated user.
+        db: Database session.
+
+    Returns:
+        Status snapshot showing the new ``chunking`` state.
+
+    Raises:
+        HTTPException: 404 if not found, 409 if pre-conditions
+        are not met.
+    """
+    manual = db.query(Manual).get(manual_id)
+    if not manual:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Manual not found.",
+        )
+
+    if not manual.md_file_path:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Manual has no converted markdown.  "
+                "Re-upload the PDF to retry conversion."
+            ),
+        )
+
+    if manual.status in _REINGEST_BLOCKED_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Manual is in '{manual.status}' state.  "
+                f"Reingest can only run when status is "
+                f"'ingested' or 'failed'."
+            ),
+        )
+
+    # Flip to 'chunking' synchronously so the next /status
+    # poll sees the new state immediately.
+    manual.status = "chunking"
+    manual.error_message = None
+    db.commit()
+
+    asyncio.create_task(run_reingestion(manual_id))
+
+    logger.info(
+        "manual.reingest_requested",
+        manual_id=str(manual_id),
+        user=current_user.username,
+    )
 
     return ManualStatusResponse(
         status=manual.status,

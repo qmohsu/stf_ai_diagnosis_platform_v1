@@ -97,10 +97,6 @@ class Settings(BaseSettings):
             "MANUAL_MAX_FILE_SIZE_BYTES", "209715200",
         ),
     )  # 200 MB
-    manual_use_llm: bool = (
-        os.getenv("MANUAL_USE_LLM", "false").lower()
-        == "true"
-    )
     manual_llm_model: str = os.getenv(
         "MANUAL_LLM_MODEL",
         "qwen/qwen3.5-flash-02-23",

@@ -149,13 +149,17 @@ async def run_conversion_and_ingestion(
             pages=manual.page_count,
         )
 
-        # ── Stage 2: RAG ingestion ──────────────────
+        # ── Stage 2: chunking ───────────────────────
+        manual.status = "chunking"
+        db.commit()
+        log.info("manual.chunking")
+
         md_abs = os.path.join(
             settings.manual_storage_path, output_path,
         )
         try:
             chunk_count = await _run_ingestion(
-                Path(md_abs), db, log,
+                Path(md_abs), manual.id, db, log,
             )
         except Exception as exc:
             manual.status = "failed"
@@ -233,23 +237,18 @@ async def _run_marker_convert(
         queue_dir, f"{manual_id}.result.json",
     )
 
-    # Write conversion request.
+    # Write conversion request.  LLM-assisted mode is always
+    # on — the API refuses to boot if PREMIUM_LLM_API_KEY is
+    # missing (see app.main lifespan), so credentials are
+    # guaranteed to be present here.
     request: dict = {
         "pdf_path": pdf_rel,
-        "use_llm": settings.manual_use_llm,
+        "use_llm": True,
         "vehicle_model_subdir": True,
+        "openai_api_key": settings.premium_llm_api_key,
+        "openai_base_url": settings.premium_llm_base_url,
+        "openai_model": settings.manual_llm_model,
     }
-    # Pass LLM credentials if LLM mode is enabled.
-    if settings.manual_use_llm:
-        request["openai_api_key"] = (
-            settings.premium_llm_api_key
-        )
-        request["openai_base_url"] = (
-            settings.premium_llm_base_url
-        )
-        request["openai_model"] = (
-            settings.manual_llm_model
-        )
     with open(req_path, "w", encoding="utf-8") as f:
         json.dump(request, f)
 
@@ -306,30 +305,199 @@ async def _run_marker_convert(
 
 async def _run_ingestion(
     md_path: Path,
+    manual_id: UUID,
     db: "Session",
     log: structlog.BoundLogger,
 ) -> int:
-    """Ingest a converted markdown file into pgvector.
+    """Chunk and embed a converted markdown file into pgvector.
+
+    Drives the ``chunking`` -> ``embedding`` status transition by
+    flipping the parent ``Manual.status`` between the two phases.
+    The transition is committed so polling clients see the
+    intermediate state.
 
     Args:
         md_path: Path to the .md file.
+        manual_id: UUID of the parent ``Manual`` row.
         db: SQLAlchemy session.
         log: Bound logger.
 
     Returns:
         Number of chunks inserted.
     """
-    from app.rag.ingest import process_file
+    from app.rag.ingest import (
+        embed_and_insert_chunks,
+        parse_and_chunk_md,
+    )
 
     chunker = Chunker(
         chunk_size=_DEFAULT_CHUNK_SIZE,
         overlap=_DEFAULT_OVERLAP,
     )
-    stats = await process_file(
-        md_path, db, chunker,
-        describe_images=False,
+
+    # Phase 1: parse + chunk (CPU-only, fast).
+    chunks = parse_and_chunk_md(md_path, chunker)
+
+    # Flip status to 'embedding' so the UI can distinguish the
+    # slow Ollama embedding loop from the fast parse.
+    manual = db.query(Manual).get(manual_id)
+    manual.status = "embedding"
+    db.commit()
+    log.info("manual.embedding", chunk_count=len(chunks))
+
+    # Phase 2: embed + insert (network-bound, slow).
+    stats = await embed_and_insert_chunks(
+        chunks, manual_id, md_path.stem, db,
     )
     return stats.get("inserted", 0)
+
+
+async def run_reingestion(
+    manual_id: UUID,
+) -> None:
+    """Re-chunk and re-embed an existing manual's markdown.
+
+    Background task triggered by ``POST /v2/manuals/{id}/reingest``.
+    Intended for two cases:
+
+    1. Recovering a manual whose Stage 2/3 silently produced
+       zero chunks (older deployments).
+    2. Re-embedding all chunks after the embedding model is
+       changed.
+
+    Atomicity: old chunks are deleted and new chunks are inserted
+    inside one transaction, so a failure mid-embed rolls back to
+    the prior state.
+
+    Pre-conditions are enforced by the API endpoint:
+
+    * ``manual.md_file_path`` is not NULL.
+    * ``manual.status`` is in ``{'ingested', 'failed'}``.
+
+    Args:
+        manual_id: UUID of the ``Manual`` row to reingest.
+    """
+    log = logger.bind(manual_id=str(manual_id))
+
+    db = SessionLocal()
+    try:
+        manual = db.query(Manual).get(manual_id)
+        if manual is None:
+            log.error("manual.not_found")
+            return
+
+        if not manual.md_file_path:
+            log.error("manual.reingest_no_md_path")
+            manual.status = "failed"
+            manual.error_message = (
+                "Reingest aborted: md_file_path is NULL."
+            )
+            db.commit()
+            return
+
+        md_abs = os.path.join(
+            settings.manual_storage_path,
+            manual.md_file_path,
+        )
+        if not os.path.isfile(md_abs):
+            log.error(
+                "manual.reingest_md_missing", path=md_abs,
+            )
+            manual.status = "failed"
+            manual.error_message = (
+                f"Reingest aborted: markdown file missing "
+                f"on disk ({manual.md_file_path})."
+            )
+            db.commit()
+            return
+
+        # ── Stage 2: chunking ───────────────────────
+        manual.status = "chunking"
+        db.commit()
+        log.info("manual.reingest_chunking")
+
+        from app.rag.ingest import (
+            embed_and_insert_chunks,
+            parse_and_chunk_md,
+        )
+
+        chunker = Chunker(
+            chunk_size=_DEFAULT_CHUNK_SIZE,
+            overlap=_DEFAULT_OVERLAP,
+        )
+
+        try:
+            chunks = parse_and_chunk_md(
+                Path(md_abs), chunker,
+            )
+        except Exception as exc:
+            manual.status = "failed"
+            manual.error_message = (
+                f"Reingest chunking error: {exc!s:.500}"
+            )
+            db.commit()
+            log.error(
+                "manual.reingest_chunking_failed",
+                error=str(exc),
+            )
+            return
+
+        # ── Stage 3: embedding ──────────────────────
+        # Atomic delete-then-insert: if embedding fails midway,
+        # the rollback restores the old chunks.
+        manual.status = "embedding"
+        db.commit()
+        log.info(
+            "manual.reingest_embedding",
+            chunk_count=len(chunks),
+        )
+
+        try:
+            db.query(RagChunk).filter(
+                RagChunk.manual_id == manual_id,
+            ).delete()
+            stats = await embed_and_insert_chunks(
+                chunks, manual_id,
+                Path(md_abs).stem, db,
+            )
+        except Exception as exc:
+            db.rollback()
+            manual.status = "failed"
+            manual.error_message = (
+                f"Reingest embedding error: {exc!s:.500}"
+            )
+            db.commit()
+            log.error(
+                "manual.reingest_embedding_failed",
+                error=str(exc),
+            )
+            return
+
+        manual.chunk_count = stats.get("inserted", 0)
+        manual.status = "ingested"
+        db.commit()
+        log.info(
+            "manual.reingested",
+            chunk_count=manual.chunk_count,
+        )
+
+    except Exception as exc:
+        log.error(
+            "manual.reingest_pipeline_error",
+            error=str(exc),
+        )
+        try:
+            manual = db.query(Manual).get(manual_id)
+            if manual:
+                manual.status = "failed"
+                manual.error_message = (
+                    f"Reingest error: {exc!s:.500}"
+                )
+                db.commit()
+        except Exception:
+            db.rollback()
+    finally:
+        db.close()
 
 
 def delete_manual_files(manual: Manual) -> None:
@@ -423,9 +591,8 @@ def cleanup_orphan_files(
                         )
                     continue
                 # Stale failed — delete row + files.
+                # FK CASCADE removes rag_chunks rows.
                 delete_manual_files(m)
-                doc_id = Path(m.filename).stem
-                delete_manual_chunks(doc_id, db)
                 db.delete(m)
                 files_removed += 1
                 logger.info(
@@ -518,12 +685,18 @@ def cleanup_orphan_files(
 
 
 def delete_manual_chunks(
-    doc_id: str, db: "Session",
+    manual_id: UUID, db: "Session",
 ) -> int:
-    """Delete all RAG chunks for a given doc_id.
+    """Delete all RAG chunks for a given manual.
+
+    Note: deleting the parent ``Manual`` row already cascades
+    to ``rag_chunks`` via the ``manual_id`` FK with
+    ``ON DELETE CASCADE``.  This helper is retained for the
+    case where chunks need to be wiped without removing the
+    manual row (e.g. before an embedding-model swap).
 
     Args:
-        doc_id: The document identifier (filename stem).
+        manual_id: UUID of the parent ``Manual`` row.
         db: SQLAlchemy session.
 
     Returns:
@@ -531,13 +704,13 @@ def delete_manual_chunks(
     """
     count = (
         db.query(RagChunk)
-        .filter(RagChunk.doc_id == doc_id)
+        .filter(RagChunk.manual_id == manual_id)
         .delete()
     )
     db.commit()
     logger.info(
         "manual.deleted_chunks",
-        doc_id=doc_id,
+        manual_id=str(manual_id),
         count=count,
     )
     return count

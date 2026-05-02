@@ -107,15 +107,16 @@ class TestDeleteManualFiles:
 class TestDeleteManualChunks:
     """Tests for RAG chunk cleanup."""
 
-    def test_deletes_by_doc_id(self):
-        """Chunks with matching doc_id are removed."""
+    def test_deletes_by_manual_id(self):
+        """Chunks with matching manual_id are removed."""
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.delete.return_value = 5
 
-        count = delete_manual_chunks("test_manual", mock_db)
+        manual_id = uuid.uuid4()
+        count = delete_manual_chunks(manual_id, mock_db)
 
         assert count == 5
         mock_db.commit.assert_called_once()

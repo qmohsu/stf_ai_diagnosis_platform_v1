@@ -300,7 +300,8 @@ class Manual(Base):
     __table_args__ = (
         CheckConstraint(
             "status IN ("
-            "'uploading', 'converting', 'ingested', 'failed'"
+            "'uploading', 'converting', 'chunking', "
+            "'embedding', 'ingested', 'failed'"
             ")",
             name="ck_manual_status",
         ),
@@ -344,14 +345,29 @@ class RagChunk(Base):
     """RAG knowledge chunk with pgvector embedding.
 
     Stores chunked document text alongside its vector embedding
-    for semantic retrieval.  Replaces the former Weaviate
-    ``KnowledgeChunk`` collection.
+    for semantic retrieval.  Every chunk belongs to a ``Manual``
+    via ``manual_id``; cascade delete removes chunks when the
+    parent manual is deleted.  ``source_type`` is currently
+    locked to ``'manual'``; future ingestion sources will require
+    a migration that relaxes the CHECK constraint.
     """
 
     __tablename__ = "rag_chunks"
+    __table_args__ = (
+        CheckConstraint(
+            "source_type = 'manual'",
+            name="ck_rag_chunk_source_type",
+        ),
+    )
 
     id = Column(
         UUID(as_uuid=True), primary_key=True, default=uuid4,
+    )
+    manual_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("manuals.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     text = Column(Text, nullable=False)
     doc_id = Column(String(255), nullable=False, index=True)
@@ -367,3 +383,5 @@ class RagChunk(Base):
     metadata_json = Column(JSONB, nullable=True)
     embedding = Column(Vector(768), nullable=False)
     created_at = Column(DateTime, default=_utcnow)
+
+    manual = relationship("Manual")

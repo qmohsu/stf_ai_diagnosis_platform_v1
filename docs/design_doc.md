@@ -11,14 +11,15 @@
 | **Status** | Draft v4.5 (Generalized DTC Index for Manuals) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-05-02 (v4.5) |
+| **Last updated** | 2026-05-02 (v4.6) |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + Ollama (`qwen3.5:27b-q8_0`) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | APP-44: DTC index appendix in marker-pdf converter generalized for cross-OEM, cross-language coverage. `_DTC_RE` widened to SAE J2012 / ISO 15031-6 / UDS pattern (hex variants like `P062F`, 6/7-char extended codes, FTB suffixes, case-insensitive). New `_normalize_dtc()` for stable dedup. Helper script `rebuild_dtc_appendix.py` re-applies the appendix to existing markdown without re-running marker-pdf. |
+| **New in this revision** | APP-45: RAG ingestion redesigned as a single marker-pdf path. The PyMuPDF parser, OCR, vision, translator, and `md_export.py` are removed; marker-pdf is now the only PDF→MD converter and runs with LLM-assisted mode always-on. Upload pipeline expanded from 3 to 5 status stages (`uploading`/`converting`/`chunking`/`embedding`/`ingested`) for finer UI observability. New `POST /v2/manuals/{id}/reingest` endpoint re-chunks and re-embeds from the existing markdown without re-running conversion (atomic delete-then-insert). New `rag_chunks.manual_id` FK with `ON DELETE CASCADE`; `source_type` locked to `'manual'` via CHECK. API refuses to boot if `PREMIUM_LLM_API_KEY` is missing. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v4.6 | 2026-05-02 | APP-45: Redesign RAG ingestion as a single marker-pdf path. Removed CLI ingest entry point and the dual PDF parser stack — `app/rag/pdf_parser.py`, `ocr.py`, `vision.py`, `translator.py`, `md_export.py`, plus `scripts/rebuild_dtc_appendix.py` are deleted. Marker-pdf is now the only converter, with LLM-assisted mode always on (API refuses to boot if `PREMIUM_LLM_API_KEY` is missing). Pipeline: PDF upload → marker-pdf → structured `.md` → chunk → embed → pgvector. Five-stage status state machine (`uploading`/`converting`/`chunking`/`embedding`/`ingested`) for UI observability. New `POST /v2/manuals/{id}/reingest` endpoint re-runs chunk + embed from existing markdown without re-conversion (atomic delete-then-insert; 409 if `md_file_path IS NULL` or status is in-flight). Schema: `rag_chunks.manual_id UUID` FK with `ON DELETE CASCADE`, `CHECK (source_type = 'manual')`, expanded `Manual.status` CHECK. Alembic `r2s3t4u5v6w7`. Dropped PyMuPDF / easyocr / Pillow from `requirements.txt`. Kept `cjk_utils.py` (used by chunker). 8 obsolete test files removed. |
 | v4.5 | 2026-05-02 | APP-44: Generalize DTC regex in marker-pdf converter (`diagnostic_api/scripts/marker_convert.py`). Widened `_DTC_RE` from `\b[PBCU]\d{4}\b` to a SAE J2012 / ISO 15031-6 / UDS-aware pattern that captures classic 5-char codes, manufacturer-specific hex variants (e.g. `P062F`, `B1A23`), 6/7-char extended codes, and FTB / sub-byte suffixes (`P0420-64`, `B1A21:08`, `C0561 87`), case-insensitive. Lookarounds replace `\b` so dash-separated codes are not split. New `_normalize_dtc()` canonicalizes to uppercase + dash-separated form for stable dedup. New `diagnostic_api/scripts/rebuild_dtc_appendix.py` helper re-applies the appendix logic to existing markdown files (single file or recursive directory) without re-running marker-pdf, supporting `--dry-run`. Verified on MWS150-A Yamaha service manual: surfaces previously-missed `P062F` (7 occurrences) and zero regressions on the 21 codes already indexed. |
 | v4.4 | 2026-04-10 | V2 harness architecture design initiated (GitHub Issue #26). New `docs/v2_design_doc.md` and `docs/v2_dev_plan.md` define agent-driven diagnosis via harness loop, tool registry, session event log, graduated autonomy. V1 diagnosis orchestration (§10.4) preserved as fast-path fallback; V2 adds parallel agent endpoints. Shared components (infra, auth, RAG, OBD pipeline) remain in this document. |
 | v4.3 | 2026-04-01 | Fix garbled symbols from custom PDF font encoding (GitHub Issue #44). New `_is_symbol_font()` skips known symbol/icon font spans (ZapfDingbats, Wingdings, etc.) during text extraction. New `_is_garbled_line()` heuristic detects short lines with no Unicode letters that aren't pure numbers. New `_clean_extracted_text()` post-processing removes garbled lines and normalizes safety labels ("3DANGER" → "DANGER"). New "garbled" classification in `_classify_line()` excludes garbled lines from section body. Applied in `extract_text_from_pdf()`, `extract_text_from_pdf_async()`, and `_fallback_page_sections()`. 24 new tests, 1 updated test (368 total). |
@@ -514,33 +515,52 @@ The assistant must output strict JSON with these fields (schema versioned):
 •	Sanitized historical maintenance report excerpts (text-only).
 •	Do not ingest raw sensor streams into the RAG store.
 
-#### 10.3.1 PDF image parsing pipeline
+#### 10.3.1 RAG ingestion pipeline (single-path, marker-pdf)
 
-Real-world service manual PDFs contain critical diagnostic information embedded in images (exploded-part diagrams, torque specification tables, tool catalogs, procedure illustrations) that is invisible to the PDF text layer. The RAG ingestion pipeline includes an optional multi-stage image parsing pipeline to extract this information:
+Manuals enter pgvector through one entry point: a PDF upload to `POST /v2/manuals/upload` triggers a background task that runs the full pipeline end-to-end. The previous CLI ingest script and dual PDF parser (PyMuPDF + bespoke OCR/vision/translation modules) were removed in APP-45; marker-pdf is now the only converter and produces the structured markdown that feeds both the vector store and the manual viewer.
 
-**Pipeline stages (per page with images):**
-1. **Individual image extraction** — PyMuPDF extracts embedded images, filtering by minimum dimensions (50x50 px) and byte size (5 KB) to skip icons and decorative elements. Non-RGB colorspaces (CMYK, Separation, DeviceN) are automatically converted to RGB via `fitz.Pixmap(fitz.csRGB, pix)` using `pix.colorspace.n` detection with try/except fallback for edge cases.
-2. **OCR on images** (`--enable-ocr`) — easyocr (Traditional Chinese `ch_tra` + English, CPU-only) extracts text from each image. Results are categorised into structured fields: part numbers (`\d{5}-[A-Z0-9]{5,7}`), torque values (`N·m`, `kgf·m`, `lb·ft`), and dimensions (`mm`, `cm`). A token-overlap deduplication step (80% threshold, CJK-aware) skips OCR text already present in the PDF text layer. Non-redundant results are inserted as `[OCR, Page M]` blocks.
-3. **Vision model description** (`--describe-images`) — Images are sent (with OCR text as context) to the local Ollama vision model (llava) for spatial/procedural descriptions, inserted as `[Image N, Page M]` blocks. An injection fence prevents the vision model from following instructions found in page text.
-4. **Full-page rendering** (`--enable-page-render`) — Entire pages are rendered at 150 DPI (~0.8 MB/page) and processed through OCR and/or vision for spatial context that individual image extraction misses. Results are inserted as `[Full Page, Page M]` blocks.
+**Five-stage state machine** (visible on `Manual.status` for UI polling):
 
-**Merge order per page:** text layer → OCR blocks → image descriptions → full-page description.
+```
+uploading → converting → chunking → embedding → ingested
+                                   └→ failed
+```
 
-**Image-aware chunking:** The chunker treats image blocks (marker line + description) as atomic units that are never split mid-description. The `has_image` field on `ChunkedSection` propagates to `metadata_json` (JSONB) in the `rag_chunks` table, enabling image-aware retrieval filtering.
+| Stage | Trigger | Work | Failure mode |
+|-------|---------|------|--------------|
+| `uploading` | upload endpoint | save PDF to `uploads/{uuid}.pdf`, dedup by SHA-256 hash | 409 on duplicate, 413 on oversize |
+| `converting` | bg task | request marker-pdf via filesystem `.queue/`, host-side worker (`scripts/marker_worker.py`) runs marker-pdf with LLM-assisted mode always on, writes `.md` + images | timeout, marker error |
+| `chunking` | bg task | parse `.md` by markdown headings (`parser.parse_document`), split with `chunker.chunk_sections` | parse error, empty file |
+| `embedding` | bg task | for each chunk: SHA-256 dedup check, Ollama embed, insert `RagChunk` row with `manual_id` FK | embedding-service failure (rollback retains old chunks) |
+| `ingested` | terminal | `chunk_count` populated; manual is queryable via `/v1/rag/retrieve` | — |
 
-**Vision model pre-flight:** Before processing any PDFs, the ingestion pipeline verifies the vision model is available via the Ollama `/api/tags` endpoint. If unavailable, image description is disabled gracefully and ingestion proceeds with text-only extraction.
+**Always-on LLM-assisted conversion.** Marker-pdf runs with `use_llm=True` and the API refuses to boot if `PREMIUM_LLM_API_KEY` is missing. Vision descriptions and CJK normalisation that previously lived in bespoke modules are now produced by marker-pdf itself.
 
-**CJK translation** (`--enable-translation`): Chinese/Traditional Chinese section text and titles are translated to English via the local Ollama LLM (qwen3.5:27b-q8_0) before chunking and embedding, ensuring uniform English in the vector store. Uses the Ollama `/api/chat` endpoint with `"think": false` to disable hidden reasoning tokens in Qwen3 thinking models (critical: without this flag, each translation generates ~2000 wasted tokens of internal reasoning, causing an 80x slowdown). Translation is concurrent with bounded parallelism (`asyncio.Semaphore`). Image marker blocks are preserved as-is (already English). Sections exceeding 8000 characters are skipped. Sections with fewer than 4 CJK characters are skipped.
+**Reingest endpoint** (`POST /v2/manuals/{id}/reingest`). Re-chunks and re-embeds from the existing `.md` without re-running marker-pdf. Used to recover manuals whose Stage 2/3 silently produced zero chunks, or to re-embed everything after the embedding model is changed. Atomicity: `BEGIN; DELETE rag_chunks WHERE manual_id = ?; <re-insert>; COMMIT`. A failure mid-embed rolls back to the prior chunks. Returns 409 if `md_file_path IS NULL` (re-upload the PDF instead) or if status is in-flight.
+
+**One artefact, three consumers.** The structured `.md` produced by marker-pdf is the single source of truth:
+
+| Consumer | Reads | Path |
+|----------|-------|------|
+| Vector RAG (`/v1/rag/retrieve`) | `rag_chunks` table | populated by Stage 3 |
+| Static manual viewer | `.md` from disk | served by Nginx at `/manuals/` |
+| Harness manual tools (`get_manual_toc`, `read_manual_section`, `search_manual`) | `.md` from disk | reads at request time, no embedding |
+
+**Schema**:
+- `rag_chunks.manual_id` UUID FK → `manuals.id`, `ON DELETE CASCADE` (deleting a manual auto-removes its chunks).
+- `rag_chunks.source_type` CHECK constraint locked to `'manual'`. Future ingestion sources (logs, past sessions) require a migration that relaxes the constraint.
+- Chunk checksum (`SHA-256(doc_id + section_title + text)`) provides per-chunk idempotency for the first ingestion path.
 
 **Modules:**
 | Module | Role |
 |--------|------|
-| `app/rag/ocr.py` | easyocr wrapper with structured extraction + CJK-aware overlap dedup |
-| `app/rag/pdf_parser.py` | `render_page_image()`, `has_tables_on_page()`, extended `extract_pdf_sections_async()`, `_classify_line()` with standalone page-number / breadcrumb / alphabetic / garbled-symbol filters, symbol-font span skipping (`_is_symbol_font()`), garbled-line heuristic (`_is_garbled_line()`), post-extraction text cleanup (`_clean_extracted_text()`), CMYK/Separation colorspace conversion in `extract_images_from_page()` |
-| `app/rag/vision.py` | `check_model_ready()` health check, image description via Ollama |
-| `app/rag/translator.py` | Chinese→English translation via Ollama `/api/chat` (think disabled), concurrent batch processing |
-| `app/rag/chunker.py` | Image-marker atomic blocks, `has_image` field on `ChunkedSection` |
-| `app/rag/ingest.py` | Pre-flight vision check, `--enable-ocr` / `--enable-page-render` / `--enable-translation` CLI flags |
+| `scripts/marker_convert.py` (host) | marker-pdf wrapper with LLM-assisted mode, image path rewrite, DTC index appendix builder |
+| `scripts/marker_worker.py` (host) | watches `.queue/` for conversion requests, runs marker-pdf, writes results |
+| `app/services/manual_pipeline.py` | `run_conversion_and_ingestion`, `run_reingestion`, status state machine, orphan-file cleanup |
+| `app/rag/ingest.py` | `parse_and_chunk_md` (CPU phase), `embed_and_insert_chunks` (network phase) — split so the pipeline can mark distinct status transitions |
+| `app/rag/chunker.py` | section-aware chunker, atomic markdown image blocks (`![alt](path)`), CJK fallback splitting via jieba |
+| `app/rag/parser.py` | markdown heading parser (`parse_document`), section extraction |
+| `app/api/v2/endpoints/manuals.py` | upload, list, get, delete, status, reingest endpoints |
 
 #### 10.3.2 Structured markdown manuals (alternative retrieval path)
 
@@ -558,15 +578,15 @@ An alternative to vector-chunk retrieval: store service manuals as well-structur
 - Page markers: `<!-- page:N -->` HTML comments for PDF page traceability
 - Optional DTC cross-reference index appendix. Appendix builder (`diagnostic_api/scripts/marker_convert.py::_build_dtc_index`) uses a SAE J2012 / ISO 15031-6 / UDS-aware regex that captures classic 5-char codes, manufacturer-specific hex variants (e.g. `P062F`, `B1A23`), 6/7-char extended codes, and FTB / sub-byte suffixes (`P0420-64`, `B1A21:08`). Codes are normalized to uppercase + dash-separated form for stable dedup across OEMs and languages. Existing converted manuals can be re-indexed in place (no LLM re-billing) via `diagnostic_api/scripts/rebuild_dtc_appendix.py`.
 
-**Coexistence with vector RAG:** Both pipelines can run simultaneously for A/B comparison. Vector RAG reads from the `rag_chunks` table; structured MD tools read from the `/app/data/manuals/` directory. Field mappings between the two are documented in the schema spec.
+**Coexistence with vector RAG:** Both consumers read the same `.md` artefact (see §10.3.1 "One artefact, three consumers"). Structured-MD navigation uses the file directly; vector retrieval uses the chunks produced when ingestion runs. The two paths can be A/B compared per query without re-running conversion.
 
 **Implementation phases:**
-1. Phase 1a (APP-40): Schema specification (this section) — DONE
-2. Phase 1b: PDF -> structured markdown converter (`app/rag/md_export.py`, GitHub Issue #34) — DONE. CLI: `--vehicle-model` override added (GitHub Issue #43); `_clean_filename_stem()` for smarter fallback.
-3. Phase 1c (APP-42): Parser quality fixes (GitHub Issues #41, #42) — DONE. Section extraction filters (standalone page numbers, breadcrumbs, alphabetic guard) + CMYK/Separation colorspace image conversion. E2E validated on Honda Jazz 597-page PDF: sections 1,385→883, images 8→1,015.
+1. Phase 1a (APP-40): Schema specification (this section) — DONE.
+2. Phase 1b (APP-45): PDF → structured markdown converter — marker-pdf is now the single converter. The earlier custom `md_export.py` (PyMuPDF + bespoke OCR/vision/translation) was retired in APP-45 alongside the dual ingestion path.
+3. Phase 1c (APP-42): Parser quality fixes (GitHub Issues #41, #42) — historical, applied to the deprecated `pdf_parser.py`.
 4. Static manual viewer (APP-43, GitHub Issue #48) — DONE. Single-page HTML viewer (`infra/nginx/manuals/index.html`) served by Nginx at `/manuals/` with client-side markdown rendering via `marked.js`. Auto-discovers `.md` files via Nginx `autoindex` on `/manuals/data/`. YAML frontmatter parsed for metadata display. Image paths rewritten for Nginx serving. Shared `diagnostic_api_manuals` volume between diagnostic-api and nginx. Responsive CSS, no new containers.
-5. Phase 2a: Agent tool set (`list_manuals`, `list_sections`, `read_section`, `search_manual`)
-6. Phase 2b: A/B comparison framework (vector RAG vs agent-navigated structured MD)
+5. Phase 2a: Agent tool set (`list_manuals`, `list_sections`, `read_section`, `search_manual`).
+6. Phase 2b: A/B comparison framework (vector RAG vs agent-navigated structured MD).
 
 ### 10.4 Workflow ('golden workflow')
 1.	Start: inputs = vehicle_id, question, optional time_range.
