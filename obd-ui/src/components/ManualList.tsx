@@ -30,7 +30,11 @@ interface ManualListProps {
   onSelect: (manualId: string) => void;
 }
 
-function statusBadge(status: string, t: (k: string) => string) {
+function statusBadge(
+  manual: ManualSummary,
+  t: (k: string) => string,
+) {
+  const { status } = manual;
   switch (status) {
     case "ingested":
       return (
@@ -39,11 +43,35 @@ function statusBadge(status: string, t: (k: string) => string) {
           {t("manuals.ingested")}
         </Badge>
       );
-    case "converting":
+    case "converting": {
+      // Show "{processed}/{total}" once the worker has reported
+      // at least one page; otherwise fall back to the bare
+      // "Converting…" label.
+      const processed = manual.pages_processed;
+      const total = manual.pages_total;
+      const showProgress =
+        processed != null && total != null && total > 0;
+      return (
+        <Badge variant="secondary" className="gap-1 tabular-nums">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {showProgress
+            ? `${processed}/${total}`
+            : t("manuals.converting")}
+        </Badge>
+      );
+    }
+    case "chunking":
       return (
         <Badge variant="secondary" className="gap-1">
           <Loader2 className="h-3 w-3 animate-spin" />
-          {t("manuals.converting")}
+          {t("manuals.chunking")}
+        </Badge>
+      );
+    case "embedding":
+      return (
+        <Badge variant="secondary" className="gap-1">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {t("manuals.embedding")}
         </Badge>
       );
     case "failed":
@@ -94,10 +122,17 @@ export function ManualList({ refreshKey, onSelect }: ManualListProps) {
     fetchManuals();
   }, [fetchManuals, refreshKey]);
 
-  // Poll for items in "converting" state.
+  // Poll while any manual is mid-pipeline so the UI reflects
+  // both per-page conversion progress and the chunking/embedding
+  // handoffs.
   useEffect(() => {
-    const hasConverting = items.some((m) => m.status === "converting");
-    if (hasConverting) {
+    const inFlight = items.some(
+      (m) =>
+        m.status === "converting" ||
+        m.status === "chunking" ||
+        m.status === "embedding",
+    );
+    if (inFlight) {
       pollRef.current = setInterval(fetchManuals, 5000);
     }
     return () => {
@@ -191,7 +226,7 @@ export function ManualList({ refreshKey, onSelect }: ManualListProps) {
             <TableCell className="text-sm">
               {m.vehicle_model || "-"}
             </TableCell>
-            <TableCell>{statusBadge(m.status, t)}</TableCell>
+            <TableCell>{statusBadge(m, t)}</TableCell>
             <TableCell className="text-right text-sm text-muted-foreground">
               {m.page_count ?? "-"}
             </TableCell>

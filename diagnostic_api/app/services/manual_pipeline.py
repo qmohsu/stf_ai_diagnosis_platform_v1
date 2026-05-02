@@ -142,6 +142,14 @@ async def run_conversion_and_ingestion(
         manual.converter = result.get(
             "converter", "marker-pdf",
         )
+        # Pin progress to the final page count so polling clients
+        # see a consistent N/N as the row transitions to
+        # 'chunking'.  The columns remain populated through
+        # subsequent stages and are simply ignored by the UI
+        # when the status pill is no longer ``converting``.
+        if manual.page_count:
+            manual.pages_processed = manual.page_count
+            manual.pages_total = manual.page_count
         db.commit()
         log.info(
             "manual.converted",
@@ -207,7 +215,10 @@ async def _run_marker_convert(
 
     Writes a request JSON to the shared ``.queue/`` directory
     and polls for a result JSON written by the host-side
-    ``marker_worker.py``.
+    ``marker_worker.py``.  On every poll tick, also reads any
+    ``{manual_id}.progress.json`` left by the worker and updates
+    ``Manual.pages_processed`` / ``Manual.pages_total`` so the UI
+    can render per-page progress while marker is running.
 
     Args:
         pdf_rel: Relative path to the PDF inside
@@ -234,6 +245,9 @@ async def _run_marker_convert(
     )
     res_path = os.path.join(
         queue_dir, f"{manual_id}.result.json",
+    )
+    progress_path = os.path.join(
+        queue_dir, f"{manual_id}.progress.json",
     )
 
     # Write conversion request.  LLM-assisted mode is always
@@ -263,9 +277,19 @@ async def _run_marker_convert(
     # marker-worker dies, the asyncio task will be cancelled when
     # the diagnostic-api container restarts.
     poll_interval = settings.marker_poll_interval_seconds
+    last_processed: int = -1
 
     while True:
         await asyncio.sleep(poll_interval)
+
+        # Mirror any worker-reported progress to the DB.  Done on
+        # every tick (cheap stat + small JSON read) so the UI sees
+        # fresh numbers within one polling interval.
+        new_processed = _sync_progress_to_db(
+            progress_path, manual_id, last_processed, log,
+        )
+        if new_processed is not None:
+            last_processed = new_processed
 
         if not os.path.isfile(res_path):
             continue
@@ -273,8 +297,9 @@ async def _run_marker_convert(
         with open(res_path, "r", encoding="utf-8") as f:
             result = json.load(f)
 
-        # Clean up queue files.
-        for p in (req_path, res_path):
+        # Clean up queue files (request, result, and any
+        # leftover progress file from the worker).
+        for p in (req_path, res_path, progress_path):
             try:
                 os.unlink(p)
             except OSError:
@@ -290,6 +315,77 @@ async def _run_marker_convert(
             vehicle_model=result.get("vehicle_model"),
         )
         return result
+
+
+def _sync_progress_to_db(
+    progress_path: str,
+    manual_id: UUID,
+    last_processed: int,
+    log: structlog.BoundLogger,
+) -> "int | None":
+    """Read a ``.progress.json`` and persist it to ``manuals``.
+
+    Uses a fresh short-lived ``SessionLocal`` rather than the
+    pipeline's main session so a transient DB error during a
+    progress update doesn't poison the long-running conversion
+    transaction.  Skips writes when ``processed`` hasn't moved
+    since the previous tick.
+
+    Args:
+        progress_path: Path to the ``.progress.json`` file.
+        manual_id: UUID of the parent ``Manual`` row.
+        last_processed: Most recent value persisted; used to
+            short-circuit duplicate writes.
+        log: Bound logger.
+
+    Returns:
+        The new ``processed`` value if the DB was updated,
+        otherwise ``None`` (file missing, malformed, or
+        unchanged).
+    """
+    if not os.path.isfile(progress_path):
+        return None
+
+    try:
+        with open(progress_path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        # Half-written file or transient read error — try again
+        # on the next tick.
+        return None
+
+    processed = payload.get("processed")
+    total = payload.get("total")
+    if not isinstance(processed, int) or not isinstance(
+        total, int,
+    ):
+        return None
+
+    if processed == last_processed:
+        return None
+
+    db = SessionLocal()
+    try:
+        manual = db.query(Manual).get(manual_id)
+        if manual is None:
+            return None
+        manual.pages_processed = processed
+        manual.pages_total = total
+        db.commit()
+        log.info(
+            "manual.progress",
+            processed=processed,
+            total=total,
+        )
+        return processed
+    except Exception as exc:
+        db.rollback()
+        log.warning(
+            "manual.progress_db_error", error=str(exc),
+        )
+        return None
+    finally:
+        db.close()
 
 
 async def _run_ingestion(

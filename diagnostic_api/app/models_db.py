@@ -333,6 +333,13 @@ class Manual(Base):
     md_file_path = Column(String(500), nullable=True)
     pdf_file_path = Column(String(500), nullable=True)
     chunk_count = Column(Integer, nullable=True)
+    # Live progress while marker-pdf is converting.  Both are
+    # nullable; populated by the worker via the .progress.json
+    # protocol (see scripts/marker_worker.py).  ``pages_total``
+    # is the running estimate; ``page_count`` is the final value
+    # written from marker's result.json.
+    pages_processed = Column(Integer, nullable=True)
+    pages_total = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(
         DateTime, default=_utcnow, onupdate=_utcnow,

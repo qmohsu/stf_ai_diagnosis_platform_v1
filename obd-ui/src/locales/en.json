@@ -366,6 +366,8 @@
     "selectFile": "Select PDF",
     "uploading": "Uploading...",
     "converting": "Converting...",
+    "chunking": "Chunking...",
+    "embedding": "Embedding...",
     "ingested": "Ready",
     "failed": "Failed",
     "noManuals": "No manuals uploaded yet.",

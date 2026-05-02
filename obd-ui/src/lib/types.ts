@@ -216,6 +216,8 @@ export interface AgentErrorEvent {
 export type ManualStatus =
   | "uploading"
   | "converting"
+  | "chunking"
+  | "embedding"
   | "ingested"
   | "failed";
 
@@ -229,6 +231,8 @@ export interface ManualSummary {
   section_count: number | null;
   language: string | null;
   chunk_count: number | null;
+  pages_processed: number | null;
+  pages_total: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -256,6 +260,8 @@ export interface ManualStatusResponse {
   error_message: string | null;
   page_count: number | null;
   chunk_count: number | null;
+  pages_processed: number | null;
+  pages_total: number | null;
 }
 
 /** Paired tool call + result for UI rendering. */

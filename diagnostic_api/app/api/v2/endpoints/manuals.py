@@ -61,6 +61,12 @@ class ManualSummary(BaseModel):
     section_count: Optional[int] = None
     language: Optional[str] = None
     chunk_count: Optional[int] = None
+    # Live per-page progress reported by marker-worker.  Both
+    # are nullable; populated only while ``status='converting'``
+    # (and pinned to ``page_count`` on success so the UI shows
+    # N/N briefly during the chunking handoff).
+    pages_processed: Optional[int] = None
+    pages_total: Optional[int] = None
     created_at: str
     updated_at: str
 
@@ -96,6 +102,8 @@ class ManualStatusResponse(BaseModel):
     error_message: Optional[str] = None
     page_count: Optional[int] = None
     chunk_count: Optional[int] = None
+    pages_processed: Optional[int] = None
+    pages_total: Optional[int] = None
 
 
 # ── Helpers ──────────────────────────────────────────────────
@@ -115,6 +123,8 @@ def _to_summary(m: Manual) -> ManualSummary:
         section_count=m.section_count,
         language=m.language,
         chunk_count=m.chunk_count,
+        pages_processed=m.pages_processed,
+        pages_total=m.pages_total,
         created_at=m.created_at.isoformat(),
         updated_at=m.updated_at.isoformat(),
     )
@@ -408,6 +418,8 @@ async def get_manual_status(
         error_message=manual.error_message,
         page_count=manual.page_count,
         chunk_count=manual.chunk_count,
+        pages_processed=manual.pages_processed,
+        pages_total=manual.pages_total,
     )
 
 
@@ -497,4 +509,6 @@ async def reingest_manual(
         error_message=manual.error_message,
         page_count=manual.page_count,
         chunk_count=manual.chunk_count,
+        pages_processed=manual.pages_processed,
+        pages_total=manual.pages_total,
     )

@@ -366,6 +366,8 @@
     "selectFile": "选择PDF文件",
     "uploading": "上传中...",
     "converting": "转换中...",
+    "chunking": "分块中...",
+    "embedding": "向量化中...",
     "ingested": "就绪",
     "failed": "失败",
     "noManuals": "尚未上传任何手册。",
