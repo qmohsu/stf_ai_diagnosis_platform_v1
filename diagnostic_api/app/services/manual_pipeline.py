@@ -221,9 +221,8 @@ async def _run_marker_convert(
         output_path, dtc_codes).
 
     Raises:
-        TimeoutError: If the worker doesn't respond within
-            the configured timeout.
-        RuntimeError: If the worker reports an error.
+        RuntimeError: If the worker reports an error in the
+            result JSON.
     """
     queue_dir = os.path.join(
         settings.manual_storage_path, _QUEUE_DIR,
@@ -257,14 +256,16 @@ async def _run_marker_convert(
         request_path=req_path,
     )
 
-    # Poll for result.
+    # Poll for result indefinitely.  Marker-pdf with LLM-assisted
+    # mode on a large multilingual manual can take an hour or more
+    # in HK due to OpenRouter round-trip latency, so we don't
+    # impose a wall-clock timeout from the API side.  If the
+    # marker-worker dies, the asyncio task will be cancelled when
+    # the diagnostic-api container restarts.
     poll_interval = settings.marker_poll_interval_seconds
-    timeout = settings.marker_timeout_seconds
-    elapsed = 0
 
-    while elapsed < timeout:
+    while True:
         await asyncio.sleep(poll_interval)
-        elapsed += poll_interval
 
         if not os.path.isfile(res_path):
             continue
@@ -287,20 +288,8 @@ async def _run_marker_convert(
         log.info(
             "manual.conversion_complete",
             vehicle_model=result.get("vehicle_model"),
-            elapsed=elapsed,
         )
         return result
-
-    # Timeout — clean up request file.
-    try:
-        os.unlink(req_path)
-    except OSError:
-        pass
-
-    raise TimeoutError(
-        f"Marker worker did not respond within "
-        f"{timeout}s. Is marker-worker running?",
-    )
 
 
 async def _run_ingestion(

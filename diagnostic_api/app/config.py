@@ -104,9 +104,6 @@ class Settings(BaseSettings):
     marker_poll_interval_seconds: int = int(
         os.getenv("MARKER_POLL_INTERVAL_SECONDS", "2"),
     )
-    marker_timeout_seconds: int = int(
-        os.getenv("MARKER_TIMEOUT_SECONDS", "1800"),
-    )  # 30 minutes
 
     # Logging Configuration
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
