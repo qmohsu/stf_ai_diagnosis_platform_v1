@@ -1,29 +1,33 @@
 #!/usr/bin/env python3
-"""Run the manual sub-agent + GLM judge against a single golden entry.
+"""Run agent + RAG against a single golden entry; print scores.
 
-One-shot eval driver for human-authored golden candidates under
-``tests/harness/evals/golden/v2/candidates/``.  Used during
-HARNESS-15 (rebuild golden v2) to validate that an entry is
-*interpretable* — i.e. the judge can score the agent's output
-against the rubric — before authoring more entries.
+The eval driver for HARNESS-15 / Issue #74's comparative
+benchmark.  Loads a single ``GoldenEntry`` from JSON or JSONL,
+runs both the manual sub-agent and the RAG retriever against
+the same question, grades each via deterministic metrics + the
+``answer_quality`` judge, and prints a side-by-side report.
+
+Default behaviour runs ``--system both``.  Pass ``--system
+manual_agent`` or ``--system rag`` to run only one.
 
 Usage::
 
     python -m scripts.eval_one_golden \\
         tests/harness/evals/golden/v2/candidates/dtc-001.json
 
-Prints:
-  - The agent's summary, citations, raw_sections preview, and
-    tool_trace.
-  - The judge's structured Grade with all 5 rubric dimensions
-    plus the weighted overall.
+    # Override agent model + endpoint (useful when local
+    # Ollama is contended)
+    python -m scripts.eval_one_golden /tmp/dtc-001.json \\
+        --model qwen/qwen3.6-flash \\
+        --llm-base-url https://openrouter.ai/api/v1 \\
+        --judge-model deepseek/deepseek-v4-pro
 
-Exits 0 on success regardless of pass/fail (we want the score,
-not a CI gate).  Returns 1 only on infrastructure failures (API
-unreachable, JSON parse, etc.).
+    # RAG only — fastest, no LLM cost
+    python -m scripts.eval_one_golden /tmp/dtc-001.json \\
+        --system rag
 
 Requires ``PREMIUM_LLM_API_KEY`` for the judge and a reachable
-Ollama at ``settings.llm_endpoint`` for the agent.
+Ollama at ``settings.llm_endpoint`` for embeddings.
 
 Author: Li-Ta Hsu
 """
@@ -37,7 +41,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Tuple
 
 from openai import AsyncOpenAI
 
@@ -48,15 +52,21 @@ from app.harness_agents.manual_agent import (
     ManualAgentDeps,
     create_manual_agent_registry,
 )
-from tests.harness.evals.judge import judge_result
-from tests.harness.evals.runner import run_manual_agent
-from tests.harness.evals.schemas import GoldenEntry
+from tests.harness.evals.judge import grade_run
+from tests.harness.evals.rag_runner import run_rag
+from tests.harness.evals.runner import run_manual_agent_unified
+from tests.harness.evals.schemas import (
+    GoldenEntry, Grade, SystemRunResult,
+)
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
 )
 logger = logging.getLogger("eval_one_golden")
+
+
+# ── Loader ────────────────────────────────────────────────────────
 
 
 def _load_entry(path: Path) -> GoldenEntry:
@@ -77,71 +87,31 @@ def _load_entry(path: Path) -> GoldenEntry:
     return GoldenEntry.model_validate(first)
 
 
-def _format_grade(grade) -> str:
-    return (
-        f"  section_match    : {grade.section_match}\n"
-        f"  fact_recall      : {grade.fact_recall:.2f}\n"
-        f"  hallucination    : {grade.hallucination}\n"
-        f"  citation_present : {grade.citation_present}\n"
-        f"  trajectory_ok    : {grade.trajectory_ok}\n"
-        f"  overall          : {grade.overall:.3f}\n"
-        f"  reasoning        : {grade.reasoning}"
-    )
+# ── Agent override builder ────────────────────────────────────────
 
 
-def _format_result(result) -> str:
-    cit_lines = "\n".join(
-        f"    [{i+1}] manual={c.manual_id[:12]}…  slug={c.slug}"
-        for i, c in enumerate(result.citations or [])
-    ) or "    (none)"
-    raw_lines = "\n".join(
-        f"    [{i+1}] slug={s.slug}  chars={len(s.text)}  "
-        f"had_images={getattr(s, 'had_images', False)}"
-        for i, s in enumerate(result.raw_sections or [])
-    ) or "    (none)"
-    trace_lines = "\n".join(
-        f"    {i+1}. {t.name}({json.dumps(t.input, ensure_ascii=False)[:120]})"
-        f"  ({t.latency_ms:.0f} ms"
-        f"{', error' if getattr(t, 'is_error', False) else ''})"
-        for i, t in enumerate(result.tool_trace or [])
-    ) or "    (none)"
-    summary = result.summary or "(empty)"
-    if len(summary) > 1200:
-        summary = summary[:1200] + " […]"
-    return (
-        f"  stopped_reason    : {result.stopped_reason}\n"
-        f"  iterations        : {result.iterations}\n"
-        f"  tool_trace ({len(result.tool_trace or [])}):\n{trace_lines}\n"
-        f"  citations ({len(result.citations or [])}):\n{cit_lines}\n"
-        f"  raw_sections ({len(result.raw_sections or [])}):\n"
-        f"{raw_lines}\n"
-        f"  summary ({len(result.summary or '')} chars):\n"
-        f"  ─────\n{summary}\n  ─────"
-    )
+def _build_override_deps(
+    args: argparse.Namespace,
+) -> Optional[ManualAgentDeps]:
+    """Build alternate ``ManualAgentDeps`` when CLI overrides set.
 
-
-def _build_override_deps(args: argparse.Namespace) -> Optional[ManualAgentDeps]:
-    """Build alternate ``ManualAgentDeps`` when CLI overrides are set.
-
-    Used to point the agent at a non-default LLM endpoint or model
-    (e.g. OpenRouter + ``deepseek/deepseek-v4-flash``) without
-    touching production code.  Returns ``None`` when no overrides
-    are passed, in which case the runner's process-cached default
-    (Ollama + ``qwen3.5:27b-q8_0``) is used.
+    Used to point the agent at a non-default LLM endpoint or
+    model (e.g. OpenRouter + ``qwen/qwen3.6-flash``) without
+    touching production code.  Returns ``None`` when no
+    overrides are passed; the runner's process-cached default
+    (Ollama + ``qwen3.5:27b-q8_0``) is then used.
     """
     if not args.llm_base_url and not args.model:
         return None
-
     base_url = args.llm_base_url or f"{settings.llm_endpoint}/v1"
     api_key = (
         os.getenv(args.llm_api_key_env)
-        if args.llm_api_key_env
-        else "ollama"
+        if args.llm_api_key_env else "ollama"
     )
     if not api_key:
         raise RuntimeError(
             f"--llm-api-key-env={args.llm_api_key_env} is empty; "
-            f"export the variable or omit the flag.",
+            "export the variable or omit the flag.",
         )
     client = AsyncOpenAI(
         api_key=api_key,
@@ -166,110 +136,305 @@ def _build_override_deps(args: argparse.Namespace) -> Optional[ManualAgentDeps]:
     )
 
 
+# ── Pretty-printers ───────────────────────────────────────────────
+
+
+_RULE = "─" * 78
+_DRULE = "═" * 78
+
+
+def _format_run_summary(run: SystemRunResult) -> str:
+    """Compact human-readable summary of one system run."""
+    output = run.output_text or "(empty)"
+    if len(output) > 1000:
+        output = output[:1000] + " […]"
+    lines = [
+        f"  system           : {run.system_label}",
+        f"  stopped_reason   : {run.stopped_reason}",
+        f"  iterations       : {run.iterations}",
+        f"  retrieved_slugs  : {run.retrieved_slugs or '(none)'}",
+        f"  latency_ms_wall  : {run.latency_ms_wall:.0f}",
+        f"  latency_ms_llm   : {run.latency_ms_llm:.0f}",
+        f"  cost_usd         : ${run.cost_usd:.5f}",
+    ]
+    if run.tool_trace:
+        lines.append(f"  tool_trace ({len(run.tool_trace)}):")
+        for i, t in enumerate(run.tool_trace, 1):
+            lines.append(
+                f"    {i}. {t.name}({json.dumps(t.input, ensure_ascii=False)[:100]})"
+                f"  ({t.latency_ms:.0f}ms"
+                f"{', error' if getattr(t, 'is_error', False) else ''})",
+            )
+    if run.retrieved_chunk_metadata:
+        lines.append(f"  retrieved_chunks ({len(run.retrieved_chunk_metadata)}):")
+        for i, c in enumerate(run.retrieved_chunk_metadata, 1):
+            flags = []
+            if c.has_image:
+                flags.append("image")
+            if c.dtc_codes:
+                flags.append(f"dtc={','.join(c.dtc_codes[:3])}")
+            flag_str = f"  [{' / '.join(flags)}]" if flags else ""
+            lines.append(
+                f"    [{i}] score={c.score:.3f}  slug={c.slug or '(empty)'}"
+                f"{flag_str}",
+            )
+    lines.append(f"  output_text ({len(run.output_text)} chars):")
+    lines.append("  ─────")
+    lines.append(output)
+    lines.append("  ─────")
+    return "\n".join(lines)
+
+
+def _format_grade_table(
+    label: str, grade: Grade,
+) -> List[Tuple[str, str]]:
+    """Return rows for a side-by-side grade table."""
+    return [
+        (f"{label} section_recall", f"{grade.section_recall:.3f}"),
+        (f"{label} section_precision", f"{grade.section_precision:.3f}"),
+        (f"{label} fact_recall", f"{grade.fact_recall:.3f}"),
+        (f"{label} fact_density", f"{grade.fact_density:.3f}"),
+        (f"{label} hallucination_penalty",
+         f"{grade.hallucination_penalty:.3f}"),
+        (f"{label} citation_quality", f"{grade.citation_quality:.3f}"),
+        (f"{label} answer_quality", f"{grade.answer_quality:.3f}"),
+        (f"{label} trajectory_efficiency",
+         f"{grade.trajectory_efficiency:.3f}"),
+        (f"{label} OVERALL", f"{grade.overall:.3f} (× 100 = {grade.overall*100:.1f})"),
+    ]
+
+
+def _format_side_by_side(
+    agent_run: Optional[SystemRunResult],
+    agent_grade: Optional[Grade],
+    rag_run: Optional[SystemRunResult],
+    rag_grade: Optional[Grade],
+) -> str:
+    """Side-by-side comparison of agent vs RAG grades."""
+    if not (agent_grade and rag_grade):
+        # Single-system mode — just print whichever ran.
+        if agent_grade:
+            rows = [
+                ("section_recall", f"{agent_grade.section_recall:.3f}"),
+                ("section_precision", f"{agent_grade.section_precision:.3f}"),
+                ("fact_recall", f"{agent_grade.fact_recall:.3f}"),
+                ("fact_density", f"{agent_grade.fact_density:.3f}"),
+                ("hallucination_penalty", f"{agent_grade.hallucination_penalty:.3f}"),
+                ("citation_quality", f"{agent_grade.citation_quality:.3f}"),
+                ("answer_quality", f"{agent_grade.answer_quality:.3f}"),
+                ("trajectory_efficiency", f"{agent_grade.trajectory_efficiency:.3f}"),
+                ("OVERALL", f"{agent_grade.overall:.3f} (× 100 = {agent_grade.overall*100:.1f})"),
+            ]
+            label = agent_run.system_label if agent_run else "agent"
+        else:
+            rows = [
+                ("section_recall", f"{rag_grade.section_recall:.3f}"),
+                ("section_precision", f"{rag_grade.section_precision:.3f}"),
+                ("fact_recall", f"{rag_grade.fact_recall:.3f}"),
+                ("fact_density", f"{rag_grade.fact_density:.3f}"),
+                ("hallucination_penalty", f"{rag_grade.hallucination_penalty:.3f}"),
+                ("citation_quality", f"{rag_grade.citation_quality:.3f}"),
+                ("answer_quality", f"{rag_grade.answer_quality:.3f}"),
+                ("trajectory_efficiency", f"{rag_grade.trajectory_efficiency:.3f}"),
+                ("OVERALL", f"{rag_grade.overall:.3f} (× 100 = {rag_grade.overall*100:.1f})"),
+            ]
+            label = rag_run.system_label if rag_run else "rag"
+        out = [f"{'metric':24s}  {label}"]
+        for k, v in rows:
+            out.append(f"{k:24s}  {v}")
+        return "\n".join(out)
+
+    # Both ran — side-by-side.
+    metrics = [
+        "section_recall", "section_precision",
+        "fact_recall", "fact_density",
+        "hallucination_penalty", "citation_quality",
+        "answer_quality", "trajectory_efficiency",
+    ]
+    out = [
+        f"{'metric':24s}  {'AGENT':>10s}  {'RAG':>10s}  {'DELTA':>10s}",
+        "─" * 60,
+    ]
+    for m in metrics:
+        a = getattr(agent_grade, m)
+        r = getattr(rag_grade, m)
+        delta = a - r
+        sign = "+" if delta > 0 else ""
+        out.append(
+            f"{m:24s}  {a:>10.3f}  {r:>10.3f}  {sign}{delta:>9.3f}"
+        )
+    out.append("─" * 60)
+    a_pct = agent_grade.overall * 100
+    r_pct = rag_grade.overall * 100
+    delta_pct = a_pct - r_pct
+    sign = "+" if delta_pct > 0 else ""
+    out.append(
+        f"{'OVERALL × 100':24s}  {a_pct:>10.1f}  {r_pct:>10.1f}  {sign}{delta_pct:>9.1f}"
+    )
+    out.append("")
+    out.append("trade-off (lower = better, except cost which is what you pay):")
+    if agent_run and rag_run:
+        out.append(
+            f"  latency_ms_wall      {agent_run.latency_ms_wall:>10.0f}  "
+            f"{rag_run.latency_ms_wall:>10.0f}"
+        )
+        out.append(
+            f"  latency_ms_llm       {agent_run.latency_ms_llm:>10.0f}  "
+            f"{rag_run.latency_ms_llm:>10.0f}"
+        )
+        out.append(
+            f"  cost_usd             ${agent_run.cost_usd:>9.5f}  "
+            f"${rag_run.cost_usd:>9.5f}"
+        )
+    return "\n".join(out)
+
+
+# ── Main ──────────────────────────────────────────────────────────
+
+
 async def _amain(args: argparse.Namespace) -> int:
     if not settings.premium_llm_api_key:
-        logger.error("PREMIUM_LLM_API_KEY is not set in environment")
+        logger.error("PREMIUM_LLM_API_KEY is not set")
         return 1
 
     # Optional judge-model override.  Monkeypatch the module
-    # constant rather than changing the function signature — this
-    # is an experimentation hook, not a permanent eval-suite knob.
+    # constant — experimentation hook.
     if args.judge_model:
         from tests.harness.evals import judge as _judge_mod
         _judge_mod._JUDGE_MODEL = args.judge_model
         logger.info("judge model overridden to %s", args.judge_model)
 
     entry = _load_entry(args.entry)
-    deps = _build_override_deps(args)
-    agent_label = (
-        f"{deps.config.model} via {args.llm_base_url}"
-        if deps else "qwen3.5:27b-q8_0 via Ollama (default)"
-    )
 
-    print("=" * 78)
+    print(_DRULE)
     print(f"GOLDEN ENTRY: {entry.id}")
-    print(f"  category   : {entry.category}")
-    print(f"  difficulty : {entry.difficulty}")
-    print(f"  question   : {entry.question}")
-    print(f"  citations  : {len(entry.golden_citations)}")
-    print(f"  must_contain    : {entry.must_contain}")
+    print(f"  category       : {entry.category}")
+    print(f"  question_type  : {entry.question_type}")
+    print(f"  difficulty     : {entry.difficulty}")
+    print(f"  question       : {entry.question}")
+    print(f"  must_contain   : {entry.must_contain}")
     print(f"  must_not_contain: {entry.must_not_contain}")
+    print(f"  expected_recall_slugs: {entry.expected_recall_slugs}")
     print()
-    print("─" * 78)
-    print(f"RUNNING AGENT ({agent_label})…")
-    print("─" * 78)
 
-    result = await run_manual_agent(
-        question=entry.question,
-        obd_context=entry.obd_context,
-        deps=deps,
-    )
-    print(_format_result(result))
+    agent_run: Optional[SystemRunResult] = None
+    agent_grade: Optional[Grade] = None
+    rag_run: Optional[SystemRunResult] = None
+    rag_grade: Optional[Grade] = None
 
+    # ── Run AGENT ───────────────────────────────────────────────
+    if args.system in ("manual_agent", "both"):
+        deps = _build_override_deps(args)
+        agent_label = (
+            f"{deps.config.model} via {args.llm_base_url}"
+            if deps else "qwen3.5:27b-q8_0 via Ollama (default)"
+        )
+        print(_RULE)
+        print(f"RUNNING AGENT ({agent_label})…")
+        print(_RULE)
+        agent_run = await run_manual_agent_unified(
+            question=entry.question,
+            obd_context=entry.obd_context,
+            deps=deps,
+        )
+        print(_format_run_summary(agent_run))
+        print()
+
+    # ── Run RAG ─────────────────────────────────────────────────
+    if args.system in ("rag", "both"):
+        # The vehicle_model column on rag_chunks currently holds
+        # 'MWS150-A' (no hyphen).  Pass None for unfiltered
+        # retrieval — fixing the production inconsistency is a
+        # separate ticket.
+        print(_RULE)
+        print(f"RUNNING RAG (top_k={args.top_k}, no vehicle filter)…")
+        print(_RULE)
+        rag_run = await run_rag(
+            question=entry.question,
+            top_k=args.top_k,
+            vehicle_model=None,
+        )
+        print(_format_run_summary(rag_run))
+        print()
+
+    # ── Grade ───────────────────────────────────────────────────
     judge_label = args.judge_model or "z-ai/glm-5.1"
-    print()
-    print("─" * 78)
-    print(f"INVOKING JUDGE ({judge_label} via OpenRouter)…")
-    print("─" * 78)
-    grade = await judge_result(entry, result)
-    print(_format_grade(grade))
-    print()
-    print("=" * 78)
-    print(
-        f"FINAL: overall={grade.overall:.3f}  "
-        f"({'PASS' if grade.overall >= 0.7 else 'FAIL'} at 0.7 threshold)"
-    )
-    print("=" * 78)
+    if agent_run is not None:
+        print(_RULE)
+        print(f"GRADING AGENT (judge: {judge_label})…")
+        print(_RULE)
+        agent_grade = await grade_run(entry, agent_run)
+        print(f"  overall × 100 = {agent_grade.overall*100:.1f}")
+        print(f"  reasoning     : {agent_grade.reasoning}")
+        print()
+
+    if rag_run is not None:
+        print(_RULE)
+        print(f"GRADING RAG (judge: {judge_label})…")
+        print(_RULE)
+        rag_grade = await grade_run(entry, rag_run)
+        print(f"  overall × 100 = {rag_grade.overall*100:.1f}")
+        print(f"  reasoning     : {rag_grade.reasoning}")
+        print()
+
+    # ── Side-by-side ────────────────────────────────────────────
+    print(_DRULE)
+    print("FINAL SCORES")
+    print(_DRULE)
+    print(_format_side_by_side(
+        agent_run, agent_grade, rag_run, rag_grade,
+    ))
+    print(_DRULE)
+
     return 0
 
 
 def _parse_args(argv: Optional[list] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Run the manual agent + judge against one golden "
-            "entry and print the score."
+            "Run agent + RAG against one golden entry and "
+            "print side-by-side scores."
         ),
     )
     parser.add_argument(
         "entry", type=Path,
-        help="Path to a JSON or JSONL file containing a "
-             "GoldenEntry (first line if JSONL).",
+        help="Path to a JSON or JSONL GoldenEntry file.",
     )
     parser.add_argument(
+        "--system", choices=("manual_agent", "rag", "both"),
+        default="both",
+        help="Which system(s) to evaluate.  Default: both.",
+    )
+    parser.add_argument(
+        "--top-k", type=int, default=5,
+        help="RAG top-k (default 5).  Ignored for agent runs.",
+    )
+    # Agent-side overrides
+    parser.add_argument(
         "--model", default=None,
-        help="Override the agent's model (e.g. "
-             "'deepseek/deepseek-v4-flash').  When omitted the "
-             "runner's default (qwen3.5:27b-q8_0 on Ollama) is "
-             "used.",
+        help="Override agent model (e.g. 'qwen/qwen3.6-flash').",
     )
     parser.add_argument(
         "--llm-base-url", default=None,
-        help="Override the agent's LLM endpoint (e.g. "
-             "'https://openrouter.ai/api/v1').  Required when "
-             "--model is a hosted-API id.",
+        help="Override agent's LLM endpoint (e.g. OpenRouter).",
     )
     parser.add_argument(
         "--llm-api-key-env", default="PREMIUM_LLM_API_KEY",
-        help="Env var holding the API key for the override "
-             "endpoint.  Default 'PREMIUM_LLM_API_KEY' matches "
-             "the OpenRouter key already in the server .env.",
+        help="Env var holding the API key for the override.",
     )
     parser.add_argument(
         "--timeout", type=float, default=None,
-        help="Per-iteration LLM timeout (seconds).  Default "
-             "uses the agent's built-in 120s.",
+        help="Per-iteration LLM timeout (seconds).",
     )
     parser.add_argument(
         "--max-iterations", type=int, default=None,
-        help="Max ReAct iterations.  Default uses the agent's "
-             "built-in 8.",
+        help="Max ReAct iterations.",
     )
     parser.add_argument(
         "--judge-model", default=None,
-        help="Override the judge model (default: "
-             "z-ai/glm-5.1).  Useful when the default judge "
-             "fails on entries with large raw_sections — "
-             "DeepSeek V4 Pro (1M context) is a good alt.",
+        help="Override the judge model (default z-ai/glm-5.1).  "
+             "DeepSeek V4 Pro is a good alt for heavy Chinese "
+             "contexts.",
     )
     return parser.parse_args(argv)
 
