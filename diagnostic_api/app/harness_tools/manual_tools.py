@@ -28,6 +28,7 @@ from app.harness_tools.input_models import (
 )
 from app.harness_tools.manual_fs import (
     HeadingNode,
+    _clean_md,
     build_multimodal_section,
     extract_section,
     find_closest_slug,
@@ -85,7 +86,11 @@ def _read_manual_file(manual_id: str) -> str | None:
     """
     for md_file in _scan_manual_files():
         if md_file.stem == manual_id:
-            return md_file.read_text(encoding="utf-8")
+            # Defensive HTML-noise strip for older .md files on
+            # disk that pre-date the conversion-time cleaner.
+            return _clean_md(
+                md_file.read_text(encoding="utf-8"),
+            )
     return None
 
 

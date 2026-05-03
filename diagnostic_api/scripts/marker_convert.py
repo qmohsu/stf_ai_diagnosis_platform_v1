@@ -95,6 +95,17 @@ _DTC_RE = re.compile(
 )
 
 
+# Empty HTML elements emitted by marker-pdf as page-anchor
+# navigation metadata (e.g. ``<span id="page-4-0"></span>``).
+# Useless for AI consumers — strip from the .md at conversion
+# time so every downstream reader (chunker, embedding pipeline,
+# harness manual tools, viewer) sees clean text.
+_EMPTY_HTML_TAG_RE = re.compile(
+    r"<([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>\s*</\1\s*>",
+    re.IGNORECASE,
+)
+
+
 def _extract_vehicle_model(text: str) -> str:
     """Return normalised vehicle-model string or 'Generic'."""
     for pattern, fmt in _VEHICLE_MODEL_PATTERNS:
@@ -422,6 +433,17 @@ def convert(
 
     # ── Post-process markdown ────────────────────────────
     md_text = _rewrite_image_paths(md_text, stem, suffix)
+
+    # Strip empty HTML elements (page-anchor spans like
+    # ``<span id="page-4-0"></span>`` that marker emits for
+    # human-deep-linkable viewers).  These have no value for AI
+    # consumers — the harness manual tools, the embedding
+    # pipeline, and any LLM that ever reads the markdown all see
+    # them as token noise.  Pattern matches any ``<tag></tag>``
+    # with backref-equal name and optional attributes; runs
+    # twice to handle nested empties.
+    md_text = _EMPTY_HTML_TAG_RE.sub("", md_text)
+    md_text = _EMPTY_HTML_TAG_RE.sub("", md_text)
 
     language = "zh-CN" if _has_cjk(md_text) else "en"
     section_count = _count_headings(md_text)

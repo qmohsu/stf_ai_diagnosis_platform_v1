@@ -27,6 +27,27 @@ logger = structlog.get_logger(__name__)
 
 _SLUG_MAX_LEN = 80
 _IMAGE_MAX_BYTES = 5 * 1024 * 1024  # 5 MB per image.
+
+# Defensive strip for any empty HTML elements that may linger in
+# older .md files on disk — marker-pdf emits page-anchor spans
+# like ``<span id="page-4-0"></span>`` that are useless to AI
+# consumers.  New uploads come pre-stripped at conversion time
+# (see ``scripts/marker_convert.py``); this regex catches any
+# legacy artefacts so the agent never sees HTML noise.
+_EMPTY_HTML_TAG_RE = re.compile(
+    r"<([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>\s*</\1\s*>",
+    re.IGNORECASE,
+)
+
+
+def _clean_md(text: str) -> str:
+    """Strip empty HTML elements from raw manual markdown.
+
+    Run twice to handle nested empties.  Any reader that returns
+    section text to an LLM should pass it through this filter.
+    """
+    cleaned = _EMPTY_HTML_TAG_RE.sub("", text)
+    return _EMPTY_HTML_TAG_RE.sub("", cleaned)
 _IMAGE_REF_PATTERN = re.compile(
     r"!\[([^\]]*)\]\(([^)]+)\)",
 )
@@ -285,7 +306,7 @@ def extract_section(
                 break
 
     section_lines = lines[target_node.line_start:end_line]
-    return "\n".join(section_lines).rstrip()
+    return _clean_md("\n".join(section_lines).rstrip())
 
 
 def _flatten_tree(
