@@ -1,75 +1,83 @@
-# v2 Golden Set — Section Sampling Plan
+# v2 Golden Set — Comparative Eval Section Plan
 
-**Manual:** MWS150-A (TRICITY155, Yamaha) — `90c229ff-de32-441e-8dea-11607859e00f`
-**Source:** `tests/harness/evals/golden/v2/source/MWS150-A.md` (14,962 lines, 633 sections, 434 pages, zh-CN)
-**Parser:** `app.harness_tools.manual_fs.parse_heading_tree` (production)
-**Drafted:** 2026-04-25
-**Status:** IN PROGRESS — DTC 2/8 entries validated and committed (overall=1.0 each); 6 DTC + symptom/component/image/adversarial buckets pending.
-
----
-
-## Why this file exists
-
-This is the **planning gate** that v1 skipped. Each row below pre-commits one section we'll generate a golden test entry from. All 30 rows are picked by a human (with some heuristic help) **before** any LLM is invoked — protecting future evals from the v1 bias where random TOC sampling oversampled the back-of-book DTC index and undersampled real diagnostic procedures.
-
-Once this file is signed off, every row drives one V4-Pro candidate-generation call, then one human review, then one frozen JSONL entry. No re-sampling, no improvising.
+**Manual:** MWS-150-A (TRICITY155, Yamaha) — `0a2ba199-665f-41aa-a106-1163cad68d16`
+**Source:** `tests/harness/evals/golden/v2/source/MWS-150-A.md` (~14,896 lines, ~1,080 parser-headings, 434 pages, zh-CN)
+**Parser:** `app.harness_tools.manual_fs.parse_heading_tree` (post-APP-52)
+**Drafted:** 2026-04-25 — REWRITTEN 2026-05-03 after pivot
+**Status:** PLANNING — 0 entries authored against the new schema. Old DTC bucket discarded.
 
 ---
 
-## Distribution target (30 entries)
+## Why this file changed
 
-| Bucket | Target | Validated | Status |
-|---|---|---|---|
-| DTC procedures | 8 | 2 | dtc-001, dtc-002 committed at overall=1.0; 6 remaining |
-| Symptom flows | 6 | 0 | pending — section plan TBD |
-| Component specs | 6 | 0 | pending — section plan TBD |
-| Image / figure | 4 | 0 | pending — section plan TBD |
-| Adversarial | 6 | 0 | pending — section plan TBD |
-| **Total** | **30** | **2** | |
+Originally this plan was structured as a **domain-coverage** matrix (DTC / symptom / component / image / adversarial). After surveying the RAG path in Phase 1 of #74, it became clear that the more useful axis for a publishable comparison is **question type** — `lookup` vs `procedural` vs `cross-section` vs `image-required` vs `adversarial`. Different question types stress retrieval and synthesis differently, so they're the right axis for an agent-vs-RAG benchmark.
 
----
+The previous plan and any drafts authored against it were discarded for three reasons:
 
-## DTC bucket (8/8 picked)
-
-**Selection rules applied:**
-- **Excluded** the back-of-book DTC index (`appendix-dtc-index`, lines 14937–14963) — the v1 oversample trap.
-- **Excluded** stub headings under 200 chars (`p0107-p0108`, `p0122-p0123`, `18-46`, `77-85` were all empty/24-char placeholders left by the PDF converter).
-- **Excluded** v1 entries (`p0112-p0113`, ABS code `53`) — picking different DTCs makes v1-vs-v2 comparison meaningful when we re-run the baseline.
-- **Spanned** subsystems: engine sensor / engine ECU memory / ABS wheel-speed sensor / ABS solenoid / ABS internal logic / ABS continuous-operation actuator / ABS speed-pulse anomaly.
-- **Mixed code namespaces:** 2 P-codes (engine ECM, OBD-II standard) + 6 numeric (ABS unit, manufacturer-specific) — reflects what a technician actually scans on this scooter.
-
-**Slugs verified against the production `parse_heading_tree` parser** so they will match what the agent produces at eval time (this was a v1 failure mode — slugs in v1 didn't always match parser output, causing `section_match=0` even on correct answers).
-
-| # | Slug | Section title | ~chars | Why chosen |
-|---|---|---|---|---|
-| dtc-001 | `p0117-p0118` | 故障代碼編號 P0117、P0118 — Engine coolant temperature sensor | 12,010 | Engine ECM, OBD-II standard P-code. Coolant temp ground-short / open-circuit pair — different subsystem from v1's intake-temp P0112. Procedure requires cold engine, multi-step continuity tests. |
-| dtc-002 | `p062f` | 故障代碼編號 P062F — ECU EEPROM internal | 21,079 | Engine ECM, rare critical fault. Largest DTC section in the manual — explicitly tests whether the agent can summarise without dumping the whole section into context. |
-| dtc-003 | `16` | 故障代碼編號 16 — ABS front wheel speed sensor | 4,309 | ABS unit, numeric code namespace. Wheel speed sensor (front) — high-frequency real-world fault. Tests agent recognition that "16" is a manufacturer DTC, not a P-code. |
-| dtc-004 | `42-47` | 故障代碼編號 42、47 — ABS wheel speed signal anomaly | 4,066 | ABS unit, dual-DTC pairing in one procedure (42 OR 47 → same flow). Tests whether the agent reports both codes in `must_contain`, not just whichever the question asked about. |
-| dtc-005 | `54` | 故障代碼編號 54 — ABS solenoid valve internal | 12,723 | ABS unit, hydraulic-actuator subsystem (vs sensors above). Largest ABS section. Explicit "do not separate hydraulic unit" warning — tests whether agent extracts safety notes. |
-| dtc-006 | `33` | 故障代碼編號 33 — ABS internal / connector | 2,617 | ABS unit, internal-fault / connector subsystem. Tests "what to check first" reasoning when the manual's first instruction is "switch main switch OFF before disconnect". |
-| dtc-007 | `78-86` | 故障代碼編號 78、86 — Wheel speed pulse blank | 8,207 | ABS unit, speed-conditional logic (>30 km/h → 78, <29 km/h → 86). Tests whether the agent surfaces the speed threshold — easy to miss if it skims. |
-| dtc-008 | `28-73` | 故障代碼編號 28、73 — Left-front ABS persistent operation | 1,413 | ABS unit, duration-conditional logic (20s → 28, 36s → 73). Different actuator family from `42-47`. Smallest section in the bucket — tests whether thin sections can still anchor a useful entry. |
+1. **Manual was re-ingested twice** since drafting (UUID changed, then chunk_count changed again with APP-51/52). Old `manual_id` values in entries are invalid.
+2. **Slug format changed** in APP-52 — was `p0117-p0118` (Latin-only, lowercase), now `故障代碼編號-p0117、p0118` (CJK preserved). Every existing slug citation is broken.
+3. **Schema changed** — `GoldenEntry` now requires `question_type` and `expected_recall_slugs`. Old entries fail validation.
 
 ---
 
-## What's NOT in this bucket (and why)
+## Distribution target — 30 entries
 
-- **`14-27` and `29-74`** — same actuator-duration family as `28-73`. One representative is enough; including all three would test the same thing three times.
-- **`24`** — wheel speed sensor, but `16` is a richer / more representative wheel-speed entry.
-- **`31`, `71-25`, `72-25`, `75`** — internal/communication ABS faults. Picked `33` and `54` as bucket representatives; the remainder would over-weight ABS internal codes vs other subsystems.
-- **`p0107-p0108`, `p0122-p0123`, `18-46`, `77-85`** — converter stubs (≤24 chars). No content to write a golden against.
+Primary axis is `question_type`. Secondary axis (`category`: `dtc` / `symptom` / `component` / `image` / `adversarial`) is logged on each entry for sub-analysis but doesn't drive bucket counts.
+
+| `question_type` | Target | Why this bucket |
+|---|---|---|
+| `lookup` | 8 | Single-fact retrieval ("torque spec for X", "what does DTC P0117 mean") — the natural sweet-spot for RAG. If RAG can't win or tie here, it can't win anywhere. |
+| `procedural` | 8 | Multi-step diagnostic flows. Tests whether the agent's tool-walking + section-reading can reconstruct a sequence RAG can only return as fragments. |
+| `cross-section` | 6 | Combine info from ≥2 slugs. Tests whether RAG can stitch facts across chunks (it can't) and whether the agent can navigate to multiple sections in one run (it can). |
+| `image-required` | 4 | Answer needs the actual image bytes (terminal pinout in a wiring diagram, etc.). Marker-generated text descriptions don't substitute. RAG fails by definition; we measure HOW it fails. |
+| `adversarial` | 4 | Manual cannot answer (fake DTC, out-of-scope component). Agent should refuse. RAG returns nearest-but-wrong with high confidence — an interesting failure mode. |
+| **Total** | **30** | |
+
+We may end up authoring fewer than 30 if some buckets prove harder to construct cleanly. Quality > quantity.
 
 ---
 
-## Open questions for reviewer
+## Authoring & validation workflow per entry
 
-1. **Ratio of P-codes vs numeric:** drafted 2 P-codes / 6 numeric. The manual has only 3 P-code sections with real content (and v1 already used one), so 2 P-codes is the practical ceiling without revisiting the v1 entry. Acceptable, or do you want me to overlap with v1's P0112 to get a 3:5 split?
-2. **Subsystem coverage:** drafted 1 sensor (engine), 1 ECU memory (engine), 2 wheel-speed sensors (ABS), 1 solenoid (ABS), 1 internal (ABS), 1 speed-pulse (ABS), 1 actuator (ABS). Any subsystem you want to drop or upweight?
-3. **Are the smaller sections OK?** `dtc-008` (`28-73`) is only 1,413 chars. Big enough for a procedure but small enough that the golden answer might end up summarising 80% of the section. If you want a higher floor, I can swap it for one of the 4K+ ABS codes.
+For each entry:
+
+1. Pick a target slug (or set of slugs for `cross-section`) from the manual's heading tree.
+2. Read the section text in full from the local manual copy.
+3. Write the `question` as a technician would phrase it.
+4. Write the `golden_summary` as a faithful synthesis of the source.
+5. Pick `must_contain` (2–6 strings) — verbatim substrings of the source, verified mechanically.
+6. Pick `must_not_contain` (1–3 strings) — terms that would only appear if a system confused this with an adjacent topic, verified absent.
+7. Pick `golden_citations` (3–5 verbatim quotes from the source).
+8. Set `expected_recall_slugs` (the slugs a system MUST surface to be considered correct).
+9. Run `eval_one_golden.py --system both` against the draft.
+10. If both systems' grades come back interpretable (no judge failures, deterministic-metric values are reasonable), promote to `v2/mws150a.jsonl`.
+11. Note any surprises (e.g., "RAG actually beat the agent on this" or "the judge scored answer_quality=0.4 because the answer was correct but rambly").
+
+The eval driver runs ~25 seconds per entry (agent + RAG + judge calls), costs ~$0.002. ~13 minutes + ~$0.06 for all 30.
 
 ---
 
-## Next bucket on deck
+## Open questions before authoring starts
 
-**Symptom flows** (6 entries) — symptom-troubleshooting chapter ("engine won't start", "ABS warning lit", etc.). Will surface 6 distinct symptom families, all with rich step-by-step diagnostic flowcharts. Pending DTC sign-off.
+1. **Should the `lookup` bucket include questions where both the agent and RAG can plausibly find the answer fast?** Or do we deliberately skew lookups toward "RAG should excel" cases (single-chunk facts in narrative prose) to give RAG its best shot?
+2. **For `cross-section`, how do we pick slug pairs?** Random pairing within the same chapter, or curated "real diagnostic scenarios" (e.g., "list every DTC related to coolant temperature")?
+3. **For `image-required`, how do we phrase questions that demand image-bytes?** "What is the wire color at terminal 3 in the wiring diagram?" — but the answer might be readable from Marker's text caption. Need to find figures whose meaning genuinely doesn't survive caption-only.
+
+These don't block starting on `lookup` and `procedural` (which are clearer). I'll surface specific picks before going far on `cross-section` and `image-required`.
+
+---
+
+## Provenance / rebuild instructions
+
+If anyone needs to recreate the local manual copy:
+
+```bash
+scp polyu-gpu:/home/talon/.local/share/containers/storage/volumes/\
+infra_diagnostic_api_manuals/_data/MWS-150-A/\
+0a2ba199-665f-41aa-a106-1163cad68d16.md \
+diagnostic_api/tests/harness/evals/golden/v2/source/MWS-150-A.md
+```
+
+The source file is gitignored (`source/.gitignore` excludes `*.md`, `*.txt`, `images/`) because re-ingestion changes content and we don't want stale copies in version control.
+
+The agent and RAG both run on the server's container, where the manual is mounted from the production volume — eval results are always against the current production data.
