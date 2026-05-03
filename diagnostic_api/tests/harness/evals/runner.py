@@ -20,7 +20,8 @@ Author: Li-Ta Hsu
 
 from __future__ import annotations
 
-from typing import Optional
+import time
+from typing import List, Optional
 
 import structlog
 from openai import AsyncOpenAI
@@ -34,6 +35,7 @@ from app.harness_agents.manual_agent import (
     run_manual_agent as _run_agent_loop,
 )
 from app.harness_agents.types import ManualAgentResult
+from tests.harness.evals.schemas import SystemRunResult
 
 logger = structlog.get_logger(__name__)
 
@@ -108,6 +110,111 @@ async def run_manual_agent(
 
     return await _run_agent_loop(
         question, obd_context, effective_deps,
+    )
+
+
+def _agent_result_to_system_run(
+    question: str,
+    result: ManualAgentResult,
+    latency_ms_wall: float,
+) -> SystemRunResult:
+    """Adapt a ``ManualAgentResult`` into the unified shape.
+
+    The unified ``SystemRunResult`` is what the comparative
+    judge consumes — both ``run_manual_agent_unified`` and
+    ``run_rag`` produce it, so the rubric is identical for both
+    systems.
+
+    Mapping rules:
+
+    - ``output_text`` ← agent's synthesised summary.
+    - ``retrieved_slugs`` ← union of citation slugs and
+      raw_section slugs, deduplicated, order preserved.  The
+      slug-canonicalisation fix in ``manual_agent`` already
+      ensures these are parser-canonical.
+    - ``tool_trace``, ``stopped_reason``, ``iterations`` ←
+      passed through.
+    - ``latency_ms_llm`` ← sum of tool-call latencies as a
+      proxy for LLM time (the OpenAI SDK doesn't surface
+      per-call ``usage.duration`` reliably across providers).
+      Reasonable approximation; tighten later if needed.
+    - ``cost_usd`` ← left at 0.0 here; the eval driver
+      (``eval_one_golden``) computes it from OpenRouter
+      response metadata.
+
+    Args:
+        question: Original inquiry, echoed for report-building.
+        result: The agent loop's return value.
+        latency_ms_wall: External wall-clock timing captured
+            by the caller (the agent loop doesn't time itself).
+
+    Returns:
+        Normalised ``SystemRunResult``.
+    """
+    slug_seq: List[str] = []
+    seen: set = set()
+    for cit in result.citations or []:
+        if cit.slug and cit.slug not in seen:
+            seen.add(cit.slug)
+            slug_seq.append(cit.slug)
+    for sec in result.raw_sections or []:
+        if sec.slug and sec.slug not in seen:
+            seen.add(sec.slug)
+            slug_seq.append(sec.slug)
+
+    # Sum tool-call latencies as a proxy for LLM time.  Imperfect
+    # — tool-call duration includes the round-trip but not the
+    # LLM-side reasoning time spent BETWEEN tool calls.  Wall
+    # clock is the more honest number here.
+    llm_proxy = sum(
+        (t.latency_ms or 0.0)
+        for t in (result.tool_trace or [])
+    )
+
+    return SystemRunResult(
+        system_label="manual_agent",
+        question=question,
+        output_text=result.summary or "",
+        retrieved_slugs=slug_seq,
+        retrieved_chunk_metadata=[],
+        latency_ms_wall=latency_ms_wall,
+        latency_ms_llm=llm_proxy,
+        cost_usd=0.0,
+        tool_trace=list(result.tool_trace or []),
+        stopped_reason=str(result.stopped_reason or "complete"),
+        iterations=result.iterations or 0,
+    )
+
+
+async def run_manual_agent_unified(
+    question: str,
+    obd_context: Optional[str] = None,
+    deps: Optional[ManualAgentDeps] = None,
+) -> SystemRunResult:
+    """Run the manual sub-agent and return a unified ``SystemRunResult``.
+
+    Convenience wrapper that times the agent run and adapts the
+    result into the unified shape.  The legacy
+    ``run_manual_agent`` (returns ``ManualAgentResult``) is kept
+    for callers that need the raw shape — they should migrate
+    to this when convenient.
+
+    Args:
+        question: The inquiry to answer.
+        obd_context: Optional OBD context snippet.
+        deps: Optional pre-built dependency container.
+
+    Returns:
+        A ``SystemRunResult`` with ``system_label="manual_agent"``,
+        ready for direct comparison with ``run_rag`` output via
+        the shared judge.
+    """
+    wall_start = time.perf_counter()
+    result = await run_manual_agent(question, obd_context, deps)
+    wall_end = time.perf_counter()
+    latency_ms_wall = (wall_end - wall_start) * 1000
+    return _agent_result_to_system_run(
+        question, result, latency_ms_wall,
     )
 
 

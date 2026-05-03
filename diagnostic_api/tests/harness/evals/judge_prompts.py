@@ -1,9 +1,25 @@
-"""Prompt templates for the LLM-as-judge (``z-ai/glm-5.1``).
+"""Prompt templates for the answer-quality judge.
 
-The judge scores a ``ManualAgentResult`` against a ``GoldenEntry``
-using a 5-dimension rubric and a weighted ``overall`` score.  The
-system prompt pins the rubric; ``build_user_prompt`` serialises the
-golden and agent data into a compact, stable form.
+In the comparative-eval (HARNESS-15 / Issue #74) redesign, the
+judge is no longer responsible for substring-based metrics —
+those are computed deterministically in
+``tests.harness.evals.metrics`` from the ``GoldenEntry`` and
+``SystemRunResult``.  The judge's only job is to produce the
+``answer_quality`` rating: a holistic 0.0–1.0 score for "does
+this output correctly, completely, and clearly answer the
+question?"
+
+Why split the work:
+
+- Deterministic metrics (section_recall, fact_recall, etc.)
+  produce identical scores across runs.  Reproducibility is a
+  hard requirement for benchmark-grade reporting.
+- The remaining subjective dimension (does the answer make
+  sense, is it well-organised, does it skip key steps) needs
+  judgment that substring matching can't capture.
+- This split also makes the judge call cheaper: the prompt is
+  much shorter without the 5-dimension rubric, and the response
+  is a single float plus 2–3 sentences of reasoning.
 
 Author: Li-Ta Hsu
 """
@@ -14,69 +30,104 @@ from typing import List
 
 from tests.harness.evals.schemas import (
     GoldenEntry,
-    ManualAgentResult,
-    SectionRef,
-    ToolCallTrace,
+    RetrievedChunkMetadata,
+    SystemRunResult,
 )
 
 
-# Per-section raw-text cap.  Large manual sections can be tens of
-# thousands of characters; the judge only needs enough prose to
-# verify must_contain / must_not_contain presence.  Keep input
-# tokens bounded.
-_MAX_SECTION_CHARS = 3000
+# ── Constants ─────────────────────────────────────────────────────
+
+
+_MAX_OUTPUT_CHARS = 4000
+"""Cap on system output text passed to the judge.  RAG outputs
+in particular can be very long (top-5 chunks concatenated =
+~5–15 KB of text).  4 KB is enough for the judge to assess
+quality without overwhelming the prompt."""
+
+
+_MAX_GOLDEN_CHARS = 1500
+"""Cap on the golden_summary length included in the prompt.
+Golden summaries are 3–8 sentences (under 1 KB typically), so
+this is a soft ceiling."""
+
+
+# ── System prompt ────────────────────────────────────────────────
 
 
 JUDGE_SYSTEM_PROMPT = """\
-You are grading a vehicle-service-manual search agent.
+You are grading a vehicle-service-manual answer.
 
-Your job: compare the AGENT OUTPUT against the GOLDEN reference and
-return a JSON object exactly matching the rubric below.  You MUST
-return JSON only — no prose before or after.
+You will see:
+  1. The QUESTION a technician asked.
+  2. The GOLDEN ANSWER (human-written reference).
+  3. The SYSTEM OUTPUT (what one of two systems produced — you
+     are told which one, but score on substance, not source).
 
-## Rubric (keys and allowed values)
+Your only job is to rate the SYSTEM OUTPUT on **answer quality**:
+how correctly, completely, and clearly does it answer the question
+compared to the golden?
 
-- section_match (integer 0 or 1): 1 if the agent cited at least one
-  of the manual_id#slug pairs listed in the golden citations, else 0.
-- fact_recall (float 0.0 to 1.0): fraction of the golden's
-  `must_contain` items whose text appears (case-insensitive,
-  substring) in either the agent's summary or the concatenated
-  raw_sections text.  Example: 3 items, 2 present -> 0.67.
-- hallucination (integer 0 or 1): 1 if ANY of the golden's
-  `must_not_contain` strings appears (case-insensitive, substring)
-  in the agent's summary OR raw_sections, else 0.
-- citation_present (integer 0 or 1): 1 if the agent's citations
-  list is non-empty, else 0.
-- trajectory_ok (integer 0 or 1): 1 if the agent made at most
-  ~1.5x the number of tool calls in `expected_tool_trace` AND did
-  not brute-force read every section of the manual; else 0.
-  This is diagnostic only — the `overall` score does not use it.
-- overall (float 0.0 to 1.0): weighted score, computed as
-  0.4*section_match + 0.3*fact_recall
-  + 0.2*(1 - hallucination) + 0.1*citation_present.
-- reasoning (string): 2-3 sentences citing specific evidence
-  (e.g., "Agent cited 3-2-fuel-system-troubleshooting, which
-  matches the golden; must_contain 'P0171' appears in the
-  summary; one of four expected tools was skipped but the
-  answer is complete.").  Max 400 characters.
+Return ONLY a JSON object with this exact shape:
+
+{
+  "answer_quality": <float in [0.0, 1.0]>,
+  "reasoning": "<2–4 sentences citing specific evidence>"
+}
+
+Do not wrap in markdown fences.  Do not output prose before or
+after the JSON.
+
+## Rating scale for answer_quality
+
+- 1.0 — Output answers the question correctly, completely, and
+  clearly.  A technician could act on it without consulting
+  another source.  Matches the golden's substance even if
+  phrased differently.
+- 0.7–0.9 — Mostly correct, with minor omissions or
+  unclear phrasing.  Technician would still arrive at the right
+  conclusion but might need to re-read.
+- 0.4–0.6 — Partially correct.  Key facts are present but the
+  output is missing critical steps, contains misleading
+  emphasis, or buries the answer in irrelevant content.
+  Technician might still get there but would risk error.
+- 0.1–0.3 — Wrong direction.  Output cites the wrong system,
+  the wrong DTC, or describes a different procedure.  Technician
+  acting on this would make things worse.
+- 0.0 — No usable content.  Empty output, refusal when the
+  manual could have answered, or completely fabricated content.
 
 ## Special cases
 
-- Adversarial entries (category "adversarial") may have empty
-  golden_citations.  For these, `section_match` should be 1 if
-  the agent correctly declined to guess (its summary includes
-  a phrase like "not found", "unknown code", or similar) and
-  its citations list is empty or cites nothing fabricated.
-- If the agent output is clearly malformed or truncated, score
-  generously on recall where evidence is present, but set
-  hallucination=1 if fabricated facts appear.
+- For ADVERSARIAL questions (where the golden indicates the
+  manual cannot answer), a correct refusal scores 1.0.  A
+  fabricated answer scores ≤ 0.2 regardless of how confident
+  it sounds.
+- For RAG outputs (no synthesised summary, just retrieved
+  chunks): grade as if a technician were reading the chunks
+  directly.  If the right chunk is in the retrieval set, the
+  technician can find the answer — score accordingly.  If
+  the retrieval set has the right chunks but a casual reader
+  would miss the answer in the noise, score lower.
+- Phrasing differences from the golden are NOT a penalty.
+  English vs Chinese, terse vs verbose, narrative vs
+  bullet-list — all fine if the substance matches.
 
-Return only the JSON object.  Do not wrap in markdown fences.
+## Substance focus
+
+Reasoning should cite concrete evidence: which fact is missing,
+which step is wrong, which DTC was confused with which.  Do
+not reason about format, length, or style — those don't enter
+this score.
 """
 
 
+# ── User-prompt builder ──────────────────────────────────────────
+
+
 def _truncate(text: str, max_chars: int) -> str:
-    """Truncate text with a trailing marker if clipped."""
+    """Truncate with a trailing marker if clipped."""
+    if not text:
+        return ""
     if len(text) <= max_chars:
         return text
     return (
@@ -85,131 +136,77 @@ def _truncate(text: str, max_chars: int) -> str:
     )
 
 
-def _fmt_citations(
-    citations: List,  # noqa: ANN001 — List[GoldenCitation | Citation]
+def _format_chunk_summary(
+    chunks: List[RetrievedChunkMetadata],
 ) -> str:
-    """Format citation list as a bullet block."""
-    if not citations:
-        return "  (none)"
+    """Compact chunk-level breakdown for the RAG prompt.
+
+    The judge sees ``output_text`` (concatenated chunks) for
+    must_contain scanning, but a per-chunk metadata list helps
+    it understand what was retrieved (scores, slugs, DTC tags).
+    """
+    if not chunks:
+        return "  (no chunks retrieved)"
     lines = []
-    for cit in citations:
-        quote = getattr(cit, "quote", "") or ""
-        suffix = f" — \"{quote}\"" if quote else ""
+    for i, c in enumerate(chunks, 1):
+        flags = []
+        if c.has_image:
+            flags.append("image")
+        if c.dtc_codes:
+            flags.append(f"dtc={','.join(c.dtc_codes[:3])}")
+        flag_str = f"  [{' / '.join(flags)}]" if flags else ""
         lines.append(
-            f"  - {cit.manual_id}#{cit.slug}{suffix}",
+            f"  [{i}] score={c.score:.3f}  slug={c.slug}{flag_str}"
         )
     return "\n".join(lines)
 
 
-def _fmt_section(section: SectionRef) -> str:
-    """Format one ``SectionRef`` with truncated text."""
-    img_flag = "yes" if section.had_images else "no"
-    text = _truncate(section.text, _MAX_SECTION_CHARS)
-    return (
-        f"[{section.manual_id}#{section.slug}] "
-        f"(images: {img_flag})\n{text}"
-    )
-
-
-def _fmt_tool_trace(trace: List[ToolCallTrace]) -> str:
-    """Format tool trace as a compact name+count summary."""
-    if not trace:
-        return "  (no tool calls recorded)"
-    counts: dict[str, int] = {}
-    for call in trace:
-        counts[call.name] = counts.get(call.name, 0) + 1
-    order = " -> ".join(call.name for call in trace)
-    summary = ", ".join(
-        f"{name}:{n}" for name, n in sorted(counts.items())
-    )
-    return (
-        f"  order: {order}\n"
-        f"  counts: {summary}"
-    )
-
-
-def _fmt_list(items: List[str]) -> str:
-    """Format a list of strings as a bullet block."""
-    if not items:
-        return "  (none)"
-    return "\n".join(f"  - {item}" for item in items)
-
-
 def build_user_prompt(
-    entry: GoldenEntry,
-    result: ManualAgentResult,
+    entry: GoldenEntry, run: SystemRunResult,
 ) -> str:
-    """Build the judge's user prompt from a (golden, result) pair.
+    """Assemble the user message given the golden + system output.
+
+    The prompt deliberately omits ``must_contain`` /
+    ``must_not_contain`` / ``expected_recall_slugs`` — those
+    are graded deterministically and don't need the judge's
+    attention.  The judge focuses purely on answer quality
+    against the golden_summary.
 
     Args:
-        entry: The golden reference entry.
-        result: The manual agent's output for the same question.
+        entry: Golden reference.
+        run: System output (agent or RAG, both unified into
+            ``SystemRunResult``).
 
     Returns:
-        A fully-rendered user prompt string.
+        Fully-rendered user prompt.
     """
-    golden_citations_block = _fmt_citations(
-        entry.golden_citations,
+    golden_summary = _truncate(entry.golden_summary, _MAX_GOLDEN_CHARS)
+    output_text = _truncate(run.output_text, _MAX_OUTPUT_CHARS)
+    chunk_block = (
+        _format_chunk_summary(run.retrieved_chunk_metadata)
+        if run.system_label == "rag" else "  (n/a — agent output)"
     )
-    must_contain_block = _fmt_list(entry.must_contain)
-    must_not_contain_block = _fmt_list(entry.must_not_contain)
-    expected_tools_block = _fmt_list(entry.expected_tool_trace)
-    agent_citations_block = _fmt_citations(result.citations)
-
-    if result.raw_sections:
-        raw_sections_block = "\n\n".join(
-            _fmt_section(sec) for sec in result.raw_sections
-        )
-    else:
-        raw_sections_block = "(no sections recorded)"
-
-    tool_trace_block = _fmt_tool_trace(result.tool_trace)
-
-    obd_context = entry.obd_context or "(none)"
 
     return f"""\
 ## QUESTION
 {entry.question}
 
-## OBD CONTEXT
-{obd_context}
+## GOLDEN ANSWER
+{golden_summary}
 
-## GOLDEN (authoritative)
-Category: {entry.category}
-Difficulty: {entry.difficulty}
-Summary:
-{entry.golden_summary}
+## SYSTEM UNDER TEST: {run.system_label}
 
-Citations:
-{golden_citations_block}
+### Retrieved slugs
+{', '.join(run.retrieved_slugs) if run.retrieved_slugs else '(none)'}
 
-Must contain:
-{must_contain_block}
+### Retrieved chunks (RAG only)
+{chunk_block}
 
-Must not contain:
-{must_not_contain_block}
+### Output text
+{output_text}
 
-Expected tools (loose guide):
-{expected_tools_block}
+---
 
-Requires image: {entry.requires_image}
-
-## AGENT OUTPUT
-Summary:
-{result.summary}
-
-Citations:
-{agent_citations_block}
-
-Tool trace:
-{tool_trace_block}
-
-Iterations: {result.iterations}
-Stopped reason: {result.stopped_reason}
-
-Raw sections returned (text truncated to {_MAX_SECTION_CHARS} chars each):
-{raw_sections_block}
-
-## INSTRUCTIONS
-Return the JSON object matching the rubric.  JSON only.
+Return only the JSON object with `answer_quality` (float 0.0–1.0)
+and `reasoning` (2–4 sentences).  No prose, no code fences.
 """
