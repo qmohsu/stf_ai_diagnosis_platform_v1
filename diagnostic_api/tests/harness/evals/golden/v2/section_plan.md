@@ -4,7 +4,7 @@
 **Source:** `tests/harness/evals/golden/v2/source/MWS-150-A.md` (~14,896 lines, ~1,080 parser-headings, 434 pages, zh-CN)
 **Parser:** `app.harness_tools.manual_fs.parse_heading_tree` (post-APP-52)
 **Drafted:** 2026-04-25 — REWRITTEN 2026-05-03 after pivot
-**Status:** PLANNING — 0 entries authored against the new schema. Old DTC bucket discarded.
+**Status:** IN PROGRESS — 1/30 entries validated and committed (`dtc-001`, procedural; agent overall=73.3 vs RAG 16.5 deterministic-only, judge call pending OpenRouter top-up).
 
 ---
 
