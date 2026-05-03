@@ -35,6 +35,39 @@ _TITLE_EMPHASIS_SUFFIX_RE = re.compile(r"[*_]+\s*$")
 # Belt-and-braces hard cap: a single section title should never
 # need more than this; truncate pathological inputs.
 _MAX_SECTION_TITLE_CHARS = 2000
+# Marker-pdf occasionally promotes a table row to an ``###``
+# heading.  Real semantic headings are short.
+_MAX_REAL_HEADING_CHARS = 150
+# Numbered procedure steps (``2. 檢查:``, ``5. 安裝:``) that
+# marker mistakenly promotes to deep headings.  Section numbers
+# like ``3.2 Fuel System Troubleshooting`` are longer / multi-
+# part and don't match.
+_PROCEDURE_STEP_RE = re.compile(
+    r"^\s*\d+\.\s+\S{1,40}:?\s*$"
+)
+
+
+def _is_real_heading(title: str) -> bool:
+    """Filter out marker-pdf misclassified pseudo-headings.
+
+    Returns ``False`` for oversized titles (likely table rows),
+    numbered procedure steps, and empty titles.  These should be
+    body content, not heading-level structure — keeping them as
+    headings produces meaningless chunk ``section_title`` values
+    and clutters the TOC.
+
+    Args:
+        title: Heading text after ``HEADING_PATTERN`` extraction
+            and ``_clean_section_title`` normalisation.
+    """
+    stripped = title.strip()
+    if not stripped:
+        return False
+    if len(stripped) > _MAX_REAL_HEADING_CHARS:
+        return False
+    if _PROCEDURE_STEP_RE.match(stripped):
+        return False
+    return True
 
 
 def _strip_empty_html(text: str) -> str:
@@ -232,7 +265,13 @@ def parse_manual(text: str, filename: str = "") -> List[Section]:
         if fm_model and fm_model.lower() != "generic":
             doc_vehicle_model = fm_model
 
-    headings = list(HEADING_PATTERN.finditer(text))
+    # Iterate raw heading matches, dropping marker-pdf
+    # misclassifications (oversized table rows, numbered
+    # procedure steps) before they become Section objects.
+    headings = [
+        m for m in HEADING_PATTERN.finditer(text)
+        if _is_real_heading(_clean_section_title(m.group(2)))
+    ]
 
     if not headings:
         # No headings found: single section from the whole document

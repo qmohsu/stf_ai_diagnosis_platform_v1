@@ -97,12 +97,18 @@ def _read_manual_file(manual_id: str) -> str | None:
 def _format_toc_tree(
     nodes: List[HeadingNode],
     indent: int = 0,
+    max_depth: int | None = None,
 ) -> str:
     """Format a heading tree as indented text.
 
     Args:
         nodes: Heading nodes to format.
-        indent: Current indentation level.
+        indent: Current indentation level (0-based).
+        max_depth: Optional cap on how deep to descend.  When
+            set, children at ``indent >= max_depth`` are omitted
+            and a placeholder ``"  ...N more nested sections"``
+            is shown so the agent knows there's more to explore.
+            ``None`` means unlimited (full tree).
 
     Returns:
         Indented tree string with slugs in brackets.
@@ -114,13 +120,36 @@ def _format_toc_tree(
             f"{prefix}- {node.title}  "
             f"[{node.slug}]"
         )
-        if node.children:
-            lines.append(
-                _format_toc_tree(
-                    node.children, indent + 1,
-                ),
-            )
+        if not node.children:
+            continue
+        if max_depth is not None and indent + 1 >= max_depth:
+            # Don't recurse — but tell the agent how many we hid
+            # so it can opt into a deeper view.
+            hidden = _count_descendants(node.children)
+            if hidden > 0:
+                lines.append(
+                    f"{prefix}  ...{hidden} more "
+                    f"nested sections "
+                    f"(call get_manual_toc with "
+                    f"max_depth={max_depth + 1} or higher)"
+                )
+            continue
+        lines.append(
+            _format_toc_tree(
+                node.children,
+                indent + 1,
+                max_depth=max_depth,
+            ),
+        )
     return "\n".join(lines)
+
+
+def _count_descendants(nodes: List[HeadingNode]) -> int:
+    """Total number of nodes in a subtree (including roots)."""
+    n = 0
+    for node in nodes:
+        n += 1 + _count_descendants(node.children)
+    return n
 
 
 def _extract_dtc_index(md_text: str) -> str | None:
@@ -234,12 +263,21 @@ async def get_manual_toc(
     tree with section slugs for use with ``read_manual_section``.
 
     Args:
-        input_data: Must contain ``manual_id`` (str).
+        input_data: Must contain ``manual_id`` (str).  Optional
+            ``max_depth`` (int, default 3) caps how deep the tree
+            goes — useful for keeping the response small enough to
+            fit in a context budget.  Pass a high value
+            (e.g. 99) to see the full tree.
 
     Returns:
         Indented heading tree with slugs and optional DTC index.
     """
     manual_id: str = input_data["manual_id"]
+    max_depth_raw = input_data.get("max_depth", 3)
+    try:
+        max_depth = int(max_depth_raw) if max_depth_raw else None
+    except (TypeError, ValueError):
+        max_depth = 3
 
     md_text = _read_manual_file(manual_id)
     if md_text is None:
@@ -264,7 +302,7 @@ async def get_manual_toc(
             f"The file may be empty or malformed."
         )
 
-    toc = _format_toc_tree(tree)
+    toc = _format_toc_tree(tree, max_depth=max_depth)
 
     # Append DTC index if present.
     dtc_index = _extract_dtc_index(md_text)

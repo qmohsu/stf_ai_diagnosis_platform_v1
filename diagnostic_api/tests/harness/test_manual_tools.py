@@ -228,6 +228,35 @@ class TestGetManualToc:
         assert "Chapter 1: Engine" in result
         assert "DTC Quick Index" not in result
 
+    @pytest.mark.asyncio
+    async def test_max_depth_caps_tree(self) -> None:
+        """``max_depth=2`` hides deeper sections.
+
+        Default depth=3 includes subsections; depth=2 should
+        clip to chapters + sections only and emit a placeholder
+        line telling the agent how many were hidden.
+        """
+        result = await get_manual_toc({
+            "manual_id": "MWS150A_Service_Manual",
+            "max_depth": 2,
+        })
+        # Top-level chapter is visible.
+        assert "Chapter 1: General Information" in result
+        # Subsection (would be at depth 3) is hidden.
+        assert "1-1-specifications" not in result
+        # Hidden-count placeholder is shown.
+        assert "more nested sections" in result
+
+    @pytest.mark.asyncio
+    async def test_max_depth_full_tree(self) -> None:
+        """High max_depth includes everything."""
+        result = await get_manual_toc({
+            "manual_id": "MWS150A_Service_Manual",
+            "max_depth": 99,
+        })
+        assert "1-1-specifications" in result
+        assert "more nested sections" not in result
+
 
 # ── read_manual_section ───────────────────────────────────────────
 

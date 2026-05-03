@@ -145,6 +145,20 @@ class TestSlugify:
         slug = slugify(long_title)
         assert len(slug) <= 80
 
+    def test_cjk_preserved_in_slug(self) -> None:
+        """Chinese / Japanese characters survive slugification.
+
+        Without this, every CJK-only heading would collapse to
+        ``""`` and end up autosuffixed ``-N``, which is useless
+        for the agent trying to address sections by name.
+        """
+        assert slugify("電裝系統") == "電裝系統"
+        assert slugify("引擎號碼打刻位置") == "引擎號碼打刻位置"
+
+    def test_mixed_cjk_and_latin(self) -> None:
+        """Latin and CJK can coexist in a single slug."""
+        assert slugify("3.2 燃油 System") == "3-2-燃油-system"
+
 
 # ── parse_frontmatter ─────────────────────────────────────────────
 
@@ -178,6 +192,56 @@ class TestParseFrontmatter:
 
 class TestParseHeadingTree:
     """Tests for parse_heading_tree()."""
+
+    def test_oversized_headings_filtered(self) -> None:
+        """Marker-pdf table-row misclassifications are dropped.
+
+        Real headings are short (<150 chars).  Oversized
+        ``###`` lines are paragraphs marker promoted to
+        headings; they should not appear in the tree.
+        """
+        long_text = "spec value " * 30  # ~330 chars
+        md = (
+            "# Manual\n\n"
+            "## Real Section\n\n"
+            f"### {long_text}\n\n"
+            "## Another Real Section\n"
+        )
+        tree = parse_heading_tree(md)
+        # Flatten and inspect
+        all_titles = []
+
+        def _walk(nodes):
+            for n in nodes:
+                all_titles.append(n.title)
+                _walk(n.children)
+
+        _walk(tree)
+        assert "Real Section" in all_titles
+        assert "Another Real Section" in all_titles
+        assert long_text.strip() not in all_titles
+
+    def test_numbered_procedure_step_filtered(self) -> None:
+        """Procedure steps like ``1. 檢查:`` aren't headings."""
+        md = (
+            "## Real Section\n\n"
+            "#### 1. 檢查:\n\n"
+            "Body text.\n\n"
+            "#### 2. 安裝:\n\n"
+            "More body.\n"
+        )
+        tree = parse_heading_tree(md)
+        all_titles = []
+
+        def _walk(nodes):
+            for n in nodes:
+                all_titles.append(n.title)
+                _walk(n.children)
+
+        _walk(tree)
+        assert "Real Section" in all_titles
+        assert "1. 檢查:" not in all_titles
+        assert "2. 安裝:" not in all_titles
 
     def test_correct_hierarchy(self) -> None:
         """Builds proper parent-child relationships."""

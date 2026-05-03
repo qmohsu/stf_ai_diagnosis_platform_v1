@@ -28,6 +28,45 @@ logger = structlog.get_logger(__name__)
 _SLUG_MAX_LEN = 80
 _IMAGE_MAX_BYTES = 5 * 1024 * 1024  # 5 MB per image.
 
+# Marker-pdf occasionally promotes a table row of dense spec text
+# to an ``###`` heading.  Real headings are short.  Anything past
+# this length is treated as a misclassified paragraph and skipped.
+_MAX_HEADING_CHARS = 150
+# Marker also promotes numbered procedure steps (``2. 檢查:``,
+# ``5. 安裝:``) to deep ``####`` headings.  These have a numeric
+# prefix, optional Chinese/English label, and often a trailing
+# colon.  Section numbers like ``3.2 Fuel System`` look similar
+# but tend to have a multi-part numeric prefix and a longer
+# semantic title — the dot+digit-only pattern below avoids them.
+_PROCEDURE_STEP_RE = re.compile(
+    r"^\s*\d+\.\s+\S{1,40}:?\s*$"
+)
+
+
+def _is_real_heading(title: str) -> bool:
+    """Filter out marker-pdf misclassified headings.
+
+    Returns ``False`` for:
+
+    * Oversized titles (likely table rows promoted to headings).
+    * Numbered procedure steps (``2. 檢查:`` / ``5. 安裝:``)
+      that should be list items, not headings.
+    * Empty / whitespace-only titles.
+
+    Returns ``True`` otherwise.
+
+    Args:
+        title: Heading text after ``HEADING_PATTERN`` extraction.
+    """
+    stripped = title.strip()
+    if not stripped:
+        return False
+    if len(stripped) > _MAX_HEADING_CHARS:
+        return False
+    if _PROCEDURE_STEP_RE.match(stripped):
+        return False
+    return True
+
 # Defensive strip for any empty HTML elements that may linger in
 # older .md files on disk — marker-pdf emits page-anchor spans
 # like ``<span id="page-4-0"></span>`` that are useless to AI
@@ -88,16 +127,26 @@ class HeadingNode:
 
 
 def slugify(title: str) -> str:
-    """Convert heading text to a URL-safe slug.
+    """Convert heading text to a stable, agent-friendly slug.
 
-    Implements the algorithm from ``manual_markdown_schema.md``
-    section 4.1:
+    Pipeline:
 
-    1. Lowercase.
-    2. Replace runs of non-alphanumeric characters (except
-       hyphens) with a single hyphen.
-    3. Strip leading/trailing hyphens.
-    4. Truncate to 80 characters at a hyphen boundary.
+    1. Lowercase ASCII.
+    2. Keep ASCII alphanumerics, hyphens, AND CJK ideographs
+       (``⺀-鿿``, ``豈-﫿``).  CJK characters
+       carry their own meaning and don't need to be transliterated
+       — preserving them keeps slugs mnemonic for Chinese / Japanese
+       / Korean manuals (e.g. ``電裝系統`` stays addressable as
+       itself rather than collapsing to ``""`` and being
+       autosuffixed ``-N``).
+    3. Replace anything else with a single hyphen.
+    4. Strip leading/trailing hyphens.
+    5. Truncate to ``_SLUG_MAX_LEN`` chars at a hyphen boundary
+       when possible.
+
+    Slugs are passed as JSON in tool inputs and rendered in
+    citations like ``doc_id#slug`` — neither path needs URL
+    encoding, so unicode is fine.
 
     Does NOT handle duplicate suffixes (``-2``, ``-3``) — that
     is done by ``parse_heading_tree`` which tracks all slugs.
@@ -106,10 +155,15 @@ def slugify(title: str) -> str:
         title: Heading text (without ``#`` prefix).
 
     Returns:
-        URL-safe slug string.
+        Slug string, possibly containing CJK characters.
     """
     slug = title.lower()
-    slug = re.sub(r"[^a-z0-9-]+", "-", slug)
+    # Keep ASCII a-z0-9, hyphens, and the main CJK Unicode blocks.
+    slug = re.sub(
+        r"[^a-z0-9⺀-鿿豈-﫿-]+",
+        "-",
+        slug,
+    )
     slug = slug.strip("-")
     if len(slug) > _SLUG_MAX_LEN:
         truncated = slug[:_SLUG_MAX_LEN]
@@ -176,13 +230,17 @@ def parse_heading_tree(
         Top-level heading nodes with nested children.
     """
     lines = md_text.split("\n")
-    # Collect raw heading positions.
+    # Collect raw heading positions.  Skip marker-pdf
+    # misclassified pseudo-headings (oversized table rows,
+    # numbered procedure steps) so they don't pollute the TOC.
     raw_headings: List[Tuple[int, int, str]] = []
     for line_idx, line in enumerate(lines):
         match = _HEADING_PATTERN.match(line)
         if match:
             level = len(match.group(1))
             title = match.group(2).strip()
+            if not _is_real_heading(title):
+                continue
             raw_headings.append((line_idx, level, title))
 
     if not raw_headings:

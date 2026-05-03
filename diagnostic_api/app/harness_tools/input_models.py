@@ -108,6 +108,18 @@ class GetManualTocInput(BaseModel):
             "Use list_manuals to discover available IDs."
         ),
     )
+    max_depth: int = Field(
+        default=3,
+        ge=1,
+        le=99,
+        description=(
+            "Cap on how deep the heading tree goes "
+            "(1 = chapters only, 3 = chapters + sections + "
+            "subsections, 99 = full tree).  Default 3 keeps "
+            "the response small enough to fit in a typical "
+            "context budget; pass a higher value to drill in."
+        ),
+    )
 
 
 class ReadManualSectionInput(BaseModel):
