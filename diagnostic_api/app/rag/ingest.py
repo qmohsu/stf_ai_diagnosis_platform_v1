@@ -28,6 +28,7 @@ module — see ``manual_pipeline.run_reingestion``.
 """
 
 import hashlib
+import re
 from pathlib import Path
 from typing import List, Set
 from uuid import UUID
@@ -41,6 +42,49 @@ from app.rag.embedding import embedding_service
 from app.rag.parser import parse_document
 
 logger = structlog.get_logger(__name__)
+
+
+# Patterns flagged by ``_audit_chunks`` after embedding.  These are
+# things we already strip in ``parser.py``; the audit is a
+# regression guard — if any of these appear in a fresh batch of
+# chunks, something upstream is leaking pollution and we want to
+# know in the logs without crashing the ingest.
+_POLLUTION_PATTERNS: List[tuple] = [
+    (
+        "empty_html_tag",
+        re.compile(
+            r"<([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>\s*</\1\s*>",
+            re.IGNORECASE,
+        ),
+    ),
+    ("html_entity", re.compile(r"&(amp|nbsp|lt|gt|quot);")),
+]
+
+
+def _audit_chunks(
+    chunks: List[ChunkedSection],
+    log: structlog.BoundLogger,
+) -> None:
+    """Scan chunks for known pollution patterns and log warnings.
+
+    This catches regressions where new marker-pdf output formats
+    introduce artifacts the parser hasn't been taught to strip.
+    Non-fatal: emits a structured warning per pattern with the
+    chunk count and a sample message.
+    """
+    for tag, pattern in _POLLUTION_PATTERNS:
+        offenders = [
+            c.chunk_index for c in chunks
+            if pattern.search(c.text)
+            or pattern.search(c.section_title or "")
+        ]
+        if offenders:
+            log.warning(
+                "ingest.pollution_detected",
+                pattern=tag,
+                count=len(offenders),
+                first_chunk_index=offenders[0],
+            )
 
 
 def _checksum(
@@ -160,6 +204,10 @@ async def embed_and_insert_chunks(
         manual_id=str(manual_id), doc_id=doc_id,
     )
     log.info("ingest.embedding_start", count=len(chunks))
+
+    # Pollution audit: flag any artifacts that should have been
+    # stripped at parse time but aren't.  Non-fatal.
+    _audit_chunks(chunks, log)
 
     existing = _existing_checksums(db, manual_id)
 

@@ -13,32 +13,74 @@ from pydantic import BaseModel
 DTC_PATTERN = re.compile(r"\b[PBCU]\d{4}\b")
 HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+)$", re.MULTILINE)
 
-# Marker-pdf embeds HTML page-anchor spans inside headings for
-# the manual viewer (``<span id="page-281-1"></span>``).  Strip
-# them from section titles — they're navigation metadata, not
-# semantic retrieval signal, and they bloat the column to the
-# point of overflowing storage limits on long manuals.
-_HTML_SPAN_RE = re.compile(
-    r"<span\b[^>]*></span>", re.IGNORECASE,
+# Marker-pdf embeds HTML page-anchor spans inside headings AND
+# body text for the manual viewer (``<span id="page-281-1"></span>``).
+# These are pure navigation metadata — useless for retrieval, they
+# bloat both heading length and chunk text, and they pollute the
+# embedding vector with HTML noise.  Strip them everywhere.
+#
+# Pattern catches any empty HTML element with optional attributes:
+#   <tagname>...</tagname> where the contents are pure whitespace.
+# Backreference enforces matching open/close tag names.
+_EMPTY_HTML_TAG_RE = re.compile(
+    r"<([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>\s*</\1\s*>",
+    re.IGNORECASE,
 )
+# Markdown emphasis markers wrapping an entire heading
+# (``**TRICITY155 MWS150-A**``).  These are visual styling, not
+# semantic content; strip from titles only.  Body text keeps its
+# emphasis because inline ``**bold**`` there is real signal.
+_TITLE_EMPHASIS_PREFIX_RE = re.compile(r"^\s*[*_]+")
+_TITLE_EMPHASIS_SUFFIX_RE = re.compile(r"[*_]+\s*$")
 # Belt-and-braces hard cap: a single section title should never
 # need more than this; truncate pathological inputs.
 _MAX_SECTION_TITLE_CHARS = 2000
 
 
+def _strip_empty_html(text: str) -> str:
+    """Remove empty HTML elements from arbitrary text.
+
+    Catches ``<span id="x"></span>``, ``<a id="y"></a>``,
+    ``<div></div>``, etc. — any tag with optional attributes
+    that wraps no visible content.  Content-bearing tags
+    (e.g. ``<span>kept</span>``) are left intact.
+
+    Args:
+        text: Raw text possibly containing empty HTML tags.
+
+    Returns:
+        Text with empty HTML elements removed.
+    """
+    # Run twice in case empty tags were nested
+    # (``<span><a></a></span>``).  Two passes is enough for any
+    # plausible nesting depth marker would emit.
+    cleaned = _EMPTY_HTML_TAG_RE.sub("", text)
+    cleaned = _EMPTY_HTML_TAG_RE.sub("", cleaned)
+    return cleaned
+
+
 def _clean_section_title(raw: str) -> str:
-    """Strip HTML span anchors and apply a defensive length cap.
+    """Clean a heading captured by ``HEADING_PATTERN``.
+
+    Pipeline:
+
+    1. Strip empty HTML elements (page anchors etc.)
+    2. Strip leading/trailing markdown emphasis markers
+       (``**``, ``__``, ``*``, ``_``) wrapping the whole title.
+    3. Collapse whitespace runs to single spaces.
+    4. Cap length at ``_MAX_SECTION_TITLE_CHARS``.
 
     Args:
         raw: Heading text as captured by ``HEADING_PATTERN``.
 
     Returns:
-        Cleaned title — no empty span tags, surrounding
-        whitespace collapsed, length capped at
-        ``_MAX_SECTION_TITLE_CHARS``.
+        Cleaned title — safe for storage in
+        ``rag_chunks.section_title`` and useful as retrieval
+        context.
     """
-    cleaned = _HTML_SPAN_RE.sub("", raw)
-    # Collapse any runs of whitespace introduced by the strip.
+    cleaned = _strip_empty_html(raw)
+    cleaned = _TITLE_EMPHASIS_PREFIX_RE.sub("", cleaned)
+    cleaned = _TITLE_EMPHASIS_SUFFIX_RE.sub("", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     if len(cleaned) > _MAX_SECTION_TITLE_CHARS:
         cleaned = cleaned[:_MAX_SECTION_TITLE_CHARS]
@@ -195,13 +237,14 @@ def parse_manual(text: str, filename: str = "") -> List[Section]:
     if not headings:
         # No headings found: single section from the whole document
         title = Path(filename).stem if filename else "Document"
+        body = _strip_empty_html(text.strip())
         return [
             Section(
                 title=title,
                 level=0,
-                body=text.strip(),
+                body=body,
                 vehicle_model=doc_vehicle_model,
-                dtc_codes=_extract_dtc_codes(text),
+                dtc_codes=_extract_dtc_codes(body),
             )
         ]
 
@@ -211,6 +254,7 @@ def parse_manual(text: str, filename: str = "") -> List[Section]:
     preamble = text[: headings[0].start()].strip()
     if preamble:
         title = Path(filename).stem if filename else "Introduction"
+        preamble = _strip_empty_html(preamble)
         sections.append(
             Section(
                 title=title,
@@ -228,7 +272,7 @@ def parse_manual(text: str, filename: str = "") -> List[Section]:
         # Body runs from end of this heading line to start of next heading (or EOF)
         body_start = match.end()
         body_end = headings[idx + 1].start() if idx + 1 < len(headings) else len(text)
-        body = text[body_start:body_end].strip()
+        body = _strip_empty_html(text[body_start:body_end].strip())
 
         # Section-level overrides: check section text for vehicle model
         section_vehicle = extract_vehicle_model(title + " " + body)
@@ -264,6 +308,9 @@ def parse_log(text: str, filename: str = "") -> List[Section]:
     # Logs typically don't carry frontmatter, but strip defensively
     # in case a future producer prepends one.
     _, text = _strip_yaml_frontmatter(text)
+
+    # Strip any empty HTML elements before further processing.
+    text = _strip_empty_html(text)
 
     # Try to build a title from Date and Service fields
     date_match = re.search(r"\*\*Date:\*\*\s*(.+)", text)
