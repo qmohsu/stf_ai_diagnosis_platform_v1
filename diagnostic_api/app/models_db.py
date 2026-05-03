@@ -390,7 +390,7 @@ class RagChunk(Base):
     text = Column(Text, nullable=False)
     doc_id = Column(String(255), nullable=False, index=True)
     source_type = Column(String(50), nullable=False)
-    section_title = Column(String(500), nullable=True)
+    section_title = Column(Text, nullable=True)
     vehicle_model = Column(
         String(100), nullable=True, index=True,
     )

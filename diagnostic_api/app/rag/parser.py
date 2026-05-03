@@ -13,6 +13,37 @@ from pydantic import BaseModel
 DTC_PATTERN = re.compile(r"\b[PBCU]\d{4}\b")
 HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+)$", re.MULTILINE)
 
+# Marker-pdf embeds HTML page-anchor spans inside headings for
+# the manual viewer (``<span id="page-281-1"></span>``).  Strip
+# them from section titles — they're navigation metadata, not
+# semantic retrieval signal, and they bloat the column to the
+# point of overflowing storage limits on long manuals.
+_HTML_SPAN_RE = re.compile(
+    r"<span\b[^>]*></span>", re.IGNORECASE,
+)
+# Belt-and-braces hard cap: a single section title should never
+# need more than this; truncate pathological inputs.
+_MAX_SECTION_TITLE_CHARS = 2000
+
+
+def _clean_section_title(raw: str) -> str:
+    """Strip HTML span anchors and apply a defensive length cap.
+
+    Args:
+        raw: Heading text as captured by ``HEADING_PATTERN``.
+
+    Returns:
+        Cleaned title — no empty span tags, surrounding
+        whitespace collapsed, length capped at
+        ``_MAX_SECTION_TITLE_CHARS``.
+    """
+    cleaned = _HTML_SPAN_RE.sub("", raw)
+    # Collapse any runs of whitespace introduced by the strip.
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if len(cleaned) > _MAX_SECTION_TITLE_CHARS:
+        cleaned = cleaned[:_MAX_SECTION_TITLE_CHARS]
+    return cleaned
+
 # YAML frontmatter delimiter pattern.  Marker-pdf-produced manuals
 # begin with a fenced ``---`` block; we strip it before heading
 # extraction so it does not become a phantom first chunk.
@@ -192,7 +223,7 @@ def parse_manual(text: str, filename: str = "") -> List[Section]:
 
     for idx, match in enumerate(headings):
         level = len(match.group(1))  # number of '#' chars
-        title = match.group(2).strip()
+        title = _clean_section_title(match.group(2))
 
         # Body runs from end of this heading line to start of next heading (or EOF)
         body_start = match.end()
