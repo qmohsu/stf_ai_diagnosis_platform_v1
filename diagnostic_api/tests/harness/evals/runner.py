@@ -127,7 +127,21 @@ def _agent_result_to_system_run(
 
     Mapping rules:
 
-    - ``output_text`` ← agent's synthesised summary.
+    - ``output_text`` ← agent's **synthesised summary plus the
+      retrieved section text**, joined by a clear separator.
+      This treats the agent's "deliverable" as everything it
+      surfaced — the synthesis AND the raw evidence the
+      synthesis was built from — mirroring how RAG's
+      ``output_text`` is the concatenated retrieved chunks.
+      Without the raw sections, an agent that retrieves the
+      right Chinese-language section but synthesises an
+      English summary scores 0 on ``fact_recall`` for any
+      Chinese ``must_contain`` term, even though the
+      information was demonstrably available.  Including
+      raw sections gives both systems equal footing: the
+      metric measures "did the system surface this fact in
+      any form a downstream consumer could see," not "did
+      the synthesis happen to preserve the source language."
     - ``retrieved_slugs`` ← union of citation slugs and
       raw_section slugs, deduplicated, order preserved.  The
       slug-canonicalisation fix in ``manual_agent`` already
@@ -162,6 +176,27 @@ def _agent_result_to_system_run(
             seen.add(sec.slug)
             slug_seq.append(sec.slug)
 
+    # Compose the "deliverable" — summary plus retrieved sections.
+    # Mirrors RAG's ``output_text`` shape (concatenated content);
+    # ensures cross-language ``fact_recall`` is symmetric across
+    # systems.  The separator is human-readable and unambiguous so
+    # downstream tooling (judge prompts, report viewers) can
+    # cleanly split the synthesis from the source evidence.
+    summary = result.summary or ""
+    section_blocks = [
+        f"[{sec.slug}]\n{sec.text}"
+        for sec in (result.raw_sections or [])
+        if sec.text
+    ]
+    if section_blocks:
+        sections_text = "\n\n".join(section_blocks)
+        output_text = (
+            f"{summary}\n\n--- Retrieved sections "
+            f"({len(section_blocks)}) ---\n\n{sections_text}"
+        )
+    else:
+        output_text = summary
+
     # Sum tool-call latencies as a proxy for LLM time.  Imperfect
     # — tool-call duration includes the round-trip but not the
     # LLM-side reasoning time spent BETWEEN tool calls.  Wall
@@ -174,7 +209,7 @@ def _agent_result_to_system_run(
     return SystemRunResult(
         system_label="manual_agent",
         question=question,
-        output_text=result.summary or "",
+        output_text=output_text,
         retrieved_slugs=slug_seq,
         retrieved_chunk_metadata=[],
         latency_ms_wall=latency_ms_wall,

@@ -41,12 +41,12 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from openai import AsyncOpenAI
 
 from app.config import settings
-from app.harness.deps import OpenAILLMClient
+from app.harness.deps import LLMResponse, OpenAILLMClient, ToolCallInfo
 from app.harness_agents.manual_agent import (
     ManualAgentConfig,
     ManualAgentDeps,
@@ -90,6 +90,63 @@ def _load_entry(path: Path) -> GoldenEntry:
 # ── Agent override builder ────────────────────────────────────────
 
 
+class _NoThinkOpenAILLMClient(OpenAILLMClient):
+    """OpenAILLMClient that injects ``/no_think`` into system messages.
+
+    Workaround for the Qwen3.5 thinking-token explosion when running
+    against local Ollama: the OpenAI-compat endpoint at ``/v1/chat/
+    completions`` ignores top-level ``think`` parameters, but the
+    Qwen-recognised ``/no_think`` directive in the system prompt
+    dramatically shortens the hidden reasoning channel — observed
+    drop from ~91s to ~2.5s for a tool-call response.
+
+    Lives in the eval driver (not in production code) because we
+    only need it for offline evaluation; production agents either
+    use OpenRouter or accept the latency.
+    """
+
+    async def chat(
+        self,
+        *,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        model: str,
+        temperature: float,
+        max_tokens: int,
+    ) -> LLMResponse:
+        """Inject ``/no_think`` into the first system message and forward."""
+        adjusted = _inject_no_think(messages)
+        return await super().chat(
+            messages=adjusted,
+            tools=tools,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+
+
+def _inject_no_think(
+    messages: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Return a copy of ``messages`` with ``/no_think`` in the system prompt.
+
+    Modifies only the first ``system``-role message.  If no system
+    message exists, prepends one containing only the directive.
+    Existing system content is preserved with the directive
+    appended on a new line.
+    """
+    out = [dict(m) for m in messages]
+    for m in out:
+        if m.get("role") == "system":
+            existing = m.get("content") or ""
+            if "/no_think" in existing:
+                return out
+            m["content"] = f"{existing}\n\n/no_think".lstrip()
+            return out
+    # No system message — prepend one.
+    return [{"role": "system", "content": "/no_think"}] + out
+
+
 def _build_override_deps(
     args: argparse.Namespace,
 ) -> Optional[ManualAgentDeps]:
@@ -101,18 +158,28 @@ def _build_override_deps(
     overrides are passed; the runner's process-cached default
     (Ollama + ``qwen3.5:27b-q8_0``) is then used.
     """
-    if not args.llm_base_url and not args.model:
+    if (
+        not args.llm_base_url
+        and not args.model
+        and not args.no_think
+    ):
         return None
     base_url = args.llm_base_url or f"{settings.llm_endpoint}/v1"
-    api_key = (
-        os.getenv(args.llm_api_key_env)
-        if args.llm_api_key_env else "ollama"
-    )
-    if not api_key:
+    # Default api_key for Ollama is the literal string "ollama"
+    # (Ollama's OpenAI-compat ignores the value but the SDK
+    # requires non-empty).  For OpenRouter the env var must be
+    # set or we error early.
+    if args.llm_api_key_env and os.getenv(args.llm_api_key_env):
+        api_key = os.getenv(args.llm_api_key_env)
+    elif args.llm_base_url and "ollama" not in (
+        args.llm_base_url or ""
+    ).lower() and "127.0.0.1" not in (args.llm_base_url or ""):
         raise RuntimeError(
             f"--llm-api-key-env={args.llm_api_key_env} is empty; "
             "export the variable or omit the flag.",
         )
+    else:
+        api_key = "ollama"
     client = AsyncOpenAI(
         api_key=api_key,
         base_url=base_url,
@@ -129,8 +196,14 @@ def _build_override_deps(
         cfg_kwargs["timeout_seconds"] = float(args.timeout)
     if args.max_iterations:
         cfg_kwargs["max_iterations"] = int(args.max_iterations)
+    if args.max_tokens:
+        cfg_kwargs["max_tokens"] = int(args.max_tokens)
+    llm_client = (
+        _NoThinkOpenAILLMClient(client)
+        if args.no_think else OpenAILLMClient(client)
+    )
     return ManualAgentDeps(
-        llm_client=OpenAILLMClient(client),
+        llm_client=llm_client,
         tool_registry=create_manual_agent_registry(),
         config=ManualAgentConfig(**cfg_kwargs),
     )
@@ -429,6 +502,23 @@ def _parse_args(argv: Optional[list] = None) -> argparse.Namespace:
     parser.add_argument(
         "--max-iterations", type=int, default=None,
         help="Max ReAct iterations.",
+    )
+    parser.add_argument(
+        "--max-tokens", type=int, default=None,
+        help="Per-call max_tokens for the agent's LLM "
+             "(default 12288).  Lower this when OpenRouter "
+             "credits are tight — error 402 means the account "
+             "balance can't cover the requested ceiling.",
+    )
+    parser.add_argument(
+        "--no-think", action="store_true",
+        help="Inject the Qwen3 '/no_think' directive into the "
+             "agent's system prompt.  Required when running "
+             "qwen3.5:27b-q8_0 on local Ollama — otherwise the "
+             "agent times out emitting hidden reasoning tokens. "
+             "Drops first-token latency from ~91s to ~2.5s.  "
+             "Harmless on non-Qwen models (the directive is "
+             "ignored).",
     )
     parser.add_argument(
         "--judge-model", default=None,
