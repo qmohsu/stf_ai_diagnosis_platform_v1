@@ -35,6 +35,49 @@ from typing import List, Optional
 from tests.harness.evals.schemas import GoldenEntry, SystemRunResult
 
 
+# ── Tokenizer (lazy-init) ────────────────────────────────────────
+
+
+# cl100k_base is the GPT-4 / DeepSeek-family BPE tokenizer.  We use
+# it to count tokens in fact_density's conciseness factor — tokens
+# are the right cost unit because the downstream consumer of the
+# manual agent's output is another diagnose LLM, where context
+# tokens are the actual budget.  Word-based counting (.split()) is
+# biased against languages without inter-word whitespace (Chinese,
+# Japanese), which matters for our bilingual manual.
+_ENC = None
+
+
+def _count_tokens(text: str) -> int:
+    """Return the cl100k_base token count for ``text``.
+
+    Lazily imports and caches the tiktoken encoding singleton
+    (the encoding object is small but the import is non-trivial).
+    Falls back to a coarse ``len(text) // 4`` estimate if tiktoken
+    isn't available — mirrors the OpenAI rule-of-thumb and keeps
+    metrics computable in environments without the optional dep.
+
+    Args:
+        text: Output text from the system under evaluation.
+
+    Returns:
+        Token count, or 0 for empty/None input.
+    """
+    global _ENC
+    if not text:
+        return 0
+    if _ENC is None:
+        try:
+            import tiktoken
+            _ENC = tiktoken.get_encoding("cl100k_base")
+        except Exception:
+            # Sentinel: don't retry the import on every call.
+            _ENC = False
+    if _ENC is False:
+        return max(1, len(text) // 4)
+    return len(_ENC.encode(text))
+
+
 # ── Whitespace normalisation (mirrors generator script) ──────────
 
 
@@ -238,43 +281,91 @@ def _compute_fact_recall(
     return score, hits, misses
 
 
+# Token budget constants for fact_density's conciseness factor.
+#
+# Calibrated 2026-05-04 against dtc-001 and lookup-001 agent outputs.
+# Rationale:
+# - The downstream consumer of the manual agent's deliverable is
+#   another LLM (diagnose loop).  Token count = actual context cost.
+# - Both the synthesis summary AND the raw_sections concat are part
+#   of the deliverable (the consumer LLM needs both: framing + source
+#   text to quote from).  So we count ``output_text`` whole.
+# - Budget scales with the number of must_contain facts the question
+#   requires the system to convey.  Each fact "deserves" some token
+#   allowance for surrounding context.  More facts → bigger budget.
+# - Below the budget, conciseness = 1.0 (no penalty).  Above it, it
+#   decays linearly (``budget / tokens``).  The earlier 100-word cap
+#   was calibrated for human chat replies; this one is calibrated
+#   for LLM-to-LLM hand-off, where 5,000-15,000 tokens is normal.
+_BASE_TOKEN_BUDGET = 500
+"""Fixed allowance for framing, headers, synthesis prose."""
+
+_PER_FACT_TOKEN_BUDGET = 2500
+"""Per-fact allowance — covers the synthesis sentence plus enough
+raw section content to substantiate it.  Calibrated against dtc-001
+agent output (11,821 tokens, 5 facts) so an honest deliverable
+lands at conciseness = 1.0.  Bloated outputs (e.g. 50,000 tokens)
+still drop to ~0.26.  Generous on purpose: under-budgeting
+penalises agents for including the source manual text, which we
+explicitly want them to do."""
+
+
 def _compute_fact_density(
     fact_hits: List[str],
     must_contain: List[str],
     output_text: str,
 ) -> float:
-    """Recall × conciseness factor.
+    """Recall × token-based conciseness factor.
 
-    Rewards an answer that hits all the facts AND does so
-    concisely.  Two factors combined:
+    Rewards an answer that hits all the facts AND does so within
+    a token budget appropriate for the number of facts requested.
 
     - ``recall = hits / max(must_contain, 1)`` — fraction of
       facts the output covers.
-    - ``conciseness = min(1, 100 / max(words, 1))`` — caps at
-      1.0 below 100 output words; decays linearly above.
+    - ``budget = BASE + PER_FACT * len(must_contain)`` — scales
+      with question complexity.
+    - ``conciseness = min(1, budget / max(tokens, 1))`` — caps
+      at 1.0 below budget; decays linearly above.
 
-    ``density = recall * conciseness``.
+    ``density = recall × conciseness``.
 
-    Behaviour:
+    Why tokens not words:
+    - Language-aware.  ``.split()`` under-counts Chinese (no
+      inter-word whitespace), which biased the old metric.
+    - Aligns with the actual consumer cost.  The downstream
+      diagnose LLM sees this output as input tokens; that's
+      the budget that matters.
+    - Removes a class of edge cases (code blocks, tables,
+      numerical content all tokenize sensibly).
 
-    - 50 words, 5/5 hits → 1.0 × 1.0 = 1.0  (concise + complete)
-    - 500 words, 5/5 hits → 1.0 × 0.2 = 0.2  (correct but verbose)
-    - 50 words, 1/5 hits → 0.2 × 1.0 = 0.2  (concise but missing facts)
-    - 500 words, 1/5 hits → 0.2 × 0.2 = 0.04  (verbose AND missing)
-
-    The earlier formula ``hits / max(words / 100, 1)`` over-
-    rewarded short outputs that had even one fact — RAG's
-    fragmentary chunks could score 1.0 density on 1/5 facts.
+    Why budget scales with facts:
+    - 1-fact lookups deserve ~500-2500 tokens.
+    - 5-fact procedurals deserve ~5,000-10,500 tokens.
+    - A fixed 100-word cap (~150 tokens) made every honest
+      answer look bloated.
 
     Empty output or empty must_contain returns 0.0.
+
+    Args:
+        fact_hits: must_contain terms present in output_text.
+        must_contain: golden's required facts.
+        output_text: the system's deliverable (summary + raw
+            sections concat for the agent; chunk concat for RAG).
+
+    Returns:
+        Density in [0, 1].
     """
     if not output_text or not must_contain:
         return 0.0
-    words = len(output_text.split())
-    if words == 0:
+    tokens = _count_tokens(output_text)
+    if tokens == 0:
         return 0.0
     recall = len(fact_hits) / len(must_contain)
-    conciseness = min(1.0, 100.0 / max(words, 1))
+    budget = (
+        _BASE_TOKEN_BUDGET
+        + _PER_FACT_TOKEN_BUDGET * len(must_contain)
+    )
+    conciseness = min(1.0, budget / max(tokens, 1))
     return recall * conciseness
 
 
@@ -440,25 +531,27 @@ def compute_deterministic_metrics(
 # constant (not hard-coded into a single formula) so we can
 # tune without rewriting callers.  Sums to 1.0.
 #
-# Rebalanced 2026-05-03 alongside the
-# section_precision → claim_precision + exploration_cost
-# split:
-# - claim_precision keeps the previous section_precision
-#   weight (0.15) — it's the like-for-like replacement.
-# - (1 - exploration_cost) gets a small weight (0.05) — keeps
-#   navigation honest without dominating.
-# - The +0.05 budget for exploration_cost comes from
-#   fact_density (0.10 → 0.05), which we flagged as
-#   misleadingly low when output_text includes raw_sections.
-#   De-weighting the broken metric is a fair trade until we
-#   redesign it.
+# Rebalanced 2026-05-04 after the fact_density rework:
+# - fact_density now uses a token-based budget that scales with
+#   the number of must_contain facts.  No longer broken by
+#   raw_sections concat.  Restored to 0.10 weight (was 0.05
+#   while broken).
+# - exploration_cost stays at 0.05 — it's a real cost, not
+#   negligible, but shouldn't dominate.
+# - hallucination_penalty trimmed 0.15 → 0.10 to fund the
+#   fact_density restoration.  Rationale: hallucination_penalty
+#   is near-saturated on non-adversarial entries (most systems
+#   score 1.0 — they don't fabricate must_not_contain terms),
+#   so an extra 0.05 of weight here mostly inflates everyone
+#   uniformly without improving discrimination.  The judge's
+#   answer_quality already catches subtler hallucinations.
 DEFAULT_OVERALL_WEIGHTS: dict = {
     "section_recall":         0.25,
     "claim_precision":        0.15,
     "exploration_cost":       0.05,  # applied as (1 - cost)
     "fact_recall":            0.20,
-    "fact_density":           0.05,
-    "hallucination_penalty":  0.15,
+    "fact_density":           0.10,
+    "hallucination_penalty":  0.10,
     "citation_quality":       0.05,
     "answer_quality":         0.10,
 }

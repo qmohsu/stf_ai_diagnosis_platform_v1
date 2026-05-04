@@ -43,6 +43,12 @@ phonenumbers==8.13.28
 # CJK Text Processing (Chinese word segmentation for RAG chunker)
 jieba>=0.42.1
 
+# Tokenizer (cl100k_base, used by harness eval fact_density metric to
+# count tokens in a language-aware way — Chinese + English mix needs
+# this for fair conciseness scoring; downstream consumer is another
+# LLM so tokens are the right cost unit).
+tiktoken==0.7.0
+
 # Testing (optional, for development)
 pytest==7.4.4
 pytest-asyncio==0.23.3
