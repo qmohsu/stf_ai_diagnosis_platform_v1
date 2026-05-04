@@ -101,13 +101,13 @@ async def run_rag(
     wall_end = time.perf_counter()
     latency_ms_wall = (wall_end - wall_start) * 1000
 
-    # ── Normalise chunks → metadata + retrieved_slugs ────────────
+    # ── Normalise chunks → metadata + slug lists ────────────────
 
     metadata: List[RetrievedChunkMetadata] = []
-    retrieved_slugs_seq: List[str] = []
+    slug_seq: List[str] = []
     for chunk in chunks:
-        # ``chunk.section_title`` is the heading text.  Slugify it
-        # to bridge to ``GoldenCitation.slug`` (which is the
+        # ``chunk.section_title`` is the heading text.  Slugify
+        # it to bridge to ``GoldenCitation.slug`` (which is the
         # parser-canonical form from ``parse_heading_tree``).
         chunk_slug = slugify(chunk.section_title or "")
 
@@ -131,17 +131,26 @@ async def run_rag(
             dtc_codes=[str(c) for c in dtc_codes],
             text_preview=text_preview,
         ))
-        retrieved_slugs_seq.append(chunk_slug)
+        slug_seq.append(chunk_slug)
 
     # Deduplicate while preserving order — multiple chunks may
     # belong to the same heading; ``section_recall`` should not
     # count them multiple times.
     seen: set = set()
-    retrieved_slugs: List[str] = []
-    for s in retrieved_slugs_seq:
+    unique_slugs: List[str] = []
+    for s in slug_seq:
         if s and s not in seen:
             seen.add(s)
-            retrieved_slugs.append(s)
+            unique_slugs.append(s)
+
+    # RAG has no separate synthesis step — its retrieval IS its
+    # claim.  Both ``claim_slugs`` and ``read_slugs`` get the
+    # same list, which makes ``exploration_cost`` always 0.0
+    # for RAG (everything it accessed is part of its claim).
+    # That's intentional: the navigation-vs-grounding distinction
+    # only exists for the agent.
+    claim_slugs = unique_slugs
+    read_slugs = unique_slugs
 
     # ── Compose output_text for the judge's must_contain scan ────
 
@@ -166,7 +175,7 @@ async def run_rag(
         question_preview=question[:80],
         top_k=top_k,
         retrieved=len(chunks),
-        unique_slugs=len(retrieved_slugs),
+        unique_slugs=len(unique_slugs),
         latency_ms_wall=round(latency_ms_wall, 1),
     )
 
@@ -174,7 +183,8 @@ async def run_rag(
         system_label="rag",
         question=question,
         output_text=output_text,
-        retrieved_slugs=retrieved_slugs,
+        claim_slugs=claim_slugs,
+        read_slugs=read_slugs,
         retrieved_chunk_metadata=metadata,
         latency_ms_wall=latency_ms_wall,
         latency_ms_llm=latency_ms_llm,

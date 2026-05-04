@@ -398,7 +398,8 @@ async def grade_run(
 
     return Grade(
         section_recall=det.section_recall,
-        section_precision=det.section_precision,
+        claim_precision=det.claim_precision,
+        exploration_cost=det.exploration_cost,
         fact_recall=det.fact_recall,
         fact_density=det.fact_density,
         hallucination_penalty=det.hallucination_penalty,

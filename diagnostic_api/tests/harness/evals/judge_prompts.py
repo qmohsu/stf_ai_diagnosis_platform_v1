@@ -187,6 +187,12 @@ def build_user_prompt(
         if run.system_label == "rag" else "  (n/a — agent output)"
     )
 
+    claim_block = (
+        ', '.join(run.claim_slugs) if run.claim_slugs else '(none)'
+    )
+    read_block = (
+        ', '.join(run.read_slugs) if run.read_slugs else '(none)'
+    )
     return f"""\
 ## QUESTION
 {entry.question}
@@ -196,8 +202,12 @@ def build_user_prompt(
 
 ## SYSTEM UNDER TEST: {run.system_label}
 
-### Retrieved slugs
-{', '.join(run.retrieved_slugs) if run.retrieved_slugs else '(none)'}
+### Cited slugs (the system's claim about which sections are answers)
+{claim_block}
+
+### Read slugs (sections the system actually accessed; may include
+### navigation/index pages even when not cited)
+{read_block}
 
 ### Retrieved chunks (RAG only)
 {chunk_block}

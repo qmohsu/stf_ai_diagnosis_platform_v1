@@ -225,7 +225,8 @@ def _format_run_summary(run: SystemRunResult) -> str:
         f"  system           : {run.system_label}",
         f"  stopped_reason   : {run.stopped_reason}",
         f"  iterations       : {run.iterations}",
-        f"  retrieved_slugs  : {run.retrieved_slugs or '(none)'}",
+        f"  claim_slugs      : {run.claim_slugs or '(none)'}",
+        f"  read_slugs       : {run.read_slugs or '(none)'}",
         f"  latency_ms_wall  : {run.latency_ms_wall:.0f}",
         f"  latency_ms_llm   : {run.latency_ms_llm:.0f}",
         f"  cost_usd         : ${run.cost_usd:.5f}",
@@ -264,7 +265,8 @@ def _format_grade_table(
     """Return rows for a side-by-side grade table."""
     return [
         (f"{label} section_recall", f"{grade.section_recall:.3f}"),
-        (f"{label} section_precision", f"{grade.section_precision:.3f}"),
+        (f"{label} claim_precision", f"{grade.claim_precision:.3f}"),
+        (f"{label} exploration_cost", f"{grade.exploration_cost:.3f}"),
         (f"{label} fact_recall", f"{grade.fact_recall:.3f}"),
         (f"{label} fact_density", f"{grade.fact_density:.3f}"),
         (f"{label} hallucination_penalty",
@@ -284,46 +286,32 @@ def _format_side_by_side(
     rag_grade: Optional[Grade],
 ) -> str:
     """Side-by-side comparison of agent vs RAG grades."""
+    metrics_keys = [
+        "section_recall", "claim_precision", "exploration_cost",
+        "fact_recall", "fact_density",
+        "hallucination_penalty", "citation_quality",
+        "answer_quality", "trajectory_efficiency",
+    ]
     if not (agent_grade and rag_grade):
         # Single-system mode — just print whichever ran.
-        if agent_grade:
-            rows = [
-                ("section_recall", f"{agent_grade.section_recall:.3f}"),
-                ("section_precision", f"{agent_grade.section_precision:.3f}"),
-                ("fact_recall", f"{agent_grade.fact_recall:.3f}"),
-                ("fact_density", f"{agent_grade.fact_density:.3f}"),
-                ("hallucination_penalty", f"{agent_grade.hallucination_penalty:.3f}"),
-                ("citation_quality", f"{agent_grade.citation_quality:.3f}"),
-                ("answer_quality", f"{agent_grade.answer_quality:.3f}"),
-                ("trajectory_efficiency", f"{agent_grade.trajectory_efficiency:.3f}"),
-                ("OVERALL", f"{agent_grade.overall:.3f} (× 100 = {agent_grade.overall*100:.1f})"),
-            ]
-            label = agent_run.system_label if agent_run else "agent"
-        else:
-            rows = [
-                ("section_recall", f"{rag_grade.section_recall:.3f}"),
-                ("section_precision", f"{rag_grade.section_precision:.3f}"),
-                ("fact_recall", f"{rag_grade.fact_recall:.3f}"),
-                ("fact_density", f"{rag_grade.fact_density:.3f}"),
-                ("hallucination_penalty", f"{rag_grade.hallucination_penalty:.3f}"),
-                ("citation_quality", f"{rag_grade.citation_quality:.3f}"),
-                ("answer_quality", f"{rag_grade.answer_quality:.3f}"),
-                ("trajectory_efficiency", f"{rag_grade.trajectory_efficiency:.3f}"),
-                ("OVERALL", f"{rag_grade.overall:.3f} (× 100 = {rag_grade.overall*100:.1f})"),
-            ]
-            label = rag_run.system_label if rag_run else "rag"
+        single = agent_grade or rag_grade
+        single_run = agent_run or rag_run
+        rows = [
+            (k, f"{getattr(single, k):.3f}")
+            for k in metrics_keys
+        ]
+        rows.append((
+            "OVERALL",
+            f"{single.overall:.3f} (× 100 = {single.overall*100:.1f})",
+        ))
+        label = single_run.system_label if single_run else "system"
         out = [f"{'metric':24s}  {label}"]
         for k, v in rows:
             out.append(f"{k:24s}  {v}")
         return "\n".join(out)
 
     # Both ran — side-by-side.
-    metrics = [
-        "section_recall", "section_precision",
-        "fact_recall", "fact_density",
-        "hallucination_penalty", "citation_quality",
-        "answer_quality", "trajectory_efficiency",
-    ]
+    metrics = metrics_keys
     out = [
         f"{'metric':24s}  {'AGENT':>10s}  {'RAG':>10s}  {'DELTA':>10s}",
         "─" * 60,

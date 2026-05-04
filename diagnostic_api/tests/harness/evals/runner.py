@@ -137,15 +137,19 @@ def _agent_result_to_system_run(
       right Chinese-language section but synthesises an
       English summary scores 0 on ``fact_recall`` for any
       Chinese ``must_contain`` term, even though the
-      information was demonstrably available.  Including
-      raw sections gives both systems equal footing: the
-      metric measures "did the system surface this fact in
-      any form a downstream consumer could see," not "did
-      the synthesis happen to preserve the source language."
-    - ``retrieved_slugs`` ← union of citation slugs and
-      raw_section slugs, deduplicated, order preserved.  The
-      slug-canonicalisation fix in ``manual_agent`` already
-      ensures these are parser-canonical.
+      information was demonstrably available.
+    - ``claim_slugs`` ← parser-canonical slugs from
+      ``result.citations[].slug``, deduplicated.  These are
+      the sections the agent **explicitly cited as answer
+      sources** in its final JSON.  Used by
+      ``claim_precision`` and ``citation_quality``.
+    - ``read_slugs`` ← parser-canonical slugs from
+      ``result.raw_sections[].slug``, deduplicated.  These
+      are sections the agent **actually accessed** via
+      ``read_manual_section`` calls — including index/TOC
+      sections used for navigation, even when they didn't
+      end up in the final answer.  Used by
+      ``exploration_cost``.
     - ``tool_trace``, ``stopped_reason``, ``iterations`` ←
       passed through.
     - ``latency_ms_llm`` ← sum of tool-call latencies as a
@@ -165,22 +169,32 @@ def _agent_result_to_system_run(
     Returns:
         Normalised ``SystemRunResult``.
     """
-    slug_seq: List[str] = []
-    seen: set = set()
+    # Slugs the agent explicitly CITED as answer sources.  The
+    # slug-canonicalisation fix in ``manual_agent._parse_final_json``
+    # ensures these are parser-canonical even when the LLM
+    # echoed the section's display title.
+    claim_slugs: List[str] = []
+    seen_claim: set = set()
     for cit in result.citations or []:
-        if cit.slug and cit.slug not in seen:
-            seen.add(cit.slug)
-            slug_seq.append(cit.slug)
+        if cit.slug and cit.slug not in seen_claim:
+            seen_claim.add(cit.slug)
+            claim_slugs.append(cit.slug)
+
+    # Slugs the agent actually READ via read_manual_section.
+    # May overlap with claim_slugs (when the agent cites what
+    # it read) or diverge (when the LLM cites from memory).
+    read_slugs: List[str] = []
+    seen_read: set = set()
     for sec in result.raw_sections or []:
-        if sec.slug and sec.slug not in seen:
-            seen.add(sec.slug)
-            slug_seq.append(sec.slug)
+        if sec.slug and sec.slug not in seen_read:
+            seen_read.add(sec.slug)
+            read_slugs.append(sec.slug)
 
     # Compose the "deliverable" — summary plus retrieved sections.
     # Mirrors RAG's ``output_text`` shape (concatenated content);
     # ensures cross-language ``fact_recall`` is symmetric across
-    # systems.  The separator is human-readable and unambiguous so
-    # downstream tooling (judge prompts, report viewers) can
+    # systems.  The separator is human-readable and unambiguous
+    # so downstream tooling (judge prompts, report viewers) can
     # cleanly split the synthesis from the source evidence.
     summary = result.summary or ""
     section_blocks = [
@@ -210,7 +224,8 @@ def _agent_result_to_system_run(
         system_label="manual_agent",
         question=question,
         output_text=output_text,
-        retrieved_slugs=slug_seq,
+        claim_slugs=claim_slugs,
+        read_slugs=read_slugs,
         retrieved_chunk_metadata=[],
         latency_ms_wall=latency_ms_wall,
         latency_ms_llm=llm_proxy,

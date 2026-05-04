@@ -230,14 +230,21 @@ class SystemRunResult(BaseModel):
             building convenience.
         output_text: The text the judge will check
             ``must_contain`` / ``must_not_contain`` against.
-            For the agent: the synthesised summary.
+            For the agent: the synthesised summary plus
+            retrieved-section text concatenated.
             For RAG: the top-k retrieved chunks concatenated.
-        retrieved_slugs: Canonical slugs (parser-form) the
-            system surfaced.  Used by ``section_recall`` and
-            ``section_precision``.  For the agent: union of
-            ``citations[].slug`` and ``raw_sections[].slug``.
-            For RAG: ``slugify(chunk.section_title)`` for each
-            retrieved chunk, deduplicated.
+        claim_slugs: Slugs the system explicitly cited as
+            answer sources.  For the agent: parser-canonical
+            ``citations[].slug`` from the final JSON answer.
+            For RAG: same as ``read_slugs`` — RAG has no
+            synthesis step, so its retrieval IS its claim.
+            Drives ``claim_precision``.
+        read_slugs: Slugs the system actually accessed.  For
+            the agent: parser-canonical ``raw_sections[].slug``
+            from each ``read_manual_section`` call.  For RAG:
+            same as ``claim_slugs``.  Drives
+            ``exploration_cost`` (un-cited reads count as
+            navigation overhead).
         retrieved_chunk_metadata: RAG-only.  Empty for the
             agent.  Captures per-chunk score / metadata so
             recall@k and precision@k can be reported.
@@ -262,7 +269,8 @@ class SystemRunResult(BaseModel):
     system_label: SystemLabel
     question: str
     output_text: str
-    retrieved_slugs: List[str] = Field(default_factory=list)
+    claim_slugs: List[str] = Field(default_factory=list)
+    read_slugs: List[str] = Field(default_factory=list)
     retrieved_chunk_metadata: List[RetrievedChunkMetadata] = Field(
         default_factory=list,
     )
@@ -296,13 +304,25 @@ class Grade(BaseModel):
     ``reasoning`` only.
 
     Attributes:
-        section_recall: ``|retrieved_slugs ∩ expected_recall_slugs|
-            / |expected_recall_slugs|``.  How much of the
-            authoritative source the system surfaced.
-        section_precision: ``|retrieved_slugs ∩ expected_recall_slugs|
-            / |retrieved_slugs|``.  How much of what was
-            retrieved was actually relevant.  Standard IR
-            metric — penalises shotgun retrieval.
+        section_recall: ``|(claim_slugs ∪ read_slugs) ∩
+            expected_recall_slugs| / |expected_recall_slugs|``.
+            How much of the authoritative source the system
+            surfaced — anywhere, by any means.  Higher = better.
+        claim_precision: ``|claim_slugs ∩ expected_recall_slugs|
+            / |claim_slugs|``.  Of the slugs the system
+            **explicitly cited as answer sources**, what
+            fraction were correct.  Replaces the older
+            ``section_precision`` which conflated reads with
+            citations and unfairly penalised the agent for
+            legitimate index-flipping navigation.  RAG: same
+            as the old metric (claim == retrieval).  Higher
+            = better.
+        exploration_cost: ``1 - |claim_slugs ∩ read_slugs| /
+            max(|read_slugs|, 1)``.  Fraction of read sections
+            that were NOT cited in the final answer.  Captures
+            "how much navigation overhead did the agent pay?"
+            For RAG (no synthesis step) this is always 0.0
+            — RAG's reads ARE its claims.  LOWER = better.
         fact_recall: Fraction of ``must_contain`` items found
             in ``output_text`` (case-insensitive,
             whitespace-normalised substring).
@@ -314,11 +334,12 @@ class Grade(BaseModel):
             * 0.5)``.  First hallucination costs 0.5; further
             ones are diminishing penalties.  Captures "one bad
             fact poisons the answer."  HIGHER = better.
-        citation_quality: Tiered.
-            0.0 = no citations / retrieval surfaced nothing.
-            0.3 = retrieved something, but no slugs match
+        citation_quality: Tiered, computed against
+            ``claim_slugs``.
+            0.0 = no claim slugs (system cited nothing).
+            0.3 = claimed slugs, but none match
                   ``expected_recall_slugs`` (cited but wrong).
-            1.0 = ≥1 retrieved slug matches.
+            1.0 = ≥1 claimed slug matches.
         answer_quality: LLM-judged 0.0–1.0 rating of the
             answer's correctness, completeness, and clarity
             against ``golden_summary``.  RAGAs / G-Eval style.
@@ -328,21 +349,26 @@ class Grade(BaseModel):
             expected_calls))`` with brute-force-detection guard.
             Reported but NOT in ``overall`` — it's a trade-off
             dim, not a quality dim.  RAG always scores 1.0.
-        overall: Weighted ``[0.0, 1.0]``.  First-pass formula:
-            0.25*section_recall + 0.15*section_precision
-            + 0.20*fact_recall + 0.10*fact_density
-            + 0.15*hallucination_penalty + 0.05*citation_quality
+        overall: Weighted ``[0.0, 1.0]``.  Current formula:
+            0.25*section_recall
+            + 0.15*claim_precision
+            + 0.05*(1 - exploration_cost)
+            + 0.20*fact_recall
+            + 0.05*fact_density
+            + 0.15*hallucination_penalty
+            + 0.05*citation_quality
             + 0.10*answer_quality.
             Reported in eval reports as percentage (× 100).
-            Weights TBD after first real run — iterating per
-            #74 plan.
+            Weights still tunable — see
+            ``DEFAULT_OVERALL_WEIGHTS`` in metrics.py.
         reasoning: 2–4 sentences from the judge citing specific
             evidence for ``answer_quality``.  Substring metrics
             don't need reasoning (they're deterministic).
     """
 
     section_recall: float = Field(ge=0.0, le=1.0)
-    section_precision: float = Field(ge=0.0, le=1.0)
+    claim_precision: float = Field(ge=0.0, le=1.0)
+    exploration_cost: float = Field(ge=0.0, le=1.0)
     fact_recall: float = Field(ge=0.0, le=1.0)
     fact_density: float = Field(ge=0.0, le=1.0)
     hallucination_penalty: float = Field(ge=0.0, le=1.0)

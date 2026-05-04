@@ -79,12 +79,19 @@ class DeterministicMetrics:
     ``answer_quality`` from the judge to form the final ``Grade``.
 
     Attributes:
-        section_recall: Fraction of golden slugs covered.
-        section_precision: Fraction of retrieved that are golden.
+        section_recall: Fraction of golden slugs the system
+            surfaced anywhere (claim ∪ read).
+        claim_precision: Fraction of CITED slugs that match
+            golden.  Replaces the older ``section_precision``
+            which conflated reads and citations.
+        exploration_cost: Fraction of READ slugs that were
+            NOT cited.  Higher = more navigation waste.  Always
+            0.0 for RAG (no synthesis step).
         fact_recall: Fraction of must_contain present in output.
-        fact_density: Fact hits per 100 output words.
+        fact_density: Fact hits × conciseness factor.
         hallucination_penalty: ``1 - min(1, count * 0.5)``.
-        citation_quality: Tiered (0.0 / 0.3 / 1.0).
+        citation_quality: Tiered (0.0 / 0.3 / 1.0), against
+            claim_slugs.
         trajectory_efficiency: Agent-only; 1.0 for RAG.
         fact_recall_hits: Concrete list of must_contain that hit
             (for reasoning / debugging).
@@ -95,7 +102,8 @@ class DeterministicMetrics:
     """
 
     section_recall: float
-    section_precision: float
+    claim_precision: float
+    exploration_cost: float
     fact_recall: float
     fact_density: float
     hallucination_penalty: float
@@ -112,9 +120,14 @@ class DeterministicMetrics:
 
 
 def _compute_section_recall(
-    expected: List[str], retrieved: List[str],
+    expected: List[str], surfaced: List[str],
 ) -> float:
-    """``|retrieved ∩ expected| / |expected|``, 0 when expected empty.
+    """``|surfaced ∩ expected| / |expected|``, 1 when expected empty.
+
+    ``surfaced`` should be the union of ``claim_slugs`` and
+    ``read_slugs`` — recall asks "did the system make this
+    section available at all," regardless of whether it was
+    explicitly cited or merely read during navigation.
 
     Empty ``expected`` (typical for adversarial entries where
     no slug is the right answer) returns 1.0 — the system did
@@ -123,39 +136,78 @@ def _compute_section_recall(
     if not expected:
         return 1.0
     expected_set = {s for s in expected if s}
-    retrieved_set = {s for s in retrieved if s}
+    surfaced_set = {s for s in surfaced if s}
     if not expected_set:
         return 1.0
-    overlap = expected_set & retrieved_set
+    overlap = expected_set & surfaced_set
     return len(overlap) / len(expected_set)
 
 
-def _compute_section_precision(
-    expected: List[str], retrieved: List[str],
+def _compute_claim_precision(
+    expected: List[str], claim: List[str],
 ) -> float:
-    """``|retrieved ∩ expected| / |retrieved|``, 1 when retrieved empty.
+    """``|claim ∩ expected| / |claim|``, 1 when claim empty.
 
-    Empty ``retrieved`` returns 1.0 (vacuously precise — there's
-    nothing wrong in the empty set).  But a system that
-    retrieved nothing also scores 0 on ``section_recall``, so
-    it can't ride this freebie to a high overall score.
+    Replaces the older ``_compute_section_precision`` which
+    operated over the union of claim + read.  This version
+    only counts what the system **explicitly cited as an
+    answer source** — for the agent, slugs from
+    ``result.citations[].slug``; for RAG, slugs from each
+    retrieved chunk (RAG has no separate synthesis step).
 
-    Adversarial entries (empty ``expected``) are a special case:
-    if the system retrieved anything, it's all "wrong" —
-    precision = 0.  If the system retrieved nothing, it's
-    correctly silent — precision = 1.
+    Empty ``claim`` returns 1.0 (vacuously precise).  But a
+    system that claimed nothing also scores 0 on
+    ``section_recall``, so it can't ride this freebie to a
+    high overall score.
+
+    Adversarial entries (empty ``expected``) are a special
+    case: if the system claimed anything, it's all "wrong"
+    — precision = 0.  If the system correctly stayed silent,
+    precision = 1.
     """
-    if not retrieved:
+    if not claim:
         return 1.0
     if not expected:
-        # Adversarial: anything retrieved is incorrect.
+        # Adversarial: anything claimed is incorrect.
         return 0.0
     expected_set = {s for s in expected if s}
-    retrieved_set = {s for s in retrieved if s}
-    if not retrieved_set:
+    claim_set = {s for s in claim if s}
+    if not claim_set:
         return 1.0
-    overlap = expected_set & retrieved_set
-    return len(overlap) / len(retrieved_set)
+    overlap = expected_set & claim_set
+    return len(overlap) / len(claim_set)
+
+
+def _compute_exploration_cost(
+    read: List[str], claim: List[str],
+) -> float:
+    """``1 - |claim ∩ read| / max(|read|, 1)``.  LOWER is better.
+
+    Captures "how much navigation overhead did the agent pay?"
+    Of the slugs the agent actually accessed via
+    ``read_manual_section``, what fraction did NOT make it
+    into the final claim?  A perfectly efficient agent reads
+    only what it cites (cost = 0.0); an agent that reads many
+    sections and cites few pays a higher exploration cost.
+
+    For RAG: ``read_slugs == claim_slugs`` (no synthesis),
+    so cost is always 0.0.  This is intentional — RAG doesn't
+    pay an exploration cost because there's no separate
+    "navigation vs grounding" distinction in its workflow.
+
+    Args:
+        read: Slugs the system accessed.
+        claim: Slugs the system explicitly cited.
+
+    Returns:
+        Cost in [0.0, 1.0].
+    """
+    read_set = {s for s in read if s}
+    if not read_set:
+        return 0.0  # No reads → no waste.
+    claim_set = {s for s in claim if s}
+    cited_count = len(read_set & claim_set)
+    return 1.0 - (cited_count / len(read_set))
 
 
 def _compute_fact_recall(
@@ -253,28 +305,33 @@ def _compute_hallucination_penalty(
 
 
 def _compute_citation_quality(
-    expected: List[str], retrieved: List[str],
+    expected: List[str], claim: List[str],
 ) -> float:
-    """Tiered citation quality.
+    """Tiered citation quality, computed against ``claim_slugs``.
 
-    - 0.0 — system retrieved no slugs.
-    - 0.3 — system retrieved slugs but none match the golden
+    Citation quality reflects the system's CLAIM about which
+    sections are answers, not its navigation history — so
+    this is checked against ``claim_slugs`` only, not the
+    union of claim + read.
+
+    - 0.0 — system claimed no slugs (empty citations).
+    - 0.3 — system claimed slugs but none match the golden
       (cited but wrong).
-    - 1.0 — at least one retrieved slug matches a golden slug.
+    - 1.0 — at least one claimed slug matches a golden slug.
 
     Adversarial entries (empty ``expected``) are graded
-    inversely: 1.0 if retrieved is empty (correctly silent),
-    0.3 if retrieved is non-empty (cited a wrong section
+    inversely: 1.0 if ``claim`` is empty (correctly silent),
+    0.3 if ``claim`` is non-empty (cited a wrong section
     when the question had no answer).
     """
     if not expected:
         # Adversarial — silence is the correct citation.
-        return 1.0 if not retrieved else 0.3
-    if not retrieved:
+        return 1.0 if not claim else 0.3
+    if not claim:
         return 0.0
     expected_set = {s for s in expected if s}
-    retrieved_set = {s for s in retrieved if s}
-    if expected_set & retrieved_set:
+    claim_set = {s for s in claim if s}
+    if expected_set & claim_set:
         return 1.0
     return 0.3
 
@@ -318,11 +375,19 @@ def compute_deterministic_metrics(
         The judge later adds ``answer_quality`` to form the
         final ``Grade``.
     """
+    # Surfaced = claim ∪ read.  section_recall asks "did the
+    # system make this section available anywhere," which
+    # includes both the cited and the merely-read.
+    surfaced = list({*run.claim_slugs, *run.read_slugs})
+
     section_recall = _compute_section_recall(
-        entry.expected_recall_slugs, run.retrieved_slugs,
+        entry.expected_recall_slugs, surfaced,
     )
-    section_precision = _compute_section_precision(
-        entry.expected_recall_slugs, run.retrieved_slugs,
+    claim_precision = _compute_claim_precision(
+        entry.expected_recall_slugs, run.claim_slugs,
+    )
+    exploration_cost = _compute_exploration_cost(
+        run.read_slugs, run.claim_slugs,
     )
 
     fact_recall, fact_hits, fact_misses = _compute_fact_recall(
@@ -339,7 +404,7 @@ def compute_deterministic_metrics(
     )
 
     citation_quality = _compute_citation_quality(
-        entry.expected_recall_slugs, run.retrieved_slugs,
+        entry.expected_recall_slugs, run.claim_slugs,
     )
 
     # Trajectory only meaningful for the agent.  RAG scores 1.0
@@ -355,7 +420,8 @@ def compute_deterministic_metrics(
 
     return DeterministicMetrics(
         section_recall=section_recall,
-        section_precision=section_precision,
+        claim_precision=claim_precision,
+        exploration_cost=exploration_cost,
         fact_recall=fact_recall,
         fact_density=fact_density,
         hallucination_penalty=hallucination_penalty,
@@ -370,14 +436,28 @@ def compute_deterministic_metrics(
 # ── Overall-score combiner ───────────────────────────────────────
 
 
-# First-pass weights per the #74 design.  Exposed as a constant
-# (not hard-coded into a single formula) so we can tune later
-# without rewriting callers.  Sums to 1.0.
+# Weights for the comparative-eval rubric.  Exposed as a
+# constant (not hard-coded into a single formula) so we can
+# tune without rewriting callers.  Sums to 1.0.
+#
+# Rebalanced 2026-05-03 alongside the
+# section_precision → claim_precision + exploration_cost
+# split:
+# - claim_precision keeps the previous section_precision
+#   weight (0.15) — it's the like-for-like replacement.
+# - (1 - exploration_cost) gets a small weight (0.05) — keeps
+#   navigation honest without dominating.
+# - The +0.05 budget for exploration_cost comes from
+#   fact_density (0.10 → 0.05), which we flagged as
+#   misleadingly low when output_text includes raw_sections.
+#   De-weighting the broken metric is a fair trade until we
+#   redesign it.
 DEFAULT_OVERALL_WEIGHTS: dict = {
     "section_recall":         0.25,
-    "section_precision":      0.15,
+    "claim_precision":        0.15,
+    "exploration_cost":       0.05,  # applied as (1 - cost)
     "fact_recall":            0.20,
-    "fact_density":           0.10,
+    "fact_density":           0.05,
     "hallucination_penalty":  0.15,
     "citation_quality":       0.05,
     "answer_quality":         0.10,
@@ -391,12 +471,16 @@ def compute_overall(
 ) -> float:
     """Combine deterministic metrics + judge's answer_quality.
 
+    Note: ``exploration_cost`` is a "lower is better" metric;
+    it enters the formula as ``(1 - cost)`` so all terms
+    contribute positively toward the overall score.
+
     Args:
         metrics: Output of ``compute_deterministic_metrics``.
         answer_quality: LLM-judge rating in [0, 1].
         weights: Optional override (defaults to
             ``DEFAULT_OVERALL_WEIGHTS``).  Must contain all
-            seven rubric keys; sum is not enforced (caller can
+            eight rubric keys; sum is not enforced (caller can
             experiment with different weighting schemes).
 
     Returns:
@@ -405,7 +489,8 @@ def compute_overall(
     w = weights if weights is not None else DEFAULT_OVERALL_WEIGHTS
     return (
         w["section_recall"]        * metrics.section_recall
-        + w["section_precision"]   * metrics.section_precision
+        + w["claim_precision"]     * metrics.claim_precision
+        + w["exploration_cost"]    * (1.0 - metrics.exploration_cost)
         + w["fact_recall"]         * metrics.fact_recall
         + w["fact_density"]        * metrics.fact_density
         + w["hallucination_penalty"] * metrics.hallucination_penalty
