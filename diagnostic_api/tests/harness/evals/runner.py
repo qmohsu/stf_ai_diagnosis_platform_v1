@@ -128,16 +128,20 @@ def _agent_result_to_system_run(
     Mapping rules:
 
     - ``output_text`` ← agent's **synthesised summary plus the
-      retrieved section text**, joined by a clear separator.
-      This treats the agent's "deliverable" as everything it
-      surfaced — the synthesis AND the raw evidence the
-      synthesis was built from — mirroring how RAG's
-      ``output_text`` is the concatenated retrieved chunks.
-      Without the raw sections, an agent that retrieves the
-      right Chinese-language section but synthesises an
-      English summary scores 0 on ``fact_recall`` for any
-      Chinese ``must_contain`` term, even though the
-      information was demonstrably available.
+      CITED section text** (sections whose slug appears in
+      ``claim_slugs``), joined by a clear separator.  This
+      treats the agent's "deliverable" as the synthesis PLUS
+      the source sections it actually relied on — NOT every
+      section it browsed during navigation.  Exploration
+      overhead (sections read but not cited) is captured by
+      ``exploration_cost``, not double-counted here.  Cross-
+      language ``fact_recall`` still works because Chinese
+      ``must_contain`` terms come from the cited sections by
+      construction (that's where they came from when the
+      golden was authored).  Mirrors RAG's ``output_text``
+      shape (concatenated content) but filters the agent's
+      navigation noise that would otherwise dilute the
+      conciseness signal in ``fact_density``.
     - ``claim_slugs`` ← parser-canonical slugs from
       ``result.citations[].slug``, deduplicated.  These are
       the sections the agent **explicitly cited as answer
@@ -190,22 +194,31 @@ def _agent_result_to_system_run(
             seen_read.add(sec.slug)
             read_slugs.append(sec.slug)
 
-    # Compose the "deliverable" — summary plus retrieved sections.
+    # Compose the "deliverable" — summary plus CITED sections.
+    # Filtering by ``claim_slugs`` excludes navigation overhead:
+    # sections the agent merely browsed to triangulate the answer
+    # (TOC entries, ruled-out hypotheses) shouldn't bloat the
+    # downstream LLM's context, and shouldn't be double-counted
+    # against the agent in ``fact_density``.  The exploration
+    # cost is already captured by the ``exploration_cost`` metric.
     # Mirrors RAG's ``output_text`` shape (concatenated content);
     # ensures cross-language ``fact_recall`` is symmetric across
-    # systems.  The separator is human-readable and unambiguous
-    # so downstream tooling (judge prompts, report viewers) can
-    # cleanly split the synthesis from the source evidence.
+    # systems because ``must_contain`` terms come from cited
+    # sections by golden-authoring convention.  The separator is
+    # human-readable and unambiguous so downstream tooling (judge
+    # prompts, report viewers) can cleanly split the synthesis
+    # from the source evidence.
     summary = result.summary or ""
+    cited_slugs_set = set(claim_slugs)
     section_blocks = [
         f"[{sec.slug}]\n{sec.text}"
         for sec in (result.raw_sections or [])
-        if sec.text
+        if sec.text and sec.slug in cited_slugs_set
     ]
     if section_blocks:
         sections_text = "\n\n".join(section_blocks)
         output_text = (
-            f"{summary}\n\n--- Retrieved sections "
+            f"{summary}\n\n--- Cited sections "
             f"({len(section_blocks)}) ---\n\n{sections_text}"
         )
     else:

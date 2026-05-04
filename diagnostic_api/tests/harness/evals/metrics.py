@@ -349,8 +349,11 @@ def _compute_fact_density(
     Args:
         fact_hits: must_contain terms present in output_text.
         must_contain: golden's required facts.
-        output_text: the system's deliverable (summary + raw
-            sections concat for the agent; chunk concat for RAG).
+        output_text: the system's deliverable.  For the agent:
+            ``summary + cited sections concat`` (cited only,
+            not every section read — exploration overhead is
+            captured separately by ``exploration_cost``).  For
+            RAG: top-k chunk concat.
 
     Returns:
         Density in [0, 1].
