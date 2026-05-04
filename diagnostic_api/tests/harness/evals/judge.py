@@ -61,11 +61,21 @@ _JUDGE_TEMPERATURE = 0.0
 temperature 0 — same input → same score across runs."""
 
 
-_JUDGE_MAX_TOKENS = 512
-"""Cap on the judge's response length.  The new prompt wants
-only ``{"answer_quality": ..., "reasoning": "..."}`` — well
-under 256 tokens.  Extra headroom absorbs occasional
-verbosity."""
+_JUDGE_MAX_TOKENS = 2048
+"""Cap on the judge's response length.
+
+The visible output ``{"answer_quality": float, "reasoning": str}``
+fits in well under 256 tokens.  But reasoning models like
+``deepseek/deepseek-v4-pro`` generate hidden chain-of-thought
+tokens BEFORE producing visible content, and those hidden
+tokens count against ``max_tokens``.  At 512, V4 Pro returns
+empty content on dense 4 KB Chinese inputs because it runs
+out of budget mid-reasoning.  2048 gives enough headroom for
+~1.5 KB of internal reasoning plus the visible JSON.
+
+If you switch to a non-reasoning judge (GLM 5.1, Claude
+Haiku) you can drop this back to 512 — non-reasoning models
+emit visible content directly."""
 
 
 _MAX_ERROR_LEN = 200
