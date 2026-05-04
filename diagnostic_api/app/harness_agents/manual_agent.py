@@ -1,9 +1,12 @@
-"""Manual-search sub-agent: restricted 4-tool ReAct loop.
+"""Manual-search sub-agent: restricted 3-tool ReAct loop.
 
 Answers a single diagnostic inquiry by navigating vehicle service
-manuals.  Uses only the 4 manual-navigation tools (``list_manuals``,
-``get_manual_toc``, ``read_manual_section``, ``search_manual``) — no
-access to OBD data, no session-event persistence, no SSE streaming.
+manuals.  Uses only the 3 manual-fs navigation tools
+(``list_manuals``, ``get_manual_toc``, ``read_manual_section``) —
+no access to OBD data, no semantic RAG search (``search_manual``
+was removed in HARNESS-15 to keep the agent's capabilities
+architecturally orthogonal to the RAG comparison track), no
+session-event persistence, no SSE streaming.
 
 The sub-agent reuses ``LLMClient`` protocol and ``ToolRegistry``
 from ``app.harness`` but runs its own minimal loop and returns a
@@ -50,7 +53,6 @@ from app.harness_tools.manual_tools import (
     READ_MANUAL_SECTION_DEF,
     _read_manual_file,
 )
-from app.harness_tools.rag_tools import SEARCH_MANUAL_DEF
 
 logger = structlog.get_logger(__name__)
 
@@ -123,18 +125,36 @@ class ManualAgentDeps:
 
 
 def create_manual_agent_registry() -> ToolRegistry:
-    """Build a ``ToolRegistry`` with only the 4 manual tools.
+    """Build a ``ToolRegistry`` with the 3 manual-fs navigation tools.
 
-    Excludes ``read_obd_data`` — the manual sub-agent never
-    inspects OBD data directly.  Callers pass this registry into
-    ``ManualAgentDeps`` rather than the default harness registry.
+    Excludes:
+
+    - ``read_obd_data`` — the manual sub-agent never inspects
+      OBD data directly.
+    - ``search_manual`` — removed for the comparative-eval
+      benchmark (HARNESS-15 / Issue #74).  ``search_manual`` is
+      a thin wrapper around ``app.rag.retrieve.retrieve_context``
+      — the same call the RAG track uses.  Keeping it in the
+      agent's toolkit muddied the comparison ("agent + RAG vs
+      RAG"), and observed agent runs showed the LLM repeatedly
+      called ``search_manual`` on identifier-based queries
+      (DTC codes), got noise back, and pivoted to TOC navigation
+      anyway.  Removing it makes the agent's capabilities
+      architecturally orthogonal to RAG: agent navigates
+      structurally via TOC + section reads; RAG retrieves
+      semantically via pgvector.  Cleaner story for the paper,
+      and faster runs (no ~150ms semantic-search calls per
+      iteration).
+
+    Callers pass this registry into ``ManualAgentDeps`` rather
+    than the default harness registry.
 
     Returns:
-        A fresh ``ToolRegistry`` with exactly 4 tools registered.
+        A fresh ``ToolRegistry`` with exactly 3 tools registered:
+        ``list_manuals``, ``get_manual_toc``, ``read_manual_section``.
     """
     registry = ToolRegistry()
     for tool_def in (
-        SEARCH_MANUAL_DEF,
         LIST_MANUALS_DEF,
         GET_MANUAL_TOC_DEF,
         READ_MANUAL_SECTION_DEF,

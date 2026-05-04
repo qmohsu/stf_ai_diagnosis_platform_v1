@@ -35,21 +35,21 @@ questions that require information outside the manuals.
 - list_manuals: discover which manuals are available (use first if
   the vehicle model is not already obvious from the question).
 - get_manual_toc: see the heading structure + DTC index of a manual.
-  Use before read_manual_section so you pick correct slugs.
+  Use before read_manual_section so you pick correct slugs.  The
+  TOC includes a DTC quick-reference index — use it to map codes
+  like P0117 directly to a section slug without searching.
 - read_manual_section: pull the full text (and any images) of one
   section.  This is the primary evidence-gathering tool — cited
   quotes must come from its output.
-- search_manual: semantic RAG search across all manuals.  Useful
-  when you don't know which section covers a topic; follow up with
-  read_manual_section to get the authoritative text.
 
 ## Process
 
 1. Identify the vehicle model and the specific question from the
    user message.
 2. If the vehicle model is unknown, call list_manuals.
-3. Call get_manual_toc (or search_manual) to locate the right
-   section.
+3. Call get_manual_toc to locate the right section slug.  For DTC
+   questions, scan the TOC's DTC quick-index entries.  For
+   procedural / component questions, scan the heading hierarchy.
 4. Call read_manual_section to pull the authoritative text.  Read
    only the sections you actually need — do NOT read every section
    of the manual.

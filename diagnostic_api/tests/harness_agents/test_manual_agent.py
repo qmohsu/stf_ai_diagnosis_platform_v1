@@ -136,7 +136,6 @@ def _build_mock_registry(
         "list_manuals",
         "get_manual_toc",
         "read_manual_section",
-        "search_manual",
     ):
         registry.register(_make_def(name))
     return registry
@@ -166,20 +165,29 @@ def _make_deps(
 class TestManualAgentRegistry:
     """Tests for ``create_manual_agent_registry``."""
 
-    def test_registers_exactly_four_manual_tools(self) -> None:
-        """Registry contains the 4 manual tools, nothing else."""
+    def test_registers_exactly_three_manual_tools(self) -> None:
+        """Registry contains the 3 manual-fs navigation tools.
+
+        ``search_manual`` was removed in HARNESS-15 to keep the
+        agent's capabilities architecturally orthogonal to RAG —
+        see ``create_manual_agent_registry`` docstring.
+        """
         registry = create_manual_agent_registry()
         assert set(registry.tool_names) == {
             "list_manuals",
             "get_manual_toc",
             "read_manual_section",
-            "search_manual",
         }
 
     def test_read_obd_data_is_not_registered(self) -> None:
         """Restricted registry must NOT include read_obd_data."""
         registry = create_manual_agent_registry()
         assert "read_obd_data" not in registry.tool_names
+
+    def test_search_manual_is_not_registered(self) -> None:
+        """``search_manual`` was deliberately removed (HARNESS-15)."""
+        registry = create_manual_agent_registry()
+        assert "search_manual" not in registry.tool_names
 
 
 # ── Parse helpers ─────────────────────────────────────────────────
