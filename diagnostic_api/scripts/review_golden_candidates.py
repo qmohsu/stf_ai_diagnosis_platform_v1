@@ -208,8 +208,8 @@ def _format_entry_for_display(entry: Dict[str, Any]) -> str:
         f"{entry.get('must_contain', [])}"
     )
     lines.append(
-        f"must_not_contain: "
-        f"{entry.get('must_not_contain', [])}"
+        f"pitfall_directives: "
+        f"{entry.get('pitfall_directives', [])}"
     )
     lines.append(
         f"expected_tool_trace: "

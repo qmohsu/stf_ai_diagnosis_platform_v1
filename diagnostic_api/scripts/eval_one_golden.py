@@ -374,7 +374,9 @@ async def _amain(args: argparse.Namespace) -> int:
     print(f"  difficulty     : {entry.difficulty}")
     print(f"  question       : {entry.question}")
     print(f"  must_contain   : {entry.must_contain}")
-    print(f"  must_not_contain: {entry.must_not_contain}")
+    print(f"  pitfall_directives ({len(entry.pitfall_directives)}):")
+    for i, d in enumerate(entry.pitfall_directives, 1):
+        print(f"    {i}. {d}")
     print(f"  expected_recall_slugs: {entry.expected_recall_slugs}")
     print()
 

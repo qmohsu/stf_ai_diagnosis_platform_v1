@@ -143,8 +143,19 @@ class GoldenEntry(BaseModel):
         must_contain: Key facts that MUST appear in the system's
             ``output_text``.  Strings, case-insensitive substring
             match, whitespace-normalised across CJK boundaries.
-        must_not_contain: Hallucination guards — strings that
-            MUST NOT appear in any system's ``output_text``.
+        pitfall_directives: Natural-language "don't" instructions
+            evaluated by the LLM judge (replaces the previous
+            substring-based ``must_not_contain``).  Each directive
+            is a sentence describing a specific failure mode the
+            system MUST NOT exhibit.  Examples:
+            ``"The output must not assert P0117 involves the
+            oxygen sensor"`` or ``"The output must not present
+            brake-system content as the answer"``.  The judge
+            decides per directive whether the system violated it
+            (semantic, context-aware — handles negation correctly:
+            ``"this is NOT an O2 sensor issue"`` doesn't violate
+            an ``"don't involve O2 sensor"`` directive).  The
+            count of violations feeds ``hallucination_penalty``.
         requires_image: Whether a complete answer requires the
             agent to surface actual image bytes (wiring diagram,
             exploded view, flowchart).  RAG fails ``image-required``
@@ -164,7 +175,7 @@ class GoldenEntry(BaseModel):
     expected_recall_slugs: List[str] = Field(default_factory=list)
     expected_tool_trace: List[str] = Field(default_factory=list)
     must_contain: List[str] = Field(default_factory=list)
-    must_not_contain: List[str] = Field(default_factory=list)
+    pitfall_directives: List[str] = Field(default_factory=list)
     requires_image: bool = False
     notes: str = ""
 
@@ -228,10 +239,13 @@ class SystemRunResult(BaseModel):
             ``"manual_agent"`` or ``"rag"``.
         question: The original inquiry, echoed for report-
             building convenience.
-        output_text: The text the judge will check
-            ``must_contain`` / ``must_not_contain`` against.
-            For the agent: the synthesised summary plus
-            retrieved-section text concatenated.
+        output_text: The text the metric harness checks
+            ``must_contain`` against (deterministic) and the
+            judge evaluates ``pitfall_directives`` against
+            (LLM-judged).  For the agent: the synthesised
+            summary plus CITED-section text concatenated
+            (cited only — exploration overhead is captured by
+            ``exploration_cost``, not double-counted here).
             For RAG: the top-k retrieved chunks concatenated.
         claim_slugs: Slugs the system explicitly cited as
             answer sources.  For the agent: parser-canonical
@@ -330,10 +344,14 @@ class Grade(BaseModel):
             Rewards concise answers that hit all the facts.
             A 50-word answer with 5 facts beats a 500-word
             answer with the same 5 facts.
-        hallucination_penalty: ``1 - min(1, hallucination_count
-            * 0.5)``.  First hallucination costs 0.5; further
-            ones are diminishing penalties.  Captures "one bad
-            fact poisons the answer."  HIGHER = better.
+        hallucination_penalty: LLM-judged.  The judge receives the
+            entry's ``pitfall_directives`` plus the system output,
+            and decides per-directive whether the output violates
+            it (semantic, context-aware — distinguishes assertion
+            from negation).  Score = ``max(0.1, 1 - 0.3 *
+            violation_count)``: 0 violations = 1.0, 1 = 0.7,
+            2 = 0.4, 3+ = 0.1.  Soft curve gives partial credit
+            for "almost right" cases.  HIGHER = better.
         citation_quality: Tiered, computed against
             ``claim_slugs``.
             0.0 = no claim slugs (system cited nothing).

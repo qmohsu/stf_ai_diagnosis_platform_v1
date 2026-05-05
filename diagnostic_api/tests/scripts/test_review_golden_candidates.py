@@ -50,7 +50,7 @@ def _valid_entry(idx: int = 1) -> Dict[str, Any]:
             "get_manual_toc", "read_manual_section",
         ],
         "must_contain": [f"P017{idx}"],
-        "must_not_contain": [],
+        "pitfall_directives": [],
         "requires_image": False,
         "notes": "test entry",
     }

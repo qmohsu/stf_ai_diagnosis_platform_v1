@@ -119,7 +119,8 @@ class DeterministicMetrics:
     """Rubric dimensions that don't need an LLM judge.
 
     Computed by ``compute_deterministic_metrics``; combined with
-    ``answer_quality`` from the judge to form the final ``Grade``.
+    ``answer_quality`` and ``hallucination_penalty`` from the
+    judge to form the final ``Grade``.
 
     Attributes:
         section_recall: Fraction of golden slugs the system
@@ -132,7 +133,6 @@ class DeterministicMetrics:
             0.0 for RAG (no synthesis step).
         fact_recall: Fraction of must_contain present in output.
         fact_density: Fact hits × conciseness factor.
-        hallucination_penalty: ``1 - min(1, count * 0.5)``.
         citation_quality: Tiered (0.0 / 0.3 / 1.0), against
             claim_slugs.
         trajectory_efficiency: Agent-only; 1.0 for RAG.
@@ -140,8 +140,14 @@ class DeterministicMetrics:
             (for reasoning / debugging).
         fact_recall_misses: Concrete list of must_contain that
             didn't hit.
-        hallucination_hits: Concrete list of must_not_contain
-            terms that did appear (= hallucinations).
+
+    Note:
+        ``hallucination_penalty`` USED to live here as a
+        deterministic substring-based metric (``1 - count *
+        0.5`` against ``must_not_contain``).  As of v2.12 it's
+        LLM-judged from ``pitfall_directives`` and computed in
+        ``judge.grade_run`` instead.  See
+        ``compute_hallucination_penalty`` below.
     """
 
     section_recall: float
@@ -149,14 +155,12 @@ class DeterministicMetrics:
     exploration_cost: float
     fact_recall: float
     fact_density: float
-    hallucination_penalty: float
     citation_quality: float
     trajectory_efficiency: float
     # Diagnostics — not metrics themselves, but useful for
     # report-generation and judge prompting.
     fact_recall_hits: List[str]
     fact_recall_misses: List[str]
-    hallucination_hits: List[str]
 
 
 # ── Per-metric helpers ───────────────────────────────────────────
@@ -372,30 +376,47 @@ def _compute_fact_density(
     return recall * conciseness
 
 
-def _compute_hallucination_penalty(
-    must_not_contain: List[str], output_text: str,
-) -> tuple[float, List[str]]:
-    """Continuous penalty: ``1 - min(1, count * 0.5)``.
+def compute_hallucination_penalty(violation_count: int) -> float:
+    """Soft penalty curve from LLM-judged pitfall violations.
 
-    First hallucination costs 0.5; second brings the penalty
-    to 1.0 (score 0); further ones don't matter.  Captures
-    "one bad fact poisons the answer, two is irrecoverable."
+    The judge evaluates each ``GoldenEntry.pitfall_directive``
+    against the system output and decides per-directive whether
+    the output VIOLATES it (asserts the forbidden claim) or
+    COMPLIES with it (doesn't mention, or mentions in a clearly
+    compliant way like negation/disambiguation).  This function
+    converts the violation COUNT into a [0.1, 1.0] score.
+
+    Curve: ``max(0.1, 1.0 - 0.3 * violation_count)``
+
+    - 0 violations → 1.0  (clean)
+    - 1 violation  → 0.7  (one bad assertion costs ~30%)
+    - 2 violations → 0.4  (clearly compromised)
+    - 3 violations → 0.1  (floor — further violations don't add)
+
+    Soft curve gives partial credit for "almost right" cases —
+    one passing bad assertion isn't fatal the way the old
+    binary-ish ``1 - count * 0.5`` was.
+
+    Floor of 0.1 (rather than 0.0) avoids letting one metric
+    zero out the entire score; the overall formula already gives
+    this metric just 0.10 weight, so the floor only contributes
+    0.01 of the total.
+
+    Replaces the older ``_compute_hallucination_penalty`` (substring
+    scan over ``must_not_contain``), which was context-blind
+    (couldn't distinguish "is X" from "is NOT X") and near-
+    saturated (most non-adversarial entries had 0 hits regardless
+    of system quality).
+
+    Args:
+        violation_count: Number of pitfall directives the judge
+            marked as ``violated``.  Comes from
+            ``judge.rate_quality_and_pitfalls``.
 
     Returns:
-        ``(score, hits)`` — score in [0, 1], higher = better;
-        ``hits`` is the list of must_not_contain terms that
-        appeared in the output.
+        Score in [0.1, 1.0].  Higher = fewer violations.
     """
-    if not must_not_contain:
-        return 1.0, []
-    norm_text = _normalize_ws(output_text or "").lower()
-    hits = [
-        term for term in must_not_contain
-        if _normalize_ws(term or "").lower() in norm_text
-        and term  # ignore empty guard strings
-    ]
-    penalty_factor = min(1.0, len(hits) * 0.5)
-    return 1.0 - penalty_factor, hits
+    return max(0.1, 1.0 - 0.3 * max(0, violation_count))
 
 
 def _compute_citation_quality(
@@ -466,8 +487,8 @@ def compute_deterministic_metrics(
 
     Returns:
         ``DeterministicMetrics`` with all dimensions populated.
-        The judge later adds ``answer_quality`` to form the
-        final ``Grade``.
+        The judge later adds ``answer_quality`` and
+        ``hallucination_penalty`` to form the final ``Grade``.
     """
     # Surfaced = claim ∪ read.  section_recall asks "did the
     # system make this section available anywhere," which
@@ -491,12 +512,6 @@ def compute_deterministic_metrics(
         fact_hits, entry.must_contain, run.output_text,
     )
 
-    hallucination_penalty, hallucination_hits = (
-        _compute_hallucination_penalty(
-            entry.must_not_contain, run.output_text,
-        )
-    )
-
     citation_quality = _compute_citation_quality(
         entry.expected_recall_slugs, run.claim_slugs,
     )
@@ -518,12 +533,10 @@ def compute_deterministic_metrics(
         exploration_cost=exploration_cost,
         fact_recall=fact_recall,
         fact_density=fact_density,
-        hallucination_penalty=hallucination_penalty,
         citation_quality=citation_quality,
         trajectory_efficiency=trajectory_efficiency,
         fact_recall_hits=fact_hits,
         fact_recall_misses=fact_misses,
-        hallucination_hits=hallucination_hits,
     )
 
 
@@ -563,9 +576,18 @@ DEFAULT_OVERALL_WEIGHTS: dict = {
 def compute_overall(
     metrics: DeterministicMetrics,
     answer_quality: float,
+    hallucination_penalty: float,
     weights: Optional[dict] = None,
 ) -> float:
-    """Combine deterministic metrics + judge's answer_quality.
+    """Combine deterministic metrics + judge-derived metrics.
+
+    Two metrics come from the LLM judge (passed in explicitly)
+    rather than from ``DeterministicMetrics``:
+
+    - ``answer_quality`` — judge's holistic rating.
+    - ``hallucination_penalty`` — derived from judge's
+      ``pitfall_violations`` count via
+      ``compute_hallucination_penalty``.
 
     Note: ``exploration_cost`` is a "lower is better" metric;
     it enters the formula as ``(1 - cost)`` so all terms
@@ -574,6 +596,8 @@ def compute_overall(
     Args:
         metrics: Output of ``compute_deterministic_metrics``.
         answer_quality: LLM-judge rating in [0, 1].
+        hallucination_penalty: Score in [0.1, 1.0] from
+            ``compute_hallucination_penalty(violation_count)``.
         weights: Optional override (defaults to
             ``DEFAULT_OVERALL_WEIGHTS``).  Must contain all
             eight rubric keys; sum is not enforced (caller can
@@ -589,7 +613,7 @@ def compute_overall(
         + w["exploration_cost"]    * (1.0 - metrics.exploration_cost)
         + w["fact_recall"]         * metrics.fact_recall
         + w["fact_density"]        * metrics.fact_density
-        + w["hallucination_penalty"] * metrics.hallucination_penalty
+        + w["hallucination_penalty"] * hallucination_penalty
         + w["citation_quality"]    * metrics.citation_quality
         + w["answer_quality"]      * answer_quality
     )

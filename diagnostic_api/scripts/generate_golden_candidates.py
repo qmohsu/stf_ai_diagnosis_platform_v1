@@ -4,7 +4,7 @@
 HARNESS-14 phase 3.  Reads a real ingested service manual from
 ``settings.manual_storage_path``, samples sections, and asks an LLM
 to produce ``(question, summary, citations, must_contain,
-must_not_contain, expected_tool_trace)`` tuples grounded in the
+pitfall_directives, expected_tool_trace)`` tuples grounded in the
 sampled text.  Every citation's ``quote`` is verified to be a
 substring of the source section; candidates that fail grounding
 are dropped before being written.
@@ -220,10 +220,17 @@ Return ONLY the JSON object.  No prose.  No markdown fences.
      in a correct answer.  Prefer concrete identifiers:
      DTC codes, spec values with units, part names."
   ],
-  "must_not_contain": [
-    "0-2 strings that MUST NOT appear.  Use to guard against
-     common hallucinations — e.g., an incorrect DTC, a wrong
-     unit, or a fabricated procedure step.  Keep short."
+  "pitfall_directives": [
+    "2-4 natural-language 'don't' instructions, each 1-2
+     sentences, describing specific failure modes the system
+     output MUST NOT exhibit.  Examples: 'The output must not
+     assert P0117 involves the oxygen sensor' or 'The output
+     must not present brake-system content as the answer.'
+     The judge LLM evaluates each directive against the
+     output (semantic, context-aware — handles negation
+     correctly).  Each directive should target a real
+     failure mode (cross-domain confusion, unit error,
+     wrong DTC family, fabricated procedure step)."
   ],
   "expected_tool_trace": [
     "A loose guide — typically 2-3 tool names from:
@@ -278,11 +285,16 @@ Return ONLY the JSON object.  No prose.  No fences.
                      in the MWS-150-A service manual.'",
   "golden_citations": [],
   "must_contain": ["not found"],
-  "must_not_contain": [
-    "A plausible-but-fabricated claim the agent MUST NOT make.
-     E.g., if the question is about DTC P9999, include
-     'P9999 is caused by' or 'replace the P9999 sensor' —
-     anything that looks like made-up content."
+  "pitfall_directives": [
+    "1-2 natural-language directives describing the specific
+     fabrication the system MUST NOT make.  Examples for a
+     fake DTC P9999: 'The output must not provide a
+     procedure for diagnosing P9999 — that DTC does not
+     exist in this manual.' For an out-of-scope question:
+     'The output must not invent specs for vehicle types not
+     covered by the manual.' Each directive should be a
+     specific assertion the LLM judge can decide whether
+     the output makes."
   ],
   "expected_tool_trace": [
     "get_manual_toc"
@@ -514,7 +526,7 @@ def _validate_and_ground(
     """
     required = {
         "question", "golden_summary", "golden_citations",
-        "must_contain", "must_not_contain",
+        "must_contain", "pitfall_directives",
         "expected_tool_trace",
     }
     missing = required - set(payload.keys())
@@ -602,8 +614,8 @@ def _validate_and_ground(
                 "expected_tool_trace"
             ],
             "must_contain": payload["must_contain"],
-            "must_not_contain": payload[
-                "must_not_contain"
+            "pitfall_directives": payload[
+                "pitfall_directives"
             ],
             "requires_image": bool(
                 payload.get("requires_image", False),

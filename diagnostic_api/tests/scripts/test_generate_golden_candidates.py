@@ -210,7 +210,7 @@ def _slug_aware_reply(
                 "quote": quote,
             }],
             "must_contain": must_contain,
-            "must_not_contain": [],
+            "pitfall_directives": [],
             "expected_tool_trace": [
                 "get_manual_toc", "read_manual_section",
             ],
@@ -348,7 +348,7 @@ class TestValidateAndGround:
                 "quote": quote,
             }],
             "must_contain": ["spark plug", "12.5"],
-            "must_not_contain": [],
+            "pitfall_directives": [],
             "expected_tool_trace": [
                 "get_manual_toc",
                 "read_manual_section",
@@ -522,7 +522,7 @@ class TestValidateAndGround:
             "golden_summary": "s",
             "golden_citations": [],
             "must_contain": ["x"],
-            "must_not_contain": [],
+            "pitfall_directives": [],
             "expected_tool_trace": ["read_manual_section"],
             "requires_image": False,
         }
@@ -540,7 +540,7 @@ class TestValidateAndGround:
             ),
             "golden_citations": [],
             "must_contain": ["not found"],
-            "must_not_contain": [
+            "pitfall_directives": [
                 "P9999 is caused by",
             ],
             "expected_tool_trace": ["get_manual_toc"],
@@ -568,7 +568,7 @@ class TestValidateAndGround:
                 "quote": "q",
             }],
             "must_contain": ["not found"],
-            "must_not_contain": [],
+            "pitfall_directives": [],
             "expected_tool_trace": ["get_manual_toc"],
         }
         cand, err = _validate_and_ground(
@@ -587,7 +587,7 @@ class TestValidateAndGround:
             "golden_summary": "x",
             "golden_citations": [],
             "must_contain": ["something else"],
-            "must_not_contain": [],
+            "pitfall_directives": [],
             "expected_tool_trace": ["get_manual_toc"],
         }
         cand, err = _validate_and_ground(
@@ -618,7 +618,7 @@ def _candidate_json(
             "quote": quote,
         }],
         "must_contain": ["spark plug", "12.5"],
-        "must_not_contain": [],
+        "pitfall_directives": [],
         "expected_tool_trace": [
             "get_manual_toc", "read_manual_section",
         ],
@@ -765,7 +765,7 @@ class TestGenerateCandidatesEndToEnd:
             ),
             "golden_citations": [],
             "must_contain": ["not found"],
-            "must_not_contain": [
+            "pitfall_directives": [
                 "P9999 is caused by",
             ],
             "expected_tool_trace": ["get_manual_toc"],

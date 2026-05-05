@@ -67,7 +67,10 @@ def _sample_entry(
             "get_manual_toc", "read_manual_section",
         ],
         must_contain=must_contain or ["P0171", "fuel"],
-        must_not_contain=["P0300"],
+        pitfall_directives=[
+            "The output must not assert this is DTC P0300 — that "
+            "is a misfire code, unrelated to lean-condition P0171.",
+        ],
         requires_image=False,
         notes="unit-test fixture",
     )
@@ -223,12 +226,16 @@ class TestBuildUserPrompt:
         assert "(none)" in prompt
 
     def test_includes_must_contain_guidance(self) -> None:
-        """must_contain and must_not_contain appear in prompt."""
+        """must_contain (deterministic) + pitfall_directives (judge)
+        both appear in prompt."""
         entry = _sample_entry(must_contain=["P0171", "fuel"])
         result = _sample_result()
         prompt = build_user_prompt(entry, result)
-        assert "P0171" in prompt
-        assert "P0300" in prompt  # from must_not_contain
+        # must_contain is graded deterministically — judge sees
+        # them indirectly via the must_contain hits surfaced in
+        # output, not directly in the prompt.  But pitfall_directives
+        # IS shown to the judge.
+        assert "P0300" in prompt  # from pitfall_directives
 
     def test_renders_tool_trace_order_and_counts(self) -> None:
         """Tool trace shows both order and per-tool counts."""

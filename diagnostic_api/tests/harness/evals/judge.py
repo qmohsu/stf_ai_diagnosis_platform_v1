@@ -1,17 +1,31 @@
 """LLM-as-judge for the comparative manual-eval suite.
 
 In the HARNESS-15 / Issue #74 redesign the judge is responsible
-only for the subjective ``answer_quality`` rating; the rest of
-the rubric is computed deterministically in
-``tests.harness.evals.metrics``.  This file provides:
+for the two subjective rubric dimensions:
 
-- ``rate_answer_quality(entry, run)`` — calls ``z-ai/glm-5.1``
-  via OpenRouter and returns ``(answer_quality, reasoning)``.
-  Single-retry policy on parse / API failure; falls back to
-  ``(0.0, "[judge failure] ...")`` rather than raising.
+- ``answer_quality`` — holistic rating of how well the system
+  output answers the question vs the golden_summary.
+- ``hallucination_penalty`` — derived from the judge's per-
+  ``pitfall_directive`` violation decisions.  Replaces the older
+  substring-based ``must_not_contain`` check, which was context-
+  blind (couldn't tell ``"is X"`` from ``"is NOT X"``) and
+  near-saturated for both systems on most entries.
+
+The remaining rubric dimensions (section_recall, claim_precision,
+exploration_cost, fact_recall, fact_density, citation_quality,
+trajectory_efficiency) are still computed deterministically in
+``tests.harness.evals.metrics``.
+
+This file provides:
+
+- ``rate_quality_and_pitfalls(entry, run)`` — calls the judge
+  via OpenRouter and returns ``(answer_quality, reasoning,
+  pitfall_violation_count)``.  Single-retry policy on parse /
+  API failure; falls back to ``(0.0, "[judge failure] ...", 0)``
+  rather than raising.
 - ``grade_run(entry, run)`` — orchestrator that combines the
-  deterministic metrics + the judge's answer_quality into a
-  final ``Grade``.
+  deterministic metrics + the judge's ratings into a final
+  ``Grade``.
 
 Author: Li-Ta Hsu
 """
@@ -34,6 +48,7 @@ from tests.harness.evals.metrics import (
     DEFAULT_OVERALL_WEIGHTS,
     DeterministicMetrics,
     compute_deterministic_metrics,
+    compute_hallucination_penalty,
     compute_overall,
 )
 from tests.harness.evals.schemas import (
@@ -131,30 +146,53 @@ def _get_default_client() -> AsyncOpenAI:
 # ── Parse helpers ─────────────────────────────────────────────────
 
 
-class _AnswerQualityPayload:
+class _JudgePayload:
     """Lightweight wrapper around the judge's parsed JSON.
 
     Not a Pydantic model because Pydantic would validate during
     parsing and we want the raw error path to surface specific
-    field problems.  Two attributes: ``answer_quality`` (float
-    in [0, 1]) and ``reasoning`` (string).
+    field problems.
+
+    Attributes:
+        answer_quality: Float in [0, 1].
+        reasoning: Free-text rationale for the answer_quality
+            rating.
+        pitfall_violation_count: Number of pitfall directives the
+            judge marked as violated (0 if there were no
+            directives).
+        pitfall_violation_details: Per-directive verdicts as
+            ``[{"directive": str, "violated": bool, "reasoning":
+            str}, ...]``.  Surfaced for the enriched-reasoning
+            block; not used in scoring.
     """
 
-    def __init__(self, answer_quality: float, reasoning: str):
+    def __init__(
+        self,
+        answer_quality: float,
+        reasoning: str,
+        pitfall_violation_count: int,
+        pitfall_violation_details: List[Dict[str, Any]],
+    ):
         self.answer_quality = answer_quality
         self.reasoning = reasoning
+        self.pitfall_violation_count = pitfall_violation_count
+        self.pitfall_violation_details = pitfall_violation_details
 
 
-def _parse_judge_payload(raw: str) -> _AnswerQualityPayload:
-    """Parse the judge response into an answer-quality payload.
+def _parse_judge_payload(raw: str) -> _JudgePayload:
+    """Parse the judge response into a ``_JudgePayload``.
 
-    Tolerant of (rare) markdown fences around the JSON.
+    Tolerant of (rare) markdown fences around the JSON.  The
+    ``pitfall_violations`` field is OPTIONAL — if missing or
+    empty, ``pitfall_violation_count`` is 0 (vacuously compliant).
+    This keeps the parser robust against goldens with no
+    pitfall_directives.
 
     Args:
         raw: Raw ``content`` from the judge's chat completion.
 
     Returns:
-        ``_AnswerQualityPayload``.
+        ``_JudgePayload``.
 
     Raises:
         ValueError: If parsing or shape validation fails.
@@ -198,9 +236,35 @@ def _parse_judge_payload(raw: str) -> _AnswerQualityPayload:
     if not isinstance(reasoning, str):
         reasoning = str(reasoning)
 
-    return _AnswerQualityPayload(
+    # pitfall_violations is OPTIONAL; absent/empty means no
+    # directives were defined (or the judge skipped them) — both
+    # treat as vacuously compliant.
+    raw_violations = payload.get("pitfall_violations", [])
+    if not isinstance(raw_violations, list):
+        raise ValueError(
+            "pitfall_violations must be a list",
+        )
+    violation_count = 0
+    details: List[Dict[str, Any]] = []
+    for item in raw_violations:
+        if not isinstance(item, dict):
+            # Tolerate malformed entries — skip rather than fail
+            # the whole grade.  Logged at the call site if needed.
+            continue
+        violated = bool(item.get("violated", False))
+        if violated:
+            violation_count += 1
+        details.append({
+            "directive": str(item.get("directive", "")),
+            "violated": violated,
+            "reasoning": str(item.get("reasoning", "")),
+        })
+
+    return _JudgePayload(
         answer_quality=aq_float,
         reasoning=reasoning,
+        pitfall_violation_count=violation_count,
+        pitfall_violation_details=details,
     )
 
 
@@ -245,20 +309,23 @@ async def _call_judge(
     return content
 
 
-# ── Public: rate answer quality (LLM call) ───────────────────────
+# ── Public: rate answer quality + pitfalls (LLM call) ────────────
 
 
-async def rate_answer_quality(
+async def rate_quality_and_pitfalls(
     entry: GoldenEntry,
     run: SystemRunResult,
     client: Optional[AsyncOpenAI] = None,
-) -> Tuple[float, str]:
-    """Get ``(answer_quality, reasoning)`` from the judge.
+) -> Tuple[float, str, int, List[Dict[str, Any]]]:
+    """Get ``(answer_quality, reasoning, violation_count, details)``.
 
     Single-retry policy: on first-try parse or API failure,
     re-prompt with a corrective nudge.  On second failure
-    return ``(0.0, "[judge failure] ...")`` so the eval keeps
-    running.
+    return ``(0.0, "[judge failure] ...", 0, [])`` so the eval
+    keeps running (treats failed judge call as "no detected
+    violations" — ``hallucination_penalty`` falls back to 1.0,
+    erring on the side of NOT punishing the system for our
+    infrastructure failure).
 
     Args:
         entry: Golden reference.
@@ -267,7 +334,8 @@ async def rate_answer_quality(
             production lazily builds from settings).
 
     Returns:
-        ``(answer_quality, reasoning)``.
+        ``(answer_quality, reasoning, pitfall_violation_count,
+        pitfall_violation_details)``.
     """
     eff_client = client or _get_default_client()
     messages = _build_messages(entry, run)
@@ -277,6 +345,7 @@ async def rate_answer_quality(
         entry_id=entry.id,
         system=run.system_label,
         model=_JUDGE_MODEL,
+        pitfall_directive_count=len(entry.pitfall_directives),
     )
 
     # ── First attempt ───────────────────────────────────────────
@@ -299,13 +368,21 @@ async def rate_answer_quality(
                 system=run.system_label,
                 exc_info=exc2,
             )
-            return 0.0, _sanitise_error(
-                f"api error: {type(exc2).__name__}",
+            return (
+                0.0,
+                _sanitise_error(f"api error: {type(exc2).__name__}"),
+                0,
+                [],
             )
 
     try:
         payload = _parse_judge_payload(raw)
-        return payload.answer_quality, payload.reasoning
+        return (
+            payload.answer_quality,
+            payload.reasoning,
+            payload.pitfall_violation_count,
+            payload.pitfall_violation_details,
+        )
     except ValueError as parse_exc:
         logger.warning(
             "judge_parse_error_first_try",
@@ -321,9 +398,11 @@ async def rate_answer_quality(
         "role": "user",
         "content": (
             "Your previous response could not be parsed.  "
-            'Return ONLY {"answer_quality": <float 0.0-1.0>, '
-            '"reasoning": "<2-4 sentences>"} — no markdown '
-            "fences, no extra prose."
+            'Return ONLY a JSON object with the keys '
+            '`answer_quality` (float 0.0-1.0), `reasoning` '
+            '(2-4 sentences), and `pitfall_violations` (list — '
+            "one entry per directive, in the order shown).  "
+            "No markdown fences, no extra prose."
         ),
     })
 
@@ -335,13 +414,21 @@ async def rate_answer_quality(
             entry_id=entry.id,
             exc_info=exc,
         )
-        return 0.0, _sanitise_error(
-            f"api error on retry: {type(exc).__name__}",
+        return (
+            0.0,
+            _sanitise_error(f"api error on retry: {type(exc).__name__}"),
+            0,
+            [],
         )
 
     try:
         payload = _parse_judge_payload(raw_retry)
-        return payload.answer_quality, payload.reasoning
+        return (
+            payload.answer_quality,
+            payload.reasoning,
+            payload.pitfall_violation_count,
+            payload.pitfall_violation_details,
+        )
     except ValueError as parse_exc2:
         logger.error(
             "judge_parse_error_retry",
@@ -349,9 +436,17 @@ async def rate_answer_quality(
             error=str(parse_exc2),
             raw_preview=raw_retry[:200],
         )
-        return 0.0, _sanitise_error(
-            f"parse error after retry: {parse_exc2}",
+        return (
+            0.0,
+            _sanitise_error(f"parse error after retry: {parse_exc2}"),
+            0,
+            [],
         )
+
+
+# Back-compat alias — older callers (tests) imported the old name.
+# Prefer ``rate_quality_and_pitfalls`` for new code.
+rate_answer_quality = rate_quality_and_pitfalls
 
 
 def _sanitise_error(reason: str) -> str:
@@ -391,19 +486,30 @@ async def grade_run(
     # Step 1: deterministic metrics (no LLM call).
     det = compute_deterministic_metrics(entry, run)
 
-    # Step 2: ask the judge for answer_quality.
-    answer_quality, reasoning = await rate_answer_quality(
-        entry, run, client=client,
+    # Step 2: ask the judge for answer_quality + pitfall verdicts.
+    (
+        answer_quality,
+        reasoning,
+        violation_count,
+        violation_details,
+    ) = await rate_quality_and_pitfalls(entry, run, client=client)
+
+    # Step 3: derive hallucination_penalty from violation count.
+    hallucination_penalty = compute_hallucination_penalty(
+        violation_count,
     )
 
-    # Step 3: combine into overall.
-    overall = compute_overall(det, answer_quality, weights=weights)
+    # Step 4: combine into overall.
+    overall = compute_overall(
+        det, answer_quality, hallucination_penalty, weights=weights,
+    )
 
-    # Step 4: enrich reasoning with deterministic-metric
-    # diagnostics so the report explains both numeric and
-    # judge-derived signals in one place.
+    # Step 5: enrich reasoning with deterministic-metric
+    # diagnostics + pitfall-violation details so the report
+    # explains both signal sources in one place.
     enriched_reasoning = _build_enriched_reasoning(
         det, answer_quality, reasoning,
+        hallucination_penalty, violation_details,
     )
 
     return Grade(
@@ -412,7 +518,7 @@ async def grade_run(
         exploration_cost=det.exploration_cost,
         fact_recall=det.fact_recall,
         fact_density=det.fact_density,
-        hallucination_penalty=det.hallucination_penalty,
+        hallucination_penalty=hallucination_penalty,
         citation_quality=det.citation_quality,
         answer_quality=answer_quality,
         trajectory_efficiency=det.trajectory_efficiency,
@@ -425,12 +531,15 @@ def _build_enriched_reasoning(
     det: DeterministicMetrics,
     answer_quality: float,
     judge_reasoning: str,
+    hallucination_penalty: float,
+    pitfall_violation_details: List[Dict[str, Any]],
 ) -> str:
     """Compose a human-readable reasoning block for the report.
 
-    Combines deterministic-metric diagnostics with the judge's
-    free-text answer_quality reasoning so both signal sources
-    are surfaced in one place.
+    Combines deterministic-metric diagnostics, the judge's
+    free-text answer_quality reasoning, and the per-directive
+    pitfall verdicts so all signal sources are surfaced in one
+    place.
     """
     lines = []
     if det.fact_recall_misses:
@@ -442,11 +551,24 @@ def _build_enriched_reasoning(
         lines.append(
             f"Missing must_contain: {misses_preview}.",
         )
-    if det.hallucination_hits:
-        hall_preview = ", ".join(
-            f"'{h}'" for h in det.hallucination_hits
+    # Surface only the violated directives — compliant ones are
+    # the silent default.  Caps at 3 to keep the line readable.
+    violated = [
+        v for v in pitfall_violation_details
+        if v.get("violated")
+    ]
+    if violated:
+        preview = "; ".join(
+            f"'{(v.get('directive') or '').strip()[:60]}' "
+            f"({(v.get('reasoning') or '').strip()[:80]})"
+            for v in violated[:3]
         )
-        lines.append(f"Hallucinated terms: {hall_preview}.")
+        if len(violated) > 3:
+            preview += f"; +{len(violated) - 3} more"
+        lines.append(
+            f"Pitfall violations ({len(violated)}, "
+            f"penalty={hallucination_penalty:.2f}): {preview}.",
+        )
     lines.append(
         f"Judge ({answer_quality:.2f}): {judge_reasoning}",
     )

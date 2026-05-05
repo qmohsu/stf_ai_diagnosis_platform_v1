@@ -46,7 +46,7 @@ For each entry:
 3. Write the `question` as a technician would phrase it.
 4. Write the `golden_summary` as a faithful synthesis of the source.
 5. Pick `must_contain` (2–6 strings) — verbatim substrings of the source, verified mechanically.
-6. Pick `must_not_contain` (1–3 strings) — terms that would only appear if a system confused this with an adjacent topic, verified absent.
+6. Pick `pitfall_directives` (2–4 natural-language "don't" instructions) — each directive describes a specific failure mode the system MUST NOT exhibit (cross-domain confusion, fabricated wire colour, wrong DTC family, etc.).  Evaluated by the LLM judge for context-aware violation detection.  Replaces the old substring-based `must_not_contain` (which couldn't tell "is X" from "is NOT X").
 7. Pick `golden_citations` (3–5 verbatim quotes from the source).
 8. Set `expected_recall_slugs` (the slugs a system MUST surface to be considered correct).
 9. Run `eval_one_golden.py --system both` against the draft.
