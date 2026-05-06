@@ -1,5 +1,12 @@
 """HTTP client that POSTs ``OBDSnapshot`` to diagnostic_api.
 
+.. deprecated:: APP-53 (issue #76)
+   This module targets ``/v1/telemetry/obd_snapshot``, which was never
+   deployed.  Use :mod:`obd_agent.jetson_uploader` instead — it sends
+   the full trip log to ``POST /v2/obd/analyze``, which is the
+   currently supported ingestion path.  ``api_poster`` is retained for
+   one release for legacy importers; it will be removed thereafter.
+
 Features:
 * Exponential-backoff retry (configurable max attempts).
 * Offline buffer (bounded deque) drained on next successful POST.
@@ -10,6 +17,7 @@ Features:
 from __future__ import annotations
 
 import asyncio
+import warnings
 from collections import deque
 from typing import Deque
 
@@ -18,6 +26,14 @@ import structlog
 
 from obd_agent.config import AgentSettings
 from obd_agent.schemas import OBDSnapshot
+
+warnings.warn(
+    "obd_agent.api_poster targets /v1/telemetry/obd_snapshot, which "
+    "was never deployed.  Use obd_agent.jetson_uploader instead "
+    "(POST /v2/obd/analyze).  See APP-53 / GitHub issue #76.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 logger = structlog.get_logger(__name__)
 

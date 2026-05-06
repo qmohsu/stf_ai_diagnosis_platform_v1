@@ -10,6 +10,9 @@ Supported input formats:
   imperial units, localised timestamps with Chinese AM/PM markers.
 * **obd_maxlog (Python script)** — comma-separated, ``#``-prefixed
   metadata, English column headers with unit suffixes like ``RPM (rpm)``.
+* **Yamaha dual-channel** — comma-separated, ``#``-prefixed metadata,
+  ``A_KL_*`` (K-Line standard PIDs) and ``A_YAM_*`` (Yamaha proprietary)
+  column headers from the Jetson-side Yamaha logger.
 * **Generic CSV** — comma-separated with a recognisable ``Timestamp``
   column and bare PID names (delimiter conversion only).
 """
@@ -110,6 +113,34 @@ _CSVLOG_COLUMN_MAP: Dict[str, Tuple[str, Optional[Callable[[float], float]]]] = 
 # Columns from maxlog to filter out (non-standard diagnostic columns).
 _MAXLOG_SKIP_PREFIXES = ("DTC_", "MONITOR_", "M22_")
 
+
+# ── Yamaha dual-channel column mapping ───────────────────────────────
+# Yamaha logger emits ``A_KL_*`` (K-Line standard OBD-II PIDs) and
+# ``A_YAM_*`` (Yamaha proprietary Mode 0x21 PIDs).  Only the standard
+# K-Line group has 1:1 equivalents in the canonical PID name set used
+# by ``time_series_normalizer``.  ``A_YAM_*`` proprietary fields are
+# dropped here — see APP-53 for follow-up work to add canonical names
+# and rules for them.
+
+_YAMAHA_COLUMN_MAP: Dict[str, Tuple[str, Optional[Callable[[float], float]]]] = {
+    "Timestamp": ("Timestamp", None),
+    "A_KL_RPM": ("RPM", None),
+    "A_KL_SPEED": ("SPEED", None),
+    "A_KL_COOLANT_TEMP": ("COOLANT_TEMP", None),
+    "A_KL_IAT": ("INTAKE_TEMP", None),
+    "A_KL_MAP": ("INTAKE_PRESSURE", None),
+    "A_KL_BARO": ("BAROMETRIC_PRESSURE", None),
+    "A_KL_TIMING_ADV": ("TIMING_ADVANCE", None),
+    "A_KL_TPS": ("THROTTLE_POS", None),
+    "A_KL_REL_TPS": ("RELATIVE_THROTTLE_POS", None),
+    "A_KL_ENGINE_LOAD": ("ENGINE_LOAD", None),
+    "A_KL_CTRL_VOLT": ("CONTROL_MODULE_VOLTAGE", None),
+}
+
+# Header markers that uniquely identify a Yamaha dual-channel CSV.
+_YAMAHA_HEADER_MARKERS = ("A_KL_", "A_YAM_")
+_YAMAHA_METADATA_MARKER = "Yamaha Dual"
+
 # Regex for Chinese AM/PM markers in OBDWIZ timestamps.
 _CN_AMPM_RE = re.compile(r"\s*(上午|下午)\s*$")
 
@@ -179,7 +210,11 @@ def _normalise_timestamp_generic(raw: str) -> str:
 # ── Format detection ─────────────────────────────────────────────────
 
 FormatType = Literal[
-    "native_tsv", "csvlog_obdwiz", "obd_maxlog", "generic_csv",
+    "native_tsv",
+    "csvlog_obdwiz",
+    "obd_maxlog",
+    "yamaha_dual",
+    "generic_csv",
 ]
 
 
@@ -193,9 +228,10 @@ def _detect_format(lines: List[str]) -> FormatType:
 
     Returns:
         One of ``native_tsv``, ``csvlog_obdwiz``, ``obd_maxlog``,
-        or ``generic_csv``.
+        ``yamaha_dual``, or ``generic_csv``.
     """
     has_metadata = False
+    saw_yamaha_metadata = False
     header_line: Optional[str] = None
 
     for line in lines[:60]:
@@ -207,6 +243,8 @@ def _detect_format(lines: List[str]) -> FormatType:
 
         if stripped.startswith("#"):
             has_metadata = True
+            if _YAMAHA_METADATA_MARKER in stripped:
+                saw_yamaha_metadata = True
             continue
 
         if not stripped:
@@ -219,6 +257,14 @@ def _detect_format(lines: List[str]) -> FormatType:
 
     if header_line is None:
         return "native_tsv"  # fallback
+
+    # Yamaha dual-channel: header carries A_KL_* / A_YAM_* prefixes,
+    # or the metadata block declares it.  Check before generic CSV
+    # because Yamaha headers are also comma-separated with Timestamp.
+    if any(m in header_line for m in _YAMAHA_HEADER_MARKERS) or (
+        saw_yamaha_metadata and "," in header_line
+    ):
+        return "yamaha_dual"
 
     # Check for Chinese characters → OBDWIZ CSVLog.
     if _CHINESE_CHAR_RE.search(header_line):
@@ -478,6 +524,114 @@ def _normalize_maxlog(
     return out_path
 
 
+def _normalize_yamaha_dual(
+    lines: List[str],
+    out_path: Path,
+) -> Path:
+    """Convert Yamaha dual-channel CSV format to internal TSV.
+
+    Maps the ``A_KL_*`` (K-Line standard PIDs) columns to canonical
+    PID names recognised by the downstream pipeline.  ``A_YAM_*``
+    Yamaha-proprietary columns are dropped — the canonical schema and
+    rule set do not yet cover them; see APP-53 follow-up.
+
+    Args:
+        lines: Raw file lines.
+        out_path: Destination path for the normalised TSV.
+
+    Returns:
+        Path to the written TSV file.
+
+    Raises:
+        ValueError: If no header row or no recognised columns are
+            found.
+    """
+    metadata_lines: List[str] = []
+    data_lines: List[str] = []
+    header_found = False
+
+    for line in lines:
+        stripped = line.rstrip("\n\r")
+        if stripped.startswith("#"):
+            metadata_lines.append(stripped)
+            continue
+        if not stripped:
+            continue
+        if not header_found:
+            data_lines.append(stripped)
+            header_found = True
+            continue
+        data_lines.append(stripped)
+
+    if not data_lines:
+        raise ValueError(
+            "Yamaha dual-channel file has no recognisable header row."
+        )
+
+    text = "\n".join(data_lines)
+    reader = csv.reader(io.StringIO(text))
+    rows_iter = iter(reader)
+    try:
+        raw_headers = next(rows_iter)
+    except StopIteration:
+        raise ValueError(
+            "Yamaha dual-channel file contains no header row."
+        )
+    raw_headers = [h.strip() for h in raw_headers]
+
+    # Pick out the columns that have a canonical mapping.
+    pid_names: List[str] = []
+    keep_indices: List[int] = []
+    converters: List[Optional[Callable[[float], float]]] = []
+    for idx, h in enumerate(raw_headers):
+        entry = _YAMAHA_COLUMN_MAP.get(h)
+        if entry is None:
+            continue
+        pid_names.append(entry[0])
+        keep_indices.append(idx)
+        converters.append(entry[1])
+
+    if "Timestamp" not in pid_names:
+        raise ValueError(
+            "Yamaha dual-channel CSV has no Timestamp column."
+        )
+
+    ts_pos = pid_names.index("Timestamp")
+
+    output_rows: List[List[str]] = []
+    for raw_row in rows_iter:
+        if not raw_row or all(c.strip() == "" for c in raw_row):
+            continue
+        values: List[str] = []
+        for i, ci in enumerate(keep_indices):
+            raw_val = raw_row[ci].strip() if ci < len(raw_row) else ""
+            if i == ts_pos:
+                raw_val = _normalise_timestamp_generic(raw_val)
+            else:
+                raw_val = _try_convert(raw_val, converters[i])
+            values.append(raw_val)
+        output_rows.append(values)
+
+    ts_values = [r[ts_pos] for r in output_rows if r[ts_pos]]
+    first_ts = ts_values[0] if ts_values else "unknown"
+
+    with open(out_path, "w", encoding="utf-8", newline="") as fh:
+        for ml in metadata_lines:
+            fh.write(ml + "\n")
+        fh.write(
+            "OBD Data Log (converted from Yamaha dual-channel CSV)\n"
+        )
+        fh.write(f"Start Time: {first_ts}\n")
+        fh.write("Log Interval: 1.0s\n")
+        fh.write("-" * 80 + "\n")
+        fh.write("\t".join(pid_names) + "\n")
+        fh.write("-" * 80 + "\n")
+        for row in output_rows:
+            fh.write("\t".join(row) + "\n")
+
+    return out_path
+
+
 def _normalize_generic_csv(
     lines: List[str],
     out_path: Path,
@@ -581,6 +735,8 @@ def normalize_obd_file(path: str | Path) -> Path:
         return _normalize_csvlog(lines, out_path)
     elif fmt == "obd_maxlog":
         return _normalize_maxlog(lines, out_path)
+    elif fmt == "yamaha_dual":
+        return _normalize_yamaha_dual(lines, out_path)
     elif fmt == "generic_csv":
         return _normalize_generic_csv(lines, out_path)
 
