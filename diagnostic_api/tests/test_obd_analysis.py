@@ -276,6 +276,218 @@ class TestAnalyzeEndpoint:
         if os.path.isdir(log_dir):
             assert len(os.listdir(log_dir)) == 0
 
+    # ── APP-54: vehicle_id intake (query param + CSV header) ────────
+
+    @patch("app.api.v2.endpoints.obd_analysis.format_summary_flat_strings")
+    @patch("app.api.v2.endpoints.obd_analysis._run_pipeline")
+    def test_query_param_vin_overrides_parser(
+        self, mock_pipeline, mock_format, client, app_ref, tmp_path,
+    ):
+        """vehicle_id query param wins over the parser's V-UNKNOWN."""
+        from app.api.v2.schemas import LogSummaryV2
+
+        # Pipeline output has V-UNKNOWN — typical for files with no
+        # in-row VIN column (e.g. Yamaha CSVs).
+        payload = dict(FAKE_RESULT_PAYLOAD)
+        payload["vehicle_id"] = "V-UNKNOWN"
+        mock_pipeline.return_value = LogSummaryV2(**payload)
+        mock_format.return_value = FAKE_PARSED_SUMMARY
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: _mock_db_none()
+
+        with patch(
+            "app.api.v2.endpoints.obd_analysis.settings"
+        ) as mock_settings:
+            mock_settings.obd_log_storage_path = str(tmp_path)
+            mock_settings.premium_llm_enabled = False
+
+            resp = client.post(
+                "/v2/obd/analyze?vehicle_id=1HGCM82633A123456",
+                content=b"valid log data\n",
+            )
+        assert resp.status_code == 200
+        body = resp.json()
+        # Stored vehicle_id and the response's result.vehicle_id both
+        # carry the supplied raw VIN, not V-UNKNOWN.
+        assert body["result"]["vehicle_id"] == "1HGCM82633A123456"
+
+    @patch("app.api.v2.endpoints.obd_analysis.format_summary_flat_strings")
+    @patch("app.api.v2.endpoints.obd_analysis._run_pipeline")
+    def test_csv_header_vehicle_id_picked_up(
+        self, mock_pipeline, mock_format, client, app_ref, tmp_path,
+    ):
+        """`# vehicle_id: <value>` header line is read from the body."""
+        from app.api.v2.schemas import LogSummaryV2
+
+        payload = dict(FAKE_RESULT_PAYLOAD)
+        payload["vehicle_id"] = "V-UNKNOWN"
+        mock_pipeline.return_value = LogSummaryV2(**payload)
+        mock_format.return_value = FAKE_PARSED_SUMMARY
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: _mock_db_none()
+
+        body_with_header = (
+            b"# Yamaha Dual OBDLink EX Log\n"
+            b"# vehicle_id: yamaha-tricity155-lab01\n"
+            b"# Start: 2026-05-05 16:41:19\n"
+            b"Timestamp,A_KL_RPM\n"
+            b"2026-05-05 16:41:21.054,0\n"
+        )
+
+        with patch(
+            "app.api.v2.endpoints.obd_analysis.settings"
+        ) as mock_settings:
+            mock_settings.obd_log_storage_path = str(tmp_path)
+            mock_settings.premium_llm_enabled = False
+
+            resp = client.post(
+                "/v2/obd/analyze", content=body_with_header,
+            )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["result"]["vehicle_id"] == "yamaha-tricity155-lab01"
+
+    @patch("app.api.v2.endpoints.obd_analysis.format_summary_flat_strings")
+    @patch("app.api.v2.endpoints.obd_analysis._run_pipeline")
+    def test_query_param_wins_over_csv_header(
+        self, mock_pipeline, mock_format, client, app_ref, tmp_path,
+    ):
+        """When both are present, query param takes precedence."""
+        from app.api.v2.schemas import LogSummaryV2
+
+        payload = dict(FAKE_RESULT_PAYLOAD)
+        payload["vehicle_id"] = "V-UNKNOWN"
+        mock_pipeline.return_value = LogSummaryV2(**payload)
+        mock_format.return_value = FAKE_PARSED_SUMMARY
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: _mock_db_none()
+
+        body_with_header = (
+            b"# vehicle_id: from-header\n"
+            b"Timestamp,RPM\n"
+            b"2026-05-05 16:41:21,0\n"
+        )
+
+        with patch(
+            "app.api.v2.endpoints.obd_analysis.settings"
+        ) as mock_settings:
+            mock_settings.obd_log_storage_path = str(tmp_path)
+            mock_settings.premium_llm_enabled = False
+
+            resp = client.post(
+                "/v2/obd/analyze?vehicle_id=from-query-param",
+                content=body_with_header,
+            )
+        assert resp.status_code == 200
+        assert resp.json()["result"]["vehicle_id"] == "from-query-param"
+
+    def test_invalid_vehicle_id_returns_422(self, client, app_ref):
+        """A vehicle_id with disallowed characters is rejected."""
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: _mock_db_none()
+
+        # Whitespace + special chars are outside the allowed charset.
+        resp = client.post(
+            "/v2/obd/analyze?vehicle_id=has spaces!",
+            content=b"Timestamp,RPM\n2026-05-05 16:41:21,0\n",
+        )
+        assert resp.status_code == 422
+        assert "vehicle_id" in resp.json()["detail"].lower()
+
+    def test_invalid_vehicle_id_too_long_returns_422(self, client, app_ref):
+        """A vehicle_id over 50 chars is rejected."""
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: _mock_db_none()
+
+        resp = client.post(
+            "/v2/obd/analyze?vehicle_id=" + "A" * 51,
+            content=b"Timestamp,RPM\n2026-05-05 16:41:21,0\n",
+        )
+        assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# APP-54 unit tests for the validator and header-extraction helpers
+# ---------------------------------------------------------------------------
+
+
+class TestVehicleIdHelpers:
+    """Direct tests for ``_validate_vehicle_id`` + body-header sniff."""
+
+    def test_validator_accepts_real_vin(self) -> None:
+        """17-char ISO 3779 VIN passes."""
+        from app.api.v2.endpoints.obd_analysis import _validate_vehicle_id
+
+        assert (
+            _validate_vehicle_id("1HGCM82633A123456")
+            == "1HGCM82633A123456"
+        )
+
+    def test_validator_accepts_short_label(self) -> None:
+        """Short pseudonymous label passes."""
+        from app.api.v2.endpoints.obd_analysis import _validate_vehicle_id
+
+        assert (
+            _validate_vehicle_id("yamaha-tricity-01")
+            == "yamaha-tricity-01"
+        )
+
+    def test_validator_rejects_disallowed_chars(self) -> None:
+        """Whitespace and shell metacharacters are rejected."""
+        from fastapi import HTTPException
+
+        from app.api.v2.endpoints.obd_analysis import _validate_vehicle_id
+
+        with pytest.raises(HTTPException) as exc_info:
+            _validate_vehicle_id("has spaces")
+        assert exc_info.value.status_code == 422
+
+    def test_validator_rejects_too_long(self) -> None:
+        """>50 char strings rejected."""
+        from fastapi import HTTPException
+
+        from app.api.v2.endpoints.obd_analysis import _validate_vehicle_id
+
+        with pytest.raises(HTTPException):
+            _validate_vehicle_id("A" * 51)
+
+    def test_header_extract_finds_vin(self) -> None:
+        """`# vehicle_id: <vin>` line is found."""
+        from app.api.v2.endpoints.obd_analysis import (
+            _extract_vehicle_id_from_body,
+        )
+
+        body = (
+            b"# Yamaha Log\n"
+            b"# vehicle_id: 1HGCM82633A123456\n"
+            b"Timestamp,RPM\n"
+        )
+        assert (
+            _extract_vehicle_id_from_body(body) == "1HGCM82633A123456"
+        )
+
+    def test_header_extract_returns_none_when_absent(self) -> None:
+        """Body without the marker yields None."""
+        from app.api.v2.endpoints.obd_analysis import (
+            _extract_vehicle_id_from_body,
+        )
+
+        body = b"# Yamaha Log\nTimestamp,RPM\n"
+        assert _extract_vehicle_id_from_body(body) is None
+
+    def test_header_extract_only_scans_first_4kib(self) -> None:
+        """A late `# vehicle_id:` deep in the body is ignored."""
+        from app.api.v2.endpoints.obd_analysis import (
+            _extract_vehicle_id_from_body,
+        )
+
+        # Pad past the 4 KiB scan window, then add the marker.
+        body = b"x" * 5000 + b"\n# vehicle_id: late-tag\n"
+        assert _extract_vehicle_id_from_body(body) is None
+
 
 # ---------------------------------------------------------------------------
 # GET /v2/obd/{session_id}

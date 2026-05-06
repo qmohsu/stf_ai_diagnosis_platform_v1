@@ -224,20 +224,20 @@ class TestRowToSnapshot:
         snap = row_to_snapshot(rows[0])
         assert snap.ts == datetime(2025, 7, 23, 14, 42, 16, tzinfo=timezone.utc)
 
-    def test_vehicle_id_pseudonymised(self) -> None:
-        """VIN is hashed, not stored raw."""
+    def test_vehicle_id_is_raw_vin(self) -> None:
+        """APP-54: VIN is stored verbatim, no hashing on the hot path."""
         rows = parse_log_file(_REAL_LOG)
         snap = row_to_snapshot(rows[0])
-        assert snap.vehicle_id.startswith("V-")
-        assert snap.vehicle_id != _REAL_VIN
-        assert snap.vehicle_id == pseudonymise_vin(_REAL_VIN)
+        assert snap.vehicle_id == _REAL_VIN
 
-    def test_raw_vin_not_in_snapshot(self) -> None:
-        """The raw VIN never appears in the serialised snapshot."""
-        rows = parse_log_file(_REAL_LOG)
-        snap = row_to_snapshot(rows[0])
-        assert _REAL_VIN not in snap.vehicle_id
-        assert _REAL_VIN not in snap.model_dump_json()
+    def test_pseudonymise_vin_still_available(self) -> None:
+        """``pseudonymise_vin`` remains importable for the corpus
+        export redactor even though the upload path no longer
+        hashes."""
+        # Same input → same output (deterministic).
+        assert (
+            pseudonymise_vin(_REAL_VIN) == pseudonymise_vin(_REAL_VIN)
+        )
 
     def test_vehicle_id_override(self) -> None:
         rows = parse_log_file(_REAL_LOG)
@@ -341,11 +341,11 @@ class TestLogFileToSnapshots:
         assert all(isinstance(s, OBDSnapshot) for s in snapshots)
 
     def test_all_same_vehicle_id(self) -> None:
-        """All rows from the same log share the same pseudonymised VIN."""
+        """All rows from the same log share the same raw VIN (APP-54)."""
         snapshots = log_file_to_snapshots(_REAL_LOG)
         ids = {s.vehicle_id for s in snapshots}
         assert len(ids) == 1
-        assert ids.pop() == pseudonymise_vin(_REAL_VIN)
+        assert ids.pop() == _REAL_VIN
 
     def test_vehicle_id_override_applies_to_all(self) -> None:
         snapshots = log_file_to_snapshots(_REAL_LOG, vehicle_id="V-FLEET-42")

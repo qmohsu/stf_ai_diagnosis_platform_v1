@@ -41,12 +41,13 @@ class TestOBDSnapshot:
         assert len(snap.dtc) == 2
         assert snap.dtc[0].code == "P0301"
 
-    def test_raw_vin_rejected(self) -> None:
-        with pytest.raises(ValueError, match="raw VIN"):
-            OBDSnapshot(
-                vehicle_id="1HGBH41JXMN109186",
-                adapter={"type": "ELM327", "port": "sim"},
-            )
+    def test_raw_vin_accepted(self) -> None:
+        """APP-54: raw VINs are accepted (rejection validator removed)."""
+        snap = OBDSnapshot(
+            vehicle_id="1HGBH41JXMN109186",
+            adapter={"type": "ELM327", "port": "sim"},
+        )
+        assert snap.vehicle_id == "1HGBH41JXMN109186"
 
     def test_pseudonymous_id_accepted(self) -> None:
         snap = OBDSnapshot(

@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from obd_agent.log_parser import _PID_UNITS, parse_log_file, pseudonymise_vin
+from obd_agent.log_parser import _PID_UNITS, parse_log_file
 from obd_agent.time_series_normalizer import (
     NormalizedTimeSeries,
     _PID_SEMANTIC_NAMES,
@@ -149,10 +149,10 @@ class TestExtractMetadata:
     def rows(self) -> list:
         return parse_log_file(_REAL_LOG)
 
-    def test_vehicle_id_pseudonymised(self, rows: list) -> None:
+    def test_vehicle_id_is_raw_vin(self, rows: list) -> None:
+        """APP-54: raw VIN, no hashing."""
         vid, _ = _extract_metadata(rows)
-        assert vid == pseudonymise_vin(_REAL_VIN)
-        assert vid.startswith("V-")
+        assert vid == _REAL_VIN
 
     def test_vehicle_id_override(self, rows: list) -> None:
         vid, _ = _extract_metadata(rows, vehicle_id_override="V-CUSTOM")
@@ -279,7 +279,8 @@ class TestNormalizeRows:
         assert result.df.shape == (289, len(_PID_UNITS))
 
     def test_vehicle_id(self, result: NormalizedTimeSeries) -> None:
-        assert result.vehicle_id == pseudonymise_vin(_REAL_VIN)
+        """APP-54: raw VIN, no hashing."""
+        assert result.vehicle_id == _REAL_VIN
 
     def test_time_range(self, result: NormalizedTimeSeries) -> None:
         start, end = result.time_range

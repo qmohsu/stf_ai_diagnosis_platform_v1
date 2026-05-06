@@ -81,6 +81,12 @@ def pseudonymise_vin(raw_vin: str) -> str:
 
     Uses a truncated SHA-256 hash prefix so the original VIN cannot be
     recovered, but the same VIN always produces the same ID.
+
+    .. note:: APP-54
+       No longer called on the upload hot path — the project's current
+       experimental-vehicle policy stores raw VINs directly.  Retained as
+       a utility for the corpus-export redactor and any future external
+       data-sharing pipeline.
     """
     digest = hashlib.sha256(raw_vin.encode()).hexdigest()[:8]
     return f"V-{digest.upper()}"
@@ -193,13 +199,15 @@ def row_to_snapshot(
     except ValueError:
         ts = datetime.now(timezone.utc)
 
-    # --- vehicle ID (pseudonymised) ----------------------------------------
+    # --- vehicle ID --------------------------------------------------------
+    # APP-54: experimental-vehicle / internal-development stage policy is to
+    # use raw VINs as vehicle identifiers.  ``pseudonymise_vin`` is left in
+    # the module as a dormant utility for any future redaction need (e.g. the
+    # ``scripts/export_anonymised_corpus.py`` redactor) but is no longer
+    # called on the hot path.
     if vehicle_id is None:
         raw_vin = _extract_vin(row.get("VIN", ""))
-        if raw_vin:
-            vehicle_id = pseudonymise_vin(raw_vin)
-        else:
-            vehicle_id = "V-UNKNOWN"
+        vehicle_id = raw_vin or "V-UNKNOWN"
 
     # --- adapter info ------------------------------------------------------
     elm_version = row.get("ELM_VERSION", "ELM327").strip()

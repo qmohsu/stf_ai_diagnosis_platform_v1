@@ -85,8 +85,8 @@ class TestV2SummarizeLogRawIntegration:
         assert resp.status_code == 200
         body = resp.json()
 
-        # Legacy fields
-        assert body["vehicle_id"] == "V-38615C39"
+        # Legacy fields (APP-54: raw VIN, no hashing)
+        assert body["vehicle_id"] == "JHMGK5830HX202404"
         assert body["time_range"]["sample_count"] == 158
         assert "RPM" in body["pid_summary"]
 

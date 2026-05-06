@@ -14,6 +14,13 @@ Phase 1 local-first pilot for AI-assisted vehicle diagnosis.
 - LLM context may contain ONLY summaries, risk scores, and text snippets
 - All raw sensor data stays in the backend; only derived features and summaries are LLM-safe
 
+### Vehicle identifier policy (APP-54, current internal-development stage)
+
+- Raw VINs (17-char ISO 3779) **may** be used as `vehicle_id` end-to-end in the backend, including in DB columns, on-disk files, structured logs, and LLM context.  This is a deliberate relaxation of the earlier "no raw VINs ever" rule, justified by the experimental-vehicles / pre-customer stage and the need for stable per-vehicle traceability across pipeline refactors.
+- The `pseudonymise_vin()` helper in `obd_agent/log_parser.py` is **dormant** on the upload hot path but retained for the corpus-export redactor.
+- **Raw VINs MUST NOT leave the backend to external recipients** without first being pseudonymised.  Any data export, paper artefact, partner demo, or public release goes through `diagnostic_api/scripts/export_anonymised_corpus.py` (or equivalent) so every raw VIN is replaced with its `V-{8-hex}` pseudonym.
+- Test fixtures and committed examples in this repo should still use **fake** VINs (e.g. the existing `JHMGK5830HX202404` / `1HGCM82633A123456`) — the policy is "raw VINs in our backend storage are fine"; "raw VINs in the public Git history" is a separate concern and the answer remains no.
+
 ## Python Coding Standards (Google Style)
 
 Follow the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html).
