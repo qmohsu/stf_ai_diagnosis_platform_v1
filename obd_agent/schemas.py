@@ -1,6 +1,15 @@
 """OBDSnapshot Pydantic v2 models.
 
 Matches the contract defined in design_doc section 8.1.1.
+
+.. deprecated:: APP-53 (issue #76)
+   ``OBDSnapshot`` was designed as the payload for the
+   ``/v1/telemetry/obd_snapshot`` edge ingestion endpoint, which was
+   never deployed.  The platform's actual ingestion path is
+   ``POST /v2/obd/analyze`` (full trip log file body) — see
+   :mod:`obd_agent.jetson_uploader` for a reference client.  This
+   schema is retained for one release for legacy importers; it will
+   be removed thereafter.
 """
 
 from __future__ import annotations

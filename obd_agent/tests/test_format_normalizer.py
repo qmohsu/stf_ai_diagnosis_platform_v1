@@ -25,6 +25,7 @@ from obd_agent.log_parser import parse_log_file
 _FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 _CSVLOG_SAMPLE = _FIXTURES_DIR / "csvlog_sample.csv"
 _MAXLOG_SAMPLE = _FIXTURES_DIR / "maxlog_sample.csv"
+_YAMAHA_SAMPLE = _FIXTURES_DIR / "yamaha_dual_sample.csv"
 _NATIVE_LOG = _FIXTURES_DIR / "obd_log_20250723_144216.txt"
 
 
@@ -194,6 +195,23 @@ class TestDetectFormat:
         ]
         assert _detect_format(lines) == "obd_maxlog"
 
+    def test_yamaha_dual_via_header_prefix(self) -> None:
+        """A_KL_ / A_YAM_ column prefixes identify Yamaha dual."""
+        lines = [
+            "Timestamp,A_KL_RPM,A_KL_SPEED,A_YAM_INJ_MS\n",
+            "2026-05-05 16:41:21.054,0,0,0\n",
+        ]
+        assert _detect_format(lines) == "yamaha_dual"
+
+    def test_yamaha_dual_via_metadata_marker(self) -> None:
+        """# Yamaha Dual marker identifies Yamaha format."""
+        lines = [
+            "# Yamaha Dual OBDLink EX Log\n",
+            "Timestamp,A_KL_RPM\n",
+            "2026-05-05 16:41:21.054,0\n",
+        ]
+        assert _detect_format(lines) == "yamaha_dual"
+
 
 # ── CSVLog normalisation ─────────────────────────────────────────────
 
@@ -328,3 +346,91 @@ class TestNativeTsvPassthrough:
         normalize_obd_file(_NATIVE_LOG)
         normalised = _NATIVE_LOG.with_suffix(".normalized.tsv")
         assert not normalised.exists()
+
+
+# ── Yamaha dual-channel normalisation ────────────────────────────────
+
+class TestNormalizeYamahaDual:
+    """Yamaha dual-channel CSV → internal TSV conversion."""
+
+    def test_end_to_end_yamaha(self, tmp_path: Path) -> None:
+        """Full Yamaha sample converts to parseable TSV with canonical PIDs."""
+        sample = _copy_fixture(_YAMAHA_SAMPLE, tmp_path)
+        result_path = normalize_obd_file(sample)
+        rows = parse_log_file(result_path)
+        assert len(rows) > 0
+        # The 11 standard A_KL_* PIDs should be remapped to canonical names.
+        expected = {
+            "Timestamp",
+            "RPM",
+            "SPEED",
+            "COOLANT_TEMP",
+            "INTAKE_TEMP",
+            "INTAKE_PRESSURE",
+            "BAROMETRIC_PRESSURE",
+            "TIMING_ADVANCE",
+            "THROTTLE_POS",
+            "RELATIVE_THROTTLE_POS",
+            "ENGINE_LOAD",
+            "CONTROL_MODULE_VOLTAGE",
+        }
+        assert expected.issubset(rows[0].keys())
+
+    def test_yamaha_proprietary_columns_dropped(
+        self, tmp_path: Path,
+    ) -> None:
+        """A_YAM_* proprietary columns are dropped (APP-53 follow-up)."""
+        sample = _copy_fixture(_YAMAHA_SAMPLE, tmp_path)
+        result_path = normalize_obd_file(sample)
+        rows = parse_log_file(result_path)
+        for key in rows[0]:
+            assert not key.startswith("A_YAM_")
+            assert not key.startswith("A_KL_")
+
+    def test_yamaha_timestamp_truncated(self, tmp_path: Path) -> None:
+        """Millisecond precision is stripped from timestamps."""
+        sample = _copy_fixture(_YAMAHA_SAMPLE, tmp_path)
+        result_path = normalize_obd_file(sample)
+        rows = parse_log_file(result_path)
+        for row in rows:
+            ts = row["Timestamp"]
+            assert "." not in ts
+            assert len(ts) == 19
+
+    def test_yamaha_metadata_preserved(self, tmp_path: Path) -> None:
+        """# metadata lines are present in the output file."""
+        sample = _copy_fixture(_YAMAHA_SAMPLE, tmp_path)
+        result_path = normalize_obd_file(sample)
+        with open(result_path, encoding="utf-8") as fh:
+            content = fh.read()
+        assert "# Yamaha Dual OBDLink EX Log" in content
+
+    def test_yamaha_values_preserved(self, tmp_path: Path) -> None:
+        """A_KL_* numeric values pass through without conversion."""
+        sample = _copy_fixture(_YAMAHA_SAMPLE, tmp_path)
+        result_path = normalize_obd_file(sample)
+        rows = parse_log_file(result_path)
+        # The first non-N/A row in the fixture is the second data row,
+        # with A_KL_BARO=101, A_KL_COOLANT_TEMP=48, A_KL_RPM=0.
+        first_real = next(
+            r for r in rows if r["RPM"] not in ("N/A", "")
+        )
+        assert float(first_real["BAROMETRIC_PRESSURE"]) == 101.0
+        assert float(first_real["COOLANT_TEMP"]) == 48.0
+        assert float(first_real["RPM"]) == 0.0
+
+    def test_yamaha_pipeline_runs_without_error(
+        self, tmp_path: Path,
+    ) -> None:
+        """Normalised Yamaha TSV feeds the downstream pipeline cleanly."""
+        from obd_agent.statistics_extractor import extract_statistics
+        from obd_agent.time_series_normalizer import normalize_log_file
+
+        sample = _copy_fixture(_YAMAHA_SAMPLE, tmp_path)
+        result_path = normalize_obd_file(sample)
+        ts = normalize_log_file(str(result_path))
+        stats = extract_statistics(ts)
+        # Engine RPM should appear in the semantic statistics output —
+        # this proves the canonical name mapping reached the downstream
+        # stages, not just the file itself.
+        assert "engine_rpm" in stats.to_dict()["stats"]
