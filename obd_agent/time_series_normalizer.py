@@ -73,7 +73,6 @@ from obd_agent.log_parser import (
     _extract_vin,
     _parse_dtc_list,
     parse_log_file,
-    pseudonymise_vin,
 )
 
 # ---------------------------------------------------------------------------
@@ -222,16 +221,18 @@ def _extract_metadata(
     rows: List[Dict[str, str]],
     vehicle_id_override: Optional[str] = None,
 ) -> Tuple[str, List[str]]:
-    """Extract pseudonymised vehicle ID and deduplicated DTC codes.
+    """Extract vehicle ID and deduplicated DTC codes.
+
+    APP-54: VIN is stored verbatim, no hashing.
 
     Returns ``(vehicle_id, dtc_codes)``.
     """
-    # Vehicle ID: use override, or pseudonymise from first row's VIN.
+    # Vehicle ID: use override, or read raw VIN from first row.
     if vehicle_id_override is not None:
         vehicle_id = vehicle_id_override
     else:
         raw_vin = _extract_vin(rows[0].get("VIN", "")) if rows else None
-        vehicle_id = pseudonymise_vin(raw_vin) if raw_vin else "V-UNKNOWN"
+        vehicle_id = raw_vin or "V-UNKNOWN"
 
     # DTC codes: collect from all rows, deduplicate.
     seen: set[str] = set()

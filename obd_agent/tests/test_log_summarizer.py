@@ -45,7 +45,8 @@ class TestSummaryStructure:
         assert isinstance(real_summary, LogSummary)
 
     def test_vehicle_id(self, real_summary: LogSummary) -> None:
-        assert real_summary.vehicle_id == "V-38615C39"
+        """APP-54: raw VIN, no hashing."""
+        assert real_summary.vehicle_id == "JHMGK5830HX202404"
 
     def test_adapter(self, real_summary: LogSummary) -> None:
         assert real_summary.adapter == "ELM327 v1.4b"
@@ -299,7 +300,7 @@ class TestGoldenFile:
         with open(_EXPECTED_JSON, encoding="utf-8") as fh:
             data = json.load(fh)
         summary = LogSummary.model_validate(data)
-        assert summary.vehicle_id == "V-38615C39"
+        assert summary.vehicle_id == "JHMGK5830HX202404"
         assert summary.time_range.sample_count == 158
 
 

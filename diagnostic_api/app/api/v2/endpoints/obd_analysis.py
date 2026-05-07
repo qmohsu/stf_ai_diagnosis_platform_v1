@@ -90,6 +90,72 @@ _ALLOWED_EXTRA_FIELDS = frozenset({
     "audio_file_path", "audio_duration_seconds", "audio_size_bytes",
 })
 
+# APP-54: vehicle_id intake.  Accept either a 17-char ISO 3779 VIN or any
+# free-form label up to 50 chars (matches DB column width).  The 17-char
+# VIN charset excludes I, O, Q to avoid digit confusion.  Free-form labels
+# are validated only for length and a conservative printable-ASCII charset
+# so they can be used safely in URLs, log lines, and filenames.
+import re as _vin_re
+_VIN_RE = _vin_re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")
+_LABEL_RE = _vin_re.compile(r"^[A-Za-z0-9._\-:]{1,50}$")
+_HEADER_VEHICLE_ID_RE = _vin_re.compile(
+    rb"^#\s*vehicle_id\s*:\s*([A-Za-z0-9._\-:]{1,50})\s*$",
+    _vin_re.MULTILINE,
+)
+
+
+def _validate_vehicle_id(value: str) -> str:
+    """Validate a user-supplied vehicle_id.
+
+    Accepts a 17-char ISO 3779 VIN or any short printable label
+    (letters, digits, ``.`` ``_`` ``-`` ``:``, 1-50 chars).  Both
+    are stored verbatim — no hashing — per the APP-54 policy.
+
+    Args:
+        value: Raw vehicle_id string.
+
+    Returns:
+        The validated value (unchanged).
+
+    Raises:
+        HTTPException: 422 if the value matches neither pattern.
+    """
+    value = value.strip()
+    if _VIN_RE.match(value) or _LABEL_RE.match(value):
+        return value
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail=(
+            "vehicle_id must be a 17-char ISO 3779 VIN or a short "
+            "label (1-50 chars, [A-Za-z0-9._\\-:])."
+        ),
+    )
+
+
+def _extract_vehicle_id_from_body(body_bytes: bytes) -> Optional[str]:
+    """Look for a ``# vehicle_id: <value>`` line in a CSV/TSV header.
+
+    Scans only the first ~4 KiB so a malicious or oversized file
+    cannot trigger an expensive regex on megabytes of payload.
+
+    Args:
+        body_bytes: Raw upload body.
+
+    Returns:
+        The extracted value if present and valid, else ``None``.
+    """
+    head = body_bytes[:4096]
+    match = _HEADER_VEHICLE_ID_RE.search(head)
+    if match is None:
+        return None
+    try:
+        candidate = match.group(1).decode("ascii").strip()
+    except UnicodeDecodeError:
+        return None
+    if _VIN_RE.match(candidate) or _LABEL_RE.match(candidate):
+        return candidate
+    return None
+
 _MIME_TO_EXT: dict[str, str] = {
     "audio/webm": "webm",
     "audio/ogg": "ogg",
@@ -518,6 +584,16 @@ async def list_sessions(
 )
 async def analyze_obd_log(
     request: Request,
+    vehicle_id: Optional[str] = Query(
+        default=None,
+        description=(
+            "Vehicle identifier to attach to this upload.  Accepts a "
+            "17-char ISO 3779 VIN or a short label (1-50 chars, "
+            "[A-Za-z0-9._-:]).  If omitted, the body is scanned for a "
+            "'# vehicle_id: <value>' header line; if neither is "
+            "present the legacy parser fallback is used."
+        ),
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> OBDAnalysisResponse:
@@ -542,6 +618,16 @@ async def analyze_obd_log(
             detail="Text exceeds 10 MB limit.",
         )
 
+    # APP-54: resolve vehicle_id from (1) query param, (2) body header,
+    # (3) legacy in-row VIN column.  Query param wins.  Validation runs
+    # only on caller-controlled inputs (1) and (2); the parser-derived
+    # fallback is left untouched so any pre-existing fixtures still work.
+    resolved_vehicle_id: Optional[str] = None
+    if vehicle_id is not None:
+        resolved_vehicle_id = _validate_vehicle_id(vehicle_id)
+    else:
+        resolved_vehicle_id = _extract_vehicle_id_from_body(body_bytes)
+
     input_hash = hashlib.sha256(body_bytes).hexdigest()
 
     # --- deduplication: return existing session if same user already analyzed this file ---
@@ -558,6 +644,19 @@ async def analyze_obd_log(
         result = None
         if existing.result_payload:
             result = LogSummaryV2(**existing.result_payload)
+        # APP-54: surface vehicle_id conflicts on dedup so a stale or
+        # mistyped re-upload doesn't silently get ignored.  Existing
+        # row is the source of truth — we don't mutate on dedup.
+        if (
+            resolved_vehicle_id is not None
+            and existing.vehicle_id != resolved_vehicle_id
+        ):
+            logger.warning(
+                "obd_analyze_dedup_vehicle_id_mismatch",
+                session_id=str(existing.id),
+                stored=existing.vehicle_id,
+                supplied=resolved_vehicle_id,
+            )
         logger.info("obd_analyze_dedup", session_id=str(existing.id), hash=input_hash)
         return OBDAnalysisResponse(
             premium_llm_enabled=settings.premium_llm_enabled,
@@ -587,6 +686,17 @@ async def analyze_obd_log(
 
         result: LogSummaryV2 = await asyncio.to_thread(_run_pipeline, tmp_path)
 
+        # APP-54: caller-supplied vehicle_id (query param or
+        # ``# vehicle_id:`` header) wins over the legacy parser
+        # extraction.  Sync into both the response object and the
+        # JSONB result_payload so all storage and downstream surfaces
+        # agree.  Stored verbatim — no hashing.
+        final_vehicle_id = resolved_vehicle_id or result.vehicle_id
+        if resolved_vehicle_id is not None:
+            result = result.model_copy(
+                update={"vehicle_id": resolved_vehicle_id},
+            )
+
         result_dict = result.model_dump(mode="json")
         parsed_dict = format_summary_flat_strings(result_dict)
 
@@ -602,7 +712,7 @@ async def analyze_obd_log(
             id=session_id,
             user_id=current_user.id,
             status="COMPLETED",
-            vehicle_id=result.vehicle_id,
+            vehicle_id=final_vehicle_id,
             input_text_hash=input_hash,
             input_size_bytes=len(body_bytes),
             raw_input_file_path=file_rel_path,

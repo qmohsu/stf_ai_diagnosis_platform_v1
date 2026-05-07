@@ -63,20 +63,27 @@ class PIDValue(BaseModel):
 # Top-level snapshot
 # ---------------------------------------------------------------------------
 
-_RAW_VIN_PATTERN = re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")
-
 
 class OBDSnapshot(BaseModel):
     """Edge-to-cloud OBD-II snapshot payload.
 
     Additive contract: new fields may be added; existing fields remain
     backward-compatible.  See design_doc 8.1.1.
+
+    .. note:: APP-54
+       Per the experimental-vehicle / internal-development policy,
+       ``vehicle_id`` is now expected to be a raw VIN (17-char ISO 3779)
+       or any free-form pseudonymous label.  The previous
+       ``reject_raw_vin`` validator has been removed.
     """
 
     vehicle_id: str = Field(
         ...,
-        description="Pseudonymous vehicle identifier (NOT a raw VIN)",
-        examples=["V-SIM-001"],
+        description=(
+            "Vehicle identifier: a raw 17-char VIN (ISO 3779) or any "
+            "free-form label.  Examples: '1HGCM82633A123456', 'V-SIM-001'."
+        ),
+        examples=["1HGCM82633A123456", "V-SIM-001"],
     )
     ts: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -89,16 +96,3 @@ class OBDSnapshot(BaseModel):
     baseline_pids: Dict[str, PIDValue] = Field(default_factory=dict)
 
     model_config = {"extra": "allow"}
-
-    # --- validators --------------------------------------------------------
-
-    @field_validator("vehicle_id")
-    @classmethod
-    def reject_raw_vin(cls, v: str) -> str:
-        """Reject 17-char alphanumeric strings that look like a raw VIN."""
-        if _RAW_VIN_PATTERN.match(v):
-            raise ValueError(
-                "vehicle_id looks like a raw VIN (ISO 3779). "
-                "Use a pseudonymous identifier instead."
-            )
-        return v

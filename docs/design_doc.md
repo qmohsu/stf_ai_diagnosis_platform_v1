@@ -11,14 +11,15 @@
 | **Status** | Draft v4.5 (Generalized DTC Index for Manuals) |
 | **Owner** | (You / ML Lead) |
 | **Contributors** | ML engineers; data engineers; backend engineers; DevOps; security reviewer; workshop/technician SMEs |
-| **Last updated** | 2026-05-05 (v5.5) |
+| **Last updated** | 2026-05-06 (v5.6) |
 | **Primary pilot stack** | FastAPI (diagnostic_api) + Ollama (`qwen3.5:27b-q8_0`) + Next.js (obd-ui) + pgvector (PostgreSQL) |
-| **New in this revision** | APP-53: Yamaha dual-channel CSV ingestion + Jetson reference upload client (GitHub issue #76).  `format_normalizer` gains a `yamaha_dual` format with `_YAMAHA_COLUMN_MAP` translating the 11 standard `A_KL_*` K-Line PIDs to canonical names (RPM, SPEED, COOLANT_TEMP, etc.); proprietary `A_YAM_*` columns are dropped pending a follow-up issue.  Detection prefers Yamaha when the header carries `A_KL_`/`A_YAM_` markers OR the metadata block declares `Yamaha Dual`, evaluated before `generic_csv` so look-alikes don't slip past.  New `obd_agent/jetson_uploader.py` reference client wraps `POST /auth/login` → `POST /v2/obd/analyze` for end-of-trip uploads from Jetson edge devices over 4G.  `obd_agent/api_poster.py` and `obd_agent/schemas.py:OBDSnapshot` are deprecated — they targeted `/v1/telemetry/obd_snapshot`, which was never deployed (V1 was scoped down to RAG-only on 2026-03-08); a `DeprecationWarning` now fires at import time, modules retained for one release. |
+| **New in this revision** | APP-54: vehicle identifier policy relaxed for the experimental-vehicles / internal-development stage (GitHub issue #78). Raw VINs are now used as `vehicle_id` end-to-end in the backend rather than being SHA-256-truncated at parse time. `POST /v2/obd/analyze` accepts an optional `vehicle_id` query param (17-char ISO 3779 VIN or short label, validated for charset and length); the body is also scanned for a `# vehicle_id: …` header line, with the query param winning if both are present. The legacy `_RAW_VIN_PATTERN` rejection validator on `OBDSnapshot.vehicle_id` is removed; `pseudonymise_vin()` is retained as a dormant utility for the corpus-export redactor. New `diagnostic_api/scripts/export_anonymised_corpus.py` skeleton enforces "no raw VINs leave the backend" at data-sharing time. CLAUDE.md privacy section and §8.1.1 updated to match.  Builds on APP-53 (v5.5, 2026-05-05): Yamaha dual-channel CSV ingestion + Jetson reference upload client. |
 
 ### Revision history
 
 | Version | Date | Summary |
 |---------|------|---------|
+| v5.6 | 2026-05-06 | APP-54: vehicle identifier policy relaxed (GitHub issue #78).  Raw VINs used as `vehicle_id` end-to-end in the backend storage layer for the experimental-vehicles / internal-development stage; `pseudonymise_vin()` retained dormant for the corpus-export redactor that runs at data-sharing time.  `POST /v2/obd/analyze` accepts an optional `?vehicle_id=…` query param and scans the request body for a `# vehicle_id:` header line; query param wins when both are present.  Legacy `_RAW_VIN_PATTERN` rejection validator removed from `OBDSnapshot`.  New `diagnostic_api/scripts/export_anonymised_corpus.py` skeleton.  Privacy boundary in `CLAUDE.md` and §8.1.1 updated. |
 | v5.5 | 2026-05-05 | APP-53: Yamaha dual-channel CSV ingestion + Jetson reference upload client (GitHub issue #76).  `format_normalizer` gains a `yamaha_dual` format mapping the 11 standard `A_KL_*` K-Line PID columns to canonical names; `A_YAM_*` proprietary columns are dropped pending follow-up (no canonical schema or rules for them yet).  Detection prefers Yamaha when header carries `A_KL_`/`A_YAM_` markers or metadata declares `Yamaha Dual`, ahead of `generic_csv`.  New `obd_agent/jetson_uploader.py` reference client (`/auth/login` → `POST /v2/obd/analyze`).  `obd_agent/api_poster.py` and `OBDSnapshot` deprecated — they targeted `/v1/telemetry/obd_snapshot`, never deployed; import-time `DeprecationWarning`, retained one release.  Test fixture from collaborator's road test (1003 rows, RPM 0–4153, SPEED 0–20 km/h) committed; full pipeline runs end-to-end on the sample (11 canonical signals, 38 anomaly events, 4 clues). |
 | v5.4 | 2026-05-03 | APP-52: TOC quality fixes for the manual harness tools.  CJK-aware `slugify` keeps Chinese characters in slugs (no more numeric autosuffixes for Chinese-only headings).  New `_is_real_heading` predicate filters marker-pdf's misclassified pseudo-headings (oversized table rows >150 chars and numbered procedure steps `^\d+\.\s+\S{1,40}:?$`) in both `parser.parse_manual` and `manual_fs.parse_heading_tree`.  `get_manual_toc` accepts a new `max_depth` parameter (default 3) for context-budget-friendly pagination, with a hidden-count placeholder so the agent knows when to drill deeper. |
 | v5.3 | 2026-05-02 | APP-51 follow-up: strip empty HTML at marker-pdf conversion time AND at harness manual-tool read time so every AI-facing path sees clean text.  `marker_convert.py` post-processes the markdown before writing to disk.  `manual_fs._clean_md` plus calls in `_read_manual_file` and `extract_section` defend against any lingering pollution in older `.md` files. |
@@ -181,10 +182,13 @@ The edge collector must send a **sanitized, JSON-only** snapshot to the cloud. T
 • Never include raw adapter debug logs, raw CAN frames, or high-frequency time-series arrays in this payload.
 • Treat OBDSnapshot as an additive contract: new fields can be added, but existing fields must remain backward compatible.
 
+**Vehicle identifier policy (APP-54, internal-development stage)**
+For the current experimental-vehicles / internal-development stage, `vehicle_id` is the **raw VIN** (17-char ISO 3779) when available, or any short pseudonymous label (`[A-Za-z0-9._\-:]{1,50}`) otherwise. Raw VINs are stored verbatim in the backend (DB column, on-disk files, JSONB result payloads, structured logs, LLM context). The earlier "reject raw VIN at the edge" validator has been removed; `pseudonymise_vin()` is retained as a utility for the corpus-export redactor (`scripts/export_anonymised_corpus.py`) used when data leaves the backend for external recipients.
+
 **Minimum payload (illustrative)**
 ```json
 {
-  "vehicle_id": "V123",
+  "vehicle_id": "1HGCM82633A123456",
   "ts": "2026-02-01T12:34:56Z",
   "adapter": {"type": "ELM327", "port": "/dev/ttyUSB0"},
   "dtc": [{"code":"P0301","desc":"..."}],

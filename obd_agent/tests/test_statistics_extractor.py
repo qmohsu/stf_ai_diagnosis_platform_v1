@@ -347,7 +347,8 @@ class TestExtractStatisticsRealFixture:
         assert len(result.stats) == len(_PID_UNITS)
 
     def test_vehicle_id_populated(self, result: SignalStatistics) -> None:
-        assert result.vehicle_id.startswith("V-")
+        """APP-54: vehicle_id is the raw VIN, no longer V-XXXXXXXX form."""
+        assert result.vehicle_id == "JHMGK5830HX202404"
 
     def test_time_range_tuple(self, result: SignalStatistics) -> None:
         start, end = result.time_range
