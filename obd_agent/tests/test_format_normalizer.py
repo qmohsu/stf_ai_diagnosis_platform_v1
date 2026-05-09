@@ -26,6 +26,7 @@ _FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 _CSVLOG_SAMPLE = _FIXTURES_DIR / "csvlog_sample.csv"
 _MAXLOG_SAMPLE = _FIXTURES_DIR / "maxlog_sample.csv"
 _YAMAHA_SAMPLE = _FIXTURES_DIR / "yamaha_dual_sample.csv"
+_YAMAHA_ROAD_TEST = _FIXTURES_DIR / "yamaha_dual_road_test_20260508.csv"
 _NATIVE_LOG = _FIXTURES_DIR / "obd_log_20250723_144216.txt"
 
 
@@ -434,3 +435,67 @@ class TestNormalizeYamahaDual:
         # this proves the canonical name mapping reached the downstream
         # stages, not just the file itself.
         assert "engine_rpm" in stats.to_dict()["stats"]
+
+
+# ── Yamaha real-road-test regression fixture ─────────────────────────
+
+
+class TestYamahaRoadTestFixture:
+    """End-to-end pipeline against the 2026-05-08 real road-test capture.
+
+    Distinct from ``TestNormalizeYamahaDual`` (which uses the
+    pre-trip simulation file): this exercises the format on a
+    real-world non-empty trip with engine actually running, so we
+    catch regressions where the format works on synthetic data but
+    breaks on real signal patterns (e.g. NaN handling, rare PID
+    transitions, anomaly-detector edge cases).
+
+    VIN in the fixture has been replaced with a synthetic placeholder
+    (``JYAMA00000XX000001``) per the APP-54 fixture-redaction policy —
+    raw VINs may live in the backend but not in the public Git
+    history.
+    """
+
+    def test_format_detected_as_yamaha(self, tmp_path: Path) -> None:
+        """Real road-test file is detected as Yamaha, not generic CSV."""
+        with open(_YAMAHA_ROAD_TEST, encoding="utf-8-sig") as fh:
+            lines = fh.readlines()
+        assert _detect_format(lines) == "yamaha_dual"
+
+    def test_road_test_full_pipeline(self, tmp_path: Path) -> None:
+        """Full pipeline produces non-empty stats / anomalies / clues."""
+        from obd_agent.anomaly_detector import detect_anomalies
+        from obd_agent.clue_generator import generate_clues
+        from obd_agent.statistics_extractor import extract_statistics
+        from obd_agent.time_series_normalizer import normalize_log_file
+
+        sample = _copy_fixture(_YAMAHA_ROAD_TEST, tmp_path)
+        out = normalize_obd_file(sample)
+        ts = normalize_log_file(str(out))
+        stats = extract_statistics(ts)
+        anomalies = detect_anomalies(ts, stats=stats)
+        clues = generate_clues(stats, anomalies)
+
+        signals = stats.to_dict()["stats"]
+        # Real road test exercises engine + drive — RPM should span
+        # idle and load, vehicle should move.
+        assert "engine_rpm" in signals
+        assert signals["engine_rpm"]["max"] > 1000
+        assert "vehicle_speed" in signals
+        assert signals["vehicle_speed"]["max"] > 0
+        # Pipeline should produce non-trivial diagnostic output on a
+        # real trip — exact counts may shift as rules evolve, so
+        # assert positive presence rather than equality.
+        assert len(anomalies.events) > 0
+        assert len(clues.clues) > 0
+
+    def test_road_test_proprietary_columns_dropped(
+        self, tmp_path: Path,
+    ) -> None:
+        """A_YAM_* columns from the real file are dropped, same as sample."""
+        sample = _copy_fixture(_YAMAHA_ROAD_TEST, tmp_path)
+        out = normalize_obd_file(sample)
+        rows = parse_log_file(out)
+        for key in rows[0]:
+            assert not key.startswith("A_YAM_")
+            assert not key.startswith("A_KL_")
