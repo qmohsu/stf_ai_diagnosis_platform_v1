@@ -236,10 +236,35 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
             fromFound * 200
           }ms after first sight); scrolling now.  scrollHeight=${currentHeight}px`,
         );
-        el.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
+        // Use absolute-Y scroll with `behavior: "auto"` (which
+        // most browsers interpret as instant) instead of
+        // `scrollIntoView({ behavior: "smooth" })`.  Smooth
+        // scroll for a 350K-pixel offset takes 1-3 seconds,
+        // and if anything (React #418 re-hydration, image
+        // load) shifts layout mid-animation the scroll stops
+        // at an intermediate position.  Instant scroll is
+        // unconditionally robust.
+        //
+        // Defend against subsequent layout shifts (re-renders,
+        // image loads, font swaps) by re-scrolling at 300ms,
+        // 1s, and 2.5s.  Cheap; the only way it can be wrong
+        // is if the user has manually scrolled away — the
+        // 4-second highlight gives them time to see where
+        // they're meant to be before the last re-scroll.
+        const scrollToEl = () => {
+          const rect = el.getBoundingClientRect();
+          const targetY = rect.top + window.scrollY;
+          window.scrollTo({ top: targetY, behavior: "auto" });
+          console.log(
+            `[ManualViewer] scrolled; target Y=${targetY.toFixed(
+              0,
+            )}, current scrollY=${window.scrollY.toFixed(0)}`,
+          );
+        };
+        scrollToEl();
+        window.setTimeout(scrollToEl, 300);
+        window.setTimeout(scrollToEl, 1000);
+        window.setTimeout(scrollToEl, 2500);
         el.classList.add("ring-2", "ring-primary", "rounded");
         window.setTimeout(() => {
           el.classList.remove(
@@ -247,7 +272,7 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
             "ring-primary",
             "rounded",
           );
-        }, 2400);
+        }, 4000);
         return;
       }
 
