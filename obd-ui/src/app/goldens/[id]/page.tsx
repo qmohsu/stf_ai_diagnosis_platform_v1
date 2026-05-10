@@ -22,14 +22,23 @@ import type {
 
 export default function GoldenDetailPage() {
   const params = useParams<{ id: string }>();
-  const entryId = decodeURIComponent(params.id);
 
   const [entry, setEntry] = useState<GoldenEntryDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState<"en" | "zh">("zh");
 
+  // Derive entryId reactively — guards against `params` being
+  // briefly undefined during SSR/first-client pass, which would
+  // otherwise trip React #418 hydration mismatch when the
+  // decoded ID differs between passes.
+  const entryId =
+    typeof params?.id === "string"
+      ? decodeURIComponent(params.id)
+      : "";
+
   useEffect(() => {
+    if (!entryId) return;
     setLoading(true);
     setError(null);
     getGolden(entryId)
