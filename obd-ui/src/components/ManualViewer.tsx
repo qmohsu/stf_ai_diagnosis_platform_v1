@@ -131,13 +131,22 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
   // here as `/manuals/<id>#<slug>`; the heading renderers below
   // emit `id` attributes matching the same slugs.
   //
-  // ReactMarkdown rendering of a 400-page (~500K-char) Chinese
-  // service manual can take many seconds.  We poll rather than
-  // fire a single timeout, and the budget is generous (15s) so
-  // slow machines don't lose the deep-link.  Per-attempt log
-  // lines and a final diagnostic dump make it possible to debug
-  // any remaining slug mismatch directly from the user's
-  // browser console without having to add custom JS.
+  // Two-phase wait:
+  //   1. Poll up to 20s for the target heading element to
+  //      appear in the DOM.
+  //   2. Once found, wait for `document.scrollHeight` to be
+  //      stable for 4 consecutive ticks (800ms) before calling
+  //      `scrollIntoView`.  This is the critical step: on a
+  //      509K-char manual the target heading shows up early
+  //      (~200ms) but ReactMarkdown is still rendering more
+  //      content ABOVE it, which keeps shifting its final
+  //      offsetTop downward.  If we scroll on first sight, the
+  //      browser parks at a now-stale screen position; by the
+  //      time render finishes, the heading has migrated far
+  //      below the visible viewport.
+  //
+  // Total budget capped at 20s; if the heading never appears,
+  // dump diagnostics so the failure mode is debuggable.
   useEffect(() => {
     if (!manual?.content) return;
     if (typeof window === "undefined") return;
@@ -148,18 +157,84 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
     console.log(
       `[ManualViewer] deep-link target requested: "${targetId}"`,
     );
+
     let attempts = 0;
-    const maxAttempts = 75; // 75 × 200ms = 15s
+    const maxAttempts = 100; // 100 × 200ms = 20s
+    let lastHeight = 0;
+    let stableTicks = 0;
+    const requiredStableTicks = 4; // 4 × 200ms = 800ms stable
+    let logged_found_at: number | null = null;
+
     const interval = window.setInterval(() => {
       attempts += 1;
       const el = document.getElementById(targetId);
-      if (el) {
-        window.clearInterval(interval);
+      const currentHeight =
+        document.documentElement.scrollHeight;
+
+      if (!el) {
+        if (attempts >= maxAttempts) {
+          window.clearInterval(interval);
+          const allHeadings = Array.from(
+            document.querySelectorAll(
+              "h1, h2, h3, h4, h5, h6",
+            ),
+          );
+          const allIds = allHeadings
+            .map((h) => h.id)
+            .filter(Boolean);
+          console.warn(
+            `[ManualViewer] deep-link target NOT FOUND after ${
+              attempts * 200
+            }ms: "${targetId}". Total headings: ${
+              allHeadings.length
+            }. Headings WITH ids: ${allIds.length}.`,
+          );
+          console.warn(
+            "[ManualViewer] First 10 heading ids found:",
+            allIds.slice(0, 10),
+          );
+        } else if (attempts === 5 || attempts === 25) {
+          const so_far = document.querySelectorAll(
+            "h1, h2, h3, h4, h5, h6",
+          ).length;
+          console.log(
+            `[ManualViewer] still polling at ${
+              attempts * 200
+            }ms; ${so_far} headings rendered so far`,
+          );
+        }
+        return;
+      }
+
+      // Element exists — log once.
+      if (logged_found_at === null) {
+        logged_found_at = attempts;
         console.log(
-          `[ManualViewer] deep-link target found at attempt ${attempts} (${
+          `[ManualViewer] target heading found at ${
             attempts * 200
-          }ms)`,
-          el,
+          }ms; waiting for layout to stabilise before scrolling`,
+        );
+      }
+
+      // Wait for document height to stabilise — ReactMarkdown
+      // is likely still streaming content above the heading,
+      // which would shift its final position.
+      if (currentHeight === lastHeight) {
+        stableTicks += 1;
+      } else {
+        stableTicks = 0;
+        lastHeight = currentHeight;
+      }
+
+      if (stableTicks >= requiredStableTicks) {
+        window.clearInterval(interval);
+        const fromFound = attempts - (logged_found_at ?? attempts);
+        console.log(
+          `[ManualViewer] layout stable at ${
+            attempts * 200
+          }ms (waited ${
+            fromFound * 200
+          }ms after first sight); scrolling now.  scrollHeight=${currentHeight}px`,
         );
         el.scrollIntoView({
           behavior: "smooth",
@@ -167,56 +242,36 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
         });
         el.classList.add("ring-2", "ring-primary", "rounded");
         window.setTimeout(() => {
-          el.classList.remove("ring-2", "ring-primary", "rounded");
-        }, 2400);
-      } else if (attempts >= maxAttempts) {
-        window.clearInterval(interval);
-        // Diagnostic dump: list every heading ID actually
-        // present in the DOM so we can compare against the
-        // requested slug and see exactly where the drift is.
-        const allHeadings = Array.from(
-          document.querySelectorAll("h1, h2, h3, h4, h5, h6"),
-        );
-        const allIds = allHeadings
-          .map((h) => h.id)
-          .filter(Boolean);
-        console.warn(
-          `[ManualViewer] deep-link target NOT FOUND after ${
-            attempts * 200
-          }ms: "${targetId}". Total headings: ${
-            allHeadings.length
-          }. Headings WITH ids: ${allIds.length}.`,
-        );
-        // Surface a small sample so we don't blow up the
-        // console — full list available via the all-id dump.
-        console.warn(
-          "[ManualViewer] First 10 heading ids found:",
-          allIds.slice(0, 10),
-        );
-        // Try a fuzzy match — substring of the slug — just
-        // for debugging.  Helps spot prefix/encoding drift.
-        const fuzzyHits = allIds.filter((id) =>
-          id.includes(targetId.slice(0, 6)),
-        );
-        if (fuzzyHits.length) {
-          console.warn(
-            "[ManualViewer] Fuzzy matches (heading id contains first 6 chars of target):",
-            fuzzyHits,
+          el.classList.remove(
+            "ring-2",
+            "ring-primary",
+            "rounded",
           );
-        }
-      } else if (attempts === 5 || attempts === 25) {
-        // Mid-poll progress logs.  At 1s and 5s, log how many
-        // headings have rendered so far — gives the user
-        // (and us) signal on whether ReactMarkdown is making
-        // progress or wedged.
-        const so_far = document.querySelectorAll(
-          "h1, h2, h3, h4, h5, h6",
-        ).length;
-        console.log(
-          `[ManualViewer] still polling at ${
+        }, 2400);
+        return;
+      }
+
+      if (attempts >= maxAttempts) {
+        window.clearInterval(interval);
+        // Layout never stabilised within 20s — scroll anyway
+        // as a last resort, with a warning.
+        console.warn(
+          `[ManualViewer] layout never stabilised after ${
             attempts * 200
-          }ms; ${so_far} headings rendered so far`,
+          }ms; scrolling as a last resort. scrollHeight is still moving (lastHeight=${lastHeight}, current=${currentHeight}).`,
         );
+        el.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+        el.classList.add("ring-2", "ring-primary", "rounded");
+        window.setTimeout(() => {
+          el.classList.remove(
+            "ring-2",
+            "ring-primary",
+            "rounded",
+          );
+        }, 2400);
       }
     }, 200);
     return () => window.clearInterval(interval);
