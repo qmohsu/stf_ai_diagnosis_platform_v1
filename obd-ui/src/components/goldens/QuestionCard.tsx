@@ -1,5 +1,6 @@
 "use client";
 
+import { ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { GoldenEntryDetail } from "@/lib/types";
@@ -91,26 +92,43 @@ export function QuestionCard({ entry, language }: QuestionCardProps) {
         </div>
       </section>
 
-      {/* Source quotes */}
+      {/* Source quotes — each citation links into the raw
+          manual at the cited section.  Opens in a new tab so the
+          reviewer doesn't lose their review-form state. */}
       <section className="space-y-2">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           {useZh ? "手冊原文引用" : "Source quotes from the manual"}
         </h3>
         <ol className="space-y-2 text-sm">
-          {entry.golden_citations.map((c, i) => (
-            <li
-              key={`${c.slug}-${i}`}
-              className="rounded border-l-4 border-primary/40 bg-muted/20 px-3 py-2"
-            >
-              <div className="text-xs text-muted-foreground">
-                {useZh ? "章節" : "Section"}:{" "}
-                <code className="font-semibold">{c.slug}</code>
-              </div>
-              <blockquote className="mt-1 italic">
-                &ldquo;{c.quote}&rdquo;
-              </blockquote>
-            </li>
-          ))}
+          {entry.golden_citations.map((c, i) => {
+            const href = `/manuals/${encodeURIComponent(c.manual_id)}#${encodeURIComponent(c.slug)}`;
+            return (
+              <li key={`${c.slug}-${i}`}>
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded border-l-4 border-primary/40 bg-muted/20 px-3 py-2 transition hover:border-primary hover:bg-muted/40"
+                  title={
+                    useZh
+                      ? "在新分頁開啟手冊章節"
+                      : "Open this section in the manual (new tab)"
+                  }
+                >
+                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span>
+                      {useZh ? "章節" : "Section"}:{" "}
+                      <code className="font-semibold">{c.slug}</code>
+                    </span>
+                    <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
+                  </div>
+                  <blockquote className="mt-1 italic">
+                    &ldquo;{c.quote}&rdquo;
+                  </blockquote>
+                </a>
+              </li>
+            );
+          })}
         </ol>
       </section>
     </div>

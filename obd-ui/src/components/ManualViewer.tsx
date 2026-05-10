@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, BookOpen, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -10,7 +10,36 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getManual } from "@/lib/api";
+import { slugify } from "@/lib/slugify";
 import type { ManualDetail } from "@/lib/types";
+
+/**
+ * Recursively extract plain text from a React node tree.
+ *
+ * Used by the auto-id heading renderers so we can compute a
+ * slug from the heading content even when marker-pdf has
+ * embedded HTML page-anchor spans inside the heading.  Without
+ * this, `String(children)` would yield "[object Object]" for
+ * any heading containing nested elements.
+ */
+function extractText(children: ReactNode): string {
+  if (typeof children === "string") return children;
+  if (typeof children === "number") return String(children);
+  if (Array.isArray(children)) {
+    return children.map(extractText).join("");
+  }
+  if (
+    children &&
+    typeof children === "object" &&
+    "props" in children
+  ) {
+    return extractText(
+      (children as { props: { children?: ReactNode } }).props
+        .children,
+    );
+  }
+  return "";
+}
 
 interface ManualViewerProps {
   manualId: string;
@@ -72,6 +101,41 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
       cancelled = true;
     };
   }, [manualId]);
+
+  // After the markdown body renders, scroll to the URL hash if
+  // present.  Citations on the golden-review dashboard link
+  // here as `/manuals/<id>#<slug>`; the heading renderers below
+  // emit `id` attributes matching the same slugs, so this
+  // useEffect is what makes the deep-link navigation work.
+  //
+  // The 80ms timeout gives ReactMarkdown one tick to commit the
+  // rendered DOM before we look for the target.  Without it the
+  // call fires before the heading exists and silently no-ops.
+  useEffect(() => {
+    if (!manual?.content) return;
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    if (!hash) return;
+    const targetId = decodeURIComponent(hash.slice(1));
+    if (!targetId) return;
+    const timer = window.setTimeout(() => {
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+        // Brief visual highlight so the user can see where they
+        // landed — useful when the heading is small and the page
+        // is dense.
+        el.classList.add("ring-2", "ring-primary", "rounded");
+        window.setTimeout(() => {
+          el.classList.remove("ring-2", "ring-primary", "rounded");
+        }, 2400);
+      }
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [manual?.content]);
 
   // Compute the base URL for rewriting relative image paths.
   // md_file_path is like "MWS-150-A/manual.md", so the base
@@ -188,6 +252,39 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
                     >
                       {children}
                     </a>
+                  ),
+                  // Auto-id all headings using the same slugify
+                  // logic as the backend so citations
+                  // (`/manuals/<id>#<slug>`) deep-link reliably.
+                  h1: ({ node, children, ...props }) => (
+                    <h1 id={slugify(extractText(children))} {...props}>
+                      {children}
+                    </h1>
+                  ),
+                  h2: ({ node, children, ...props }) => (
+                    <h2 id={slugify(extractText(children))} {...props}>
+                      {children}
+                    </h2>
+                  ),
+                  h3: ({ node, children, ...props }) => (
+                    <h3 id={slugify(extractText(children))} {...props}>
+                      {children}
+                    </h3>
+                  ),
+                  h4: ({ node, children, ...props }) => (
+                    <h4 id={slugify(extractText(children))} {...props}>
+                      {children}
+                    </h4>
+                  ),
+                  h5: ({ node, children, ...props }) => (
+                    <h5 id={slugify(extractText(children))} {...props}>
+                      {children}
+                    </h5>
+                  ),
+                  h6: ({ node, children, ...props }) => (
+                    <h6 id={slugify(extractText(children))} {...props}>
+                      {children}
+                    </h6>
                   ),
                 }}
               >
