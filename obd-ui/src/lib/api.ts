@@ -689,3 +689,130 @@ export async function getManualStatus(
   }
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Golden review dashboard endpoints (HARNESS-17 / Issue #82)
+// ---------------------------------------------------------------------------
+
+import type {
+  GoldenBucket,
+  GoldenDifficulty,
+  GoldenEntryDetail,
+  GoldenListResponse,
+  GoldenReviewOut,
+  GoldenReviewSubmitRequest,
+} from "./types";
+
+/** List golden entries with optional filters. */
+export async function listGoldens(
+  filters: {
+    bucket?: GoldenBucket;
+    difficulty?: GoldenDifficulty;
+    has_my_review?: boolean;
+    limit?: number;
+    offset?: number;
+  } = {},
+): Promise<GoldenListResponse> {
+  const params = new URLSearchParams();
+  if (filters.bucket) params.set("bucket", filters.bucket);
+  if (filters.difficulty) params.set("difficulty", filters.difficulty);
+  if (filters.has_my_review !== undefined) {
+    params.set("has_my_review", String(filters.has_my_review));
+  }
+  if (filters.limit !== undefined) {
+    params.set("limit", String(filters.limit));
+  }
+  if (filters.offset !== undefined) {
+    params.set("offset", String(filters.offset));
+  }
+  const qs = params.toString();
+  const res = await fetch(
+    `${API_URL}/v2/goldens${qs ? `?${qs}` : ""}`,
+    { headers: getAuthHeaders() },
+  );
+  handle401(res);
+  if (!res.ok) {
+    throw new Error(`Failed to list goldens: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/** Get one golden entry + the caller's review (if any). */
+export async function getGolden(
+  entryId: string,
+): Promise<GoldenEntryDetail> {
+  const res = await fetch(
+    `${API_URL}/v2/goldens/${encodeURIComponent(entryId)}`,
+    { headers: getAuthHeaders() },
+  );
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/** Stage an audio recording, returns audio_token. */
+export async function uploadGoldenReviewAudio(
+  blob: Blob,
+): Promise<{ audio_token: string; size_bytes: number }> {
+  const formData = new FormData();
+  formData.append("file", blob, "recording.webm");
+  const headers = getAuthHeaders();
+  const res = await fetch(
+    `${API_URL}/v2/goldens/audio/upload`,
+    { method: "POST", headers, body: formData },
+  );
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/** Submit / update the caller's review for a golden entry. */
+export async function submitGoldenReview(
+  entryId: string,
+  payload: GoldenReviewSubmitRequest,
+): Promise<GoldenReviewOut> {
+  const res = await fetch(
+    `${API_URL}/v2/goldens/${encodeURIComponent(entryId)}/review`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/** Fetch the caller's audio attachment for a review (auth-gated). */
+export async function fetchGoldenReviewAudioBlob(
+  entryId: string,
+): Promise<Blob> {
+  const res = await fetch(
+    `${API_URL}/v2/goldens/${encodeURIComponent(entryId)}/review/audio`,
+    { headers: getAuthHeaders() },
+  );
+  handle401(res);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch audio: HTTP ${res.status}`);
+  }
+  return res.blob();
+}

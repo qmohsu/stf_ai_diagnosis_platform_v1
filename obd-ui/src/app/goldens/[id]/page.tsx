@@ -1,0 +1,152 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft, BookOpen, Languages, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { QuestionCard } from "@/components/goldens/QuestionCard";
+import { ReviewSubmitForm } from "@/components/goldens/ReviewSubmitForm";
+import { getGolden } from "@/lib/api";
+import type {
+  GoldenEntryDetail,
+  GoldenReviewOut,
+} from "@/lib/types";
+
+export default function GoldenDetailPage() {
+  const params = useParams<{ id: string }>();
+  const entryId = decodeURIComponent(params.id);
+
+  const [entry, setEntry] = useState<GoldenEntryDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [language, setLanguage] = useState<"en" | "zh">("zh");
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    getGolden(entryId)
+      .then(setEntry)
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : String(err)),
+      )
+      .finally(() => setLoading(false));
+  }, [entryId]);
+
+  // Default to English if Chinese not available.
+  useEffect(() => {
+    if (entry && !entry.question_zh && language === "zh") {
+      setLanguage("en");
+    }
+  }, [entry, language]);
+
+  function onReviewSubmitted(updated: GoldenReviewOut) {
+    if (entry) {
+      setEntry({ ...entry, my_review: updated });
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading entry...
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-6 space-y-3">
+        <Link
+          href="/goldens"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to listing
+        </Link>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (!entry) return null;
+
+  return (
+    <div className="container mx-auto px-4 py-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <Link
+          href="/goldens"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to listing / 返回列表
+        </Link>
+
+        <div className="flex items-center gap-2">
+          {entry.requires_image || entry.golden_citations.length > 0 ? (
+            <Link
+              href={`/manuals/${entry.manual_id}`}
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <BookOpen className="h-4 w-4" />
+              Open manual / 開啟手冊
+            </Link>
+          ) : null}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setLanguage(language === "en" ? "zh" : "en")
+            }
+            disabled={!entry.question_zh}
+            className="gap-2"
+          >
+            <Languages className="h-4 w-4" />
+            {language === "en" ? "切換到中文" : "Switch to English"}
+          </Button>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {language === "zh" ? "問題卡片" : "Question card"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <QuestionCard entry={entry} language={language} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {language === "zh" ? "您的評分" : "Your review"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ReviewSubmitForm
+            entryId={entry.id}
+            initial={entry.my_review}
+            onSubmitted={onReviewSubmitted}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

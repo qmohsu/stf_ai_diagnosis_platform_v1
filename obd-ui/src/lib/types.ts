@@ -290,3 +290,91 @@ export interface ToolInvocation {
   };
   status: "calling" | "done" | "error";
 }
+
+// -----------------------------------------------------------
+// Golden review dashboard (HARNESS-17 / Issue #82)
+// -----------------------------------------------------------
+
+export type GoldenBucket =
+  | "lookup"
+  | "procedural"
+  | "cross-section"
+  | "image-required"
+  | "adversarial";
+
+export type GoldenDifficulty = "easy" | "medium" | "hard";
+
+export type GoldenReviewStatus =
+  | "draft"
+  | "accept"
+  | "needs_revision"
+  | "reject";
+
+export interface GoldenCitation {
+  manual_id: string;
+  slug: string;
+  quote: string;
+}
+
+export interface GoldenEntrySummary {
+  id: string;
+  manual_id: string;
+  category: string;
+  question_type: GoldenBucket;
+  difficulty: GoldenDifficulty;
+  requires_image: boolean;
+  question_en: string;
+  question_zh: string | null;
+  has_zh: boolean;
+  my_review_status: GoldenReviewStatus | null;
+  my_review_star: number | null;
+}
+
+export interface GoldenReviewOut {
+  id: string;
+  golden_entry_id: string;
+  reviewer_id: string;
+  star_rating: number | null;
+  question_realism_score: number | null;
+  answer_correctness_score: number | null;
+  citation_faithfulness_score: number | null;
+  status: GoldenReviewStatus;
+  notes: string | null;
+  has_audio: boolean;
+  audio_duration_seconds: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GoldenEntryDetail {
+  id: string;
+  manual_id: string;
+  category: string;
+  question_type: GoldenBucket;
+  difficulty: GoldenDifficulty;
+  requires_image: boolean;
+  question_en: string;
+  question_zh: string | null;
+  obd_context: string | null;
+  golden_summary_en: string;
+  golden_summary_zh: string | null;
+  golden_citations: GoldenCitation[];
+  notes: string | null;
+  my_review: GoldenReviewOut | null;
+}
+
+export interface GoldenListResponse {
+  items: GoldenEntrySummary[];
+  total: number;
+}
+
+export interface GoldenReviewSubmitRequest {
+  star_rating: number | null;
+  question_realism_score: number | null;
+  answer_correctness_score: number | null;
+  citation_faithfulness_score: number | null;
+  status: GoldenReviewStatus;
+  notes: string | null;
+  audio_token: string | null;
+  audio_duration_seconds: number | null;
+}

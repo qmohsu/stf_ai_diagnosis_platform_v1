@@ -25,6 +25,12 @@ export function HeaderAuth() {
           >
             {t("header.manuals")}
           </Link>
+          <Link
+            href="/goldens"
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Goldens
+          </Link>
         </>
       )}
       <LanguageSwitcher />

@@ -1,0 +1,255 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Loader2, Save } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AudioRecorder } from "@/components/AudioRecorder";
+import { StarRating } from "@/components/goldens/StarRating";
+import {
+  fetchGoldenReviewAudioBlob,
+  submitGoldenReview,
+  uploadGoldenReviewAudio,
+} from "@/lib/api";
+import type {
+  GoldenReviewOut,
+  GoldenReviewStatus,
+} from "@/lib/types";
+
+interface ReviewSubmitFormProps {
+  entryId: string;
+  /** Existing review (null if reviewer hasn't graded yet). */
+  initial: GoldenReviewOut | null;
+  /** Called after successful submit; parent updates the entry's
+   * cached review via this. */
+  onSubmitted: (updated: GoldenReviewOut) => void;
+}
+
+/**
+ * Composite form: 4 star ratings (overall + 3 per-dimension),
+ * status radio, free-text notes, audio recorder.  Submits to
+ * ``/v2/goldens/{id}/review`` and reports the updated review
+ * back to the parent for cache refresh.
+ */
+export function ReviewSubmitForm({
+  entryId,
+  initial,
+  onSubmitted,
+}: ReviewSubmitFormProps) {
+  const [overallStar, setOverallStar] = useState<number | null>(
+    initial?.star_rating ?? null,
+  );
+  const [questionStar, setQuestionStar] = useState<number | null>(
+    initial?.question_realism_score ?? null,
+  );
+  const [answerStar, setAnswerStar] = useState<number | null>(
+    initial?.answer_correctness_score ?? null,
+  );
+  const [citationStar, setCitationStar] = useState<number | null>(
+    initial?.citation_faithfulness_score ?? null,
+  );
+  const [status, setStatus] = useState<GoldenReviewStatus>(
+    initial?.status ?? "draft",
+  );
+  const [notes, setNotes] = useState(initial?.notes ?? "");
+
+  const [pendingAudio, setPendingAudio] = useState<{
+    blob: Blob;
+    durationSeconds: number;
+  } | null>(null);
+  const [existingAudioUrl, setExistingAudioUrl] = useState<
+    string | null
+  >(null);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  // Lazy-fetch the existing audio (auth-gated → must use blob URL).
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    if (initial?.has_audio) {
+      fetchGoldenReviewAudioBlob(entryId)
+        .then((blob) => {
+          if (cancelled) return;
+          objectUrl = URL.createObjectURL(blob);
+          setExistingAudioUrl(objectUrl);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          // Silent — audio playback is non-essential.
+        });
+    }
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [entryId, initial?.has_audio]);
+
+  async function handleSubmit() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      let audioToken: string | null = null;
+      let audioDuration: number | null = null;
+      if (pendingAudio) {
+        const upload = await uploadGoldenReviewAudio(
+          pendingAudio.blob,
+        );
+        audioToken = upload.audio_token;
+        audioDuration = pendingAudio.durationSeconds;
+      }
+      const updated = await submitGoldenReview(entryId, {
+        star_rating: overallStar,
+        question_realism_score: questionStar,
+        answer_correctness_score: answerStar,
+        citation_faithfulness_score: citationStar,
+        status,
+        notes: notes.trim() ? notes : null,
+        audio_token: audioToken,
+        audio_duration_seconds: audioDuration,
+      });
+      onSubmitted(updated);
+      setPendingAudio(null);
+      setSavedAt(new Date().toISOString());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <StarRating
+          value={overallStar}
+          onChange={setOverallStar}
+          label="Overall rating / 整體評分"
+          description="How reliable is this Q+A overall?"
+          size={32}
+        />
+        <StarRating
+          value={questionStar}
+          onChange={setQuestionStar}
+          label="Question realism / 問題擬真度"
+          description="Would a technician actually ask this?"
+        />
+        <StarRating
+          value={answerStar}
+          onChange={setAnswerStar}
+          label="Answer correctness / 答案正確性"
+          description="Is the proposed answer accurate?"
+        />
+        <StarRating
+          value={citationStar}
+          onChange={setCitationStar}
+          label="Citation faithfulness / 引用的忠實度"
+          description="Do the source quotes support the answer?"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <div className="text-sm font-medium">Status / 狀態</div>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              { v: "draft", label: "Draft / 草稿" },
+              { v: "accept", label: "Accept / 採用" },
+              {
+                v: "needs_revision",
+                label: "Needs revision / 需修訂",
+              },
+              { v: "reject", label: "Reject / 拒絕" },
+            ] as { v: GoldenReviewStatus; label: string }[]
+          ).map((opt) => {
+            const checked = status === opt.v;
+            return (
+              <label
+                key={opt.v}
+                className={`cursor-pointer select-none rounded-md border px-3 py-1.5 text-sm ${
+                  checked
+                    ? "border-primary bg-primary/10 font-medium"
+                    : "border-border hover:bg-muted/40"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="status"
+                  value={opt.v}
+                  checked={checked}
+                  onChange={() => setStatus(opt.v)}
+                  className="hidden"
+                />
+                {opt.label}
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <div className="text-sm font-medium">
+          Notes / 備註
+        </div>
+        <Textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Free-text feedback... 請填入您的意見..."
+          rows={5}
+          className="resize-y"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <div className="text-sm font-medium">
+          Audio feedback (optional) / 語音回饋 (選填)
+        </div>
+        {existingAudioUrl && !pendingAudio && (
+          <div className="mb-2 rounded border border-border bg-muted/30 p-2">
+            <div className="mb-1 text-xs text-muted-foreground">
+              Existing recording (re-record below to replace) /
+              已有錄音 (重新錄製將覆蓋)
+            </div>
+            <audio src={existingAudioUrl} controls className="w-full" />
+          </div>
+        )}
+        <AudioRecorder
+          onRecordingComplete={(blob, durationSeconds) =>
+            setPendingAudio({ blob, durationSeconds })
+          }
+          onRecordingCleared={() => setPendingAudio(null)}
+        />
+      </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="flex items-center gap-3">
+        <Button
+          onClick={handleSubmit}
+          disabled={submitting}
+          className="gap-2"
+        >
+          {submitting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
+          {initial ? "Update review / 更新評分" : "Submit review / 提交評分"}
+        </Button>
+        {savedAt && (
+          <span className="text-xs text-muted-foreground">
+            Saved {new Date(savedAt).toLocaleTimeString()}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
