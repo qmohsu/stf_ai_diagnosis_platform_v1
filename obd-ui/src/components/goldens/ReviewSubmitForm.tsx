@@ -190,17 +190,12 @@ export function ReviewSubmitForm({
         />
       </div>
 
-      <div className="space-y-1">
-        <div className="text-sm font-medium">
-          {t("goldens.review.audioFeedback")}
-        </div>
-        <AudioRecorder
-          onRecordingComplete={(blob, durationSeconds) =>
-            setPendingAudio({ blob, durationSeconds })
-          }
-          onRecordingCleared={() => setPendingAudio(null)}
-        />
-      </div>
+      <AudioRecorder
+        onRecordingComplete={(blob, durationSeconds) =>
+          setPendingAudio({ blob, durationSeconds })
+        }
+        onRecordingCleared={() => setPendingAudio(null)}
+      />
 
       {error && (
         <Alert variant="destructive">

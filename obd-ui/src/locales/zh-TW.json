@@ -443,7 +443,6 @@
       "statusReject": "拒絕",
       "notes": "備註",
       "notesPlaceholder": "請填入您的意見...",
-      "audioFeedback": "語音回饋（選填）",
       "submitNew": "發布回饋",
       "savedAt": "已儲存於 {{time}}"
     },

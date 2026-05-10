@@ -443,7 +443,6 @@
       "statusReject": "Reject",
       "notes": "Notes",
       "notesPlaceholder": "Free-text feedback...",
-      "audioFeedback": "Audio feedback (optional)",
       "submitNew": "Post feedback",
       "savedAt": "Saved {{time}}"
     },

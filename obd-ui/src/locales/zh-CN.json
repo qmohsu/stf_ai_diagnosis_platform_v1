@@ -443,7 +443,6 @@
       "statusReject": "拒绝",
       "notes": "备注",
       "notesPlaceholder": "请填入您的意见...",
-      "audioFeedback": "语音反馈（选填）",
       "submitNew": "发布反馈",
       "savedAt": "已保存于 {{time}}"
     },
