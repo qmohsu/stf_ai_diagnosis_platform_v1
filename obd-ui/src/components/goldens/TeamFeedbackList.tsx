@@ -7,13 +7,16 @@ import {
   ChevronRight,
   Loader2,
   Star,
+  Trash2,
   User as UserIcon,
   XCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/components/AuthProvider";
 import {
+  deleteReview,
   fetchAnyReviewAudioBlob,
   listTeamReviews,
 } from "@/lib/api";
@@ -130,8 +133,18 @@ function AudioPlayback({ reviewId }: { reviewId: string }) {
 }
 
 /** One feedback card.  Snapshot Q+A is collapsed by default. */
-function FeedbackCard({ review }: { review: TeamReviewItem }) {
+function FeedbackCard({
+  review,
+  isMine,
+  onDeleted,
+}: {
+  review: TeamReviewItem;
+  isMine: boolean;
+  onDeleted: () => void;
+}) {
   const [showSnapshot, setShowSnapshot] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const hasSnapshot =
     review.snapshot_question_en !== null ||
     review.snapshot_summary_en !== null;
@@ -143,19 +156,74 @@ function FeedbackCard({ review }: { review: TeamReviewItem }) {
     }
   }, [review.updated_at]);
 
+  async function handleDelete() {
+    // Use the browser's native confirm dialog — simple,
+    // no new dependency, and screen-reader accessible for free.
+    // Bilingual prompt to match the rest of the page's framing.
+    const ok = window.confirm(
+      "Delete this review?  This cannot be undone.\n刪除此評分？此操作無法復原。",
+    );
+    if (!ok) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteReview(review.review_id);
+      onDeleted();
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : String(err),
+      );
+      setDeleting(false);
+    }
+  }
+
   return (
     <article className="rounded-md border border-border bg-card p-4 space-y-3">
-      {/* Header: reviewer + timestamp + status */}
+      {/* Header: reviewer + timestamp + status (+ delete if owner) */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1 text-sm font-semibold">
           <UserIcon className="h-4 w-4 text-muted-foreground" />
           {review.reviewer_username}
+          {isMine && (
+            <Badge
+              variant="outline"
+              className="ml-1 text-[10px] uppercase tracking-wide"
+            >
+              you / 您
+            </Badge>
+          )}
         </div>
         <span className="text-xs text-muted-foreground">
           {dateLabel}
         </span>
-        <div className="ml-auto">{statusBadge(review.status)}</div>
+        <div className="ml-auto flex items-center gap-2">
+          {statusBadge(review.status)}
+          {isMine && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="h-7 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+              title="Delete this review / 刪除此評分"
+            >
+              {deleting ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Trash2 className="h-3 w-3" />
+              )}
+              Delete / 刪除
+            </Button>
+          )}
+        </div>
       </div>
+
+      {deleteError && (
+        <Alert variant="destructive">
+          <AlertDescription>{deleteError}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Star ratings (overall + 3 dimensions) */}
       <div className="grid gap-2 sm:grid-cols-2">
@@ -284,11 +352,16 @@ export function TeamFeedbackList({
   entryId,
   refreshKey,
 }: TeamFeedbackListProps) {
+  const { username: currentUsername } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const [items, setItems] = useState<TeamReviewItem[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Bumped after a card-level delete so we refetch the list.
+  // Combined with the parent's refreshKey so either trigger
+  // works.
+  const [localBump, setLocalBump] = useState(0);
 
   // Always fetch the count up-front so the toggle label can
   // show "Show history (N)" even before the user expands.
@@ -307,7 +380,7 @@ export function TeamFeedbackList({
     return () => {
       cancelled = true;
     };
-  }, [entryId, refreshKey]);
+  }, [entryId, refreshKey, localBump]);
 
   const handleToggle = () => {
     setExpanded((v) => !v);
@@ -367,7 +440,15 @@ export function TeamFeedbackList({
           )}
           <div className="space-y-3">
             {items.map((r) => (
-              <FeedbackCard key={r.review_id} review={r} />
+              <FeedbackCard
+                key={r.review_id}
+                review={r}
+                isMine={
+                  !!currentUsername &&
+                  r.reviewer_username === currentUsername
+                }
+                onDeleted={() => setLocalBump((b) => b + 1)}
+              />
             ))}
           </div>
         </>

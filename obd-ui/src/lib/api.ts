@@ -859,3 +859,25 @@ export async function fetchAnyReviewAudioBlob(
   }
   return res.blob();
 }
+
+/**
+ * Delete a review owned by the caller (HARNESS-17 Phase 2).
+ *
+ * Backend enforces owner-only: 403 if the caller doesn't own
+ * the review, 404 if it doesn't exist.
+ */
+export async function deleteReview(
+  reviewId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_URL}/v2/goldens/reviews/${encodeURIComponent(reviewId)}`,
+    { method: "DELETE", headers: getAuthHeaders() },
+  );
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+}

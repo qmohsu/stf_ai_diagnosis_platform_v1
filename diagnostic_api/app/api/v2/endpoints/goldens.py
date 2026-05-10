@@ -972,3 +972,90 @@ async def get_any_review_audio(
         )
 
     return FileResponse(real_path)
+
+
+@router.delete(
+    "/reviews/{review_id}",
+    summary="Delete the caller's own review (owner-only)",
+)
+async def delete_review(
+    review_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Hard-delete a review owned by the caller.
+
+    Phase 2 transparency: any user can READ any review, but
+    only the review's original author can DELETE it.  Returns
+    403 if the caller is not the owner; 404 if the review
+    doesn't exist.
+
+    Also removes the audio file from disk (if present) — the
+    review row is the only thing that ever pointed at it.
+
+    Args:
+        review_id: GoldenReview UUID.
+        current_user: Authenticated user.  Must match the
+            review's ``reviewer_id`` for the delete to succeed.
+        db: Database session.
+
+    Returns:
+        ``{"deleted": True}`` on success.
+
+    Raises:
+        HTTPException: 404 if the review doesn't exist; 403
+            if it exists but isn't owned by the caller.
+    """
+    review = (
+        db.query(GoldenReview)
+        .filter(GoldenReview.id == review_id)
+        .first()
+    )
+    if not review:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Review not found.",
+        )
+    if review.reviewer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only delete your own reviews.",
+        )
+
+    # Best-effort audio cleanup.  If the file is already gone
+    # (e.g., a previous delete attempt that crashed mid-way),
+    # don't block the row delete on it.
+    if review.audio_file_path:
+        abs_path = os.path.join(
+            settings.audio_storage_path,
+            review.audio_file_path,
+        )
+        try:
+            real_root = os.path.realpath(
+                settings.audio_storage_path,
+            )
+            real_path = os.path.realpath(abs_path)
+            # Defence-in-depth: only delete files that resolve
+            # to within the audio storage root.
+            if (
+                real_path.startswith(real_root + os.sep)
+                and os.path.isfile(real_path)
+            ):
+                os.remove(real_path)
+        except OSError as exc:
+            logger.warning(
+                "golden_review_audio_cleanup_failed",
+                review_id=str(review_id),
+                error=str(exc),
+            )
+
+    db.delete(review)
+    db.commit()
+
+    logger.info(
+        "golden_review_deleted",
+        review_id=str(review_id),
+        reviewer_id=str(current_user.id),
+    )
+
+    return {"deleted": True}
