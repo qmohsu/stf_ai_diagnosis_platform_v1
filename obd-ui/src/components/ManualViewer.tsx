@@ -129,18 +129,15 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
   // After the markdown body renders, scroll to the URL hash if
   // present.  Citations on the golden-review dashboard link
   // here as `/manuals/<id>#<slug>`; the heading renderers below
-  // emit `id` attributes matching the same slugs, so this
-  // useEffect is what makes the deep-link navigation work.
+  // emit `id` attributes matching the same slugs.
   //
-  // We poll rather than fire-and-forget on a single timeout
-  // because ReactMarkdown rendering of a 400-page Chinese
-  // manual can easily take 1-3 seconds — long enough that a
-  // single 80ms timeout fires before the heading exists in
-  // the DOM, finds nothing, and the user is left at the top of
-  // the page.  Poll every 200ms up to 5s; bail with a
-  // console.warn if the target never appears (e.g., the slug
-  // doesn't match any rendered heading because of a parser
-  // / slugify drift — surface the failure for debugging).
+  // ReactMarkdown rendering of a 400-page (~500K-char) Chinese
+  // service manual can take many seconds.  We poll rather than
+  // fire a single timeout, and the budget is generous (15s) so
+  // slow machines don't lose the deep-link.  Per-attempt log
+  // lines and a final diagnostic dump make it possible to debug
+  // any remaining slug mismatch directly from the user's
+  // browser console without having to add custom JS.
   useEffect(() => {
     if (!manual?.content) return;
     if (typeof window === "undefined") return;
@@ -148,30 +145,77 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
     if (!hash) return;
     const targetId = decodeURIComponent(hash.slice(1));
     if (!targetId) return;
+    console.log(
+      `[ManualViewer] deep-link target requested: "${targetId}"`,
+    );
     let attempts = 0;
-    const maxAttempts = 25; // 25 × 200ms = 5s
+    const maxAttempts = 75; // 75 × 200ms = 15s
     const interval = window.setInterval(() => {
       attempts += 1;
       const el = document.getElementById(targetId);
       if (el) {
         window.clearInterval(interval);
+        console.log(
+          `[ManualViewer] deep-link target found at attempt ${attempts} (${
+            attempts * 200
+          }ms)`,
+          el,
+        );
         el.scrollIntoView({
           behavior: "smooth",
           block: "start",
         });
-        // Brief visual highlight so the user can see where they
-        // landed — useful when the heading is small and the page
-        // is dense.
         el.classList.add("ring-2", "ring-primary", "rounded");
         window.setTimeout(() => {
           el.classList.remove("ring-2", "ring-primary", "rounded");
         }, 2400);
       } else if (attempts >= maxAttempts) {
         window.clearInterval(interval);
+        // Diagnostic dump: list every heading ID actually
+        // present in the DOM so we can compare against the
+        // requested slug and see exactly where the drift is.
+        const allHeadings = Array.from(
+          document.querySelectorAll("h1, h2, h3, h4, h5, h6"),
+        );
+        const allIds = allHeadings
+          .map((h) => h.id)
+          .filter(Boolean);
         console.warn(
-          `[ManualViewer] deep-link target not found after ${
+          `[ManualViewer] deep-link target NOT FOUND after ${
             attempts * 200
-          }ms: ${targetId}`,
+          }ms: "${targetId}". Total headings: ${
+            allHeadings.length
+          }. Headings WITH ids: ${allIds.length}.`,
+        );
+        // Surface a small sample so we don't blow up the
+        // console — full list available via the all-id dump.
+        console.warn(
+          "[ManualViewer] First 10 heading ids found:",
+          allIds.slice(0, 10),
+        );
+        // Try a fuzzy match — substring of the slug — just
+        // for debugging.  Helps spot prefix/encoding drift.
+        const fuzzyHits = allIds.filter((id) =>
+          id.includes(targetId.slice(0, 6)),
+        );
+        if (fuzzyHits.length) {
+          console.warn(
+            "[ManualViewer] Fuzzy matches (heading id contains first 6 chars of target):",
+            fuzzyHits,
+          );
+        }
+      } else if (attempts === 5 || attempts === 25) {
+        // Mid-poll progress logs.  At 1s and 5s, log how many
+        // headings have rendered so far — gives the user
+        // (and us) signal on whether ReactMarkdown is making
+        // progress or wedged.
+        const so_far = document.querySelectorAll(
+          "h1, h2, h3, h4, h5, h6",
+        ).length;
+        console.log(
+          `[ManualViewer] still polling at ${
+            attempts * 200
+          }ms; ${so_far} headings rendered so far`,
         );
       }
     }, 200);
