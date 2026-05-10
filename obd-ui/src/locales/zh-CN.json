@@ -398,6 +398,7 @@
       "loadingEntries": "加载问答中...",
       "noEntries": "尚未找到任何黄金问答。可能 startup sync 尚未执行——请检查 API 日志。",
       "noEntriesInBucket": "此类别尚无问答。",
+      "byReviewer": "由 {{user}}",
       "reviewStatus": {
         "unreviewed": "未评",
         "draft": "草稿",
@@ -412,7 +413,7 @@
       "switchToZh": "切换到中文",
       "switchToEn": "Switch to English",
       "questionCard": "问题卡片",
-      "yourReview": "您的评分",
+      "yourReview": "添加反馈",
       "teamHistory": "团队历史评分",
       "loadingEntry": "加载问答中..."
     },
@@ -443,9 +444,7 @@
       "notes": "备注",
       "notesPlaceholder": "请填入您的意见...",
       "audioFeedback": "语音反馈（选填）",
-      "existingRecording": "已有录音（重新录制将覆盖）",
-      "submitNew": "提交评分",
-      "submitUpdate": "更新评分",
+      "submitNew": "发布反馈",
       "savedAt": "已保存于 {{time}}"
     },
     "teamFeedback": {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AudioRecorder } from "@/components/AudioRecorder";
 import { StarRating } from "@/components/goldens/StarRating";
 import {
-  fetchGoldenReviewAudioBlob,
   submitGoldenReview,
   uploadGoldenReviewAudio,
 } from "@/lib/api";
@@ -20,75 +19,60 @@ import type {
 
 interface ReviewSubmitFormProps {
   entryId: string;
-  /** Existing review (null if reviewer hasn't graded yet). */
-  initial: GoldenReviewOut | null;
-  /** Called after successful submit; parent updates the entry's
-   * cached review via this. */
-  onSubmitted: (updated: GoldenReviewOut) => void;
+  /** Called after successful submit; parent refreshes the team
+   *  history list (where the new row appears). */
+  onSubmitted: (created: GoldenReviewOut) => void;
 }
 
 /**
  * Composite form: 4 star ratings (overall + 3 per-dimension),
  * status radio, free-text notes, audio recorder.  Submits to
- * ``/v2/goldens/{id}/review`` and reports the updated review
- * back to the parent for cache refresh.
+ * ``/v2/goldens/{id}/review``.
+ *
+ * Reviews are **append-only**: each submit creates a new row,
+ * so the form always starts blank.  Past grades (including the
+ * caller's own) live in the team-feedback history panel below.
  */
 export function ReviewSubmitForm({
   entryId,
-  initial,
   onSubmitted,
 }: ReviewSubmitFormProps) {
   const { t } = useTranslation();
   const [overallStar, setOverallStar] = useState<number | null>(
-    initial?.star_rating ?? null,
+    null,
   );
   const [questionStar, setQuestionStar] = useState<number | null>(
-    initial?.question_realism_score ?? null,
+    null,
   );
   const [answerStar, setAnswerStar] = useState<number | null>(
-    initial?.answer_correctness_score ?? null,
+    null,
   );
   const [citationStar, setCitationStar] = useState<number | null>(
-    initial?.citation_faithfulness_score ?? null,
+    null,
   );
   const [status, setStatus] = useState<GoldenReviewStatus>(
-    initial?.status ?? "draft",
+    "draft",
   );
-  const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [notes, setNotes] = useState("");
 
   const [pendingAudio, setPendingAudio] = useState<{
     blob: Blob;
     durationSeconds: number;
   } | null>(null);
-  const [existingAudioUrl, setExistingAudioUrl] = useState<
-    string | null
-  >(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
 
-  // Lazy-fetch the existing audio (auth-gated → must use blob URL).
-  useEffect(() => {
-    let cancelled = false;
-    let objectUrl: string | null = null;
-    if (initial?.has_audio) {
-      fetchGoldenReviewAudioBlob(entryId)
-        .then((blob) => {
-          if (cancelled) return;
-          objectUrl = URL.createObjectURL(blob);
-          setExistingAudioUrl(objectUrl);
-        })
-        .catch(() => {
-          if (cancelled) return;
-          // Silent — audio playback is non-essential.
-        });
-    }
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [entryId, initial?.has_audio]);
+  function resetForm() {
+    setOverallStar(null);
+    setQuestionStar(null);
+    setAnswerStar(null);
+    setCitationStar(null);
+    setStatus("draft");
+    setNotes("");
+    setPendingAudio(null);
+  }
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -114,7 +98,7 @@ export function ReviewSubmitForm({
         audio_duration_seconds: audioDuration,
       });
       onSubmitted(updated);
-      setPendingAudio(null);
+      resetForm();
       setSavedAt(new Date().toISOString());
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -210,14 +194,6 @@ export function ReviewSubmitForm({
         <div className="text-sm font-medium">
           {t("goldens.review.audioFeedback")}
         </div>
-        {existingAudioUrl && !pendingAudio && (
-          <div className="mb-2 rounded border border-border bg-muted/30 p-2">
-            <div className="mb-1 text-xs text-muted-foreground">
-              {t("goldens.review.existingRecording")}
-            </div>
-            <audio src={existingAudioUrl} controls className="w-full" />
-          </div>
-        )}
         <AudioRecorder
           onRecordingComplete={(blob, durationSeconds) =>
             setPendingAudio({ blob, durationSeconds })
@@ -243,9 +219,7 @@ export function ReviewSubmitForm({
           ) : (
             <Save className="h-4 w-4" />
           )}
-          {initial
-            ? t("goldens.review.submitUpdate")
-            : t("goldens.review.submitNew")}
+          {t("goldens.review.submitNew")}
         </Button>
         {savedAt && (
           <span className="text-xs text-muted-foreground">

@@ -448,18 +448,16 @@ class GoldenReview(Base):
     pattern so the same ``AudioRecorder`` two-step token-upload
     flow can be reused without code changes.
 
-    The ``(golden_entry_id, reviewer_id)`` unique constraint
-    means each user has at most one review per entry — updates
-    are upserts.  Cross-rater agreement analysis is computed at
-    query time from the multiple reviews a single entry collects.
+    Reviews are **append-only**: each submit creates a new row,
+    even when the same reviewer is grading the same entry.  The
+    listing dashboard surfaces the most-recent review across all
+    reviewers as the entry's "headline" status; the detail page
+    shows the full team history.  Reviewers may delete their own
+    rows via the owner-only DELETE endpoint.
     """
 
     __tablename__ = "golden_reviews"
     __table_args__ = (
-        UniqueConstraint(
-            "golden_entry_id", "reviewer_id",
-            name="uq_golden_review_entry_reviewer",
-        ),
         CheckConstraint(
             "star_rating IS NULL OR "
             "(star_rating BETWEEN 1 AND 5)",

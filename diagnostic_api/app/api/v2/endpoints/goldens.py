@@ -1,21 +1,32 @@
 """Golden-set review dashboard endpoints (HARNESS-17).
 
 Provides the API surface for the workshop-expert review
-dashboard at GitHub Issue #82.  Phase 1 scope:
+dashboard at GitHub Issue #82.  Endpoints:
 
-- ``GET /v2/goldens``                — list entries (filterable)
-- ``GET /v2/goldens/{id}``           — full entry + caller's
-                                       review (if any)
-- ``POST /v2/goldens/{id}/review``   — submit / update caller's
-                                       review (upsert on
-                                       (entry_id, reviewer_id))
+- ``GET /v2/goldens``                — list entries (filterable);
+                                       headline status is the
+                                       latest review across ALL
+                                       reviewers
+- ``GET /v2/goldens/{id}``           — full entry payload (no
+                                       caller-specific review;
+                                       see ``/reviews`` for the
+                                       team history)
+- ``POST /v2/goldens/{id}/review``   — APPEND a new review row
+                                       (no upsert).  Submitting
+                                       twice creates two rows.
+- ``GET /v2/goldens/{id}/reviews``   — list ALL team reviews
+                                       on one entry (with the
+                                       Q+A snapshot frozen at
+                                       submit time)
+- ``DELETE /v2/goldens/reviews/{id}`` — owner-only hard delete
 - ``POST /v2/goldens/audio/upload``  — stage audio, return token
-- ``GET /v2/goldens/{id}/review/audio`` — stream audio for the
-                                          caller's review
+- ``GET /v2/goldens/reviews/{id}/audio`` — stream any review's
+                                          audio attachment
 
 Auth: every endpoint requires a valid JWT (any authenticated
-user can view + grade).  Phase 2 will add admin-gated edit and
-stats endpoints.
+user can view + grade).  Reviews are append-only; the entire
+team collaborates on the same entry, and the most-recent grade
+is the one surfaced in the listing dashboard.
 
 Author: Li-Ta Hsu
 Date: May 2026
@@ -114,10 +125,17 @@ class GoldenEntrySummary(BaseModel):
     question_en: str
     question_zh: Optional[str] = None
     has_zh: bool
-    # Caller's review state at time of list (so the UI can show
-    # progress badges) — None if the caller hasn't reviewed yet.
-    my_review_status: Optional[str] = None
-    my_review_star: Optional[int] = None
+    # Team's latest review state (most-recent submit across ALL
+    # reviewers).  None if nobody has reviewed yet.  This is the
+    # "headline" status shown on the listing dashboard — every
+    # team member sees the same value, regardless of who is
+    # logged in.  Reviewer username is included so the listing
+    # can attribute the headline grade.
+    latest_review_status: Optional[str] = None
+    latest_review_star: Optional[int] = None
+    latest_reviewer_username: Optional[str] = None
+    latest_review_at: Optional[str] = None
+    review_count: int = 0
 
 
 class GoldenReviewOut(BaseModel):
@@ -175,11 +193,13 @@ class TeamReviewListResponse(BaseModel):
 class GoldenEntryDetail(BaseModel):
     """Full entry payload returned by the detail endpoint.
 
-    Includes everything the dashboard needs to render the
-    question card + the caller's existing review (if any).
-    Eval-only fields (`must_contain`, `pitfall_directives`,
-    `expected_recall_slugs`) are EXCLUDED — the dashboard
-    grades human-readable substance, not eval scaffolding.
+    Returns everything needed to render the question card.  Per-
+    reviewer history lives in ``GET /v2/goldens/{id}/reviews``;
+    the submit form on the dashboard always starts blank because
+    reviews are append-only.  Eval-only fields (`must_contain`,
+    `pitfall_directives`, `expected_recall_slugs`) are EXCLUDED
+    — the dashboard grades human-readable substance, not eval
+    scaffolding.
     """
 
     id: str
@@ -195,7 +215,6 @@ class GoldenEntryDetail(BaseModel):
     golden_summary_zh: Optional[str] = None
     golden_citations: List[GoldenCitationOut]
     notes: Optional[str] = None
-    my_review: Optional[GoldenReviewOut] = None
 
 
 class GoldenListResponse(BaseModel):
@@ -242,9 +261,16 @@ _VALID_STATUSES = {
 
 def _to_summary(
     e: GoldenEntry,
-    my_review: Optional[GoldenReview] = None,
+    latest_review: Optional[GoldenReview] = None,
+    latest_reviewer_username: Optional[str] = None,
+    review_count: int = 0,
 ) -> GoldenEntrySummary:
-    """Map a GoldenEntry ORM row to a GoldenEntrySummary."""
+    """Map a GoldenEntry ORM row to a GoldenEntrySummary.
+
+    ``latest_review`` is the most-recent review across ALL
+    reviewers; the listing dashboard shows the same headline
+    grade to every viewer, regardless of who is logged in.
+    """
     return GoldenEntrySummary(
         id=e.id,
         manual_id=e.manual_id,
@@ -255,12 +281,18 @@ def _to_summary(
         question_en=e.question_en,
         question_zh=e.question_zh,
         has_zh=bool(e.question_zh and e.golden_summary_zh),
-        my_review_status=(
-            my_review.status if my_review else None
+        latest_review_status=(
+            latest_review.status if latest_review else None
         ),
-        my_review_star=(
-            my_review.star_rating if my_review else None
+        latest_review_star=(
+            latest_review.star_rating if latest_review else None
         ),
+        latest_reviewer_username=latest_reviewer_username,
+        latest_review_at=(
+            latest_review.updated_at.isoformat()
+            if latest_review else None
+        ),
+        review_count=review_count,
     )
 
 
@@ -321,33 +353,36 @@ async def list_goldens(
         ),
     ),
     difficulty: Optional[str] = Query(default=None),
-    has_my_review: Optional[bool] = Query(default=None),
+    has_reviews: Optional[bool] = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),  # noqa: ARG001
     db: Session = Depends(get_db),
 ) -> GoldenListResponse:
-    """List golden entries with optional bucket / difficulty filters.
+    """List golden entries with team-wide latest-review status.
 
-    The response includes the caller's review status per entry
-    (if any) so the UI can render review-progress badges.
-    Goldens are shared resources — every authenticated user
-    can see every entry.
+    Every authenticated user sees the same dashboard: each entry
+    carries the most-recent review across ALL reviewers as its
+    headline grade, plus the reviewer's username and submit time.
+    Per-reviewer history (with all individual grades) lives on
+    the detail page's ``/reviews`` endpoint.
 
     Args:
         bucket: Optional ``question_type`` filter.
         difficulty: Optional ``difficulty`` filter.
-        has_my_review: If True, only entries the caller has
-            already reviewed (any status).  If False, only
-            unreviewed entries.  None = no filter.
+        has_reviews: If True, only entries that have at least
+            one review (any reviewer).  If False, only entries
+            no-one has reviewed yet.  None = no filter.
         limit: Max items per page.
         offset: Pagination offset.
-        current_user: Authenticated user.
+        current_user: Authenticated user.  Identity is not used
+            in the response — every team member sees the same
+            headline status.
         db: Database session.
 
     Returns:
-        Paginated list of entry summaries with caller's review
-        state attached.
+        Paginated list of entry summaries with the team's latest
+        review attached.
     """
     query = db.query(GoldenEntry)
     if bucket:
@@ -359,10 +394,6 @@ async def list_goldens(
             GoldenEntry.difficulty == difficulty,
         )
 
-    # Pull caller's reviews in one batch query for the page.
-    # (Outer-joining inside the main query would also work; a
-    # separate dict lookup is simpler and the entry count is
-    # small.)
     total = query.count()
     rows = (
         query.order_by(
@@ -378,31 +409,51 @@ async def list_goldens(
         return GoldenListResponse(items=[], total=total)
 
     entry_ids = [r.id for r in rows]
-    my_reviews = (
-        db.query(GoldenReview)
-        .filter(
-            GoldenReview.reviewer_id == current_user.id,
-            GoldenReview.golden_entry_id.in_(entry_ids),
-        )
+
+    # Pull every review for the page in one query, ordered most-
+    # recent first.  N is small (≤500) so picking the first per
+    # entry_id in Python is fine.  Joining users gives us the
+    # reviewer username without a second round trip.
+    review_rows = (
+        db.query(GoldenReview, User.username)
+        .join(User, GoldenReview.reviewer_id == User.id)
+        .filter(GoldenReview.golden_entry_id.in_(entry_ids))
+        .order_by(GoldenReview.updated_at.desc())
         .all()
     )
-    review_by_entry: Dict[str, GoldenReview] = {
-        r.golden_entry_id: r for r in my_reviews
-    }
 
-    # Apply has_my_review filter post-fetch (cheap; small N).
+    latest_by_entry: Dict[str, tuple] = {}
+    count_by_entry: Dict[str, int] = {}
+    for review, username in review_rows:
+        count_by_entry[review.golden_entry_id] = (
+            count_by_entry.get(review.golden_entry_id, 0) + 1
+        )
+        # `review_rows` is ordered DESC; first hit wins.
+        latest_by_entry.setdefault(
+            review.golden_entry_id, (review, username),
+        )
+
     items: List[GoldenEntrySummary] = []
     for e in rows:
-        my = review_by_entry.get(e.id)
-        if has_my_review is True and my is None:
+        latest = latest_by_entry.get(e.id)
+        has_any = latest is not None
+        if has_reviews is True and not has_any:
             continue
-        if has_my_review is False and my is not None:
+        if has_reviews is False and has_any:
             continue
-        items.append(_to_summary(e, my))
+        latest_review, latest_username = (
+            (latest[0], latest[1]) if latest else (None, None)
+        )
+        items.append(
+            _to_summary(
+                e,
+                latest_review=latest_review,
+                latest_reviewer_username=latest_username,
+                review_count=count_by_entry.get(e.id, 0),
+            ),
+        )
 
-    # If the filter dropped some, re-derive total.  For phase 1
-    # we keep this simple and report the post-filter count.
-    if has_my_review is not None:
+    if has_reviews is not None:
         total = len(items)
 
     return GoldenListResponse(items=items, total=total)
@@ -411,22 +462,28 @@ async def list_goldens(
 @router.get(
     "/{entry_id}",
     response_model=GoldenEntryDetail,
-    summary="Get one golden entry + caller's review",
+    summary="Get one golden entry",
 )
 async def get_golden(
     entry_id: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),  # noqa: ARG001
     db: Session = Depends(get_db),
 ) -> GoldenEntryDetail:
-    """Return full entry payload + caller's review (if any).
+    """Return the full entry payload.
+
+    The team feedback history (with every reviewer's grades)
+    lives at ``GET /v2/goldens/{id}/reviews``; the submit form
+    on the dashboard always starts blank, so the detail
+    endpoint no longer needs to return a per-caller review.
 
     Args:
         entry_id: Stable entry identifier (matches JSONL ``id``).
-        current_user: Authenticated user.
+        current_user: Authenticated user (required, identity
+            not used in the response).
         db: Database session.
 
     Returns:
-        Full ``GoldenEntryDetail`` including caller's review.
+        Full ``GoldenEntryDetail`` payload.
 
     Raises:
         HTTPException: 404 if entry not found.
@@ -441,15 +498,6 @@ async def get_golden(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Golden entry not found.",
         )
-
-    my_review = (
-        db.query(GoldenReview)
-        .filter(
-            GoldenReview.golden_entry_id == entry_id,
-            GoldenReview.reviewer_id == current_user.id,
-        )
-        .first()
-    )
 
     return GoldenEntryDetail(
         id=entry.id,
@@ -467,9 +515,6 @@ async def get_golden(
             entry.golden_citations,
         ),
         notes=None,  # author-internal notes not exposed
-        my_review=(
-            _to_review_out(my_review) if my_review else None
-        ),
     )
 
 
@@ -649,8 +694,8 @@ def _link_audio_to_review(
 @router.post(
     "/{entry_id}/review",
     response_model=GoldenReviewOut,
-    status_code=status.HTTP_200_OK,
-    summary="Submit / update caller's review of a golden entry",
+    status_code=status.HTTP_201_CREATED,
+    summary="Append a new review of a golden entry",
 )
 async def submit_review(
     entry_id: str,
@@ -658,18 +703,18 @@ async def submit_review(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> GoldenReviewOut:
-    """Upsert the caller's review for one golden entry.
+    """Append a new review row for one golden entry.
 
-    Each ``(golden_entry, reviewer)`` pair has at most one
-    review row.  Re-submitting updates fields in place and
-    bumps ``updated_at``.
+    Reviews are append-only: submitting twice creates two rows.
+    The same reviewer can post multiple grades over time; the
+    listing dashboard surfaces the team-wide most-recent grade
+    as the entry's headline status.  Reviewers can delete their
+    own rows via ``DELETE /v2/goldens/reviews/{review_id}``.
 
-    Audio handling: if ``audio_token`` is present, the staged
-    file is moved into permanent storage and the row updated.
-    A subsequent submit without ``audio_token`` keeps the
-    existing audio (no replace-with-null behaviour) — explicit
-    clearing requires a separate endpoint we'll add later if
-    needed.
+    Audio handling: each submit may attach its own audio via
+    ``audio_token``; the staged file is moved into permanent
+    storage keyed by the new row's UUID, so audio attachments
+    do not collide across the same reviewer's multiple rows.
 
     Args:
         entry_id: Golden entry ID (matches JSONL ``id``).
@@ -678,7 +723,7 @@ async def submit_review(
         db: Database session.
 
     Returns:
-        The updated ``GoldenReviewOut``.
+        The newly-created ``GoldenReviewOut``.
 
     Raises:
         HTTPException: 404 if entry not found, 400 if status
@@ -705,46 +750,30 @@ async def submit_review(
             detail="Golden entry not found.",
         )
 
-    review = (
-        db.query(GoldenReview)
-        .filter(
-            GoldenReview.golden_entry_id == entry_id,
-            GoldenReview.reviewer_id == current_user.id,
-        )
-        .first()
+    review = GoldenReview(
+        id=uuid.uuid4(),
+        golden_entry_id=entry_id,
+        reviewer_id=current_user.id,
+        star_rating=payload.star_rating,
+        question_realism_score=payload.question_realism_score,
+        answer_correctness_score=payload.answer_correctness_score,
+        citation_faithfulness_score=(
+            payload.citation_faithfulness_score
+        ),
+        status=payload.status,
+        notes=payload.notes,
+        # Freeze the Q+A snapshot at submit time so the review
+        # remains reproducible even after the live entry gets
+        # edited (Phase 3 feature).
+        snapshot_question_en=entry.question_en,
+        snapshot_question_zh=entry.question_zh,
+        snapshot_summary_en=entry.golden_summary_en,
+        snapshot_summary_zh=entry.golden_summary_zh,
+        snapshot_citations=entry.golden_citations,
     )
-    if review is None:
-        review = GoldenReview(
-            id=uuid.uuid4(),
-            golden_entry_id=entry_id,
-            reviewer_id=current_user.id,
-        )
-        db.add(review)
+    db.add(review)
 
-    review.star_rating = payload.star_rating
-    review.question_realism_score = (
-        payload.question_realism_score
-    )
-    review.answer_correctness_score = (
-        payload.answer_correctness_score
-    )
-    review.citation_faithfulness_score = (
-        payload.citation_faithfulness_score
-    )
-    review.status = payload.status
-    review.notes = payload.notes
-    # Freeze a snapshot of the entry's Q+A at submit time so
-    # the review remains reproducible even after the live
-    # entry gets edited (Phase 3 feature).  Overwrite on every
-    # submit so re-submits reflect the state the reviewer most
-    # recently confirmed.
-    review.snapshot_question_en = entry.question_en
-    review.snapshot_question_zh = entry.question_zh
-    review.snapshot_summary_en = entry.golden_summary_en
-    review.snapshot_summary_zh = entry.golden_summary_zh
-    review.snapshot_citations = entry.golden_citations
-
-    # Flush so review.id is populated for path-building.
+    # Flush so review.id is populated for audio path-building.
     db.flush()
 
     if payload.audio_token:
@@ -759,8 +788,9 @@ async def submit_review(
     db.refresh(review)
 
     logger.info(
-        "golden_review_upserted",
+        "golden_review_appended",
         entry_id=entry_id,
+        review_id=str(review.id),
         reviewer_id=str(current_user.id),
         status=review.status,
         star=review.star_rating,
@@ -768,61 +798,6 @@ async def submit_review(
     )
 
     return _to_review_out(review)
-
-
-@router.get(
-    "/{entry_id}/review/audio",
-    summary="Stream caller's audio attachment for an entry",
-)
-async def get_review_audio(
-    entry_id: str,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> FileResponse:
-    """Stream the audio file attached to the caller's review.
-
-    Args:
-        entry_id: Golden entry ID.
-        current_user: Authenticated user.
-        db: Database session.
-
-    Returns:
-        ``FileResponse`` streaming the audio file.
-
-    Raises:
-        HTTPException: 404 if review or audio not found.
-    """
-    review = (
-        db.query(GoldenReview)
-        .filter(
-            GoldenReview.golden_entry_id == entry_id,
-            GoldenReview.reviewer_id == current_user.id,
-        )
-        .first()
-    )
-    if not review or not review.audio_file_path:
-        raise HTTPException(
-            status_code=404,
-            detail="No audio attached to your review.",
-        )
-
-    abs_path = os.path.join(
-        settings.audio_storage_path, review.audio_file_path,
-    )
-    # Defence-in-depth: ensure resolved path stays inside
-    # the audio storage root.
-    real_root = os.path.realpath(settings.audio_storage_path)
-    real_path = os.path.realpath(abs_path)
-    if not real_path.startswith(real_root + os.sep):
-        raise HTTPException(
-            status_code=404, detail="Audio not found.",
-        )
-    if not os.path.isfile(real_path):
-        raise HTTPException(
-            status_code=404, detail="Audio not found.",
-        )
-
-    return FileResponse(real_path)
 
 
 # ── Team feedback (cross-user) ───────────────────────────────

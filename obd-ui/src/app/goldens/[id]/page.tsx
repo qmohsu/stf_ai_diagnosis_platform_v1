@@ -17,10 +17,7 @@ import { QuestionCard } from "@/components/goldens/QuestionCard";
 import { ReviewSubmitForm } from "@/components/goldens/ReviewSubmitForm";
 import { TeamFeedbackList } from "@/components/goldens/TeamFeedbackList";
 import { getGolden } from "@/lib/api";
-import type {
-  GoldenEntryDetail,
-  GoldenReviewOut,
-} from "@/lib/types";
+import type { GoldenEntryDetail } from "@/lib/types";
 
 export default function GoldenDetailPage() {
   const { t } = useTranslation();
@@ -62,13 +59,9 @@ export default function GoldenDetailPage() {
     }
   }, [entry, language]);
 
-  function onReviewSubmitted(updated: GoldenReviewOut) {
-    if (entry) {
-      setEntry({ ...entry, my_review: updated });
-    }
-    // Trigger the team-feedback list to refetch so the user's
-    // just-submitted review appears (or updates in place) in
-    // the History panel without a page reload.
+  function onReviewSubmitted() {
+    // Reviews are append-only — bump the refresh key so the
+    // team-feedback panel re-fetches and the new row appears.
     setFeedbackRefreshKey((k) => k + 1);
   }
 
@@ -159,7 +152,6 @@ export default function GoldenDetailPage() {
         <CardContent>
           <ReviewSubmitForm
             entryId={entry.id}
-            initial={entry.my_review}
             onSubmitted={onReviewSubmitted}
           />
         </CardContent>

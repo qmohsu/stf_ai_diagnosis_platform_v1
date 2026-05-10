@@ -326,8 +326,12 @@ export interface GoldenEntrySummary {
   question_en: string;
   question_zh: string | null;
   has_zh: boolean;
-  my_review_status: GoldenReviewStatus | null;
-  my_review_star: number | null;
+  /** Team's most-recent review (across ALL reviewers). */
+  latest_review_status: GoldenReviewStatus | null;
+  latest_review_star: number | null;
+  latest_reviewer_username: string | null;
+  latest_review_at: string | null;
+  review_count: number;
 }
 
 export interface GoldenReviewOut {
@@ -360,7 +364,6 @@ export interface GoldenEntryDetail {
   golden_summary_zh: string | null;
   golden_citations: GoldenCitation[];
   notes: string | null;
-  my_review: GoldenReviewOut | null;
 }
 
 export interface GoldenListResponse {

@@ -398,6 +398,7 @@
       "loadingEntries": "Loading entries...",
       "noEntries": "No golden entries found. The startup sync may not have run yet — check the API logs.",
       "noEntriesInBucket": "No entries authored in this bucket yet.",
+      "byReviewer": "by {{user}}",
       "reviewStatus": {
         "unreviewed": "Unreviewed",
         "draft": "Draft",
@@ -412,7 +413,7 @@
       "switchToZh": "切換到中文",
       "switchToEn": "Switch to English",
       "questionCard": "Question card",
-      "yourReview": "Your review",
+      "yourReview": "Add feedback",
       "teamHistory": "Team feedback history",
       "loadingEntry": "Loading entry..."
     },
@@ -443,9 +444,7 @@
       "notes": "Notes",
       "notesPlaceholder": "Free-text feedback...",
       "audioFeedback": "Audio feedback (optional)",
-      "existingRecording": "Existing recording (re-record below to replace)",
-      "submitNew": "Submit review",
-      "submitUpdate": "Update review",
+      "submitNew": "Post feedback",
       "savedAt": "Saved {{time}}"
     },
     "teamFeedback": {

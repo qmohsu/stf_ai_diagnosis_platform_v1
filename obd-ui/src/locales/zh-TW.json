@@ -398,6 +398,7 @@
       "loadingEntries": "載入問答中...",
       "noEntries": "尚未找到任何黃金問答。可能 startup sync 尚未執行——請檢查 API 記錄。",
       "noEntriesInBucket": "此桶別尚無問答。",
+      "byReviewer": "由 {{user}}",
       "reviewStatus": {
         "unreviewed": "未評",
         "draft": "草稿",
@@ -412,7 +413,7 @@
       "switchToZh": "切換到中文",
       "switchToEn": "Switch to English",
       "questionCard": "問題卡片",
-      "yourReview": "您的評分",
+      "yourReview": "新增回饋",
       "teamHistory": "團隊歷史評分",
       "loadingEntry": "載入問答中..."
     },
@@ -443,9 +444,7 @@
       "notes": "備註",
       "notesPlaceholder": "請填入您的意見...",
       "audioFeedback": "語音回饋（選填）",
-      "existingRecording": "已有錄音（重新錄製將覆蓋）",
-      "submitNew": "提交評分",
-      "submitUpdate": "更新評分",
+      "submitNew": "發布回饋",
       "savedAt": "已儲存於 {{time}}"
     },
     "teamFeedback": {

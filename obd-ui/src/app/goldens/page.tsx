@@ -8,6 +8,7 @@ import {
   CheckCircle,
   CircleDot,
   Loader2,
+  MessageSquare,
   Star,
   XCircle,
 } from "lucide-react";
@@ -129,8 +130,8 @@ export default function GoldensListingPage() {
 
   const reviewedCount = items.filter(
     (i) =>
-      i.my_review_status !== null &&
-      i.my_review_status !== "draft",
+      i.latest_review_status !== null &&
+      i.latest_review_status !== "draft",
   ).length;
 
   return (
@@ -264,13 +265,31 @@ export default function GoldensListingPage() {
                               </div>
                               <div className="flex flex-col items-end gap-1">
                                 <ReviewBadge
-                                  status={item.my_review_status}
+                                  status={item.latest_review_status}
                                 />
-                                {item.my_review_star !== null && (
+                                {item.latest_review_star !== null && (
                                   <div className="flex items-center gap-1 text-xs">
                                     <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                                     <span className="tabular-nums">
-                                      {item.my_review_star}/5
+                                      {item.latest_review_star}/5
+                                    </span>
+                                  </div>
+                                )}
+                                {item.latest_reviewer_username && (
+                                  <div className="text-[10px] text-muted-foreground">
+                                    {t(
+                                      "goldens.listing.byReviewer",
+                                      {
+                                        user: item.latest_reviewer_username,
+                                      },
+                                    )}
+                                  </div>
+                                )}
+                                {item.review_count > 0 && (
+                                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                    <MessageSquare className="h-3 w-3" />
+                                    <span className="tabular-nums">
+                                      {item.review_count}
                                     </span>
                                   </div>
                                 )}

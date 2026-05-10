@@ -703,12 +703,17 @@ import type {
   GoldenReviewSubmitRequest,
 } from "./types";
 
-/** List golden entries with optional filters. */
+/** List golden entries with optional filters.
+ *
+ * Each entry's headline review status reflects the team's
+ * most-recent submit across ALL reviewers — every user sees
+ * the same dashboard.
+ */
 export async function listGoldens(
   filters: {
     bucket?: GoldenBucket;
     difficulty?: GoldenDifficulty;
-    has_my_review?: boolean;
+    has_reviews?: boolean;
     limit?: number;
     offset?: number;
   } = {},
@@ -716,8 +721,8 @@ export async function listGoldens(
   const params = new URLSearchParams();
   if (filters.bucket) params.set("bucket", filters.bucket);
   if (filters.difficulty) params.set("difficulty", filters.difficulty);
-  if (filters.has_my_review !== undefined) {
-    params.set("has_my_review", String(filters.has_my_review));
+  if (filters.has_reviews !== undefined) {
+    params.set("has_reviews", String(filters.has_reviews));
   }
   if (filters.limit !== undefined) {
     params.set("limit", String(filters.limit));
@@ -737,7 +742,7 @@ export async function listGoldens(
   return res.json();
 }
 
-/** Get one golden entry + the caller's review (if any). */
+/** Get one golden entry's full detail payload. */
 export async function getGolden(
   entryId: string,
 ): Promise<GoldenEntryDetail> {
@@ -776,7 +781,12 @@ export async function uploadGoldenReviewAudio(
   return res.json();
 }
 
-/** Submit / update the caller's review for a golden entry. */
+/** Append a new review for a golden entry.
+ *
+ * Reviews are append-only: re-submitting creates a new row,
+ * never updates an existing one.  Users delete their own rows
+ * via {@link deleteReview}.
+ */
 export async function submitGoldenReview(
   entryId: string,
   payload: GoldenReviewSubmitRequest,
@@ -800,21 +810,6 @@ export async function submitGoldenReview(
     throw new Error(detail.detail || `HTTP ${res.status}`);
   }
   return res.json();
-}
-
-/** Fetch the caller's audio attachment for a review (auth-gated). */
-export async function fetchGoldenReviewAudioBlob(
-  entryId: string,
-): Promise<Blob> {
-  const res = await fetch(
-    `${API_URL}/v2/goldens/${encodeURIComponent(entryId)}/review/audio`,
-    { headers: getAuthHeaders() },
-  );
-  handle401(res);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch audio: HTTP ${res.status}`);
-  }
-  return res.blob();
 }
 
 /**
