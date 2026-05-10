@@ -14,6 +14,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { QuestionCard } from "@/components/goldens/QuestionCard";
 import { ReviewSubmitForm } from "@/components/goldens/ReviewSubmitForm";
+import { TeamFeedbackList } from "@/components/goldens/TeamFeedbackList";
 import { getGolden } from "@/lib/api";
 import type {
   GoldenEntryDetail,
@@ -27,6 +28,9 @@ export default function GoldenDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState<"en" | "zh">("zh");
+  // Incremented after the user submits their own review so the
+  // <TeamFeedbackList> refetches and shows the just-added entry.
+  const [feedbackRefreshKey, setFeedbackRefreshKey] = useState(0);
 
   // Derive entryId reactively — guards against `params` being
   // briefly undefined during SSR/first-client pass, which would
@@ -60,6 +64,10 @@ export default function GoldenDetailPage() {
     if (entry) {
       setEntry({ ...entry, my_review: updated });
     }
+    // Trigger the team-feedback list to refetch so the user's
+    // just-submitted review appears (or updates in place) in
+    // the History panel without a page reload.
+    setFeedbackRefreshKey((k) => k + 1);
   }
 
   if (loading) {
@@ -153,6 +161,20 @@ export default function GoldenDetailPage() {
             entryId={entry.id}
             initial={entry.my_review}
             onSubmitted={onReviewSubmitted}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {language === "zh" ? "團隊歷史評分" : "Team feedback history"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TeamFeedbackList
+            entryId={entry.id}
+            refreshKey={feedbackRefreshKey}
           />
         </CardContent>
       </Card>

@@ -138,6 +138,40 @@ class GoldenReviewOut(BaseModel):
     updated_at: str
 
 
+class TeamReviewItem(BaseModel):
+    """One review in the team-feedback list, with reviewer +
+    snapshot fields the cross-user history view needs."""
+
+    review_id: str
+    reviewer_id: str
+    reviewer_username: str
+    star_rating: Optional[int] = None
+    question_realism_score: Optional[int] = None
+    answer_correctness_score: Optional[int] = None
+    citation_faithfulness_score: Optional[int] = None
+    status: str
+    notes: Optional[str] = None
+    has_audio: bool
+    audio_duration_seconds: Optional[int] = None
+    # Snapshot of the entry's Q+A at the time this review was
+    # submitted.  Null for pre-Phase-2 reviews — UI should fall
+    # back to the live entry's text in that case.
+    snapshot_question_en: Optional[str] = None
+    snapshot_question_zh: Optional[str] = None
+    snapshot_summary_en: Optional[str] = None
+    snapshot_summary_zh: Optional[str] = None
+    snapshot_citations: Optional[List[GoldenCitationOut]] = None
+    created_at: str
+    updated_at: str
+
+
+class TeamReviewListResponse(BaseModel):
+    """Aggregated team-feedback payload for one golden entry."""
+
+    items: List[TeamReviewItem]
+    total: int
+
+
 class GoldenEntryDetail(BaseModel):
     """Full entry payload returned by the detail endpoint.
 
@@ -699,6 +733,16 @@ async def submit_review(
     )
     review.status = payload.status
     review.notes = payload.notes
+    # Freeze a snapshot of the entry's Q+A at submit time so
+    # the review remains reproducible even after the live
+    # entry gets edited (Phase 3 feature).  Overwrite on every
+    # submit so re-submits reflect the state the reviewer most
+    # recently confirmed.
+    review.snapshot_question_en = entry.question_en
+    review.snapshot_question_zh = entry.question_zh
+    review.snapshot_summary_en = entry.golden_summary_en
+    review.snapshot_summary_zh = entry.golden_summary_zh
+    review.snapshot_citations = entry.golden_citations
 
     # Flush so review.id is populated for path-building.
     db.flush()
@@ -767,6 +811,155 @@ async def get_review_audio(
     )
     # Defence-in-depth: ensure resolved path stays inside
     # the audio storage root.
+    real_root = os.path.realpath(settings.audio_storage_path)
+    real_path = os.path.realpath(abs_path)
+    if not real_path.startswith(real_root + os.sep):
+        raise HTTPException(
+            status_code=404, detail="Audio not found.",
+        )
+    if not os.path.isfile(real_path):
+        raise HTTPException(
+            status_code=404, detail="Audio not found.",
+        )
+
+    return FileResponse(real_path)
+
+
+# ── Team feedback (cross-user) ───────────────────────────────
+
+
+@router.get(
+    "/{entry_id}/reviews",
+    response_model=TeamReviewListResponse,
+    summary="List ALL team reviews for one golden entry",
+)
+async def list_team_reviews(
+    entry_id: str,
+    current_user: User = Depends(get_current_user),  # noqa: ARG001
+    db: Session = Depends(get_db),
+) -> TeamReviewListResponse:
+    """Return every reviewer's grade for a golden entry.
+
+    Any authenticated user can read every team member's review
+    on every entry — full transparency for the workshop-expert
+    workflow (HARNESS-17 Phase 2 design decision: option A,
+    confirmed by user).  Each entry carries its reviewer's
+    username plus the Q+A snapshot frozen at submit time so
+    the feedback is self-contained.
+
+    Args:
+        entry_id: Golden entry ID.
+        current_user: Authenticated user (required, identity
+            not used — we expose all reviews to any logged-in
+            user).
+        db: Database session.
+
+    Returns:
+        List of ``TeamReviewItem`` with reviewer + snapshot
+        data + grade fields, ordered by most-recent-first.
+    """
+    # Confirm entry exists so we 404 cleanly (vs returning an
+    # empty list for a nonexistent ID).
+    entry = (
+        db.query(GoldenEntry)
+        .filter(GoldenEntry.id == entry_id)
+        .first()
+    )
+    if not entry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Golden entry not found.",
+        )
+
+    # Join reviews against users so we can include reviewer
+    # username in one round-trip.  Most-recent submit first.
+    rows = (
+        db.query(GoldenReview, User.username)
+        .join(User, GoldenReview.reviewer_id == User.id)
+        .filter(GoldenReview.golden_entry_id == entry_id)
+        .order_by(GoldenReview.updated_at.desc())
+        .all()
+    )
+
+    items: List[TeamReviewItem] = []
+    for review, username in rows:
+        items.append(
+            TeamReviewItem(
+                review_id=str(review.id),
+                reviewer_id=str(review.reviewer_id),
+                reviewer_username=username,
+                star_rating=review.star_rating,
+                question_realism_score=(
+                    review.question_realism_score
+                ),
+                answer_correctness_score=(
+                    review.answer_correctness_score
+                ),
+                citation_faithfulness_score=(
+                    review.citation_faithfulness_score
+                ),
+                status=review.status,
+                notes=review.notes,
+                has_audio=bool(review.audio_file_path),
+                audio_duration_seconds=(
+                    review.audio_duration_seconds
+                ),
+                snapshot_question_en=review.snapshot_question_en,
+                snapshot_question_zh=review.snapshot_question_zh,
+                snapshot_summary_en=review.snapshot_summary_en,
+                snapshot_summary_zh=review.snapshot_summary_zh,
+                snapshot_citations=_coerce_citations(
+                    review.snapshot_citations,
+                ) if review.snapshot_citations else None,
+                created_at=review.created_at.isoformat(),
+                updated_at=review.updated_at.isoformat(),
+            ),
+        )
+
+    return TeamReviewListResponse(items=items, total=len(items))
+
+
+@router.get(
+    "/reviews/{review_id}/audio",
+    summary="Stream any review's audio attachment (cross-user)",
+)
+async def get_any_review_audio(
+    review_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),  # noqa: ARG001
+    db: Session = Depends(get_db),
+) -> FileResponse:
+    """Stream the audio attached to ANY review by its UUID.
+
+    Any authenticated user can play any review's audio — full-
+    transparency Phase 2 setting (workshop-expert workflow,
+    option A).  Defence-in-depth path validation still applies
+    to prevent traversal out of the audio storage root.
+
+    Args:
+        review_id: GoldenReview UUID.
+        current_user: Authenticated user (required).
+        db: Database session.
+
+    Returns:
+        FileResponse streaming the audio file.
+
+    Raises:
+        HTTPException: 404 if review or audio not found.
+    """
+    review = (
+        db.query(GoldenReview)
+        .filter(GoldenReview.id == review_id)
+        .first()
+    )
+    if not review or not review.audio_file_path:
+        raise HTTPException(
+            status_code=404,
+            detail="No audio attached to that review.",
+        )
+
+    abs_path = os.path.join(
+        settings.audio_storage_path, review.audio_file_path,
+    )
     real_root = os.path.realpath(settings.audio_storage_path)
     real_path = os.path.realpath(abs_path)
     if not real_path.startswith(real_root + os.sep):

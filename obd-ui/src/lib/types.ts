@@ -378,3 +378,36 @@ export interface GoldenReviewSubmitRequest {
   audio_token: string | null;
   audio_duration_seconds: number | null;
 }
+
+// -----------------------------------------------------------
+// Team feedback (HARNESS-17 Phase 2 — full transparency)
+// -----------------------------------------------------------
+
+export interface TeamReviewItem {
+  review_id: string;
+  reviewer_id: string;
+  reviewer_username: string;
+  star_rating: number | null;
+  question_realism_score: number | null;
+  answer_correctness_score: number | null;
+  citation_faithfulness_score: number | null;
+  status: GoldenReviewStatus;
+  notes: string | null;
+  has_audio: boolean;
+  audio_duration_seconds: number | null;
+  /** Snapshot of the entry's Q+A at the time this review was
+   *  submitted.  Null for pre-Phase-2 reviews; UI should fall
+   *  back to the live entry's text in that case. */
+  snapshot_question_en: string | null;
+  snapshot_question_zh: string | null;
+  snapshot_summary_en: string | null;
+  snapshot_summary_zh: string | null;
+  snapshot_citations: GoldenCitation[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamReviewListResponse {
+  items: TeamReviewItem[];
+  total: number;
+}

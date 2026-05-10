@@ -513,6 +513,16 @@ class GoldenReview(Base):
     audio_file_path = Column(String(500), nullable=True)
     audio_duration_seconds = Column(Integer, nullable=True)
     audio_size_bytes = Column(Integer, nullable=True)
+    # Frozen copy of the entry's text at submit time.  Set by
+    # the submit endpoint so reviews remain reproducible even
+    # after the live entry is edited (Phase 3 feature).  Pre-
+    # Phase-2 reviews have NULL snapshots; the dashboard falls
+    # back to live entry text in that case.
+    snapshot_question_en = Column(Text, nullable=True)
+    snapshot_question_zh = Column(Text, nullable=True)
+    snapshot_summary_en = Column(Text, nullable=True)
+    snapshot_summary_zh = Column(Text, nullable=True)
+    snapshot_citations = Column(JSONB, nullable=True)
     created_at = Column(
         DateTime, server_default=func.now(), nullable=False,
     )

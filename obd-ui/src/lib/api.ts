@@ -816,3 +816,46 @@ export async function fetchGoldenReviewAudioBlob(
   }
   return res.blob();
 }
+
+/**
+ * List all team reviews for a golden entry (cross-user history).
+ *
+ * Any authenticated user can call this and see every reviewer's
+ * grade — full-transparency Phase 2 setting.
+ */
+export async function listTeamReviews(
+  entryId: string,
+): Promise<import("./types").TeamReviewListResponse> {
+  const res = await fetch(
+    `${API_URL}/v2/goldens/${encodeURIComponent(entryId)}/reviews`,
+    { headers: getAuthHeaders() },
+  );
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * Fetch any review's audio attachment as a Blob (auth-gated).
+ *
+ * Phase 2: any authenticated user can play any review's audio.
+ * Returns a Blob suitable for ``URL.createObjectURL()``.
+ */
+export async function fetchAnyReviewAudioBlob(
+  reviewId: string,
+): Promise<Blob> {
+  const res = await fetch(
+    `${API_URL}/v2/goldens/reviews/${encodeURIComponent(reviewId)}/audio`,
+    { headers: getAuthHeaders() },
+  );
+  handle401(res);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch audio: HTTP ${res.status}`);
+  }
+  return res.blob();
+}
