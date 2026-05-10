@@ -41,6 +41,30 @@ function extractText(children: ReactNode): string {
   return "";
 }
 
+
+/**
+ * Like `extractText`, but additionally strips raw HTML tag
+ * patterns that survive markdown rendering when `rehype-raw`
+ * is not enabled.
+ *
+ * marker-pdf emits headings with embedded page-anchor spans
+ * (e.g. ``### <span id="page-281-1"></span>故障代碼編號 P0117、P0118``).
+ * Without rehype-raw the literal `<span ...>` text reaches
+ * `extractText` and would corrupt the slugify output, e.g.:
+ *   "<span id="page-281-1"></span>故障代碼編號 P0117、P0118"
+ * → "span-id-page-281-1-span-故障代碼編號-p0117、p0118"
+ * which obviously doesn't match the citation slug.
+ *
+ * Strip `<...>` patterns first, then collapse whitespace,
+ * before passing to slugify.
+ */
+function extractTextForSlug(children: ReactNode): string {
+  return extractText(children)
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 interface ManualViewerProps {
   manualId: string;
   onBack: () => void;
@@ -108,9 +132,15 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
   // emit `id` attributes matching the same slugs, so this
   // useEffect is what makes the deep-link navigation work.
   //
-  // The 80ms timeout gives ReactMarkdown one tick to commit the
-  // rendered DOM before we look for the target.  Without it the
-  // call fires before the heading exists and silently no-ops.
+  // We poll rather than fire-and-forget on a single timeout
+  // because ReactMarkdown rendering of a 400-page Chinese
+  // manual can easily take 1-3 seconds — long enough that a
+  // single 80ms timeout fires before the heading exists in
+  // the DOM, finds nothing, and the user is left at the top of
+  // the page.  Poll every 200ms up to 5s; bail with a
+  // console.warn if the target never appears (e.g., the slug
+  // doesn't match any rendered heading because of a parser
+  // / slugify drift — surface the failure for debugging).
   useEffect(() => {
     if (!manual?.content) return;
     if (typeof window === "undefined") return;
@@ -118,9 +148,13 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
     if (!hash) return;
     const targetId = decodeURIComponent(hash.slice(1));
     if (!targetId) return;
-    const timer = window.setTimeout(() => {
+    let attempts = 0;
+    const maxAttempts = 25; // 25 × 200ms = 5s
+    const interval = window.setInterval(() => {
+      attempts += 1;
       const el = document.getElementById(targetId);
       if (el) {
+        window.clearInterval(interval);
         el.scrollIntoView({
           behavior: "smooth",
           block: "start",
@@ -132,9 +166,16 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
         window.setTimeout(() => {
           el.classList.remove("ring-2", "ring-primary", "rounded");
         }, 2400);
+      } else if (attempts >= maxAttempts) {
+        window.clearInterval(interval);
+        console.warn(
+          `[ManualViewer] deep-link target not found after ${
+            attempts * 200
+          }ms: ${targetId}`,
+        );
       }
-    }, 80);
-    return () => window.clearTimeout(timer);
+    }, 200);
+    return () => window.clearInterval(interval);
   }, [manual?.content]);
 
   // Compute the base URL for rewriting relative image paths.
@@ -257,32 +298,32 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
                   // logic as the backend so citations
                   // (`/manuals/<id>#<slug>`) deep-link reliably.
                   h1: ({ node, children, ...props }) => (
-                    <h1 id={slugify(extractText(children))} {...props}>
+                    <h1 id={slugify(extractTextForSlug(children))} {...props}>
                       {children}
                     </h1>
                   ),
                   h2: ({ node, children, ...props }) => (
-                    <h2 id={slugify(extractText(children))} {...props}>
+                    <h2 id={slugify(extractTextForSlug(children))} {...props}>
                       {children}
                     </h2>
                   ),
                   h3: ({ node, children, ...props }) => (
-                    <h3 id={slugify(extractText(children))} {...props}>
+                    <h3 id={slugify(extractTextForSlug(children))} {...props}>
                       {children}
                     </h3>
                   ),
                   h4: ({ node, children, ...props }) => (
-                    <h4 id={slugify(extractText(children))} {...props}>
+                    <h4 id={slugify(extractTextForSlug(children))} {...props}>
                       {children}
                     </h4>
                   ),
                   h5: ({ node, children, ...props }) => (
-                    <h5 id={slugify(extractText(children))} {...props}>
+                    <h5 id={slugify(extractTextForSlug(children))} {...props}>
                       {children}
                     </h5>
                   ),
                   h6: ({ node, children, ...props }) => (
-                    <h6 id={slugify(extractText(children))} {...props}>
+                    <h6 id={slugify(extractTextForSlug(children))} {...props}>
                       {children}
                     </h6>
                   ),
