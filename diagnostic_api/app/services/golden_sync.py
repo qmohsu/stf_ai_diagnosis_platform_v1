@@ -77,8 +77,11 @@ def _extract_entry_fields(
         return None
 
     # Required fields — bail with a warning if missing.
+    # Note: manual_id is derived from the first golden_citation
+    # rather than expected at the top level (the JSONL schema
+    # nests it inside citations).
     required = (
-        "manual_id", "category", "question_type",
+        "category", "question_type",
         "difficulty", "question", "golden_summary",
         "golden_citations",
     )
@@ -91,9 +94,21 @@ def _extract_entry_fields(
             )
             return None
 
+    citations = raw.get("golden_citations") or []
+    manual_id = ""
+    if isinstance(citations, list) and citations:
+        first = citations[0]
+        if isinstance(first, dict):
+            manual_id = str(first.get("manual_id", ""))
+    if not manual_id:
+        # Adversarial entries can have empty citations; fall
+        # back to a sentinel so they still upsert and the
+        # dashboard can render them.
+        manual_id = raw.get("manual_id", "") or "(none)"
+
     return {
         "id": entry_id,
-        "manual_id": raw["manual_id"],
+        "manual_id": manual_id,
         "category": raw["category"],
         "question_type": raw["question_type"],
         "difficulty": raw["difficulty"],
