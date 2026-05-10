@@ -29,7 +29,7 @@ export function HeaderAuth() {
             href="/goldens"
             className="text-sm text-muted-foreground hover:text-foreground"
           >
-            Goldens
+            {t("header.goldens")}
           </Link>
         </>
       )}

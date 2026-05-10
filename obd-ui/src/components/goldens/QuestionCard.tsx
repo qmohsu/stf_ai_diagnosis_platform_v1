@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -7,7 +8,9 @@ import type { GoldenEntryDetail } from "@/lib/types";
 
 interface QuestionCardProps {
   entry: GoldenEntryDetail;
-  /** Which language to display. */
+  /** Which language to display.  Independent of UI chrome
+   *  language (which is driven by the header language switcher
+   *  via i18n).  This toggle only controls the Q+A content. */
   language: "en" | "zh";
 }
 
@@ -23,6 +26,7 @@ interface QuestionCardProps {
  * "translation pending" hint so the reviewer isn't blocked.
  */
 export function QuestionCard({ entry, language }: QuestionCardProps) {
+  const { t } = useTranslation();
   const useZh = language === "zh";
   const question =
     useZh && entry.question_zh ? entry.question_zh : entry.question_en;
@@ -51,7 +55,7 @@ export function QuestionCard({ entry, language }: QuestionCardProps) {
         </Badge>
         {entry.requires_image && (
           <Badge variant="outline" className="border-blue-500 text-blue-600">
-            requires image
+            {t("goldens.questionCard.requiresImage")}
           </Badge>
         )}
         <code className="text-xs text-muted-foreground ml-auto">
@@ -61,21 +65,20 @@ export function QuestionCard({ entry, language }: QuestionCardProps) {
 
       {fellBackToEn && (
         <div className="text-xs text-amber-600">
-          中文翻譯尚未提供 — 顯示英文版 / Chinese translation
-          not yet authored — showing English.
+          {t("goldens.questionCard.fellBackToEn")}
         </div>
       )}
 
       {/* Question */}
       <section className="space-y-1">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {useZh ? "問題" : "Question"}
+          {t("goldens.questionCard.question")}
         </h3>
         <p className="text-base leading-relaxed">{question}</p>
         {entry.obd_context && (
           <div className="mt-2 rounded border border-border bg-muted/40 p-2 text-sm">
             <span className="font-semibold">
-              {useZh ? "OBD 上下文" : "OBD context"}:
+              {t("goldens.questionCard.obdContext")}:
             </span>{" "}
             {entry.obd_context}
           </div>
@@ -85,7 +88,7 @@ export function QuestionCard({ entry, language }: QuestionCardProps) {
       {/* Proposed answer */}
       <section className="space-y-1">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {useZh ? "我們提出的正確答案" : "Proposed correct answer"}
+          {t("goldens.questionCard.proposedAnswer")}
         </h3>
         <div className="rounded-md border border-border bg-muted/30 p-3 text-sm leading-relaxed whitespace-pre-wrap">
           {summary}
@@ -97,7 +100,7 @@ export function QuestionCard({ entry, language }: QuestionCardProps) {
           reviewer doesn't lose their review-form state. */}
       <section className="space-y-2">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {useZh ? "手冊原文引用" : "Source quotes from the manual"}
+          {t("goldens.questionCard.sourceQuotes")}
         </h3>
         <ol className="space-y-2 text-sm">
           {entry.golden_citations.map((c, i) => {
@@ -109,15 +112,11 @@ export function QuestionCard({ entry, language }: QuestionCardProps) {
                   target="_blank"
                   rel="noreferrer"
                   className="block rounded border-l-4 border-primary/40 bg-muted/20 px-3 py-2 transition hover:border-primary hover:bg-muted/40"
-                  title={
-                    useZh
-                      ? "在新分頁開啟手冊章節"
-                      : "Open this section in the manual (new tab)"
-                  }
+                  title={t("goldens.questionCard.openInManual")}
                 >
                   <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                     <span>
-                      {useZh ? "章節" : "Section"}:{" "}
+                      {t("goldens.questionCard.section")}:{" "}
                       <code className="font-semibold">{c.slug}</code>
                     </span>
                     <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />

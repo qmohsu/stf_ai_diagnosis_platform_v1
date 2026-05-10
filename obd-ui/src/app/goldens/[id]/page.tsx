@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, BookOpen, Languages, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,7 @@ import type {
 } from "@/lib/types";
 
 export default function GoldenDetailPage() {
+  const { t } = useTranslation();
   const params = useParams<{ id: string }>();
 
   const [entry, setEntry] = useState<GoldenEntryDetail | null>(null);
@@ -75,7 +77,7 @@ export default function GoldenDetailPage() {
       <div className="container mx-auto px-4 py-6">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading entry...
+          {t("goldens.detail.loadingEntry")}
         </div>
       </div>
     );
@@ -89,7 +91,7 @@ export default function GoldenDetailPage() {
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to listing
+          {t("goldens.detail.backToListing")}
         </Link>
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -108,7 +110,7 @@ export default function GoldenDetailPage() {
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to listing / 返回列表
+          {t("goldens.detail.backToListing")}
         </Link>
 
         <div className="flex items-center gap-2">
@@ -120,7 +122,7 @@ export default function GoldenDetailPage() {
               rel="noreferrer"
             >
               <BookOpen className="h-4 w-4" />
-              Open manual / 開啟手冊
+              {t("goldens.detail.openManual")}
             </Link>
           ) : null}
 
@@ -134,16 +136,16 @@ export default function GoldenDetailPage() {
             className="gap-2"
           >
             <Languages className="h-4 w-4" />
-            {language === "en" ? "切換到中文" : "Switch to English"}
+            {language === "en"
+              ? t("goldens.detail.switchToZh")
+              : t("goldens.detail.switchToEn")}
           </Button>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            {language === "zh" ? "問題卡片" : "Question card"}
-          </CardTitle>
+          <CardTitle>{t("goldens.detail.questionCard")}</CardTitle>
         </CardHeader>
         <CardContent>
           <QuestionCard entry={entry} language={language} />
@@ -152,9 +154,7 @@ export default function GoldenDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            {language === "zh" ? "您的評分" : "Your review"}
-          </CardTitle>
+          <CardTitle>{t("goldens.detail.yourReview")}</CardTitle>
         </CardHeader>
         <CardContent>
           <ReviewSubmitForm
@@ -167,9 +167,7 @@ export default function GoldenDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            {language === "zh" ? "團隊歷史評分" : "Team feedback history"}
-          </CardTitle>
+          <CardTitle>{t("goldens.detail.teamHistory")}</CardTitle>
         </CardHeader>
         <CardContent>
           <TeamFeedbackList

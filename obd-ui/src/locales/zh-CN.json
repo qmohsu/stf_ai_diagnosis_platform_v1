@@ -4,7 +4,8 @@
     "subtitle": "STF AI 诊断平台",
     "logout": "退出登录",
     "mySessions": "我的会话",
-    "manuals": "维修手册"
+    "manuals": "维修手册",
+    "goldens": "黄金问答"
   },
   "language": {
     "en": "EN",
@@ -382,5 +383,87 @@
     "deleteConfirm": "确定删除此手册？这将同时删除其RAG分块。",
     "backToList": "返回手册列表",
     "unsupportedType": "仅支持PDF文件。"
+  },
+  "goldens": {
+    "common": {
+      "loading": "加载中...",
+      "home": "首页"
+    },
+    "listing": {
+      "title": "黄金问答审查",
+      "description": "供工作坊专家验证 AI 诊断助手评估用黄金问答集。点选任一项以阅读问题卡片并评分。",
+      "reviewed": "已评",
+      "bucket": "类别",
+      "allBuckets": "全部类别",
+      "loadingEntries": "加载问答中...",
+      "noEntries": "尚未找到任何黄金问答。可能 startup sync 尚未执行——请检查 API 日志。",
+      "noEntriesInBucket": "此类别尚无问答。",
+      "reviewStatus": {
+        "unreviewed": "未评",
+        "draft": "草稿",
+        "accept": "采用",
+        "needsRevision": "需修订",
+        "reject": "拒绝"
+      }
+    },
+    "detail": {
+      "backToListing": "返回列表",
+      "openManual": "打开手册",
+      "switchToZh": "切换到中文",
+      "switchToEn": "Switch to English",
+      "questionCard": "问题卡片",
+      "yourReview": "您的评分",
+      "teamHistory": "团队历史评分",
+      "loadingEntry": "加载问答中..."
+    },
+    "questionCard": {
+      "fellBackToEn": "中文翻译尚未提供 — 显示英文版。",
+      "requiresImage": "需图片",
+      "question": "问题",
+      "obdContext": "OBD 上下文",
+      "proposedAnswer": "我们提出的正确答案",
+      "sourceQuotes": "手册原文引用",
+      "section": "章节",
+      "openInManual": "在新标签页打开手册章节"
+    },
+    "review": {
+      "overallRating": "整体评分",
+      "overallDesc": "此问答整体可靠度如何？",
+      "questionRealism": "问题拟真度",
+      "questionRealismDesc": "技师真的会这样提问吗？",
+      "answerCorrectness": "答案正确性",
+      "answerCorrectnessDesc": "所提出的答案是否准确？",
+      "citationFaithfulness": "引用的忠实度",
+      "citationFaithfulnessDesc": "引用的原文是否支持答案？",
+      "status": "状态",
+      "statusDraft": "草稿",
+      "statusAccept": "采用",
+      "statusNeedsRevision": "需修订",
+      "statusReject": "拒绝",
+      "notes": "备注",
+      "notesPlaceholder": "请填入您的意见...",
+      "audioFeedback": "语音反馈（选填）",
+      "existingRecording": "已有录音（重新录制将覆盖）",
+      "submitNew": "提交评分",
+      "submitUpdate": "更新评分",
+      "savedAt": "已保存于 {{time}}"
+    },
+    "teamFeedback": {
+      "historyButton": "历史评分",
+      "noReviewsYet": "此项目尚无评分。",
+      "you": "您",
+      "delete": "删除",
+      "deleteTitle": "删除此评分",
+      "deleteConfirm": "删除此评分？此操作无法撤销。",
+      "overall": "整体",
+      "snapshot": "评分当时的问答快照",
+      "snapshotQuestion": "问题",
+      "snapshotAnswer": "提出的答案",
+      "snapshotCitedSources": "引用来源",
+      "noSnapshot": "（无快照）",
+      "audio": "语音反馈",
+      "loadingAudio": "加载语音中…",
+      "audioUnavailable": "语音无法播放"
+    }
   }
 }

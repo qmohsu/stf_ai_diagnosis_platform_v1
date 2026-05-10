@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,6 +38,7 @@ export function ReviewSubmitForm({
   initial,
   onSubmitted,
 }: ReviewSubmitFormProps) {
+  const { t } = useTranslation();
   const [overallStar, setOverallStar] = useState<number | null>(
     initial?.star_rating ?? null,
   );
@@ -128,42 +130,42 @@ export function ReviewSubmitForm({
         <StarRating
           value={overallStar}
           onChange={setOverallStar}
-          label="Overall rating / 整體評分"
-          description="How reliable is this Q+A overall?"
+          label={t("goldens.review.overallRating")}
+          description={t("goldens.review.overallDesc")}
           size={32}
         />
         <StarRating
           value={questionStar}
           onChange={setQuestionStar}
-          label="Question realism / 問題擬真度"
-          description="Would a technician actually ask this?"
+          label={t("goldens.review.questionRealism")}
+          description={t("goldens.review.questionRealismDesc")}
         />
         <StarRating
           value={answerStar}
           onChange={setAnswerStar}
-          label="Answer correctness / 答案正確性"
-          description="Is the proposed answer accurate?"
+          label={t("goldens.review.answerCorrectness")}
+          description={t("goldens.review.answerCorrectnessDesc")}
         />
         <StarRating
           value={citationStar}
           onChange={setCitationStar}
-          label="Citation faithfulness / 引用的忠實度"
-          description="Do the source quotes support the answer?"
+          label={t("goldens.review.citationFaithfulness")}
+          description={t("goldens.review.citationFaithfulnessDesc")}
         />
       </div>
 
       <div className="space-y-1">
-        <div className="text-sm font-medium">Status / 狀態</div>
+        <div className="text-sm font-medium">{t("goldens.review.status")}</div>
         <div className="flex flex-wrap gap-2">
           {(
             [
-              { v: "draft", label: "Draft / 草稿" },
-              { v: "accept", label: "Accept / 採用" },
+              { v: "draft", label: t("goldens.review.statusDraft") },
+              { v: "accept", label: t("goldens.review.statusAccept") },
               {
                 v: "needs_revision",
-                label: "Needs revision / 需修訂",
+                label: t("goldens.review.statusNeedsRevision"),
               },
-              { v: "reject", label: "Reject / 拒絕" },
+              { v: "reject", label: t("goldens.review.statusReject") },
             ] as { v: GoldenReviewStatus; label: string }[]
           ).map((opt) => {
             const checked = status === opt.v;
@@ -193,12 +195,12 @@ export function ReviewSubmitForm({
 
       <div className="space-y-1">
         <div className="text-sm font-medium">
-          Notes / 備註
+          {t("goldens.review.notes")}
         </div>
         <Textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="Free-text feedback... 請填入您的意見..."
+          placeholder={t("goldens.review.notesPlaceholder")}
           rows={5}
           className="resize-y"
         />
@@ -206,13 +208,12 @@ export function ReviewSubmitForm({
 
       <div className="space-y-1">
         <div className="text-sm font-medium">
-          Audio feedback (optional) / 語音回饋 (選填)
+          {t("goldens.review.audioFeedback")}
         </div>
         {existingAudioUrl && !pendingAudio && (
           <div className="mb-2 rounded border border-border bg-muted/30 p-2">
             <div className="mb-1 text-xs text-muted-foreground">
-              Existing recording (re-record below to replace) /
-              已有錄音 (重新錄製將覆蓋)
+              {t("goldens.review.existingRecording")}
             </div>
             <audio src={existingAudioUrl} controls className="w-full" />
           </div>
@@ -242,7 +243,9 @@ export function ReviewSubmitForm({
           ) : (
             <Save className="h-4 w-4" />
           )}
-          {initial ? "Update review / 更新評分" : "Submit review / 提交評分"}
+          {initial
+            ? t("goldens.review.submitUpdate")
+            : t("goldens.review.submitNew")}
         </Button>
         {savedAt && (
           <span className="text-xs text-muted-foreground">

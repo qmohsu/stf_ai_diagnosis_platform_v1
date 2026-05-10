@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   CheckCircle,
@@ -34,12 +35,17 @@ const BUCKETS: GoldenBucket[] = [
   "adversarial",
 ];
 
-function reviewBadge(status: GoldenReviewStatus | null) {
+function ReviewBadge({
+  status,
+}: {
+  status: GoldenReviewStatus | null;
+}) {
+  const { t } = useTranslation();
   if (status === null) {
     return (
       <Badge variant="outline" className="gap-1 text-muted-foreground">
         <CircleDot className="h-3 w-3" />
-        Unreviewed / 未評
+        {t("goldens.listing.reviewStatus.unreviewed")}
       </Badge>
     );
   }
@@ -47,7 +53,7 @@ function reviewBadge(status: GoldenReviewStatus | null) {
     return (
       <Badge variant="secondary" className="gap-1">
         <Loader2 className="h-3 w-3" />
-        Draft / 草稿
+        {t("goldens.listing.reviewStatus.draft")}
       </Badge>
     );
   }
@@ -58,7 +64,7 @@ function reviewBadge(status: GoldenReviewStatus | null) {
         className="gap-1 bg-green-600 hover:bg-green-700"
       >
         <CheckCircle className="h-3 w-3" />
-        Accept / 採用
+        {t("goldens.listing.reviewStatus.accept")}
       </Badge>
     );
   }
@@ -68,7 +74,7 @@ function reviewBadge(status: GoldenReviewStatus | null) {
         variant="default"
         className="gap-1 bg-amber-500 hover:bg-amber-600"
       >
-        Revise / 需修訂
+        {t("goldens.listing.reviewStatus.needsRevision")}
       </Badge>
     );
   }
@@ -76,7 +82,7 @@ function reviewBadge(status: GoldenReviewStatus | null) {
     return (
       <Badge variant="destructive" className="gap-1">
         <XCircle className="h-3 w-3" />
-        Reject / 拒絕
+        {t("goldens.listing.reviewStatus.reject")}
       </Badge>
     );
   }
@@ -84,6 +90,7 @@ function reviewBadge(status: GoldenReviewStatus | null) {
 }
 
 export default function GoldensListingPage() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<GoldenEntrySummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -134,38 +141,38 @@ export default function GoldensListingPage() {
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          Home
+          {t("goldens.common.home")}
         </Link>
       </div>
 
       <Card>
         <CardHeader className="space-y-2">
           <CardTitle className="flex items-center gap-2">
-            Golden Q&amp;A review / 黃金問答審查
+            {t("goldens.listing.title")}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Workshop-expert validation of the golden set used for
-            evaluating the AI diagnostic assistant.  Click any entry
-            to read the question card and grade it.
-            <br />
-            供工作坊專家驗證 AI 診斷助手評估用黃金問答集。
-            點選任一項以閱讀問題卡片並評分。
+            {t("goldens.listing.description")}
           </p>
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <span className="text-sm text-muted-foreground">
-              Reviewed: <span className="font-semibold tabular-nums">{reviewedCount}</span>
-              {" "}/ {items.length}
+              {t("goldens.listing.reviewed")}:{" "}
+              <span className="font-semibold tabular-nums">
+                {reviewedCount}
+              </span>{" "}
+              / {items.length}
             </span>
             <div className="ml-auto flex items-center gap-2">
               <span className="text-sm text-muted-foreground">
-                Bucket:
+                {t("goldens.listing.bucket")}:
               </span>
               <Select
                 value={bucketFilter}
                 onChange={(e) => setBucketFilter(e.target.value)}
                 className="w-[200px]"
               >
-                <option value="all">All buckets</option>
+                <option value="all">
+                  {t("goldens.listing.allBuckets")}
+                </option>
                 {BUCKETS.map((b) => (
                   <option key={b} value={b}>
                     {b}
@@ -179,7 +186,7 @@ export default function GoldensListingPage() {
           {loading && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading entries...
+              {t("goldens.listing.loadingEntries")}
             </div>
           )}
           {error && (
@@ -190,11 +197,7 @@ export default function GoldensListingPage() {
 
           {!loading && !error && items.length === 0 && (
             <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
-              No golden entries found.  The startup sync may not have
-              run yet — check the API logs.
-              <br />
-              尚未找到任何黃金問答。可能 startup sync 尚未執行——
-              請檢查 API 記錄。
+              {t("goldens.listing.noEntries")}
             </div>
           )}
 
@@ -219,7 +222,7 @@ export default function GoldensListingPage() {
                   </h3>
                   {bucketItems.length === 0 ? (
                     <p className="text-sm italic text-muted-foreground">
-                      No entries authored in this bucket yet.
+                      {t("goldens.listing.noEntriesInBucket")}
                     </p>
                   ) : (
                     <ul className="space-y-2">
@@ -248,7 +251,7 @@ export default function GoldensListingPage() {
                                       variant="outline"
                                       className="border-blue-500 text-xs text-blue-600"
                                     >
-                                      requires image
+                                      {t("goldens.questionCard.requiresImage")}
                                     </Badge>
                                   )}
                                 </div>
@@ -260,7 +263,9 @@ export default function GoldensListingPage() {
                                 </code>
                               </div>
                               <div className="flex flex-col items-end gap-1">
-                                {reviewBadge(item.my_review_status)}
+                                <ReviewBadge
+                                  status={item.my_review_status}
+                                />
                                 {item.my_review_star !== null && (
                                   <div className="flex items-center gap-1 text-xs">
                                     <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
