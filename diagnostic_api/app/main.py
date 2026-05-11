@@ -186,8 +186,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             gs_db.close()
     except Exception as exc:  # noqa: BLE001
         logger.error(
-            "golden_sync_startup_error",
-            error=str(exc),
+            "golden_sync_startup_error: %s", exc,
         )
 
     yield
