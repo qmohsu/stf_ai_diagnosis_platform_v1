@@ -290,3 +290,127 @@ export interface ToolInvocation {
   };
   status: "calling" | "done" | "error";
 }
+
+// -----------------------------------------------------------
+// Golden review dashboard (HARNESS-17 / Issue #82)
+// -----------------------------------------------------------
+
+export type GoldenBucket =
+  | "lookup"
+  | "procedural"
+  | "cross-section"
+  | "image-required"
+  | "adversarial";
+
+export type GoldenDifficulty = "easy" | "medium" | "hard";
+
+export type GoldenReviewStatus =
+  | "draft"
+  | "accept"
+  | "needs_revision"
+  | "reject";
+
+export interface GoldenCitation {
+  manual_id: string;
+  slug: string;
+  quote: string;
+}
+
+export interface GoldenEntrySummary {
+  id: string;
+  manual_id: string;
+  category: string;
+  question_type: GoldenBucket;
+  difficulty: GoldenDifficulty;
+  requires_image: boolean;
+  question_en: string;
+  question_zh: string | null;
+  has_zh: boolean;
+  /** Team's most-recent review (across ALL reviewers). */
+  latest_review_status: GoldenReviewStatus | null;
+  latest_review_star: number | null;
+  latest_reviewer_username: string | null;
+  latest_review_at: string | null;
+  review_count: number;
+}
+
+export interface GoldenReviewOut {
+  id: string;
+  golden_entry_id: string;
+  reviewer_id: string;
+  star_rating: number | null;
+  question_realism_score: number | null;
+  answer_correctness_score: number | null;
+  citation_faithfulness_score: number | null;
+  status: GoldenReviewStatus;
+  notes: string | null;
+  has_audio: boolean;
+  audio_duration_seconds: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GoldenEntryDetail {
+  id: string;
+  manual_id: string;
+  category: string;
+  question_type: GoldenBucket;
+  difficulty: GoldenDifficulty;
+  requires_image: boolean;
+  question_en: string;
+  question_zh: string | null;
+  obd_context: string | null;
+  golden_summary_en: string;
+  golden_summary_zh: string | null;
+  golden_citations: GoldenCitation[];
+  notes: string | null;
+}
+
+export interface GoldenListResponse {
+  items: GoldenEntrySummary[];
+  total: number;
+}
+
+export interface GoldenReviewSubmitRequest {
+  star_rating: number | null;
+  question_realism_score: number | null;
+  answer_correctness_score: number | null;
+  citation_faithfulness_score: number | null;
+  status: GoldenReviewStatus;
+  notes: string | null;
+  audio_token: string | null;
+  audio_duration_seconds: number | null;
+}
+
+// -----------------------------------------------------------
+// Team feedback (HARNESS-17 Phase 2 — full transparency)
+// -----------------------------------------------------------
+
+export interface TeamReviewItem {
+  review_id: string;
+  reviewer_id: string;
+  reviewer_username: string;
+  star_rating: number | null;
+  question_realism_score: number | null;
+  answer_correctness_score: number | null;
+  citation_faithfulness_score: number | null;
+  status: GoldenReviewStatus;
+  notes: string | null;
+  has_audio: boolean;
+  audio_duration_seconds: number | null;
+  /** Snapshot of the entry's Q+A at the time this review was
+   *  submitted.  Null for pre-Phase-2 reviews; UI should fall
+   *  back to the live entry's text in that case. */
+  snapshot_question_en: string | null;
+  snapshot_question_zh: string | null;
+  snapshot_summary_en: string | null;
+  snapshot_summary_zh: string | null;
+  snapshot_citations: GoldenCitation[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamReviewListResponse {
+  items: TeamReviewItem[];
+  total: number;
+}

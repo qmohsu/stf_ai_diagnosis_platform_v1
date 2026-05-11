@@ -4,7 +4,8 @@
     "subtitle": "STF AI 診斷平台",
     "logout": "登出",
     "mySessions": "我的工作階段",
-    "manuals": "維修手冊"
+    "manuals": "維修手冊",
+    "goldens": "黃金問答"
   },
   "language": {
     "en": "EN",
@@ -382,5 +383,85 @@
     "deleteConfirm": "確定刪除此手冊？這將同時刪除其RAG分塊。",
     "backToList": "返回手冊列表",
     "unsupportedType": "僅支援PDF檔案。"
+  },
+  "goldens": {
+    "common": {
+      "loading": "載入中...",
+      "home": "首頁"
+    },
+    "listing": {
+      "title": "黃金問答審查",
+      "description": "供工作坊專家驗證 AI 診斷助手評估用黃金問答集。點選任一項以閱讀問題卡片並評分。",
+      "reviewed": "已評",
+      "bucket": "桶別",
+      "allBuckets": "全部桶別",
+      "loadingEntries": "載入問答中...",
+      "noEntries": "尚未找到任何黃金問答。可能 startup sync 尚未執行——請檢查 API 記錄。",
+      "noEntriesInBucket": "此桶別尚無問答。",
+      "byReviewer": "由 {{user}}",
+      "reviewStatus": {
+        "unreviewed": "未評",
+        "draft": "草稿",
+        "accept": "採用",
+        "needsRevision": "需修訂",
+        "reject": "拒絕"
+      }
+    },
+    "detail": {
+      "backToListing": "返回列表",
+      "openManual": "開啟手冊",
+      "switchToZh": "切換到中文",
+      "switchToEn": "Switch to English",
+      "questionCard": "問題卡片",
+      "yourReview": "新增回饋",
+      "teamHistory": "團隊歷史評分",
+      "loadingEntry": "載入問答中..."
+    },
+    "questionCard": {
+      "fellBackToEn": "中文翻譯尚未提供 — 顯示英文版。",
+      "requiresImage": "需圖片",
+      "question": "問題",
+      "obdContext": "OBD 上下文",
+      "proposedAnswer": "我們提出的正確答案",
+      "sourceQuotes": "手冊原文引用",
+      "section": "章節",
+      "openInManual": "在新分頁開啟手冊章節"
+    },
+    "review": {
+      "overallRating": "整體評分",
+      "overallDesc": "此問答整體可靠度如何？",
+      "questionRealism": "問題擬真度",
+      "questionRealismDesc": "技師真的會這樣提問嗎？",
+      "answerCorrectness": "答案正確性",
+      "answerCorrectnessDesc": "所提出的答案是否準確？",
+      "citationFaithfulness": "引用的忠實度",
+      "citationFaithfulnessDesc": "引用的原文是否支持答案？",
+      "status": "狀態",
+      "statusDraft": "草稿",
+      "statusAccept": "採用",
+      "statusNeedsRevision": "需修訂",
+      "statusReject": "拒絕",
+      "notes": "備註",
+      "notesPlaceholder": "請填入您的意見...",
+      "submitNew": "發布回饋",
+      "savedAt": "已儲存於 {{time}}"
+    },
+    "teamFeedback": {
+      "historyButton": "歷史評分",
+      "noReviewsYet": "此項目尚無評分。",
+      "you": "您",
+      "delete": "刪除",
+      "deleteTitle": "刪除此評分",
+      "deleteConfirm": "刪除此評分？此操作無法復原。",
+      "overall": "整體",
+      "snapshot": "評分當時的問答快照",
+      "snapshotQuestion": "問題",
+      "snapshotAnswer": "提出的答案",
+      "snapshotCitedSources": "引用來源",
+      "noSnapshot": "（無快照）",
+      "audio": "語音回饋",
+      "loadingAudio": "載入語音中…",
+      "audioUnavailable": "語音無法播放"
+    }
   }
 }

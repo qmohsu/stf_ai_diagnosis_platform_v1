@@ -359,6 +359,184 @@ class Manual(Base):
     user = relationship("User")
 
 
+class GoldenEntry(Base):
+    """Mirror of a golden Q&A entry from the eval JSONL files.
+
+    The ``tests/harness/evals/golden/v2/*.jsonl`` files remain
+    the canonical source of truth — this table is a queryable
+    cache that gets refreshed on app startup (and any time the
+    sync routine is invoked).  Reviews tie back to entries via
+    ``id``, which is the same string identifier used in the
+    JSONL (e.g. ``<manual_uuid>-dtc-001``).
+
+    Bilingual fields (``question_zh``, ``golden_summary_zh``)
+    are NULLABLE — entries authored before the bilingualisation
+    push (HARNESS-17) carry only English text; the dashboard
+    falls back to English when Chinese is missing.
+    """
+
+    __tablename__ = "golden_entries"
+    __table_args__ = (
+        CheckConstraint(
+            "category IN ("
+            "'dtc', 'symptom', 'component', "
+            "'adversarial', 'image')",
+            name="ck_golden_entry_category",
+        ),
+        CheckConstraint(
+            "question_type IN ("
+            "'lookup', 'procedural', 'cross-section', "
+            "'image-required', 'adversarial')",
+            name="ck_golden_entry_question_type",
+        ),
+        CheckConstraint(
+            "difficulty IN ('easy', 'medium', 'hard')",
+            name="ck_golden_entry_difficulty",
+        ),
+    )
+
+    id = Column(String(255), primary_key=True)
+    manual_id = Column(String(255), nullable=False, index=True)
+    category = Column(String(50), nullable=False, index=True)
+    question_type = Column(
+        String(50), nullable=False, index=True,
+    )
+    difficulty = Column(String(20), nullable=False)
+    question_en = Column(Text, nullable=False)
+    question_zh = Column(Text, nullable=True)
+    obd_context = Column(Text, nullable=True)
+    golden_summary_en = Column(Text, nullable=False)
+    golden_summary_zh = Column(Text, nullable=True)
+    golden_citations = Column(JSONB, nullable=False)
+    expected_recall_slugs = Column(JSONB, nullable=True)
+    must_contain = Column(JSONB, nullable=True)
+    pitfall_directives = Column(JSONB, nullable=True)
+    requires_image = Column(
+        Boolean, nullable=False, default=False,
+    )
+    notes = Column(Text, nullable=True)
+    source_jsonl_path = Column(String(500), nullable=True)
+    source_jsonl_line = Column(Integer, nullable=True)
+    created_at = Column(
+        DateTime, server_default=func.now(), nullable=False,
+    )
+    updated_at = Column(
+        DateTime,
+        server_default=func.now(),
+        onupdate=_utcnow,
+        nullable=False,
+    )
+
+    reviews = relationship(
+        "GoldenReview",
+        back_populates="entry",
+        cascade="all, delete-orphan",
+    )
+
+
+class GoldenReview(Base):
+    """One reviewer's grade of one golden entry.
+
+    Star ratings are 1-5, all nullable so a reviewer can save
+    a draft with notes-only and return to fill in stars later.
+    Three per-dimension scores match the Markdown export's
+    grading rubric (question realism / answer correctness /
+    citation faithfulness); a fourth ``star_rating`` is the
+    overall holistic rating.
+
+    Audio columns mirror the existing ``_OBDFeedbackMixin``
+    pattern so the same ``AudioRecorder`` two-step token-upload
+    flow can be reused without code changes.
+
+    Reviews are **append-only**: each submit creates a new row,
+    even when the same reviewer is grading the same entry.  The
+    listing dashboard surfaces the most-recent review across all
+    reviewers as the entry's "headline" status; the detail page
+    shows the full team history.  Reviewers may delete their own
+    rows via the owner-only DELETE endpoint.
+    """
+
+    __tablename__ = "golden_reviews"
+    __table_args__ = (
+        CheckConstraint(
+            "star_rating IS NULL OR "
+            "(star_rating BETWEEN 1 AND 5)",
+            name="ck_golden_review_star_rating",
+        ),
+        CheckConstraint(
+            "question_realism_score IS NULL OR "
+            "(question_realism_score BETWEEN 1 AND 5)",
+            name="ck_golden_review_q_realism_score",
+        ),
+        CheckConstraint(
+            "answer_correctness_score IS NULL OR "
+            "(answer_correctness_score BETWEEN 1 AND 5)",
+            name="ck_golden_review_a_correctness_score",
+        ),
+        CheckConstraint(
+            "citation_faithfulness_score IS NULL OR "
+            "(citation_faithfulness_score BETWEEN 1 AND 5)",
+            name="ck_golden_review_c_faithfulness_score",
+        ),
+        CheckConstraint(
+            "status IN ("
+            "'draft', 'accept', 'needs_revision', 'reject')",
+            name="ck_golden_review_status",
+        ),
+    )
+
+    id = Column(
+        UUID(as_uuid=True), primary_key=True, default=uuid4,
+    )
+    golden_entry_id = Column(
+        String(255),
+        ForeignKey("golden_entries.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    reviewer_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+    star_rating = Column(Integer, nullable=True)
+    question_realism_score = Column(Integer, nullable=True)
+    answer_correctness_score = Column(Integer, nullable=True)
+    citation_faithfulness_score = Column(Integer, nullable=True)
+    status = Column(
+        String(20), nullable=False, default="draft",
+    )
+    notes = Column(Text, nullable=True)
+    audio_file_path = Column(String(500), nullable=True)
+    audio_duration_seconds = Column(Integer, nullable=True)
+    audio_size_bytes = Column(Integer, nullable=True)
+    # Frozen copy of the entry's text at submit time.  Set by
+    # the submit endpoint so reviews remain reproducible even
+    # after the live entry is edited (Phase 3 feature).  Pre-
+    # Phase-2 reviews have NULL snapshots; the dashboard falls
+    # back to live entry text in that case.
+    snapshot_question_en = Column(Text, nullable=True)
+    snapshot_question_zh = Column(Text, nullable=True)
+    snapshot_summary_en = Column(Text, nullable=True)
+    snapshot_summary_zh = Column(Text, nullable=True)
+    snapshot_citations = Column(JSONB, nullable=True)
+    created_at = Column(
+        DateTime, server_default=func.now(), nullable=False,
+    )
+    updated_at = Column(
+        DateTime,
+        server_default=func.now(),
+        onupdate=_utcnow,
+        nullable=False,
+    )
+
+    entry = relationship(
+        "GoldenEntry", back_populates="reviews",
+    )
+    reviewer = relationship("User")
+
+
 class RagChunk(Base):
     """RAG knowledge chunk with pgvector embedding.
 

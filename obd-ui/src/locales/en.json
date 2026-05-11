@@ -4,7 +4,8 @@
     "subtitle": "STF AI Diagnosis Platform",
     "logout": "Logout",
     "mySessions": "My Sessions",
-    "manuals": "Manuals"
+    "manuals": "Manuals",
+    "goldens": "Goldens"
   },
   "language": {
     "en": "EN",
@@ -382,5 +383,85 @@
     "deleteConfirm": "Delete this manual? This will also remove its RAG chunks.",
     "backToList": "Back to Manual List",
     "unsupportedType": "Only PDF files are supported."
+  },
+  "goldens": {
+    "common": {
+      "loading": "Loading...",
+      "home": "Home"
+    },
+    "listing": {
+      "title": "Golden Q&A review",
+      "description": "Workshop-expert validation of the golden set used for evaluating the AI diagnostic assistant. Click any entry to read the question card and grade it.",
+      "reviewed": "Reviewed",
+      "bucket": "Bucket",
+      "allBuckets": "All buckets",
+      "loadingEntries": "Loading entries...",
+      "noEntries": "No golden entries found. The startup sync may not have run yet — check the API logs.",
+      "noEntriesInBucket": "No entries authored in this bucket yet.",
+      "byReviewer": "by {{user}}",
+      "reviewStatus": {
+        "unreviewed": "Unreviewed",
+        "draft": "Draft",
+        "accept": "Accept",
+        "needsRevision": "Revise",
+        "reject": "Reject"
+      }
+    },
+    "detail": {
+      "backToListing": "Back to listing",
+      "openManual": "Open manual",
+      "switchToZh": "切換到中文",
+      "switchToEn": "Switch to English",
+      "questionCard": "Question card",
+      "yourReview": "Add feedback",
+      "teamHistory": "Team feedback history",
+      "loadingEntry": "Loading entry..."
+    },
+    "questionCard": {
+      "fellBackToEn": "Chinese translation not yet authored — showing English.",
+      "requiresImage": "requires image",
+      "question": "Question",
+      "obdContext": "OBD context",
+      "proposedAnswer": "Proposed correct answer",
+      "sourceQuotes": "Source quotes from the manual",
+      "section": "Section",
+      "openInManual": "Open this section in the manual (new tab)"
+    },
+    "review": {
+      "overallRating": "Overall rating",
+      "overallDesc": "How reliable is this Q+A overall?",
+      "questionRealism": "Question realism",
+      "questionRealismDesc": "Would a technician actually ask this?",
+      "answerCorrectness": "Answer correctness",
+      "answerCorrectnessDesc": "Is the proposed answer accurate?",
+      "citationFaithfulness": "Citation faithfulness",
+      "citationFaithfulnessDesc": "Do the source quotes support the answer?",
+      "status": "Status",
+      "statusDraft": "Draft",
+      "statusAccept": "Accept",
+      "statusNeedsRevision": "Needs revision",
+      "statusReject": "Reject",
+      "notes": "Notes",
+      "notesPlaceholder": "Free-text feedback...",
+      "submitNew": "Post feedback",
+      "savedAt": "Saved {{time}}"
+    },
+    "teamFeedback": {
+      "historyButton": "History",
+      "noReviewsYet": "No reviews submitted yet for this entry.",
+      "you": "you",
+      "delete": "Delete",
+      "deleteTitle": "Delete this review",
+      "deleteConfirm": "Delete this review?  This cannot be undone.",
+      "overall": "Overall",
+      "snapshot": "Snapshot of Q+A at review time",
+      "snapshotQuestion": "Question",
+      "snapshotAnswer": "Proposed answer",
+      "snapshotCitedSources": "Cited sources",
+      "noSnapshot": "(no snapshot)",
+      "audio": "Audio feedback",
+      "loadingAudio": "Loading audio…",
+      "audioUnavailable": "Audio unavailable"
+    }
   }
 }

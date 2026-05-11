@@ -689,3 +689,190 @@ export async function getManualStatus(
   }
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Golden review dashboard endpoints (HARNESS-17 / Issue #82)
+// ---------------------------------------------------------------------------
+
+import type {
+  GoldenBucket,
+  GoldenDifficulty,
+  GoldenEntryDetail,
+  GoldenListResponse,
+  GoldenReviewOut,
+  GoldenReviewSubmitRequest,
+} from "./types";
+
+/** List golden entries with optional filters.
+ *
+ * Each entry's headline review status reflects the team's
+ * most-recent submit across ALL reviewers — every user sees
+ * the same dashboard.
+ */
+export async function listGoldens(
+  filters: {
+    bucket?: GoldenBucket;
+    difficulty?: GoldenDifficulty;
+    has_reviews?: boolean;
+    limit?: number;
+    offset?: number;
+  } = {},
+): Promise<GoldenListResponse> {
+  const params = new URLSearchParams();
+  if (filters.bucket) params.set("bucket", filters.bucket);
+  if (filters.difficulty) params.set("difficulty", filters.difficulty);
+  if (filters.has_reviews !== undefined) {
+    params.set("has_reviews", String(filters.has_reviews));
+  }
+  if (filters.limit !== undefined) {
+    params.set("limit", String(filters.limit));
+  }
+  if (filters.offset !== undefined) {
+    params.set("offset", String(filters.offset));
+  }
+  const qs = params.toString();
+  const res = await fetch(
+    `${API_URL}/v2/goldens${qs ? `?${qs}` : ""}`,
+    { headers: getAuthHeaders() },
+  );
+  handle401(res);
+  if (!res.ok) {
+    throw new Error(`Failed to list goldens: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/** Get one golden entry's full detail payload. */
+export async function getGolden(
+  entryId: string,
+): Promise<GoldenEntryDetail> {
+  const res = await fetch(
+    `${API_URL}/v2/goldens/${encodeURIComponent(entryId)}`,
+    { headers: getAuthHeaders() },
+  );
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/** Stage an audio recording, returns audio_token. */
+export async function uploadGoldenReviewAudio(
+  blob: Blob,
+): Promise<{ audio_token: string; size_bytes: number }> {
+  const formData = new FormData();
+  formData.append("file", blob, "recording.webm");
+  const headers = getAuthHeaders();
+  const res = await fetch(
+    `${API_URL}/v2/goldens/audio/upload`,
+    { method: "POST", headers, body: formData },
+  );
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/** Append a new review for a golden entry.
+ *
+ * Reviews are append-only: re-submitting creates a new row,
+ * never updates an existing one.  Users delete their own rows
+ * via {@link deleteReview}.
+ */
+export async function submitGoldenReview(
+  entryId: string,
+  payload: GoldenReviewSubmitRequest,
+): Promise<GoldenReviewOut> {
+  const res = await fetch(
+    `${API_URL}/v2/goldens/${encodeURIComponent(entryId)}/review`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * List all team reviews for a golden entry (cross-user history).
+ *
+ * Any authenticated user can call this and see every reviewer's
+ * grade — full-transparency Phase 2 setting.
+ */
+export async function listTeamReviews(
+  entryId: string,
+): Promise<import("./types").TeamReviewListResponse> {
+  const res = await fetch(
+    `${API_URL}/v2/goldens/${encodeURIComponent(entryId)}/reviews`,
+    { headers: getAuthHeaders() },
+  );
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * Fetch any review's audio attachment as a Blob (auth-gated).
+ *
+ * Phase 2: any authenticated user can play any review's audio.
+ * Returns a Blob suitable for ``URL.createObjectURL()``.
+ */
+export async function fetchAnyReviewAudioBlob(
+  reviewId: string,
+): Promise<Blob> {
+  const res = await fetch(
+    `${API_URL}/v2/goldens/reviews/${encodeURIComponent(reviewId)}/audio`,
+    { headers: getAuthHeaders() },
+  );
+  handle401(res);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch audio: HTTP ${res.status}`);
+  }
+  return res.blob();
+}
+
+/**
+ * Delete a review owned by the caller (HARNESS-17 Phase 2).
+ *
+ * Backend enforces owner-only: 403 if the caller doesn't own
+ * the review, 404 if it doesn't exist.
+ */
+export async function deleteReview(
+  reviewId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_URL}/v2/goldens/reviews/${encodeURIComponent(reviewId)}`,
+    { method: "DELETE", headers: getAuthHeaders() },
+  );
+  handle401(res);
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .catch(() => ({ detail: res.statusText }));
+    throw new Error(detail.detail || `HTTP ${res.status}`);
+  }
+}

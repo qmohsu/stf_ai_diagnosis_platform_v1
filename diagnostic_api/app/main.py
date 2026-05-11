@@ -170,6 +170,26 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     cleanup_orphan_files()
 
+    # Sync golden Q&A entries from JSONL → DB.  Idempotent
+    # upsert; safe on every boot.  Failure here doesn't block
+    # the app — the dashboard just shows zero entries until
+    # the next successful sync.  See HARNESS-17.
+    try:
+        from app.services.golden_sync import (
+            sync_golden_entries,
+        )
+        from app.db.session import SessionLocal
+        gs_db = SessionLocal()
+        try:
+            sync_golden_entries(gs_db)
+        finally:
+            gs_db.close()
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "golden_sync_startup_error",
+            error=str(exc),
+        )
+
     yield
 
     # --- Shutdown ---
@@ -289,6 +309,13 @@ from app.api.v2.endpoints import manuals as manuals_v2
 app.include_router(
     manuals_v2.router, prefix="/v2/manuals",
     tags=["Manuals"],
+)
+
+# --- Goldens (HARNESS-17 review dashboard) ---
+from app.api.v2.endpoints import goldens as goldens_v2
+app.include_router(
+    goldens_v2.router, prefix="/v2/goldens",
+    tags=["Goldens"],
 )
 
 

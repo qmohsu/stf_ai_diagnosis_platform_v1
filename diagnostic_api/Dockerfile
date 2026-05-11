@@ -47,6 +47,22 @@ COPY --from=builder /root/.local /root/.local
 COPY diagnostic_api/app/ /app/app/
 COPY diagnostic_api/data/ /app/data/
 
+# Copy Alembic migrations + config so `alembic upgrade head` can
+# run inside the container (HARNESS-17 needs this for the
+# golden_entries / golden_reviews tables; future migrations also
+# benefit).  Without these files the deploy procedure required a
+# manual `podman cp` step before every migration.
+COPY diagnostic_api/alembic/ /app/alembic/
+COPY diagnostic_api/alembic.ini /app/alembic.ini
+
+# Copy the canonical golden JSONL set so the startup sync hook in
+# main.py (services/golden_sync.py) can populate the
+# golden_entries table on every boot.  Surgical copy — we
+# deliberately do NOT pull in the rest of tests/ (test_*.py files
+# are not needed in the runtime image and would bloat it).  The
+# candidates/, source/, exports/ subdirectories are sometimes
+# gitignored author drafts; the sync skips candidates/ explicitly.
+COPY diagnostic_api/tests/harness/evals/golden/v2/ /app/tests/harness/evals/golden/v2/
 
 # Create logs directory
 RUN mkdir -p /app/logs
