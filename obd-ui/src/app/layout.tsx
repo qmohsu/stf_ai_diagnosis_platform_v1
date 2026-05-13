@@ -31,14 +31,32 @@ export default function RootLayout({
       <body className={inter.className}>
         <I18nProvider>
           <AuthProvider>
-            <div className="min-h-screen bg-background">
+            <div className="flex min-h-screen flex-col bg-background">
               <header className="border-b bg-card">
-                <div className="container mx-auto flex h-14 items-center px-4">
+                <div className="container mx-auto flex h-14 items-center gap-3 px-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/polyu-logo.png"
+                    alt="The Hong Kong Polytechnic University"
+                    className="h-10 w-auto shrink-0"
+                  />
                   <HeaderTitle />
                   <HeaderAuth />
                 </div>
               </header>
-              <main className="container mx-auto px-4 py-6">{children}</main>
+              <main className="container mx-auto flex-1 px-4 py-6">
+                {children}
+              </main>
+              <footer className="mt-8 border-t bg-card">
+                <div className="container mx-auto flex items-center justify-center px-4 py-6">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/polyu-logo-full.png"
+                    alt="The Hong Kong Polytechnic University 香港理工大學"
+                    className="h-24 w-auto"
+                  />
+                </div>
+              </footer>
             </div>
           </AuthProvider>
         </I18nProvider>
