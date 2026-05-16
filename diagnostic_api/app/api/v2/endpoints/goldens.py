@@ -57,7 +57,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.auth.security import get_current_user
 from app.config import settings
-from app.models_db import GoldenEntry, GoldenReview, User
+from app.models_db import GoldenEntry, GoldenReview, Manual, User
 
 logger = structlog.get_logger(__name__)
 
@@ -106,11 +106,21 @@ def _has_valid_audio_signature(data: bytes) -> bool:
 
 
 class GoldenCitationOut(BaseModel):
-    """One golden citation as exposed via the API."""
+    """One golden citation as exposed via the API.
+
+    ``figure_image_paths`` is a list of manual-relative image
+    paths (as they appear in the manual's markdown source, e.g.
+    ``images/{manual_id}/_page_X_Picture_Y.jpeg``) that visually
+    support the cited quote.  Image-required citations embed
+    these figures directly in the dashboard's QuestionCard so
+    reviewers don't have to follow a hyperlink to see the
+    answer.  Empty list = no images attached to this citation.
+    """
 
     manual_id: str
     slug: str
     quote: str
+    figure_image_paths: List[str] = []
 
 
 class GoldenEntrySummary(BaseModel):
@@ -215,6 +225,13 @@ class GoldenEntryDetail(BaseModel):
     golden_summary_zh: Optional[str] = None
     golden_citations: List[GoldenCitationOut]
     notes: Optional[str] = None
+    # Relative path to the manual's markdown file (mirrors the
+    # ``Manual.md_file_path`` column).  None when the manual_id
+    # is the adversarial sentinel ``(none)`` or the manual was
+    # deleted.  The frontend uses this to compute the same
+    # ``imageBaseUrl`` the ManualViewer uses, so embedded figure
+    # images on the question card resolve to the right URL.
+    md_file_path: Optional[str] = None
 
 
 class GoldenListResponse(BaseModel):
@@ -325,11 +342,17 @@ def _coerce_citations(raw: Any) -> List[GoldenCitationOut]:
     for item in raw:
         if not isinstance(item, dict):
             continue
+        figs = item.get("figure_image_paths") or []
+        if not isinstance(figs, list):
+            figs = []
         out.append(
             GoldenCitationOut(
                 manual_id=str(item.get("manual_id", "")),
                 slug=str(item.get("slug", "")),
                 quote=str(item.get("quote", "")),
+                figure_image_paths=[
+                    str(p) for p in figs if isinstance(p, str)
+                ],
             )
         )
     return out
@@ -499,6 +522,24 @@ async def get_golden(
             detail="Golden entry not found.",
         )
 
+    # Resolve manual.md_file_path so the frontend can compute
+    # the imageBaseUrl for inline figure rendering.  Best-
+    # effort: tolerate non-UUID manual_ids (e.g. the
+    # adversarial-entry "(none)" sentinel) by returning None.
+    md_file_path: Optional[str] = None
+    try:
+        manual_uuid = uuid.UUID(entry.manual_id)
+    except (ValueError, AttributeError):
+        manual_uuid = None
+    if manual_uuid is not None:
+        manual = (
+            db.query(Manual.md_file_path)
+            .filter(Manual.id == manual_uuid)
+            .first()
+        )
+        if manual is not None:
+            md_file_path = manual[0]
+
     return GoldenEntryDetail(
         id=entry.id,
         manual_id=entry.manual_id,
@@ -515,6 +556,7 @@ async def get_golden(
             entry.golden_citations,
         ),
         notes=None,  # author-internal notes not exposed
+        md_file_path=md_file_path,
     )
 
 

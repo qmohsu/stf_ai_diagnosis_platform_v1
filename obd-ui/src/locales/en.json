@@ -425,7 +425,10 @@
       "proposedAnswer": "Proposed correct answer",
       "sourceQuotes": "Source quotes from the manual",
       "section": "Section",
-      "openInManual": "Open this section in the manual (new tab)"
+      "openInManual": "Open this section in the manual (new tab)",
+      "figure": "Figure from the manual",
+      "openFigure": "Open this figure (new tab)",
+      "figuresEmbeddedNote": "Manual figures are embedded above so the answer is verifiable without opening the manual."
     },
     "review": {
       "overallRating": "Overall rating",

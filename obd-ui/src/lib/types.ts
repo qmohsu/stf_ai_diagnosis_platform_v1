@@ -314,6 +314,11 @@ export interface GoldenCitation {
   manual_id: string;
   slug: string;
   quote: string;
+  /** Manual-relative paths to figures (e.g. "images/<uuid>/_page_X_Picture_Y.jpeg")
+   *  that visually support the quote.  Resolved against the manual's
+   *  md_file_path directory by the QuestionCard renderer.  Empty list
+   *  = no images attached. */
+  figure_image_paths?: string[];
 }
 
 export interface GoldenEntrySummary {
@@ -364,6 +369,13 @@ export interface GoldenEntryDetail {
   golden_summary_zh: string | null;
   golden_citations: GoldenCitation[];
   notes: string | null;
+  /** Relative path to the manual's markdown file
+   *  (e.g. "<manual_slug>/manual.md"). The QuestionCard uses
+   *  the parent directory as the base for resolving
+   *  figure_image_paths against the nginx /manuals/data/
+   *  alias. Null when the manual has been deleted or the
+   *  entry references a sentinel manual_id. */
+  md_file_path: string | null;
 }
 
 export interface GoldenListResponse {

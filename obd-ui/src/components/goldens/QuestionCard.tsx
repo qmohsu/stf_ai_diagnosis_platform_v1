@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,31 @@ interface QuestionCardProps {
    *  language (which is driven by the header language switcher
    *  via i18n).  This toggle only controls the Q+A content. */
   language: "en" | "zh";
+}
+
+/** Resolve a manual-relative image path (as it appears in the
+ *  manual's markdown source, e.g.
+ *  ``images/<uuid>/_page_84_Picture_28.jpeg``) to the absolute
+ *  URL served by nginx via the ``/manuals/data/`` alias.
+ *
+ *  Mirrors the resolution logic in `<ManualViewer>` so embedded
+ *  figures on the golden card load from the same place the
+ *  manual viewer does.  Returns the raw src when md_file_path
+ *  is null (e.g. manual deleted) — the <img> will 404 visibly
+ *  rather than silently break. */
+function resolveImageUrl(
+  rawSrc: string,
+  mdFilePath: string | null,
+): string {
+  if (!rawSrc) return rawSrc;
+  // Absolute URLs and root-relative URLs pass through unchanged.
+  if (/^(https?:)?\/\//i.test(rawSrc) || rawSrc.startsWith("/")) {
+    return rawSrc;
+  }
+  const dir = mdFilePath
+    ? mdFilePath.replace(/[^/]*$/, "")
+    : "";
+  return `/manuals/data/${dir}${rawSrc}`;
 }
 
 /**
@@ -36,6 +62,19 @@ export function QuestionCard({ entry, language }: QuestionCardProps) {
       : entry.golden_summary_en;
   const fellBackToEn =
     useZh && (!entry.question_zh || !entry.golden_summary_zh);
+
+  const mdFilePath = entry.md_file_path ?? null;
+  // Whether any citation carries embedded figures.  Used to
+  // gate the "open in manual" footer cue (image-required
+  // entries get the figures inline, so the footer link is just
+  // a convenience).
+  const anyFiguresEmbedded = useMemo(
+    () =>
+      entry.golden_citations.some(
+        (c) => (c.figure_image_paths?.length ?? 0) > 0,
+      ),
+    [entry.golden_citations],
+  );
 
   return (
     <div className="space-y-4">
@@ -102,16 +141,20 @@ export function QuestionCard({ entry, language }: QuestionCardProps) {
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           {t("goldens.questionCard.sourceQuotes")}
         </h3>
-        <ol className="space-y-2 text-sm">
+        <ol className="space-y-3 text-sm">
           {entry.golden_citations.map((c, i) => {
             const href = `/manuals/${encodeURIComponent(c.manual_id)}#${encodeURIComponent(c.slug)}`;
+            const figures = c.figure_image_paths ?? [];
             return (
-              <li key={`${c.slug}-${i}`}>
+              <li
+                key={`${c.slug}-${i}`}
+                className="rounded border-l-4 border-primary/40 bg-muted/20 overflow-hidden"
+              >
                 <a
                   href={href}
                   target="_blank"
                   rel="noreferrer"
-                  className="block rounded border-l-4 border-primary/40 bg-muted/20 px-3 py-2 transition hover:border-primary hover:bg-muted/40"
+                  className="block px-3 py-2 transition hover:border-primary hover:bg-muted/40"
                   title={t("goldens.questionCard.openInManual")}
                 >
                   <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
@@ -125,10 +168,58 @@ export function QuestionCard({ entry, language }: QuestionCardProps) {
                     &ldquo;{c.quote}&rdquo;
                   </blockquote>
                 </a>
+
+                {figures.length > 0 && (
+                  // Figures are embedded directly so the
+                  // technician sees the manual's diagram
+                  // without having to follow the citation
+                  // hyperlink — this is the fix for the
+                  // Towngas feedback in issue #89 where the
+                  // textual quote alone (with figure-local
+                  // labels a/b/c/d) was meaningless without
+                  // the diagram.
+                  <div className="border-t border-border bg-background/60 px-3 py-3 space-y-2">
+                    <div className="text-xs text-muted-foreground">
+                      {t("goldens.questionCard.figure")}
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {figures.map((src, j) => {
+                        const resolved = resolveImageUrl(
+                          src,
+                          mdFilePath,
+                        );
+                        return (
+                          <a
+                            key={`${src}-${j}`}
+                            href={resolved}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block rounded border border-border bg-white hover:border-primary transition"
+                            title={t(
+                              "goldens.questionCard.openFigure",
+                            )}
+                          >
+                            <img
+                              src={resolved}
+                              alt={`${c.slug} figure ${j + 1}`}
+                              className="w-full h-auto rounded"
+                              loading="lazy"
+                            />
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </li>
             );
           })}
         </ol>
+        {anyFiguresEmbedded && (
+          <p className="text-xs text-muted-foreground italic">
+            {t("goldens.questionCard.figuresEmbeddedNote")}
+          </p>
+        )}
       </section>
     </div>
   );

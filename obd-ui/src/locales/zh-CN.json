@@ -425,7 +425,10 @@
       "proposedAnswer": "我们提出的正确答案",
       "sourceQuotes": "手册原文引用",
       "section": "章节",
-      "openInManual": "在新标签页打开手册章节"
+      "openInManual": "在新标签页打开手册章节",
+      "figure": "手册图示",
+      "openFigure": "在新标签页打开图示",
+      "figuresEmbeddedNote": "手册图示已嵌入上方，无需打开手册即可核对答案。"
     },
     "review": {
       "overallRating": "整体评分",
