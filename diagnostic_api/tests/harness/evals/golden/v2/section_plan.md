@@ -4,7 +4,7 @@
 **Source:** `tests/harness/evals/golden/v2/source/MWS-150-A.md` (~14,896 lines, ~1,080 parser-headings, 434 pages, zh-CN)
 **Parser:** `app.harness_tools.manual_fs.parse_heading_tree` (post-APP-52)
 **Drafted:** 2026-04-25 — REWRITTEN 2026-05-03 after pivot
-**Status:** IN PROGRESS — 1/30 entries validated and committed (`dtc-001`, procedural; agent overall=73.3 vs RAG 16.5 deterministic-only, judge call pending OpenRouter top-up).
+**Status:** IN PROGRESS — 5/30 entries live on the dashboard (`dtc-001`, `lookup-001`, `cross-001`, `image-001`, `adversarial-001` — one per bucket).  25 additional bilingual candidates drafted 2026-05-16 in `candidates/batch_harness18.jsonl` (5 per bucket, HARNESS-18); pending team triage via `scripts/review_golden_candidates.py` before promotion to `mws150a.jsonl`.
 
 ---
 
@@ -24,16 +24,18 @@ The previous plan and any drafts authored against it were discarded for three re
 
 Primary axis is `question_type`. Secondary axis (`category`: `dtc` / `symptom` / `component` / `image` / `adversarial`) is logged on each entry for sub-analysis but doesn't drive bucket counts.
 
-| `question_type` | Target | Why this bucket |
-|---|---|---|
-| `lookup` | 8 | Single-fact retrieval ("torque spec for X", "what does DTC P0117 mean") — the natural sweet-spot for RAG. If RAG can't win or tie here, it can't win anywhere. |
-| `procedural` | 8 | Multi-step diagnostic flows. Tests whether the agent's tool-walking + section-reading can reconstruct a sequence RAG can only return as fragments. |
-| `cross-section` | 6 | Combine info from ≥2 slugs. Tests whether RAG can stitch facts across chunks (it can't) and whether the agent can navigate to multiple sections in one run (it can). |
-| `image-required` | 4 | Answer needs the actual image bytes (terminal pinout in a wiring diagram, etc.). Marker-generated text descriptions don't substitute. RAG fails by definition; we measure HOW it fails. |
-| `adversarial` | 4 | Manual cannot answer (fake DTC, out-of-scope component). Agent should refuse. RAG returns nearest-but-wrong with high confidence — an interesting failure mode. |
-| **Total** | **30** | |
+The original plan targeted 8/8/6/4/4 across buckets; HARNESS-18 (#84) re-balances to a flat **6/6/6/6/6** floor so every bucket has enough surface area for inter-rater agreement work.  All 25 newly-drafted candidates live in `candidates/batch_harness18.jsonl` as bilingual EN + 繁體 entries pending team triage.
 
-We may end up authoring fewer than 30 if some buckets prove harder to construct cleanly. Quality > quantity.
+| `question_type` | Target (HARNESS-18) | Live on dashboard | Drafted candidates (batch_harness18) | Why this bucket |
+|---|---|---|---|---|
+| `lookup` | 6 | 1 (`lookup-001`) | 5 (`lookup-002`…`-006`) | Single-fact retrieval ("torque spec for X", "what does DTC P0117 mean") — the natural sweet-spot for RAG. If RAG can't win or tie here, it can't win anywhere. |
+| `procedural` | 6 | 1 (`dtc-001`) | 5 (`procedural-002`…`-006`) | Multi-step diagnostic flows. Tests whether the agent's tool-walking + section-reading can reconstruct a sequence RAG can only return as fragments. |
+| `cross-section` | 6 | 1 (`cross-001`) | 5 (`cross-002`…`-006`) | Combine info from ≥2 slugs. Tests whether RAG can stitch facts across chunks (it can't) and whether the agent can navigate to multiple sections in one run (it can). |
+| `image-required` | 6 | 1 (`image-001`) | 5 (`image-002`…`-006`) | Answer needs the actual image bytes (terminal pinout, cable routing, alignment marks, balancer position). Marker-generated text descriptions don't substitute. RAG fails by definition; we measure HOW it fails. |
+| `adversarial` | 6 | 1 (`adversarial-001`) | 5 (`adversarial-002`…`-006`) | Manual cannot answer (fake DTC, out-of-scope component, false-premise question). Agent should correct the premise rather than refuse blankly. RAG returns nearest-but-wrong with high confidence — an interesting failure mode. |
+| **Total** | **30** | **5** | **25** | |
+
+Six is a **floor**, not a ceiling. If a specific topic naturally surfaces more useful questions, that bucket grows; under-represented buckets get topped up by hand later.
 
 ---
 
