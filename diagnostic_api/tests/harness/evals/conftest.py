@@ -136,21 +136,23 @@ def _build_mock_judge_client() -> Any:
     request returns the same canned JSON payload — a
     plumbing-verification aid, NOT a meaningful score.
 
+    Payload shape matches what ``judge._parse_judge_payload``
+    expects in the post-HARNESS-15 / HARNESS-21 era:
+    ``answer_quality`` + ``reasoning`` + ``pitfall_violations``
+    (empty list means "no violations" — the mock judge is
+    deliberately oblivious to authoring quality).
+
     Returns:
         A ``MagicMock`` shaped like the ``AsyncOpenAI`` client
         surface used by the judge.
     """
     canned = json.dumps({
-        "section_match": 1,
-        "fact_recall": 1.0,
-        "hallucination": 0,
-        "citation_present": 1,
-        "trajectory_ok": 1,
-        "overall": 1.0,
+        "answer_quality": 1.0,
         "reasoning": (
             "[mock-judge] plumbing verification — no real "
             "grading performed."
         ),
+        "pitfall_violations": [],
     })
 
     msg = MagicMock()
@@ -255,6 +257,169 @@ def manual_agent_deps(
     if request.config.getoption("--mock-agent"):
         return _build_mock_agent_deps()
     return None
+
+
+# ── OBD-agent mock deps (HARNESS-21) ─────────────────────────────
+
+
+def _build_mock_obd_agent_deps() -> Any:
+    """Build an ``OBDAgentDeps`` whose LLM returns a canned answer.
+
+    Mirrors ``_build_mock_agent_deps`` but emits an OBD-shaped
+    final JSON ({summary, signal_citations, dtc_citations,
+    raw_data, limitations}) so the OBD agent loop's
+    ``_parse_final_json`` populates the new
+    ``obd_signal_citations`` / ``obd_dtc_citations`` fields on
+    the resulting ``SystemRunResult``.
+
+    The canned payload deliberately echoes a "perfect" answer for
+    the three dummy goldens in ``v1/yamaha_road_test.jsonl`` —
+    those are present only to verify the eval plumbing, not to
+    measure agent quality.  Real goldens land in PR [2/3].
+
+    Returns:
+        ``OBDAgentDeps`` ready to pass to ``run_obd_agent`` via
+        the ``deps`` kwarg.
+    """
+    # Lazy import: keeps conftest importable even when OBD modules
+    # are mid-refactor.
+    from app.harness.deps import LLMResponse
+    from app.harness_agents.obd_agent import (
+        OBDAgentConfig,
+        OBDAgentDeps,
+        create_obd_agent_registry,
+    )
+
+    canned = json.dumps({
+        "summary": (
+            "[mock-obd-agent] plumbing response — peak RPM was "
+            "3906; two DTCs stored on the K-Line ECU; no "
+            "evidence of misfire."
+        ),
+        "signal_citations": [
+            {
+                "signal": "A_KL_RPM",
+                "stat": "max",
+                "value": 3906.0,
+                "units": "rpm",
+            },
+        ],
+        "dtc_citations": [
+            {
+                "code": "87F11043000000000000CB",
+                "status": "stored",
+                "ecu": "K-Line",
+            },
+            {
+                "code": "87F11047000000000000CF",
+                "status": "pending",
+                "ecu": "K-Line",
+            },
+        ],
+        "raw_data": [],
+        "limitations": [
+            "Yamaha hex DTC codes cannot be decoded without a "
+            "manufacturer-specific decoder.",
+        ],
+    })
+
+    class _CannedLLMClient:
+        async def chat(self, **kwargs: Any) -> LLMResponse:
+            return LLMResponse(
+                content=canned,
+                tool_calls=[],
+                finish_reason="stop",
+            )
+
+    return OBDAgentDeps(
+        llm_client=_CannedLLMClient(),  # type: ignore[arg-type]
+        tool_registry=create_obd_agent_registry(),
+        config=OBDAgentConfig(),
+    )
+
+
+@pytest.fixture
+def obd_agent_deps(
+    request: pytest.FixtureRequest,
+) -> Optional[Any]:
+    """Provide OBD-agent deps (real or mocked).
+
+    Mirrors ``manual_agent_deps``: returns ``None`` for the
+    real-LLM path (the runner builds default deps lazily); returns
+    a canned-response stub when ``--mock-agent`` is set.
+
+    Args:
+        request: Injected by pytest.
+
+    Returns:
+        ``None`` for real deps, else a stub ``OBDAgentDeps``.
+    """
+    if request.config.getoption("--mock-agent"):
+        return _build_mock_obd_agent_deps()
+    return None
+
+
+# ── Yamaha session bootstrap (HARNESS-21) ────────────────────────
+
+
+@pytest.fixture(scope="session")
+def yamaha_session_id(
+    request: pytest.FixtureRequest,
+) -> str:
+    """Provide a stable ``OBDAnalysisSession`` UUID for the Yamaha
+    road-test fixture.
+
+    Strategy:
+
+    - Compute a deterministic UUID via ``uuid5(NAMESPACE_OID,
+      <fixture-path>)`` so the session ID is stable across runs
+      and machines.
+    - When ``--mock-agent`` is set, return the UUID immediately
+      WITHOUT touching the database — the canned LLM client
+      doesn't call tools, so the session row is never read.  This
+      lets PR [1/3]'s plumbing run with zero external
+      dependencies.
+    - When ``--mock-agent`` is NOT set (real-LLM path in PR
+      [2/3]), idempotently upsert the ``OBDAnalysisSession`` row
+      and return the UUID.
+
+    Path-resolution caveat (R4 from the design plan): the real-LLM
+    path requires the fixture to be reachable via
+    ``settings.obd_log_storage_path``.  PR [1/3] only exercises
+    the mocked path; PR [2/3] will address the path-resolution
+    gap (copy the fixture into the storage dir at suite start, or
+    teach ``resolve_log_path`` about absolute paths).
+
+    Args:
+        request: Injected by pytest; used to read CLI options.
+
+    Returns:
+        Stable session UUID as a string.
+    """
+    import uuid as _uuid_mod
+
+    fixture_path = (
+        Path(__file__).resolve().parent.parent.parent.parent
+        / "obd_agent" / "fixtures"
+        / "yamaha_dual_road_test_20260508.csv"
+    )
+    session_uuid = _uuid_mod.uuid5(
+        _uuid_mod.NAMESPACE_OID, str(fixture_path),
+    )
+
+    # Mocked path: skip DB.  The canned LLM client never calls the
+    # OBD tools, so the session row is never read.
+    if request.config.getoption("--mock-agent"):
+        return str(session_uuid)
+
+    # Real-LLM path: address in PR [2/3].  Raise loudly here so a
+    # premature real-LLM run produces an actionable error rather
+    # than a silent file-not-found in the OBD tools.
+    pytest.skip(
+        "Yamaha session bootstrap for real-LLM runs is deferred "
+        "to PR [2/3] (HARNESS-21).  Run with --mock-agent for "
+        "PR [1/3] plumbing verification."
+    )
 
 
 @pytest.fixture(scope="session")
