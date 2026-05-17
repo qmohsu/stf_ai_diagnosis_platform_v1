@@ -29,10 +29,17 @@ Author: Li-Ta Hsu
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
-from tests.harness.evals.schemas import GoldenEntry, SystemRunResult
+from tests.harness.evals.metrics_obd import (
+    compute_obd_deterministic_metrics,
+)
+from tests.harness.evals.schemas import (
+    OBD_QUESTION_TYPES,
+    GoldenEntry,
+    SystemRunResult,
+)
 
 
 # ── Tokenizer (lazy-init) ────────────────────────────────────────
@@ -157,10 +164,16 @@ class DeterministicMetrics:
     fact_density: float
     citation_quality: float
     trajectory_efficiency: float
+    # OBD-lane addition (HARNESS-21).  Manual-lane entries leave
+    # this at the neutral 1.0 so the rebalanced
+    # ``DEFAULT_OVERALL_WEIGHTS`` doesn't penalise them for the
+    # absence of numerical citations.  See
+    # ``metrics_obd.compute_value_accuracy``.
+    value_accuracy: float = 1.0
     # Diagnostics — not metrics themselves, but useful for
     # report-generation and judge prompting.
-    fact_recall_hits: List[str]
-    fact_recall_misses: List[str]
+    fact_recall_hits: List[str] = field(default_factory=list)
+    fact_recall_misses: List[str] = field(default_factory=list)
 
 
 # ── Per-metric helpers ───────────────────────────────────────────
@@ -476,10 +489,54 @@ def _compute_trajectory_efficiency(
 # ── Public entry point ───────────────────────────────────────────
 
 
+def _is_obd_lane(entry: GoldenEntry) -> bool:
+    """Return ``True`` when ``entry`` should route through OBD metrics.
+
+    Dispatch signal: ``entry.question_type`` is one of the six OBD
+    types in ``OBD_QUESTION_TYPES`` (set in ``schemas.py``).  Chosen
+    over a data-field predicate (``expected_signal_citations`` or
+    similar) because:
+
+    - Self-documenting — the lane is declared at authoring time.
+    - Robust to authoring slips (e.g. a manual entry accidentally
+      gets an empty ``expected_dtcs`` field; we don't want it
+      flipping into the OBD rubric).
+    - Symmetric with the existing manual-side ``question_type``
+      values which already gate certain manual-lane behaviour.
+
+    See ``GoldenQuestionType`` in ``schemas.py`` for the literal
+    definitions.
+    """
+    return entry.question_type in OBD_QUESTION_TYPES
+
+
 def compute_deterministic_metrics(
     entry: GoldenEntry, run: SystemRunResult,
 ) -> DeterministicMetrics:
     """Compute all non-LLM-judge rubric dimensions.
+
+    Dispatches to one of two lanes based on
+    ``entry.question_type`` (see ``_is_obd_lane``):
+
+    - **Manual lane** — original behaviour.  ``section_recall``,
+      ``claim_precision``, ``citation_quality`` from slug
+      intersections; ``trajectory_efficiency`` from tool-trace
+      length; ``value_accuracy`` left at the neutral 1.0.
+    - **OBD lane** — ``signal_recall`` / ``signal_precision`` /
+      ``dtc_accuracy`` from ``metrics_obd``, slotted into
+      ``section_recall`` / ``claim_precision`` / ``citation_quality``
+      so the shared rubric formula in ``compute_overall`` works
+      unchanged.  ``value_accuracy`` populated from
+      ``metrics_obd.compute_value_accuracy``.
+      ``exploration_cost`` and ``trajectory_efficiency`` set to
+      their neutral values (no reads-vs-claims distinction on the
+      OBD side; trajectory is reported via ``tool_trace`` but
+      doesn't fold into the rubric here).
+
+    Common dimensions (``fact_recall``, ``fact_density``) are
+    computed identically for both lanes — they operate on
+    ``output_text`` and ``must_contain``, which both lanes
+    populate.
 
     Args:
         entry: Golden reference.
@@ -490,6 +547,36 @@ def compute_deterministic_metrics(
         The judge later adds ``answer_quality`` and
         ``hallucination_penalty`` to form the final ``Grade``.
     """
+    # Shared: fact_recall / fact_density operate on ``output_text``
+    # and ``must_contain`` regardless of lane.
+    fact_recall, fact_hits, fact_misses = _compute_fact_recall(
+        entry.must_contain, run.output_text,
+    )
+    fact_density = _compute_fact_density(
+        fact_hits, entry.must_contain, run.output_text,
+    )
+
+    if _is_obd_lane(entry):
+        obd = compute_obd_deterministic_metrics(entry, run)
+        # Slot OBD dims into the shared envelope.  The naming is
+        # mildly awkward (section_recall holds a signal_recall
+        # number for OBD entries) but keeps the rubric formula
+        # in ``compute_overall`` lane-agnostic — a single weight
+        # vector applies to both lanes.
+        return DeterministicMetrics(
+            section_recall=obd.signal_recall,
+            claim_precision=obd.signal_precision,
+            exploration_cost=0.0,  # No reads-vs-claims gap on OBD.
+            fact_recall=fact_recall,
+            fact_density=fact_density,
+            citation_quality=obd.dtc_accuracy,
+            trajectory_efficiency=1.0,  # Not scored in OBD lane.
+            value_accuracy=obd.value_accuracy,
+            fact_recall_hits=fact_hits,
+            fact_recall_misses=fact_misses,
+        )
+
+    # Manual lane (original behaviour).
     # Surfaced = claim ∪ read.  section_recall asks "did the
     # system make this section available anywhere," which
     # includes both the cited and the merely-read.
@@ -503,13 +590,6 @@ def compute_deterministic_metrics(
     )
     exploration_cost = _compute_exploration_cost(
         run.read_slugs, run.claim_slugs,
-    )
-
-    fact_recall, fact_hits, fact_misses = _compute_fact_recall(
-        entry.must_contain, run.output_text,
-    )
-    fact_density = _compute_fact_density(
-        fact_hits, entry.must_contain, run.output_text,
     )
 
     citation_quality = _compute_citation_quality(
@@ -535,6 +615,9 @@ def compute_deterministic_metrics(
         fact_density=fact_density,
         citation_quality=citation_quality,
         trajectory_efficiency=trajectory_efficiency,
+        # Manual lane has no value_accuracy concept; neutral 1.0
+        # keeps the rebalanced formula honest.
+        value_accuracy=1.0,
         fact_recall_hits=fact_hits,
         fact_recall_misses=fact_misses,
     )
@@ -561,15 +644,33 @@ def compute_deterministic_metrics(
 #   so an extra 0.05 of weight here mostly inflates everyone
 #   uniformly without improving discrimination.  The judge's
 #   answer_quality already catches subtler hallucinations.
+#
+# Rebalanced 2026-05-17 for HARNESS-21:
+# - value_accuracy added at 0.10 weight (new OBD-lane dim;
+#   neutral 1.0 for manual entries so they aren't penalised).
+# - section_recall trimmed 0.25 → 0.20 to fund value_accuracy
+#   (still the heaviest single dim).
+# - claim_precision trimmed 0.15 → 0.10.
+# - fact_recall trimmed 0.20 → 0.15.
+# - fact_density trimmed 0.10 → 0.05.
+# - hallucination_penalty restored 0.10 → 0.15 (closer to the
+#   design's intent now that the judge's pitfall-directive
+#   verdicts are reliable enough to discriminate).
+# - answer_quality restored 0.10 → 0.15 (similarly).
+# Manual-lane scores will SHIFT slightly under the new weights
+# even though value_accuracy stays neutral — accepted per the
+# approved design (docs/plans/2026-05-17-harness-21-obd-eval-
+# design.md § 3); PR [3/3] re-baselines both lanes.
 DEFAULT_OVERALL_WEIGHTS: dict = {
-    "section_recall":         0.25,
-    "claim_precision":        0.15,
+    "section_recall":         0.20,
+    "claim_precision":        0.10,
     "exploration_cost":       0.05,  # applied as (1 - cost)
-    "fact_recall":            0.20,
-    "fact_density":           0.10,
-    "hallucination_penalty":  0.10,
+    "fact_recall":            0.15,
+    "fact_density":           0.05,
+    "hallucination_penalty":  0.15,
     "citation_quality":       0.05,
-    "answer_quality":         0.10,
+    "value_accuracy":         0.10,
+    "answer_quality":         0.15,
 }
 
 
@@ -615,5 +716,6 @@ def compute_overall(
         + w["fact_density"]        * metrics.fact_density
         + w["hallucination_penalty"] * hallucination_penalty
         + w["citation_quality"]    * metrics.citation_quality
+        + w["value_accuracy"]      * metrics.value_accuracy
         + w["answer_quality"]      * answer_quality
     )

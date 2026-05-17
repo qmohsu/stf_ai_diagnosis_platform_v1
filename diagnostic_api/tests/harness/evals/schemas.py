@@ -502,15 +502,23 @@ class Grade(BaseModel):
             expected_calls))`` with brute-force-detection guard.
             Reported but NOT in ``overall`` — it's a trade-off
             dim, not a quality dim.  RAG always scores 1.0.
-        overall: Weighted ``[0.0, 1.0]``.  Current formula:
-            0.25*section_recall
-            + 0.15*claim_precision
+        value_accuracy: OBD lane.  Fraction of comparable
+            (signal, stat, value) pairs within tolerance.
+            Neutral 1.0 for manual entries — they have no
+            numerical-value semantics, so the dimension shouldn't
+            penalise them.  Computed deterministically in
+            ``metrics_obd.compute_value_accuracy``.
+        overall: Weighted ``[0.0, 1.0]``.  Current formula (post
+            HARNESS-21 rebalance):
+            0.20*section_recall
+            + 0.10*claim_precision
             + 0.05*(1 - exploration_cost)
-            + 0.20*fact_recall
+            + 0.15*fact_recall
             + 0.05*fact_density
             + 0.15*hallucination_penalty
             + 0.05*citation_quality
-            + 0.10*answer_quality.
+            + 0.10*value_accuracy
+            + 0.15*answer_quality.
             Reported in eval reports as percentage (× 100).
             Weights still tunable — see
             ``DEFAULT_OVERALL_WEIGHTS`` in metrics.py.
@@ -528,6 +536,9 @@ class Grade(BaseModel):
     citation_quality: float = Field(ge=0.0, le=1.0)
     answer_quality: float = Field(ge=0.0, le=1.0)
     trajectory_efficiency: float = Field(ge=0.0, le=1.0, default=1.0)
+    # HARNESS-21 addition.  Default 1.0 so old report JSON
+    # (pre-HARNESS-21) still loads cleanly.
+    value_accuracy: float = Field(ge=0.0, le=1.0, default=1.0)
     overall: float = Field(ge=0.0, le=1.0)
     reasoning: str
 
