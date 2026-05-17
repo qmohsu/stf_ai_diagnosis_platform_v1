@@ -522,6 +522,7 @@ async def grade_run(
         citation_quality=det.citation_quality,
         answer_quality=answer_quality,
         trajectory_efficiency=det.trajectory_efficiency,
+        value_accuracy=det.value_accuracy,
         overall=overall,
         reasoning=enriched_reasoning,
     )

@@ -1,8 +1,9 @@
-# Manual-agent golden set
+# Eval golden sets
 
-This directory stores the human-reviewed golden dataset used by the
-manual-agent evaluation suite. Each subdirectory is a **frozen
-version** of the set — once committed, entries in a version
+This directory stores the human-reviewed golden datasets used by the
+two evaluation lanes — the **manual-agent** lane (HARNESS-14) and
+the **OBD-agent** lane (HARNESS-21).  Each subdirectory is a
+**frozen version** of the set: once committed, entries in a version
 directory are immutable.
 
 ## Directory layout
@@ -10,9 +11,24 @@ directory are immutable.
 ```
 golden/
   v1/
-    mws150a.jsonl   # one entry per line, GoldenEntry schema
-  candidates/       # (gitignored) staging area for unreviewed candidates
+    mws150a.jsonl              # manual lane, MWS150-A service manual
+    yamaha_road_test.jsonl     # OBD lane, Yamaha road-test fixture
+  v2/                          # (HARNESS-15 expansions)
+  candidates/                  # (gitignored) staging for unreviewed candidates
 ```
+
+## Lane routing
+
+Each `GoldenEntry.question_type` drives the rubric:
+
+| Lane | `question_type` values |
+|---|---|
+| manual | `lookup`, `procedural`, `cross-section`, `image-required`, `adversarial` |
+| OBD | `signal_statistics`, `event_finding`, `dtc_enumeration`, `dtc_decode`, `compound_obd`, `adversarial_obd` |
+
+The dispatcher in `metrics.py` (`_is_obd_lane`) consults the
+question_type literal — adding a new lane means widening the
+literal in `schemas.py` and updating the dispatcher.
 
 ## Immutability rules
 
@@ -42,7 +58,7 @@ each citation exists in the source text. Output lands in
 Neither script exists yet; see HARNESS-14 phase 3 in
 `docs/v2_dev_plan.md`.
 
-## Known limitations (2026-04-23)
+## Known limitations (2026-04-23, updated 2026-05-17)
 
 - **One-manual corpus.** Only the `MWS150-A` (TRICITY 155 zh-CN)
   service manual is currently ingested. Acquiring a second manual
@@ -64,10 +80,46 @@ Neither script exists yet; see HARNESS-14 phase 3 in
   target. Prioritised quality over quantity for the first freeze —
   additions permitted until v1 is declared frozen in the dev plan.
 
+### OBD lane (HARNESS-21)
+
+- **One-fixture corpus.** Only the Yamaha road-test fixture is
+  graded by `v1/yamaha_road_test.jsonl`.  Honda and other vehicle
+  fixtures are out of scope until a labelled multi-vehicle corpus
+  exists.
+- **Healthy-bike only.** The Yamaha fixture has no real faults;
+  goldens grade descriptive accuracy ("what the data shows"), not
+  diagnostic accuracy ("what's wrong").  Diagnostic-accuracy evals
+  are a separate ticket once ground-truth fault recordings are
+  available.
+- **PR [1/3] dummies in place.** The three current entries are
+  placeholder dummies that match the canned mock-agent response.
+  Real hand-authored entries (10–15, covering all six OBD
+  question types) land in PR [2/3].
+- **Real-LLM session bootstrap deferred.** The Yamaha
+  `OBDAnalysisSession` row needed for real-LLM runs is
+  intentionally not created in PR [1/3] — the `yamaha_session_id`
+  fixture skips with a clear message when `--mock-agent` is not
+  set.  PR [2/3] addresses the path-resolution gap.
+
 ## Running the suite
 
+Manual lane (HARNESS-14):
 ```
-pytest --run-eval diagnostic_api/tests/harness/evals/
+pytest --run-eval diagnostic_api/tests/harness/evals/test_manual_agent_eval.py
+```
+
+OBD lane (HARNESS-21) — PR [1/3] plumbing verification (no
+external dependencies):
+```
+pytest -m eval --run-eval --mock-agent --mock-judge \
+    diagnostic_api/tests/harness/evals/test_obd_agent_eval.py
+```
+
+OBD lane — phase-3 ceiling run (swap to GLM 5.1):
+```
+OBD_EVAL_AGENT_MODEL=z-ai/glm-5.1 \
+    pytest -m eval --run-eval \
+    diagnostic_api/tests/harness/evals/test_obd_agent_eval.py
 ```
 
 Without `--run-eval`, eval-marked tests are skipped so normal

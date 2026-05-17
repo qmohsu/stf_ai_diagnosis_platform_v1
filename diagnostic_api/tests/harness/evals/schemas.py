@@ -29,7 +29,7 @@ Author: Li-Ta Hsu
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
@@ -38,8 +38,11 @@ from pydantic import BaseModel, Field
 # while the definitions live next to the code that produces them.
 from app.harness_agents.types import (  # noqa: F401
     Citation,
+    DTCCitation,
     ManualAgentResult,
+    OBDAgentResult,
     SectionRef,
+    SignalCitation,
     StoppedReason,
     ToolCallTrace,
 )
@@ -76,21 +79,107 @@ the agent-vs-RAG comparison is ``question_type`` below."""
 
 
 GoldenQuestionType = Literal[
-    "lookup",          # single-fact retrieval; RAG might compete
-    "procedural",      # multi-step diagnostic flow; agent should win
-    "cross-section",   # combine info across ≥2 slugs; agent wins big
-    "image-required",  # answer needs actual image bytes; RAG fails
-    "adversarial",     # manual cannot answer; refusal expected
+    # ── Manual-agent / RAG question types ─────────────────────────
+    "lookup",            # single-fact retrieval; RAG might compete
+    "procedural",        # multi-step diagnostic flow; agent should win
+    "cross-section",     # combine info across ≥2 slugs; agent wins big
+    "image-required",    # answer needs actual image bytes; RAG fails
+    "adversarial",       # manual cannot answer; refusal expected
+    # ── OBD-agent question types (HARNESS-21) ─────────────────────
+    "signal_statistics", # mean/p95/max-style aggregate queries
+    "event_finding",     # locate time windows matching a predicate
+    "dtc_enumeration",   # list stored / pending DTCs
+    "dtc_decode",        # decode an opaque code — honest pivot
+                         # when no decoder is available
+    "compound_obd",      # multi-tool narrative characterisation
+    "adversarial_obd",   # OBD data cannot answer; refusal expected
 ]
 """Primary slicing axis for the comparative benchmark.  Independent
 of ``GoldenCategory``: a DTC question can be ``lookup`` (just the
 code's meaning), ``procedural`` (the diagnostic flow), or
-``cross-section`` (which DTCs share a sensor)."""
+``cross-section`` (which DTCs share a sensor).
+
+The trailing six values are OBD-side variants — added in HARNESS-21
+when the OBD sub-agent gained its own eval lane.  Membership in this
+trailing set drives the lane dispatcher in ``metrics.py`` (an entry
+whose ``question_type`` falls in the OBD set routes through
+``metrics_obd.py`` rather than the manual rubric)."""
+
+
+# Tuple form used by the lane dispatcher in ``metrics.py``.  Kept
+# next to the literal definition so additions stay in sync.
+OBD_QUESTION_TYPES: frozenset = frozenset({
+    "signal_statistics",
+    "event_finding",
+    "dtc_enumeration",
+    "dtc_decode",
+    "compound_obd",
+    "adversarial_obd",
+})
+"""Question-type values that route through the OBD eval lane."""
 
 
 GoldenDifficulty = Literal["easy", "medium", "hard"]
 """Expected difficulty.  Currently informational only — useful for
 slicing results post-hoc but not used by the rubric."""
+
+
+# ── OBD-lane expectation models (HARNESS-21) ──────────────────────
+
+
+class ExpectedSignalCitation(BaseModel):
+    """Golden reference for one expected signal citation.
+
+    Used by the OBD eval lane to express "the agent should cite signal
+    X with statistic Y, value Z (±tolerance)" in a structured form.
+    All fields beyond ``signal`` are optional — match only on what's
+    specified, so an entry can require just the signal name (e.g.
+    ``{"signal": "RPM"}``) or pin down the full ``(signal, stat,
+    value)`` tuple.
+
+    Attributes:
+        signal: Signal/column name.  Matched case-insensitively
+            against ``SignalCitation.signal``.
+        stat: Optional statistic name (``"mean"``, ``"p95"``,
+            ``"max"``, etc.).  When set, the cited stat must equal
+            this value (case-sensitive — the OBD tools emit a
+            canonical lowercase form).
+        value: Optional reference value.  When set, the cited value
+            must be within ``value_tolerance_rel`` of this number.
+        value_tolerance_rel: Relative tolerance applied to ``value``.
+            Default 5%, intended to absorb reasonable rounding while
+            still catching fabricated numbers.  Per-citation override
+            so dimensions like ``mean`` (noisy) can be looser than
+            DTC count (must be exact).
+        time_range: Optional ``(start_iso, end_iso)`` pair.  When
+            set, the cited ``time_range`` must *overlap* this window
+            — exact equality is too strict because the agent often
+            quotes a slightly trimmed sub-window of the true event.
+    """
+
+    signal: str
+    stat: Optional[str] = None
+    value: Optional[float] = None
+    value_tolerance_rel: float = 0.05
+    time_range: Optional[Tuple[str, str]] = None
+
+
+class ExpectedDTC(BaseModel):
+    """Golden reference for one expected DTC citation.
+
+    Attributes:
+        code: DTC code string.  Matched case-insensitively against
+            ``DTCCitation.code`` — Yamaha-hex codes can be authored
+            in any case and still match agent output.
+        status: Optional ``"stored"`` / ``"pending"``.  When set, the
+            cited status must equal this value.  When ``None``, the
+            DTC matches regardless of status (useful for "did the
+            agent find this code at all" questions where the agent
+            may report it under either status).
+    """
+
+    code: str
+    status: Optional[Literal["stored", "pending"]] = None
 
 
 class GoldenEntry(BaseModel):
@@ -161,6 +250,23 @@ class GoldenEntry(BaseModel):
             exploded view, flowchart).  RAG fails ``image-required``
             entries by definition; the field is mainly used as a
             sanity flag during authoring.
+        expected_signal_citations: OBD lane.  Golden reference for
+            the agent's ``signal_citations``.  Empty for manual-lane
+            entries.  Populated entries drive ``signal_recall``,
+            ``signal_precision``, and ``value_accuracy`` in
+            ``metrics_obd.py``.
+        expected_dtcs: OBD lane.  Golden reference for the agent's
+            ``dtc_citations``.  Empty for manual-lane entries.
+            Drives ``dtc_accuracy``.
+        expected_no_evidence: OBD lane.  When ``True``, flips the
+            polarity of the OBD citation metrics: an empty
+            ``signal_citations`` / ``dtc_citations`` from the agent
+            scores 1.0 (compliant), non-empty scores 0.0.  Used for
+            adversarial entries ("is the engine misfiring?" on a
+            healthy log) and ``dtc_decode`` entries where the agent
+            should pivot to "no decoder available" rather than
+            fabricate a translation.  Always ``False`` for manual
+            entries.
         notes: Free-form reviewer comments.
     """
 
@@ -171,12 +277,21 @@ class GoldenEntry(BaseModel):
     question: str
     obd_context: Optional[str] = None
     golden_summary: str
-    golden_citations: List[GoldenCitation]
+    # Default to an empty list so OBD-lane entries (which have no
+    # manual-section citations) don't need to spell out the field.
+    # Manual-lane authors continue to populate it explicitly.
+    golden_citations: List[GoldenCitation] = Field(default_factory=list)
     expected_recall_slugs: List[str] = Field(default_factory=list)
     expected_tool_trace: List[str] = Field(default_factory=list)
     must_contain: List[str] = Field(default_factory=list)
     pitfall_directives: List[str] = Field(default_factory=list)
     requires_image: bool = False
+    # ── OBD-lane optional fields (HARNESS-21) ─────────────────────
+    expected_signal_citations: List[ExpectedSignalCitation] = Field(
+        default_factory=list,
+    )
+    expected_dtcs: List[ExpectedDTC] = Field(default_factory=list)
+    expected_no_evidence: bool = False
     notes: str = ""
 
 
@@ -190,8 +305,14 @@ class GoldenEntry(BaseModel):
 # ── System-under-test output (unified across agent + RAG) ────────
 
 
-SystemLabel = Literal["manual_agent", "rag"]
-"""Identifier for the system that produced a ``SystemRunResult``."""
+SystemLabel = Literal["manual_agent", "rag", "obd_agent"]
+"""Identifier for the system that produced a ``SystemRunResult``.
+
+``"obd_agent"`` was added in HARNESS-21 when the OBD sub-agent gained
+its own eval lane.  Routing to the OBD rubric in ``metrics.py``
+is driven by ``GoldenEntry.question_type`` (see
+``OBD_QUESTION_TYPES``), not by this label — the label is for
+report-side identification only."""
 
 
 class RetrievedChunkMetadata(BaseModel):
@@ -278,6 +399,15 @@ class SystemRunResult(BaseModel):
             ``error``).  ``"complete"`` for RAG.
         iterations: Agent-only iteration count.  Always 1 for
             RAG.
+        obd_signal_citations: OBD lane.  Signal/timestamp/value
+            references the OBD sub-agent emitted in its final JSON.
+            Populated by ``obd_runner._obd_result_to_system_run``;
+            empty for ``manual_agent`` / ``rag`` runs.  Drives the
+            ``signal_recall``, ``signal_precision``, and
+            ``value_accuracy`` dimensions in ``metrics_obd.py``.
+        obd_dtc_citations: OBD lane.  DTC references the OBD
+            sub-agent emitted.  Drives ``dtc_accuracy``.  Empty for
+            non-OBD systems.
     """
 
     system_label: SystemLabel
@@ -294,6 +424,11 @@ class SystemRunResult(BaseModel):
     tool_trace: List[ToolCallTrace] = Field(default_factory=list)
     stopped_reason: str = "complete"
     iterations: int = 1
+    # ── OBD-lane optional fields (HARNESS-21) ─────────────────────
+    obd_signal_citations: List[SignalCitation] = Field(
+        default_factory=list,
+    )
+    obd_dtc_citations: List[DTCCitation] = Field(default_factory=list)
 
 
 # ── Judge output ──────────────────────────────────────────────────
@@ -367,15 +502,23 @@ class Grade(BaseModel):
             expected_calls))`` with brute-force-detection guard.
             Reported but NOT in ``overall`` — it's a trade-off
             dim, not a quality dim.  RAG always scores 1.0.
-        overall: Weighted ``[0.0, 1.0]``.  Current formula:
-            0.25*section_recall
-            + 0.15*claim_precision
+        value_accuracy: OBD lane.  Fraction of comparable
+            (signal, stat, value) pairs within tolerance.
+            Neutral 1.0 for manual entries — they have no
+            numerical-value semantics, so the dimension shouldn't
+            penalise them.  Computed deterministically in
+            ``metrics_obd.compute_value_accuracy``.
+        overall: Weighted ``[0.0, 1.0]``.  Current formula (post
+            HARNESS-21 rebalance):
+            0.20*section_recall
+            + 0.10*claim_precision
             + 0.05*(1 - exploration_cost)
-            + 0.20*fact_recall
+            + 0.15*fact_recall
             + 0.05*fact_density
             + 0.15*hallucination_penalty
             + 0.05*citation_quality
-            + 0.10*answer_quality.
+            + 0.10*value_accuracy
+            + 0.15*answer_quality.
             Reported in eval reports as percentage (× 100).
             Weights still tunable — see
             ``DEFAULT_OVERALL_WEIGHTS`` in metrics.py.
@@ -393,6 +536,9 @@ class Grade(BaseModel):
     citation_quality: float = Field(ge=0.0, le=1.0)
     answer_quality: float = Field(ge=0.0, le=1.0)
     trajectory_efficiency: float = Field(ge=0.0, le=1.0, default=1.0)
+    # HARNESS-21 addition.  Default 1.0 so old report JSON
+    # (pre-HARNESS-21) still loads cleanly.
+    value_accuracy: float = Field(ge=0.0, le=1.0, default=1.0)
     overall: float = Field(ge=0.0, le=1.0)
     reasoning: str
 
