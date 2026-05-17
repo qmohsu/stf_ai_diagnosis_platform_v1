@@ -383,26 +383,58 @@ class ToolRegistry:
 
 
 def create_default_registry() -> ToolRegistry:
-    """Build a registry with all agent-native tools.
+    """Build the main-agent registry (hybrid Pattern 2 — HARNESS-19).
 
-    Tools:
-        - ``read_obd_data``: parameterized OBD log reader
-        - ``search_manual``: RAG manual search with filters
-        - ``list_manuals``: discover available manuals
-        - ``get_manual_toc``: manual heading structure
-        - ``read_manual_section``: full section with images
+    Twelve tools across three groups:
+
+    **OBD primitives** (6):
+        - ``list_signals`` — discover available signals
+        - ``read_window`` — windowed raw sample read
+        - ``get_signal_stats`` — aggregate statistics
+        - ``find_events`` — predicate-based event finder
+        - ``list_dtcs`` — enumerate fault codes
+        - ``lookup_dtc`` — decode one DTC (standard or Yamaha hex)
+
+    **Manual primitives** (4):
+        - ``list_manuals`` — discover available manuals
+        - ``get_manual_toc`` — manual heading structure
+        - ``read_manual_section`` — full section with images
+        - ``search_manual`` — RAG semantic search
+
+    **Delegation wrappers** (2):
+        - ``delegate_to_obd_agent`` — hand off compound OBD
+          investigations to the OBD sub-agent
+        - ``delegate_to_manual_agent`` — hand off compound manual
+          lookups to the manual sub-agent
+
+    The legacy ``read_obd_data`` tool is intentionally NOT
+    registered here — it's superseded by the six decomposed
+    primitives.  The module remains on disk for one release cycle
+    so any external references degrade gracefully (see
+    HARNESS-19 design doc).
 
     Returns:
         A fully populated ``ToolRegistry`` ready for the
         agent loop.
     """
+    from app.harness_tools.delegation_tools import (
+        DELEGATE_TO_MANUAL_AGENT_DEF,
+        DELEGATE_TO_OBD_AGENT_DEF,
+    )
     from app.harness_tools.manual_tools import (
         GET_MANUAL_TOC_DEF,
         LIST_MANUALS_DEF,
         READ_MANUAL_SECTION_DEF,
     )
-    from app.harness_tools.obd_data_tools import (
-        READ_OBD_DATA_DEF,
+    from app.harness_tools.obd_dtcs import (
+        LIST_DTCS_DEF,
+        LOOKUP_DTC_DEF,
+    )
+    from app.harness_tools.obd_signals import (
+        FIND_EVENTS_DEF,
+        GET_SIGNAL_STATS_DEF,
+        LIST_SIGNALS_DEF,
+        READ_WINDOW_DEF,
     )
     from app.harness_tools.rag_tools import (
         SEARCH_MANUAL_DEF,
@@ -410,11 +442,21 @@ def create_default_registry() -> ToolRegistry:
 
     registry = ToolRegistry()
     for tool_def in (
-        READ_OBD_DATA_DEF,
-        SEARCH_MANUAL_DEF,
+        # OBD primitives
+        LIST_SIGNALS_DEF,
+        READ_WINDOW_DEF,
+        GET_SIGNAL_STATS_DEF,
+        FIND_EVENTS_DEF,
+        LIST_DTCS_DEF,
+        LOOKUP_DTC_DEF,
+        # Manual primitives
         LIST_MANUALS_DEF,
         GET_MANUAL_TOC_DEF,
         READ_MANUAL_SECTION_DEF,
+        SEARCH_MANUAL_DEF,
+        # Delegation wrappers
+        DELEGATE_TO_OBD_AGENT_DEF,
+        DELEGATE_TO_MANUAL_AGENT_DEF,
     ):
         registry.register(tool_def)
     return registry

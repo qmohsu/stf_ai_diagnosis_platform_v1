@@ -576,6 +576,61 @@ Pre-requisite config change (for phase 2+): add `z-ai/glm-5.1` to server `.env` 
 
 Files (Phase 1): `tests/harness/evals/schemas.py`, `tests/harness/evals/runner.py`, `tests/harness/evals/judge.py`, `tests/harness/evals/conftest.py`, `tests/harness/evals/test_manual_agent_eval.py`, `tests/harness/evals/golden/v1/mws150a.jsonl`, `tests/harness/evals/golden/README.md`, `tests/harness/evals/reports/.gitignore`. Modified: `tests/conftest.py` (registered `eval` marker + `--run-eval` CLI flag + `pytest_collection_modifyitems` skip behavior).
 
+#### HARNESS‑19 — Agent-Native OBD Investigation Toolset ✅ DONE
+
+Depends on: HARNESS-01, HARNESS-09 (sub-agent infrastructure from HARNESS-14)
+GitHub Issue: #85
+Status: **DONE** (2026-05-16) — design + scaffolding + tests landed in one PR.
+
+Scope: Replace the single `read_obd_data` two-mode tool with 6 decomposed cognitive primitives, add an OBD investigation sub-agent (mirroring the manual sub-agent template from HARNESS-14), and introduce delegation wrappers so the main agent can route compound investigations to either specialist. Implements hybrid Pattern 2 from the design doc — main agent retains direct access to primitives AND can delegate.
+
+The toolset is **agent-native** by HARNESS-09's principle: tools return data, not pre-digested conclusions. V1's `statistics_extractor` style stats computations are reimplemented locally rather than going through the `NormalizedTimeSeries` pipeline (which strips Yamaha proprietary `A_YAM_*` columns).
+
+Key design decisions (per `docs/plans/2026-05-16-obd-toolset-design.md`):
+- **Six primitives** in `app/harness_tools/obd_signals.py` (`list_signals`, `read_window`, `get_signal_stats`, `find_events`) and `app/harness_tools/obd_dtcs.py` (`list_dtcs`, `lookup_dtc`).
+- **Sub-agent** in `app/harness_agents/obd_agent.py` (`run_obd_agent`), restricted 6-tool registry via `create_obd_agent_registry()`. Output contract: `OBDAgentResult` Pydantic shape with `summary`, `signal_citations`, `dtc_citations`, `raw_data` (auto-captured tool excerpts), `limitations`, `tool_trace`, `iterations`, `stopped_reason`.
+- **Delegation** wrappers in `app/harness_tools/delegation_tools.py` for both OBD and manual sub-agents. Recursion guard: sub-agent registries do NOT include delegation tools — verified by `tests/harness_tools/test_delegation_tools.py::TestNoRecursion`.
+- **Yamaha A_YAM_\* proprietary columns** exposed under original names; the new `app/harness_tools/obd_loader.py` bypasses `format_normalizer.py` and reads raw CSV directly (UTF-8 BOM-aware). 16 proprietary columns preserved.
+- **Yamaha hex DTCs** handled honestly — `lookup_dtc("87F11043...")` returns "no decoder available" plus a `search_manual` pivot. No fabricated decodings.
+- **`read_obd_data` deprecated** — file kept on disk for one release cycle but unregistered from `create_default_registry()`. Tests against it kept passing.
+- **Main agent toolbox grew 5 → 12 tools**: 6 OBD primitives + 4 manual primitives + 2 delegation wrappers. System prompt rewritten with "primitives vs. delegation" guidance.
+
+Files created:
+- `app/harness_tools/obd_loader.py` — Yamaha-aware raw loader (`OBDLogData`, `detect_format`, `load_for_session`, BOM-strip, time + float helpers).
+- `app/harness_tools/obd_signal_inventory.py` — `SignalDescriptor`, `classify_subsystem`, `units_for`, `build_inventory`, `filter_inventory`, `resolve_signal_name`, `fuzzy_suggestions`.
+- `app/harness_tools/obd_signals.py` — 4 signal primitives + `ToolDefinition` exports.
+- `app/harness_tools/obd_dtcs.py` — 2 DTC primitives + Yamaha metadata extraction.
+- `app/harness_tools/delegation_tools.py` — `delegate_to_obd_agent` + `delegate_to_manual_agent` wrappers; `set_shared_llm_client()` for the harness to install its `LLMClient`.
+- `app/harness_agents/obd_agent.py` — sub-agent ReAct loop, mirrors `manual_agent.py`.
+- `app/harness_agents/obd_agent_prompts.py` — system prompt + user-message builder.
+- `app/harness_agents/result_formatters.py` — `format_obd_agent_result` + `format_manual_agent_result` markdown serializers.
+- `tests/harness_tools/{__init__,test_obd_loader,test_obd_signals,test_obd_dtcs,test_delegation_tools}.py`.
+- `tests/harness_agents/test_obd_agent.py`.
+
+Files modified:
+- `app/harness_agents/types.py` — added `SignalCitation`, `DTCCitation`, `DataExcerpt`, `OBDAgentResult` (parallel to `ManualAgentResult`).
+- `app/harness_tools/input_models.py` — 8 new input models (`ListSignalsInput`, `ReadWindowInput`, `GetSignalStatsInput`, `FindEventsInput`, `ListDTCsInput`, `LookupDTCInput`, `DelegateToOBDAgentInput`, `DelegateToManualAgentInput`).
+- `app/harness/tool_registry.py` — `create_default_registry()` rewritten for 12-tool hybrid layout.
+- `app/harness/harness_prompts.py` — system prompt expanded with new tool descriptions + "primitives vs. delegation" guidance.
+
+Acceptance criteria:
+- [x] 6 OBD primitives implemented + registered.
+- [x] OBD sub-agent end-to-end smoke test with mocked LLM (`tests/harness_agents/test_obd_agent.py::TestRunOBDAgentEndToEnd`).
+- [x] Delegation wrappers tested for registry membership + recursion guard + I/O contract.
+- [x] All 8 new tools tested against the real Yamaha road-test fixture.
+- [x] A_YAM_\* columns surface under original names in `list_signals` output (verified by `test_a_yam_signals_listed_under_original_names`).
+- [x] Yamaha hex DTCs surface as honest "no decoder + manual pivot" (verified by `TestLookupDTCYamahaHex`).
+- [x] Existing harness regression tests stay green (223 passed in tiktoken-free slice; 25 environment SSL errors unrelated to this work).
+
+Out of scope (separate tickets):
+- Cross-signal correlation tool (`correlate_signals`) — defer until evals show it's needed.
+- Anomaly-as-a-tool — runs into HARNESS-09's "no pre-digestion" principle.
+- Annotation scratchpad — introduces state.
+- Freeze-frame snapshot — no fixture has freeze-frame data yet.
+- Yamaha hex DTC decoder — needs proprietary spec.
+- OBD eval suite — parallel to HARNESS-14 but blocked on labelled fault data.
+- Pure-orchestrator main agent rewrite (Pattern 3 from design doc) — long-term direction.
+
 ## 5. Notes
 
 ### What this plan deliberately avoids
@@ -588,6 +643,7 @@ Files (Phase 1): `tests/harness/evals/schemas.py`, `tests/harness/evals/runner.p
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-05-16 | v2.18 | HARNESS-19: agent-native OBD investigation toolset (GitHub Issue #85). Replaces the single `read_obd_data` two-mode tool with 6 decomposed cognitive primitives + an OBD investigation sub-agent + 2 delegation wrappers (hybrid Pattern 2). **Six primitives**: `list_signals` (Glob — discovery + units + density), `read_window` (Read — bounded sample read with auto-downsample), `get_signal_stats` (aggregate — min/max/mean/std/percentiles, optional trend + extrema), `find_events` (Grep — predicate-based event finder with merge_gap + min_duration), `list_dtcs` (enumeration of standard P-codes + Yamaha hex), `lookup_dtc` (standard P/C/B/U decode via python-OBD table + honest "no decoder" pivot for Yamaha proprietary hex). **OBD sub-agent** (`app/harness_agents/obd_agent.py`) mirrors the manual_agent template — restricted 6-tool registry via `create_obd_agent_registry()`, ReAct loop with max_iterations=8 / timeout=120s / max_tokens=12288, structured JSON output parsed into new `OBDAgentResult` Pydantic shape (`summary`, `signal_citations`, `dtc_citations`, `raw_data` auto-captured from tool excerpts, `limitations`, `tool_trace`, `iterations`, `stopped_reason`). **Delegation wrappers** (`app/harness_tools/delegation_tools.py`) for both OBD and manual sub-agents; sub-agent registries deliberately exclude delegation tools — recursion guard verified by tests. **Yamaha-aware raw loader** (`app/harness_tools/obd_loader.py`) bypasses `format_normalizer.py` (which strips `A_YAM_*` columns) and reads raw CSV directly with UTF-8 BOM defense + Yamaha-CSV vs standard-TSV format detection — 16 `A_YAM_*` proprietary columns now reach the agent under their original names per the locked HARNESS-19 decision. **Signal inventory** (`app/harness_tools/obd_signal_inventory.py`) with hand-curated `A_YAM_*` units (BATT_V → V, INJ_MS → ms, CHT → °C, etc.), classifier, glob/subsystem filters, fuzzy-suggestion lookup for unrecognised signal names. **Yamaha-hex DTC handling**: `lookup_dtc("87F11043...")` returns honest "no decoder available" + `search_manual` pivot guidance per locked decision. **Main agent registry** rewritten from 5 → 12 tools (6 OBD primitives + 4 manual primitives + 2 delegation wrappers); legacy `read_obd_data` unregistered (file kept on disk for one release cycle for callsite migration). **System prompt** in `harness_prompts.py` expanded with new tool descriptions and "primitives vs. delegation" usage guidance. **Output contract preserved**: `_session_id` injected by the main loop (line 416) reaches the new tools transparently; the sub-agent's own loop applies the same injection before calling its restricted registry. **Result formatters** (`app/harness_agents/result_formatters.py`) render `OBDAgentResult` / `ManualAgentResult` as structured markdown for the delegation tool output. **Tests**: 136 new (TestSignalInventory, TestListSignals, TestReadWindow, TestGetSignalStats, TestFindEvents, TestClassifyCode, TestListDTCsRealFixture, TestLookupDTCYamahaHex / Standard / Unknown, TestDetectFormat, TestYamahaMetadataDTCs, TestRealYamahaFixture, TestTimestampParser, TestTryFloat, TestOBDAgentRegistry, TestParseFinalJSON, TestCoerceCitations, TestBuildDataExcerpt, TestRunOBDAgentEndToEnd, TestParseToolArguments, TestNoRecursion, TestMainRegistry, TestDelegateToOBDAgent, TestDelegateToManualAgent, TestToolDefinitions); all 136 pass. 223 total passes across harness scope (no regressions; 25 pre-existing tiktoken SSL collection errors unrelated to this change). **Bug fix during testing**: UTF-8 BOM defense in `load_obd_data` — the committed Yamaha fixture is UTF-8 with BOM and `read_text(encoding="utf-8")` doesn't strip it, leaking the first comment line into the CSV body and breaking header parse. Files created: `app/harness_tools/{obd_loader, obd_signal_inventory, obd_signals, obd_dtcs, delegation_tools}.py`, `app/harness_agents/{obd_agent, obd_agent_prompts, result_formatters}.py`, `tests/harness_tools/{__init__, test_obd_loader, test_obd_signals, test_obd_dtcs, test_delegation_tools}.py`, `tests/harness_agents/test_obd_agent.py`. Modified: `app/harness_agents/types.py` (+ 4 OBD types), `app/harness_tools/input_models.py` (+ 8 input models), `app/harness/tool_registry.py` (12-tool default registry), `app/harness/harness_prompts.py` (rewritten system prompt). Out of scope: cross-signal correlation, anomaly-as-a-tool, annotation scratchpad, freeze-frame, Yamaha-hex decoder, OBD eval suite, Pattern-3 pure-orchestrator main-agent rewrite. Design doc: `docs/plans/2026-05-16-obd-toolset-design.md`. |
 | 2026-04-10 | v1.0 | Initial V2 dev plan. 8 tickets (HARNESS-01 through HARNESS-08) across 2 phases. 4 future tickets (HARNESS-09 through HARNESS-12). Scope: core harness loop, 7 tools, session event log, context management, API endpoint, graduated autonomy, frontend visualization, integration tests. GitHub Issue #26. |
 | 2026-04-10 | v1.1 | HARNESS-01 implemented (GitHub Issue #51). Tool registry (`ToolRegistry`, `ToolDefinition`) with dispatch map and 7 diagnostic tool wrappers. OBD tools read from `result_payload` JSONB (no re-run). 27 unit tests passing. Files: `harness/tool_registry.py`, `harness_tools/{obd,rag,history}_tools.py`. |
 | 2026-04-10 | v1.2 | HARNESS-02 implemented (GitHub Issue #52). Core agent loop (`run_diagnosis_loop`) as async generator with DI. `HarnessDeps` container with `LLMClient` protocol, `OpenAILLMClient` adapter, `HarnessConfig`. Dynamic system prompt via `harness_prompts.py`. ReAct cycle with max-iteration guard, timeout handling, partial diagnosis extraction. 19 unit tests (golden-path, error recovery, budget limits, message history). Files: `harness/{deps,loop,harness_prompts}.py`, `tests/harness/test_loop.py`. |
