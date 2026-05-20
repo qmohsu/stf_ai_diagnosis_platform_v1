@@ -71,6 +71,111 @@ interface ManualViewerProps {
 }
 
 /**
+ * Find the cited quote inside a section's body and return the
+ * element that should be scrolled into view + highlighted.
+ *
+ * Walks every text node between ``headingEl`` and the next
+ * heading sibling (the section body), normalising whitespace
+ * away so PDF-extraction artefacts like ``"凸輪 軸鏈輪"`` (with
+ * a stray space) still match the golden's verbatim
+ * ``"凸輪軸鏈輪"``.  This matters for CJK manuals where marker-
+ * pdf occasionally injects spaces within Chinese words.
+ *
+ * Returns the closest block-level ancestor of the matched text
+ * node so the highlight has something visible to land on (text
+ * nodes themselves can't carry a CSS class).  Returns null on
+ * any miss — callers should fall back to scrolling the heading.
+ *
+ * @param headingEl Section heading element (the slug anchor).
+ * @param quote Verbatim quote string from the golden citation.
+ */
+function findQuoteTarget(
+  headingEl: HTMLElement,
+  quote: string,
+): HTMLElement | null {
+  // Normalise: drop all whitespace so PDF-extracted CJK lines
+  // with stray spaces still match the golden's clean quote.
+  const normalisedQuote = quote.replace(/\s+/g, "");
+  if (!normalisedQuote) return null;
+
+  // Section body = next siblings of the heading up to (but not
+  // including) the next heading element.  Markdown headings in
+  // the manual are emitted as direct children of <article>, so
+  // walking nextElementSibling is sufficient.
+  const bodyRoots: Element[] = [];
+  let cursor: Element | null = headingEl.nextElementSibling;
+  while (cursor && !/^H[1-6]$/.test(cursor.tagName)) {
+    bodyRoots.push(cursor);
+    cursor = cursor.nextElementSibling;
+  }
+  if (bodyRoots.length === 0) return null;
+
+  // Walk every text node inside the body, recording each one's
+  // start offset in the *normalised* concatenated stream.  We
+  // also keep the original (un-normalised) text so we can map a
+  // normalised match position back to the original text node.
+  type Entry = {
+    node: Text;
+    nodeText: string;
+    normText: string;
+    normStart: number;
+  };
+  const entries: Entry[] = [];
+  let normPos = 0;
+  for (const root of bodyRoots) {
+    const walker = document.createTreeWalker(
+      root,
+      NodeFilter.SHOW_TEXT,
+    );
+    let n = walker.nextNode() as Text | null;
+    while (n) {
+      const norm = n.data.replace(/\s+/g, "");
+      if (norm.length > 0) {
+        entries.push({
+          node: n,
+          nodeText: n.data,
+          normText: norm,
+          normStart: normPos,
+        });
+        normPos += norm.length;
+      }
+      n = walker.nextNode() as Text | null;
+    }
+  }
+  if (entries.length === 0) return null;
+
+  // Search the concatenated normalised body for the quote.
+  const fullNorm = entries.map((e) => e.normText).join("");
+  const hit = fullNorm.indexOf(normalisedQuote);
+  if (hit === -1) return null;
+
+  // Locate the text node containing the start of the match.
+  for (const e of entries) {
+    const nodeEnd = e.normStart + e.normText.length;
+    if (hit < nodeEnd) {
+      // Highlight the nearest block-level ancestor — text nodes
+      // can't carry a class and inline ancestors are usually
+      // too narrow to give visual prominence.
+      const parent = e.node.parentElement;
+      if (!parent) return null;
+      // Walk up until we hit something block-ish (p, li, td,
+      // h*, blockquote, div).  Fall back to the immediate
+      // parent if nothing matches.
+      const blockTags = new Set([
+        "P", "LI", "TD", "TH", "BLOCKQUOTE", "DIV",
+        "H1", "H2", "H3", "H4", "H5", "H6",
+      ]);
+      let block: HTMLElement | null = parent;
+      while (block && !blockTags.has(block.tagName)) {
+        block = block.parentElement;
+      }
+      return block ?? parent;
+    }
+  }
+  return null;
+}
+
+/**
  * Strip YAML frontmatter from markdown content.
  *
  * Frontmatter is the block between the first `---` and the
@@ -154,8 +259,24 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
     if (!hash) return;
     const targetId = decodeURIComponent(hash.slice(1));
     if (!targetId) return;
+    // Optional ?q=<urlencoded-quote> carries the cited quote
+    // alongside the slug, so we can scroll to the quoted text
+    // inside the section rather than just the section heading.
+    // GitHub Issue #101.  Missing q = legacy slug-only deep-link;
+    // behaviour is unchanged.
+    let quoteParam: string | null = null;
+    try {
+      quoteParam = new URLSearchParams(
+        window.location.search,
+      ).get("q");
+    } catch {
+      quoteParam = null;
+    }
     console.log(
-      `[ManualViewer] deep-link target requested: "${targetId}"`,
+      `[ManualViewer] deep-link target requested: "${targetId}"` +
+        (quoteParam
+          ? ` (quote: "${quoteParam.slice(0, 40)}…")`
+          : ""),
     );
 
     let attempts = 0;
@@ -236,6 +357,30 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
             fromFound * 200
           }ms after first sight); scrolling now.  scrollHeight=${currentHeight}px`,
         );
+
+        // If the citation carried a quote (?q=...), try to find
+        // the quoted text inside the section body and target
+        // THAT instead of the section heading.  Falls back to
+        // the heading on any miss (empty body, OCR mismatch
+        // beyond whitespace differences, etc.) so legacy
+        // slug-only links keep working unchanged.
+        let target: HTMLElement = el;
+        if (quoteParam) {
+          const quoteTarget = findQuoteTarget(el, quoteParam);
+          if (quoteTarget) {
+            target = quoteTarget;
+            console.log(
+              "[ManualViewer] quote located inside section; " +
+                "scrolling to quoted block instead of heading",
+            );
+          } else {
+            console.warn(
+              `[ManualViewer] quote not found in section "${targetId}"; ` +
+                "falling back to section heading",
+            );
+          }
+        }
+
         // Use absolute-Y scroll with `behavior: "auto"` (which
         // most browsers interpret as instant) instead of
         // `scrollIntoView({ behavior: "smooth" })`.  Smooth
@@ -251,8 +396,8 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
         // is if the user has manually scrolled away — the
         // 4-second highlight gives them time to see where
         // they're meant to be before the last re-scroll.
-        const scrollToEl = () => {
-          const rect = el.getBoundingClientRect();
+        const scrollToTarget = () => {
+          const rect = target.getBoundingClientRect();
           const targetY = rect.top + window.scrollY;
           window.scrollTo({ top: targetY, behavior: "auto" });
           console.log(
@@ -261,13 +406,17 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
             )}, current scrollY=${window.scrollY.toFixed(0)}`,
           );
         };
-        scrollToEl();
-        window.setTimeout(scrollToEl, 300);
-        window.setTimeout(scrollToEl, 1000);
-        window.setTimeout(scrollToEl, 2500);
-        el.classList.add("ring-2", "ring-primary", "rounded");
+        scrollToTarget();
+        window.setTimeout(scrollToTarget, 300);
+        window.setTimeout(scrollToTarget, 1000);
+        window.setTimeout(scrollToTarget, 2500);
+        target.classList.add(
+          "ring-2",
+          "ring-primary",
+          "rounded",
+        );
         window.setTimeout(() => {
-          el.classList.remove(
+          target.classList.remove(
             "ring-2",
             "ring-primary",
             "rounded",

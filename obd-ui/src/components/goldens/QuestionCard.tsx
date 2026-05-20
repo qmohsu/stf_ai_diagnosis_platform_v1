@@ -143,7 +143,17 @@ export function QuestionCard({ entry, language }: QuestionCardProps) {
         </h3>
         <ol className="space-y-3 text-sm">
           {entry.golden_citations.map((c, i) => {
-            const href = `/manuals/${encodeURIComponent(c.manual_id)}#${encodeURIComponent(c.slug)}`;
+            // Carry the quote alongside the slug in the URL so
+            // <ManualViewer> can scroll to the quoted text inside
+            // the section, not just the section heading.  Fixes
+            // GitHub Issue #101 — citations whose quote lives mid-
+            // section used to land at the section's first page.
+            // The query-param syntax stays well-formed because
+            // the URL spec puts `?query` before `#fragment`.
+            const href =
+              `/manuals/${encodeURIComponent(c.manual_id)}` +
+              `?q=${encodeURIComponent(c.quote)}` +
+              `#${encodeURIComponent(c.slug)}`;
             const figures = c.figure_image_paths ?? [];
             return (
               <li
