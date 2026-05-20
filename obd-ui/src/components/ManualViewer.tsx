@@ -80,18 +80,25 @@ interface ManualViewerProps {
  * ``<p>`` with no ``id`` attribute.  ``getElementById(slug)``
  * then returns null and the deep-link silently fails.
  *
- * This helper scans the direct children of the rendered
- * ``<article>``, skipping TOC tables and lists (which list
- * every section name + page number — would otherwise produce
- * a false match for any slug), and returns the first child
- * whose normalised text content contains the slug AND where
- * the slug occupies ≥ 50% of the element's text.  The 50%
- * threshold filters out body paragraphs that happen to
- * mention the section name in passing (e.g.
- * ``參閱第 3-5 頁的 "汽門間隙的調整"``).
+ * The "title at the end of the element's text" heuristic
+ * locks onto these without false-matching the TOC table or
+ * passing mentions in body paragraphs:
  *
- * Returns null when nothing useful is found — caller falls
- * back to the existing "target not found" warning.
+ *   - Section-title <p>: ``<span id="page-91-4"></span><span
+ *     id="page-91-2"></span>液壓煞車系統空氣的釋放`` — when
+ *     ReactMarkdown escapes the raw HTML to literal text, the
+ *     <p>'s textContent is roughly
+ *     ``<spanid="page-91-4"></span><spanid="page-91-2"></span>液壓煞車系統空氣的釋放``
+ *     — the slug *ends* the string.
+ *   - TOC table cell: skipped via the TABLE/UL/OL filter below.
+ *   - Body paragraph that references the section in passing:
+ *     ``參閱第 3-5 頁的 "汽門間隙的調整"。`` — the slug is
+ *     in the middle, the text ends with `"。](#page-83-2)`,
+ *     so endsWith() rejects it.
+ *
+ * Allow up to 8 trailing non-whitespace chars after the slug
+ * to tolerate trailing punctuation (full-width period, etc.)
+ * the markdown might add.
  *
  * @param slug The decoded URL hash (e.g. ``液壓煞車系統空氣的釋放``).
  */
@@ -104,10 +111,10 @@ function findHeadingFallback(slug: string): HTMLElement | null {
   for (const child of Array.from(article.children) as HTMLElement[]) {
     if (["TABLE", "UL", "OL"].includes(child.tagName)) continue;
     const text = (child.textContent ?? "").replace(/\s+/g, "");
-    if (
-      text.includes(normSlug) &&
-      normSlug.length * 2 >= text.length
-    ) {
+    if (!text.includes(normSlug)) continue;
+    const hit = text.lastIndexOf(normSlug);
+    const trailing = text.length - (hit + normSlug.length);
+    if (trailing <= 8) {
       return child;
     }
   }
