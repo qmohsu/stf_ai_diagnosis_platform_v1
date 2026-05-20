@@ -71,6 +71,50 @@ interface ManualViewerProps {
 }
 
 /**
+ * Fallback heading-element lookup for citations whose target
+ * slug doesn't correspond to a real markdown heading.
+ *
+ * Background: marker-pdf occasionally renders a section title
+ * as plain text (preceded by HTML page-anchor spans but with
+ * no ``#`` heading marker), so ReactMarkdown emits it as a
+ * ``<p>`` with no ``id`` attribute.  ``getElementById(slug)``
+ * then returns null and the deep-link silently fails.
+ *
+ * This helper scans the direct children of the rendered
+ * ``<article>``, skipping TOC tables and lists (which list
+ * every section name + page number — would otherwise produce
+ * a false match for any slug), and returns the first child
+ * whose normalised text content contains the slug AND where
+ * the slug occupies ≥ 50% of the element's text.  The 50%
+ * threshold filters out body paragraphs that happen to
+ * mention the section name in passing (e.g.
+ * ``參閱第 3-5 頁的 "汽門間隙的調整"``).
+ *
+ * Returns null when nothing useful is found — caller falls
+ * back to the existing "target not found" warning.
+ *
+ * @param slug The decoded URL hash (e.g. ``液壓煞車系統空氣的釋放``).
+ */
+function findHeadingFallback(slug: string): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  const article = document.querySelector("article");
+  if (!article) return null;
+  const normSlug = slug.replace(/\s+/g, "");
+  if (!normSlug) return null;
+  for (const child of Array.from(article.children) as HTMLElement[]) {
+    if (["TABLE", "UL", "OL"].includes(child.tagName)) continue;
+    const text = (child.textContent ?? "").replace(/\s+/g, "");
+    if (
+      text.includes(normSlug) &&
+      normSlug.length * 2 >= text.length
+    ) {
+      return child;
+    }
+  }
+  return null;
+}
+
+/**
  * Find the cited quote inside a section's body and return the
  * element that should be scrolled into view + highlighted.
  *
@@ -286,9 +330,31 @@ export function ManualViewer({ manualId, onBack }: ManualViewerProps) {
     const requiredStableTicks = 4; // 4 × 200ms = 800ms stable
     let logged_found_at: number | null = null;
 
+    let usedFallback = false;
     const interval = window.setInterval(() => {
       attempts += 1;
-      const el = document.getElementById(targetId);
+      // Primary lookup by id (works when marker-pdf preserved
+      // the section as a markdown heading).
+      let el = document.getElementById(targetId);
+      // Fallback: if no element carries the slug as its id,
+      // scan the article for a paragraph whose text content
+      // IS the section title.  This rescues sections that
+      // marker-pdf rendered as plain text rather than as a
+      // proper heading (e.g. 液壓煞車系統空氣的釋放).
+      if (!el) {
+        const fallback = findHeadingFallback(targetId);
+        if (fallback) {
+          if (!usedFallback) {
+            console.log(
+              `[ManualViewer] target id "${targetId}" not found ` +
+                "as a heading; using text-content fallback " +
+                `(<${fallback.tagName.toLowerCase()}>)`,
+            );
+            usedFallback = true;
+          }
+          el = fallback;
+        }
+      }
       const currentHeight =
         document.documentElement.scrollHeight;
 
