@@ -1,7 +1,7 @@
 """Unit tests for ``app.services.golden_sync`` (HARNESS-20 + fix).
 
 Focused on the two-pass sync introduced by migration
-``a1b2c3d4e5f6`` to correct the prior tier-overwrite bug.
+``b1c2d3e4f5a6`` to correct the prior tier-overwrite bug.
 The full ``sync_golden_entries`` end-to-end path talks to
 Postgres, so the suite exercises the pure walk + extraction
 helpers directly and uses a minimal fake session for the

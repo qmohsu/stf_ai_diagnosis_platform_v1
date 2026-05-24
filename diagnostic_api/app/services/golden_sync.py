@@ -37,7 +37,7 @@ This ordering matters because an earlier (and buggy) version
 of this module did a single recursive walk plus upsert.  The
 two tiers' shared ids meant the second upsert overwrote the
 first, leaving the ``tier`` column wrong in every row.  See
-migration ``a1b2c3d4e5f6`` for the correction.
+migration ``b1c2d3e4f5a6`` for the correction.
 
 ## Other behaviour
 

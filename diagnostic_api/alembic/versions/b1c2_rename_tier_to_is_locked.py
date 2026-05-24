@@ -33,9 +33,17 @@ No data is preserved across the rename because the prior
 column was uniformly wrong — the next sync run rebuilds the
 correct state from the filesystem.
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: b1c2d3e4f5a6
 Revises: z0a1b2c3d4e5
 Create Date: 2026-05-24
+
+Note: an earlier draft of this migration mistakenly used revision id
+``a1b2c3d4e5f6`` which collided with the pre-HARNESS-20 migration of
+the same id (``a1b2c3d4e5f6_add_raw_and_parsed_columns.py``).
+Alembic refused to resolve the chain, so the migration silently
+never ran and ``is_locked`` was missing on production until the
+collision was fixed by re-issuing this migration as
+``b1c2d3e4f5a6``.  See the hotfix that landed for the trace.
 """
 
 from alembic import op
@@ -43,7 +51,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "a1b2c3d4e5f6"
+revision = "b1c2d3e4f5a6"
 down_revision = "z0a1b2c3d4e5"
 branch_labels = None
 depends_on = None
