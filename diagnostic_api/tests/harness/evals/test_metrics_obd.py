@@ -488,6 +488,35 @@ class TestDtcAccuracy:
         """No DTCs expected, none cited → vacuously perfect."""
         assert compute_dtc_accuracy([], []) == pytest.approx(1.0)
 
+    def test_empty_expected_with_cited_returns_1(self):
+        """Empty expected + non-empty cited (no flip) → 1.0.
+
+        Regression test for the consistency wart surfaced in PR
+        [1/3]'s real-LLM smoke run: a ``signal_statistics`` entry
+        had ``expected_dtcs=[]`` but the agent emitted 2 DTC
+        citations as side-effect investigation.  Old behaviour
+        returned Jaccard 0/2 = 0.0; new behaviour returns 1.0
+        (vacuously perfect — entry isn't grading DTCs).  Symmetric
+        with ``compute_signal_precision``'s handling of empty
+        expected, which we deliberately diverged from manual lane
+        on for the same reason.
+
+        Adversarial cases use ``expected_no_evidence=True``
+        explicitly, NOT this branch.
+        """
+        cited = [_cited_dtc("87F11043")]
+        assert compute_dtc_accuracy([], cited) == pytest.approx(1.0)
+
+    def test_empty_cited_with_expected_returns_0(self):
+        """Expected DTCs but agent cited none → 0.0.
+
+        Pins the asymmetric branch: empty cited is a real miss
+        when expectations were set.  Counterpart to the empty-
+        expected vacuous-1.0 case above.
+        """
+        expected = [_expected_dtc("87F11043", status="stored")]
+        assert compute_dtc_accuracy(expected, []) == pytest.approx(0.0)
+
 
 # ── compute_obd_deterministic_metrics (entry point) ───────────────
 

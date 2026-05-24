@@ -1,10 +1,76 @@
 # HARNESS-21 — OBD sub-agent evaluation framework (design)
 
 **Author**: Li-Ta Hsu
-**Date**: 2026-05-17
+**Date**: 2026-05-17 (updated: PR series rescoped to 4 PRs)
 **Issue**: [#97](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/97)
 **Mirrors**: HARNESS-14 / [#73](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/73) (manual-agent eval framework)
-**Status**: approved, pending implementation plan
+**Status**: PR [1/3] merged (#99 → `315e4bd`); PR [2a/4] in progress
+
+## Revision note (2026-05-24, post PR [1/3])
+
+After PR [1/3] landed (2026-05-17), nine commits landed on `main`
+before PR [2a] began (2026-05-24).  The relevant changes for this
+ticket:
+
+- **#103** — Repaired pre-existing stale imports in
+  `test_judge.py` / `test_manual_agent_eval.py` (the cleanup task
+  spawned during PR [1/3]).  No longer blocking.
+- **#102 / #104 / #106 — HARNESS-20** introduced a **two-tier
+  golden corpus** on the manual lane: `golden/v2/<corpus>.jsonl`
+  (candidate tier — mutable, dashboard-graded, where review
+  happens) and `golden/v2/locked/<corpus>.jsonl` (locked tier —
+  immutable, expert-approved, what the eval suite reads).
+  `scripts/promote_golden.py` is the one-way bridge: requires a
+  5★ accept review (or explicit `--force`) and appends an audit
+  row to `golden/v2/locked/PROMOTIONS.md`.  Empty locked file ⇒
+  zero parametrised eval cases, the deliberate "no published
+  numbers until expert-approved" safety net.  `GoldenEntry` DB
+  column moved from `tier` (string) to `is_locked` (bool) via
+  Alembic `a1b2c3d4e5f6`.
+
+After surfacing this, a follow-up discussion locked in three
+scope-affecting decisions for HARNESS-21:
+
+1. **Bucket rebalance**: v1 OBD golden distribution moves from
+   the design's 3/2/2/2/2/1 (12 entries) to **2/2/2/3/3/3 (15
+   entries)** — reweighting toward the buckets where failure
+   modes actually live (`dtc_decode`, `compound_obd`,
+   `adversarial_obd`).
+2. **UI surface**: OBD goldens get a team-review UI mirroring the
+   manual lane's `/goldens` workflow but at a separate
+   `/goldens/obd` route.  Backend gains a `?lane=obd` query
+   param; `GoldenReview` table gains a `lane` column.
+3. **Tier strategy (Path C — hybrid)**: PR [2a] authors at
+   `golden/v1/yamaha_road_test.jsonl` (eval reader unchanged
+   from PR [1/3]).  PR [2b] then ALSO migrates the OBD eval
+   reader to `golden/v2/locked/yamaha_road_test.jsonl` and
+   seeds the v2 candidate file from v1, so the first OBD
+   promotions happen through the UI's expert-review workflow
+   (not by author self-promotion).  Keeps the
+   `PROMOTIONS.md` audit trail honest.
+
+These additions grow the original 3-PR series to **4 PRs**:
+
+- **PR [1/3]** ✅ MERGED — Scaffolding (schemas, metrics_obd,
+  dispatcher, runner, judge sanity, dev aid, dummy goldens, V2
+  docs).
+- **PR [2a/4]** 🔧 IN PROGRESS — OBD eval-side fixes + real
+  goldens at `v1/yamaha_road_test.jsonl`.  Timeout bump,
+  `compute_dtc_accuracy` consistency fix, Yamaha session
+  bootstrap, reference-stats sidecar JSON, 15 hand-authored
+  goldens, V2 doc updates.
+- **PR [2b/4]** — OBD goldens UI lane + v1→v2-tier migration.
+  `lane` column migration on `GoldenReview`, `?lane=obd` on
+  `/v2/goldens`, `/goldens` landing + `/goldens/manual`
+  relocation + `/goldens/obd` new lane, sparkline rendering from
+  sidecar JSON.  Eval reader moves to
+  `golden/v2/locked/yamaha_road_test.jsonl`.
+- **PR [3/4]** — Baseline scorecard + threshold tuning + prompt
+  iteration (was PR [3/3] in original plan).
+
+PR [2a] and PR [2b] are sequential — PR [2b]'s sparkline reads the
+reference-stats sidecar that PR [2a] commits, and PR [2b]'s
+tier-migration assumes PR [2a]'s v1 file as the seed source.
 
 ## Problem
 

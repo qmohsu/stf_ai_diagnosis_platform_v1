@@ -66,8 +66,24 @@ _DEFAULT_MAX_ITERATIONS = 8
 _DEFAULT_MAX_TOKENS = 12_288
 """Per-call output token cap."""
 
-_DEFAULT_TIMEOUT = 120.0
-"""Wall-clock budget for the whole sub-agent run."""
+_DEFAULT_TIMEOUT = 240.0
+"""Wall-clock budget for the whole sub-agent run.
+
+Bumped from 120s → 240s in HARNESS-21 [2a/4] after PR [1/3]'s
+real-LLM smoke runs against the Yamaha fixture showed run-to-run
+variance of 53s / 62s / 120s+ on the SAME question against the
+same model (``qwen3.5:27b-q8_0``).  The 27B Qwen variant is a
+thinking model; hidden chain-of-thought tokens dominate wall
+clock and vary heavily per call.  Tool execution was ~50ms total
+on every run — the budget wasn't being burned on real work.
+
+240s provides comfortable headroom for the worst observed case
+while still capping pathological runaways.  Tighten this only
+when (a) we switch to a non-thinking model for the OBD agent,
+(b) the eval baseline shows the loop converges deterministically
+in under N seconds, or (c) we set Ollama's ``"think": false`` via
+extra_body (mirrors the RAG translation fix — Issue #15-era).
+"""
 
 _DEFAULT_TEMPERATURE = 0.2
 """Low but non-zero — deterministic enough for eval."""
