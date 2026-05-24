@@ -124,7 +124,13 @@ export default function GoldensListingPage() {
       adversarial: [],
     };
     for (const item of items) {
-      out[item.question_type].push(item);
+      // Cast is safe because listGoldens({lane: "manual"}) only
+      // returns manual-lane entries.  TypeScript can't infer
+      // that from the API call so we narrow explicitly.
+      const bucket = item.question_type as ManualGoldenBucket;
+      if (bucket in out) {
+        out[bucket].push(item);
+      }
     }
     return out;
   }, [items]);
