@@ -193,6 +193,32 @@ class TestOBDAgentRegistry:
             assert manual_tool not in registry.tool_names
 
 
+# ── Config defaults ──────────────────────────────────────────────
+
+
+class TestOBDAgentConfigDefaults:
+    """Pin the default-config values that affect eval behaviour."""
+
+    def test_default_timeout_is_240_seconds(self) -> None:
+        """HARNESS-21 [2a/4] bumped 120 → 240 after observing
+        53s / 62s / 120s+ variance on the same question against
+        qwen3.5:27b-q8_0.  Hidden chain-of-thought dominates wall
+        clock; 240s gives comfortable headroom.
+
+        Tighten only when (a) we move to a non-thinking model,
+        (b) baseline shows deterministic convergence under N
+        seconds, or (c) we enable Ollama's ``"think": false``
+        via extra_body.
+        """
+        assert OBDAgentConfig().timeout_seconds == 240.0
+
+    def test_default_max_iterations_is_8(self) -> None:
+        """Iteration cap is independent of timeout — pinning so
+        a sloppy edit to one doesn't accidentally change the
+        other."""
+        assert OBDAgentConfig().max_iterations == 8
+
+
 # ── Final JSON parsing ───────────────────────────────────────────
 
 
