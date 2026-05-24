@@ -135,6 +135,13 @@ class GoldenEntrySummary(BaseModel):
     question_en: str
     question_zh: Optional[str] = None
     has_zh: bool
+    # HARNESS-21 [2b/4]: lane discriminator ('manual' | 'obd').
+    # Drives which dashboard route surfaces this entry
+    # (`/goldens/manual` vs `/goldens/obd`) and which bucket set
+    # the listing's filter dropdown shows.  Default 'manual' for
+    # back-compat with pre-[2b/4] callers (they'll never see
+    # OBD entries because the filter defaults the same way).
+    lane: str = "manual"
     # HARNESS-20 (post-bugfix): true when this entry has been
     # promoted via ``scripts/promote_golden.py`` and now also
     # lives in ``golden/v2/locked/mws150a.jsonl``.  The row's
@@ -236,6 +243,22 @@ class GoldenEntryDetail(BaseModel):
     golden_summary_zh: Optional[str] = None
     golden_citations: List[GoldenCitationOut]
     notes: Optional[str] = None
+    # HARNESS-21 [2b/4]: lane discriminator + OBD-specific fields.
+    # ``lane`` is always populated; OBD fields are empty/false for
+    # manual entries (the dashboard branches on ``lane`` to decide
+    # which detail components to render).
+    lane: str = "manual"
+    expected_signal_citations: List[Dict[str, Any]] = Field(
+        default_factory=list,
+    )
+    expected_dtcs: List[Dict[str, Any]] = Field(default_factory=list)
+    expected_no_evidence: bool = False
+    # OBD-side pitfall directives — shown to the reviewer alongside
+    # the question.  Manual entries already render
+    # pitfall_directives elsewhere; OBD entries need the same on
+    # the OBD detail page.  Both lanes populate from
+    # ``GoldenEntry.pitfall_directives``.
+    pitfall_directives: List[str] = Field(default_factory=list)
     # Relative path to the manual's markdown file (mirrors the
     # ``Manual.md_file_path`` column).  None when the manual_id
     # is the adversarial sentinel ``(none)`` or the manual was
@@ -329,6 +352,9 @@ def _to_summary(
         # mapper resilient if a test passes a bare object that
         # predates the column.
         is_locked=bool(getattr(e, "is_locked", False)),
+        # HARNESS-21 [2b/4]: lane discriminator.  ``getattr`` for
+        # the same resilience reason.
+        lane=str(getattr(e, "lane", "manual") or "manual"),
     )
 
 
@@ -386,12 +412,28 @@ def _coerce_citations(raw: Any) -> List[GoldenCitationOut]:
     summary="List golden Q&A entries",
 )
 async def list_goldens(
+    lane: str = Query(
+        default="manual",
+        description=(
+            "Lane discriminator: 'manual' (default — manual-eval "
+            "goldens, 5 buckets: lookup, procedural, "
+            "cross-section, image-required, adversarial) or 'obd' "
+            "(OBD-eval goldens, 6 buckets: signal_statistics, "
+            "event_finding, dtc_enumeration, dtc_decode, "
+            "compound_obd, adversarial_obd).  HARNESS-21 [2b/4]: "
+            "default 'manual' preserves back-compat with pre-[2b/4] "
+            "callers that don't pass the param."
+        ),
+        pattern="^(manual|obd)$",
+    ),
     bucket: Optional[str] = Query(
         default=None,
         description=(
-            "Filter by question_type bucket: lookup, "
-            "procedural, cross-section, image-required, "
-            "adversarial."
+            "Filter by question_type bucket.  Manual lane buckets: "
+            "lookup, procedural, cross-section, image-required, "
+            "adversarial.  OBD lane buckets: signal_statistics, "
+            "event_finding, dtc_enumeration, dtc_decode, "
+            "compound_obd, adversarial_obd."
         ),
     ),
     difficulty: Optional[str] = Query(default=None),
@@ -410,7 +452,13 @@ async def list_goldens(
     the detail page's ``/reviews`` endpoint.
 
     Args:
-        bucket: Optional ``question_type`` filter.
+        lane: Required lane filter — 'manual' (default) or 'obd'.
+            HARNESS-21 [2b/4] split the dashboard into per-lane
+            routes; the API correspondingly returns only the
+            chosen lane's entries.  No "both lanes" mode — the
+            UI never wants that, and it would muddy the bucket
+            filter.
+        bucket: Optional ``question_type`` filter (lane-specific).
         difficulty: Optional ``difficulty`` filter.
         has_reviews: If True, only entries that have at least
             one review (any reviewer).  If False, only entries
@@ -426,7 +474,7 @@ async def list_goldens(
         Paginated list of entry summaries with the team's latest
         review attached.
     """
-    query = db.query(GoldenEntry)
+    query = db.query(GoldenEntry).filter(GoldenEntry.lane == lane)
     if bucket:
         query = query.filter(
             GoldenEntry.question_type == bucket,
@@ -559,6 +607,21 @@ async def get_golden(
         if manual is not None:
             md_file_path = manual[0]
 
+    # HARNESS-21 [2b/4]: pass-through of the OBD-side JSONB
+    # columns.  Manual entries get the empty defaults.  The
+    # ``getattr`` calls keep the mapper resilient against
+    # pre-[2b/4] rows that predate the columns (the migration
+    # back-fills defaults, so this is a belt-and-braces).
+    pitfall_raw = getattr(entry, "pitfall_directives", None) or []
+    pitfall_list = (
+        [str(p) for p in pitfall_raw]
+        if isinstance(pitfall_raw, list) else []
+    )
+    sig_cites = getattr(
+        entry, "expected_signal_citations", None,
+    ) or []
+    dtc_cites = getattr(entry, "expected_dtcs", None) or []
+
     return GoldenEntryDetail(
         id=entry.id,
         manual_id=entry.manual_id,
@@ -578,6 +641,18 @@ async def get_golden(
         md_file_path=md_file_path,
         # HARNESS-20: lock-state flag.
         is_locked=bool(getattr(entry, "is_locked", False)),
+        # HARNESS-21 [2b/4]: lane + OBD-specific fields.
+        lane=str(getattr(entry, "lane", "manual") or "manual"),
+        expected_signal_citations=(
+            sig_cites if isinstance(sig_cites, list) else []
+        ),
+        expected_dtcs=(
+            dtc_cites if isinstance(dtc_cites, list) else []
+        ),
+        expected_no_evidence=bool(
+            getattr(entry, "expected_no_evidence", False),
+        ),
+        pitfall_directives=pitfall_list,
     )
 
 
