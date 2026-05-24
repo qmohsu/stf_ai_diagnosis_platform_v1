@@ -118,7 +118,7 @@ class HarnessConfig:
     max_tokens: int = 8192
     max_tool_result_tokens: int = 2000
     compact_threshold: int = 60_000
-    timeout_seconds: float = 120.0
+    timeout_seconds: float = 1200.0
     temperature: float = 0.3
     locale: str = "en"
 
