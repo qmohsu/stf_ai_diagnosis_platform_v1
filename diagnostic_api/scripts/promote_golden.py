@@ -72,6 +72,8 @@ from sqlalchemy.orm import Session
 # Repo-root-relative defaults.  Resolved against this file's
 # package position so the script works from any cwd.
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
+# Manual-lane defaults (HARNESS-20).
 _DEFAULT_CANDIDATE_FILE = (
     _REPO_ROOT
     / "diagnostic_api"
@@ -96,6 +98,65 @@ _DEFAULT_LOCKED_FILE = (
 _DEFAULT_PROMOTIONS_LOG = (
     _DEFAULT_LOCKED_FILE.parent / "PROMOTIONS.md"
 )
+
+# OBD-lane defaults (HARNESS-21 [3/4]).  Selected when
+# ``--lane=obd`` is passed without explicit --candidate-file /
+# --locked-file overrides.  PROMOTIONS.md is shared with the
+# manual lane; promotion audit rows for both lanes append to
+# the same file with a ``lane`` column.
+_DEFAULT_OBD_CANDIDATE_FILE = (
+    _REPO_ROOT
+    / "diagnostic_api"
+    / "tests"
+    / "harness"
+    / "evals"
+    / "golden"
+    / "v2"
+    / "yamaha_road_test.jsonl"
+)
+_DEFAULT_OBD_LOCKED_FILE = (
+    _REPO_ROOT
+    / "diagnostic_api"
+    / "tests"
+    / "harness"
+    / "evals"
+    / "golden"
+    / "v2"
+    / "locked"
+    / "yamaha_road_test.jsonl"
+)
+
+
+def _defaults_for_lane(
+    lane: str,
+) -> "tuple[Path, Path, Path]":
+    """Return (candidate, locked, promotions_log) defaults for
+    the given lane.  PROMOTIONS.md is shared between lanes.
+
+    Args:
+        lane: Either ``"manual"`` or ``"obd"``.
+
+    Returns:
+        Three-tuple of repo-absolute paths.
+
+    Raises:
+        ValueError: If ``lane`` is not a recognised value.
+    """
+    if lane == "manual":
+        return (
+            _DEFAULT_CANDIDATE_FILE,
+            _DEFAULT_LOCKED_FILE,
+            _DEFAULT_PROMOTIONS_LOG,
+        )
+    if lane == "obd":
+        return (
+            _DEFAULT_OBD_CANDIDATE_FILE,
+            _DEFAULT_OBD_LOCKED_FILE,
+            _DEFAULT_PROMOTIONS_LOG,
+        )
+    raise ValueError(
+        f"Unknown lane {lane!r}; expected 'manual' or 'obd'.",
+    )
 
 
 # Minimum star rating and accepted status required for a
@@ -505,22 +566,43 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--lane",
+        default="manual",
+        choices=("manual", "obd"),
+        help=(
+            "Eval lane: 'manual' (HARNESS-14 mws150a, default for "
+            "back-compat) or 'obd' (HARNESS-21 yamaha_road_test).  "
+            "Selects default candidate/locked file paths when not "
+            "overridden explicitly."
+        ),
+    )
+    p.add_argument(
         "--candidate-file",
         type=Path,
-        default=_DEFAULT_CANDIDATE_FILE,
-        help="Override candidate JSONL path (default: %(default)s).",
+        default=None,
+        help=(
+            "Override candidate JSONL path.  When None, derived "
+            "from --lane."
+        ),
     )
     p.add_argument(
         "--locked-file",
         type=Path,
-        default=_DEFAULT_LOCKED_FILE,
-        help="Override locked JSONL path (default: %(default)s).",
+        default=None,
+        help=(
+            "Override locked JSONL path.  When None, derived "
+            "from --lane."
+        ),
     )
     p.add_argument(
         "--promotions-log",
         type=Path,
-        default=_DEFAULT_PROMOTIONS_LOG,
-        help="Override audit log path (default: %(default)s).",
+        default=None,
+        help=(
+            "Override audit log path.  When None, derived from "
+            "--lane (shared between lanes — both write rows to "
+            "the same PROMOTIONS.md)."
+        ),
     )
     p.add_argument(
         "--force",
@@ -555,6 +637,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     """Entry point.  Returns process exit code."""
     args = _build_parser().parse_args(argv)
 
+    # Resolve lane-aware defaults for any path argument left None.
+    # Explicit per-flag overrides win over the lane default.
+    lane_candidate, lane_locked, lane_log = _defaults_for_lane(
+        args.lane,
+    )
+    candidate_file = args.candidate_file or lane_candidate
+    locked_file = args.locked_file or lane_locked
+    promotions_log = args.promotions_log or lane_log
+
     # Open a DB session lazily so --force can skip the import
     # when running in a CI shell without DB credentials.
     db: Optional[Session] = None
@@ -569,9 +660,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             entry_id=args.entry_id,
             reviewer=args.reviewer,
             reason=args.reason,
-            candidate_file=args.candidate_file,
-            locked_file=args.locked_file,
-            promotions_log=args.promotions_log,
+            candidate_file=candidate_file,
+            locked_file=locked_file,
+            promotions_log=promotions_log,
             force=args.force,
             expert_review_id_override=args.expert_review_id,
             dry_run=args.dry_run,
