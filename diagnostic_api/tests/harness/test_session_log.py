@@ -142,7 +142,7 @@ class TestEmitEvent:
     ) -> None:
         """Complex nested payloads are stored faithfully."""
         payload: Dict[str, Any] = {
-            "name": "search_manual",
+            "name": "list_signals",
             "input": {"query": "misfire", "top_k": 5},
             "nested": {"a": [1, 2, 3]},
         }

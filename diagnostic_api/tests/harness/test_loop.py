@@ -169,7 +169,7 @@ def _make_deps(
     if registry is None:
         registry = _make_registry(
             "read_obd_data",
-            "search_manual",
+            "list_signals",
         )
     config_kwargs: Dict[str, Any] = {
         "model": "test/mock-model",
@@ -291,7 +291,7 @@ class TestHelpers:
         msgs = _build_initial_messages(
             str(FAKE_SESSION_ID),
             FAKE_PARSED_SUMMARY,
-            ["read_obd_data", "search_manual"],
+            ["read_obd_data", "list_signals"],
         )
         assert len(msgs) == 2
         assert msgs[0]["role"] == "system"
@@ -338,8 +338,7 @@ class TestGoldenPath:
                     ("tc1", "read_obd_data", "{}"),
                 ),
                 _tool_call_response(
-                    ("tc2", "search_manual",
-                     '{"query": "misfire"}'),
+                    ("tc2", "list_signals", "{}"),
                 ),
                 _stop_response(
                     "Diagnosis: P0300 misfire due to "
@@ -407,8 +406,7 @@ class TestGoldenPath:
                 _tool_call_response(
                     ("tc1", "read_obd_data",
                      '{}'),
-                    ("tc2", "search_manual",
-                     '{"query": "rpm"}'),
+                    ("tc2", "list_signals", "{}"),
                 ),
                 _stop_response("Dual-tool diagnosis."),
             ]
@@ -432,7 +430,7 @@ class TestGoldenPath:
         ]
         assert events[-1].payload["tools_called"] == [
             "read_obd_data",
-            "search_manual",
+            "list_signals",
         ]
 
 

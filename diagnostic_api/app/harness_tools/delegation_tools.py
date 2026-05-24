@@ -253,11 +253,9 @@ _DELEGATE_MANUAL_DESC = (
     "Delegate an end-to-end service-manual lookup to the manual "
     "sub-agent. Use for compound questions that require "
     "navigating the manual (e.g. 'what's the diagnostic "
-    "procedure for P0117 on MWS-150-A?'). For one-shot semantic "
-    "searches across all manuals, call `search_manual` instead "
-    "— that's cheaper. Returns a structured finding with cited "
-    "sections and verbatim quotes. Pass optional obd_context to "
-    "help the sub-agent disambiguate."
+    "procedure for P0117 on MWS-150-A?'). Returns a structured "
+    "finding with cited sections and verbatim quotes. Pass "
+    "optional obd_context to help the sub-agent disambiguate."
 )
 
 

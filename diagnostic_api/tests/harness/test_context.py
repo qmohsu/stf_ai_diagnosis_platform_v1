@@ -360,14 +360,14 @@ class TestSummarizeIteration:
         msgs = [
             _assistant_tool_msg(
                 ("tc1", "read_obd_data", "{}"),
-                ("tc2", "search_manual", "{}"),
+                ("tc2", "list_signals", "{}"),
             ),
             _tool_msg("tc1", "RPM anomaly found"),
             _tool_msg("tc2", "Manual section 3.2"),
         ]
         line = _summarize_iteration(1, msgs, [0, 1, 2])
         assert "read_obd_data" in line
-        assert "search_manual" in line
+        assert "list_signals" in line
         assert "RPM anomaly" in line
         assert "Manual section" in line
 

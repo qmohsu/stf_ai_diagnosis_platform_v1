@@ -234,8 +234,7 @@ Return ONLY the JSON object.  No prose.  No markdown fences.
   ],
   "expected_tool_trace": [
     "A loose guide — typically 2-3 tool names from:
-     get_manual_toc, read_manual_section, search_manual,
-     list_manuals."
+     get_manual_toc, read_manual_section, list_manuals."
   ],
   "requires_image": false
 }

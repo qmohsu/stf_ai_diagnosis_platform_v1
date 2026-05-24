@@ -69,11 +69,6 @@ quick-reference index of one manual. Use before \
 (includes embedded images for diagrams and wiring). Use \
 `get_manual_toc` first to find slugs.
 
-- `search_manual` — semantic RAG search across all manuals. \
-Returns short text chunks ranked by relevance. Good for \
-fuzzy lookups like 'fuel pressure too low'. Use when you \
-don't know the right section name.
-
 ### Delegation wrappers
 
 - `delegate_to_obd_agent` — hand a compound OBD investigation \

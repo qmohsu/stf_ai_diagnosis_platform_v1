@@ -282,7 +282,7 @@ class TestE2EGoldenPath:
                 "diagnosis": "Test diagnosis.",
                 "partial": False,
                 "iterations": 1,
-                "tools_called": ["search_manual"],
+                "tools_called": ["list_signals"],
             })
 
         store_mock = MagicMock(

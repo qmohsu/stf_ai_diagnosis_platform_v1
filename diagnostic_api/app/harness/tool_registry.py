@@ -385,7 +385,7 @@ class ToolRegistry:
 def create_default_registry() -> ToolRegistry:
     """Build the main-agent registry (hybrid Pattern 2 — HARNESS-19).
 
-    Twelve tools across three groups:
+    Eleven tools across three groups:
 
     **OBD primitives** (6):
         - ``list_signals`` — discover available signals
@@ -395,11 +395,10 @@ def create_default_registry() -> ToolRegistry:
         - ``list_dtcs`` — enumerate fault codes
         - ``lookup_dtc`` — decode one DTC (standard or Yamaha hex)
 
-    **Manual primitives** (4):
+    **Manual primitives** (3):
         - ``list_manuals`` — discover available manuals
         - ``get_manual_toc`` — manual heading structure
         - ``read_manual_section`` — full section with images
-        - ``search_manual`` — RAG semantic search
 
     **Delegation wrappers** (2):
         - ``delegate_to_obd_agent`` — hand off compound OBD
@@ -436,10 +435,6 @@ def create_default_registry() -> ToolRegistry:
         LIST_SIGNALS_DEF,
         READ_WINDOW_DEF,
     )
-    from app.harness_tools.rag_tools import (
-        SEARCH_MANUAL_DEF,
-    )
-
     registry = ToolRegistry()
     for tool_def in (
         # OBD primitives
@@ -453,7 +448,6 @@ def create_default_registry() -> ToolRegistry:
         LIST_MANUALS_DEF,
         GET_MANUAL_TOC_DEF,
         READ_MANUAL_SECTION_DEF,
-        SEARCH_MANUAL_DEF,
         # Delegation wrappers
         DELEGATE_TO_OBD_AGENT_DEF,
         DELEGATE_TO_MANUAL_AGENT_DEF,

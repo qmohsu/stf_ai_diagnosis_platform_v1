@@ -386,7 +386,7 @@ class TestAgentDiagnosisStream:
                 "diagnosis": "Final diagnosis.",
                 "partial": False,
                 "iterations": 2,
-                "tools_called": ["search_manual"],
+                "tools_called": ["list_signals"],
             })
 
         with patch(
@@ -410,7 +410,7 @@ class TestAgentDiagnosisStream:
             FAKE_HISTORY_ID,
         )
         assert done["iterations"] == 2
-        assert done["tools_called"] == ["search_manual"]
+        assert done["tools_called"] == ["list_signals"]
         assert done["autonomy_tier"] == 1
         assert done["autonomy_strategy"] == "agent loop"
         assert done["text"] == "Final diagnosis."
@@ -425,13 +425,13 @@ class TestAgentDiagnosisStream:
             session_id, parsed_summary, deps,
         ):
             yield HarnessEvent("tool_call", {
-                "name": "search_manual",
+                "name": "list_signals",
                 "input": {"query": "P0300"},
                 "iteration": 0,
                 "tool_call_id": "tc_1",
             })
             yield HarnessEvent("tool_result", {
-                "name": "search_manual",
+                "name": "list_signals",
                 "output": "[0.87] MWS150-A#3.2",
                 "duration_ms": 120.5,
                 "is_error": False,
@@ -441,7 +441,7 @@ class TestAgentDiagnosisStream:
                 "diagnosis": "Misfire diagnosis.",
                 "partial": False,
                 "iterations": 1,
-                "tools_called": ["search_manual"],
+                "tools_called": ["list_signals"],
             })
 
         with patch(
@@ -465,12 +465,12 @@ class TestAgentDiagnosisStream:
         tc_event = next(
             e for e in events if e["event"] == "tool_call"
         )
-        assert tc_event["data"]["name"] == "search_manual"
+        assert tc_event["data"]["name"] == "list_signals"
 
         tr_event = next(
             e for e in events if e["event"] == "tool_result"
         )
-        assert tr_event["data"]["name"] == "search_manual"
+        assert tr_event["data"]["name"] == "list_signals"
         assert tr_event["data"]["is_error"] is False
 
     def test_store_diagnosis_called_with_agent_provider(

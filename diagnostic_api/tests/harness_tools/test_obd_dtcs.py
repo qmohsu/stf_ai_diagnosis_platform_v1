@@ -198,12 +198,12 @@ class TestLookupDTCYamahaHex:
         assert "No decoder available" in result
 
     @pytest.mark.asyncio
-    async def test_suggests_search_manual_pivot(self) -> None:
-        """Output guides the agent to search_manual."""
+    async def test_suggests_manual_toc_pivot(self) -> None:
+        """Output guides the agent to navigate via TOC."""
         result = await lookup_dtc({
             "code": "87F11043000000000000CB",
         })
-        assert "search_manual" in result
+        assert "get_manual_toc" in result
 
     @pytest.mark.asyncio
     async def test_does_not_fabricate_decoding(self) -> None:
@@ -239,10 +239,10 @@ class TestLookupDTCStandard:
         assert "COOLANT_TEMP" in result
 
     @pytest.mark.asyncio
-    async def test_suggests_search_manual_next_step(self) -> None:
-        """Output suggests pulling the manufacturer's procedure."""
+    async def test_suggests_manual_toc_next_step(self) -> None:
+        """Output suggests pulling the manufacturer's procedure via TOC."""
         result = await lookup_dtc({"code": "P0117"})
-        assert "search_manual" in result
+        assert "get_manual_toc" in result
 
 
 class TestLookupDTCUnknown:

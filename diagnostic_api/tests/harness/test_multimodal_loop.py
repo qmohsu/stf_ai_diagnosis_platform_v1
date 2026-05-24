@@ -307,7 +307,7 @@ class TestSummarizeIterationMultimodal:
                         "id": "tc-1",
                         "type": "function",
                         "function": {
-                            "name": "search_manual",
+                            "name": "list_signals",
                             "arguments": "{}",
                         },
                     },
@@ -322,7 +322,7 @@ class TestSummarizeIterationMultimodal:
         summary = _summarize_iteration(
             1, messages, [0, 1],
         )
-        assert "search_manual" in summary
+        assert "list_signals" in summary
         assert "0.87" in summary
 
 

@@ -18,8 +18,8 @@ module unifies:
 
 For Yamaha proprietary hex codes there is no decoder. Per the
 locked design decision (HARNESS-19), ``lookup_dtc`` returns honest
-"no decoder available" output with a ``search_manual`` pivot
-suggestion.
+"no decoder available" output with manual TOC navigation
+suggestions.
 
 Author: Li-Ta Hsu
 """
@@ -106,7 +106,7 @@ def _load_standard_dtc_table():
 
 
 # Standard P-code related-PID hints.  Keep small and curated — the
-# agent can always fall back to search_manual for richer guidance.
+# agent can always fall back to get_manual_toc for richer guidance.
 _RELATED_PIDS: Dict[str, List[str]] = {
     "P0117": ["COOLANT_TEMP", "IAT", "CTRL_VOLT"],
     "P0118": ["COOLANT_TEMP", "IAT", "CTRL_VOLT"],
@@ -369,8 +369,9 @@ def _format_standard_lookup(code: str) -> str:
     lines.append("")
     lines.append("Next step suggestions:")
     lines.append(
-        f"  • `search_manual(query='{code}')` — pull the "
-        f"manufacturer's diagnostic procedure."
+        "  • `get_manual_toc(manual_id=...)` then "
+        "`read_manual_section(...)` — pull the manufacturer's "
+        "diagnostic procedure from the service manual."
     )
     if related:
         rel = ", ".join(f"'{p}'" for p in related[:3])
@@ -392,13 +393,10 @@ def _format_yamaha_lookup(code: str) -> str:
         "P/C/B/U lookup tables do not apply.",
         "",
         "Recommended next steps:",
-        f"  • `search_manual(query='{code}')` — try the raw "
-        f"hex string against the Yamaha service manual directly.",
-        "  • `search_manual(query='DTC table')` — find the "
-        "Yamaha DTC chart in the manual appendix and map this "
-        "code by structure.",
-        "  • `search_manual(query='fault code list')` — broader "
-        "lookup if the DTC chart isn't named that.",
+        "  • `get_manual_toc(manual_id=...)` — find the Yamaha "
+        "DTC chart or fault code appendix section slug.",
+        "  • `read_manual_section(manual_id=..., slug=...)` — "
+        "read the DTC table and map this code by structure.",
         "",
         "Once you have the Yamaha-defined fault code, return to "
         "the OBD data with `get_signal_stats` and `find_events` "
@@ -412,9 +410,9 @@ def _format_unknown_lookup(code: str) -> str:
         f"DTC '{code}' is not a recognised OBD-II standard "
         f"P/C/B/U code (4 hex digits) and does not match the "
         f"Yamaha hex format (10+ hex digits). Verify the code "
-        f"with the user, or call `search_manual(query='{code}')` "
-        f"in case the manual defines a manufacturer-specific "
-        f"chart."
+        f"with the user, or use `get_manual_toc` then "
+        f"`read_manual_section` to check whether the manual "
+        f"defines a manufacturer-specific chart."
     )
 
 
@@ -465,8 +463,8 @@ _LOOKUP_DTC_DESC = (
     "Decode one fault code. Standard P/C/B/U codes return "
     "subsystem + description + related signals to investigate. "
     "Yamaha-proprietary raw hex codes return an honest "
-    "'no decoder available' message with `search_manual` "
-    "pivot guidance (no fabricated decodings). Use after "
+    "'no decoder available' message with manual TOC navigation "
+    "guidance (no fabricated decodings). Use after "
     "`list_dtcs` to drill into a specific code."
 )
 

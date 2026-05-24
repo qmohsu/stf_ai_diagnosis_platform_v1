@@ -122,16 +122,16 @@ class TestMainRegistry:
             "list_manuals",
             "get_manual_toc",
             "read_manual_section",
-            "search_manual",
         ):
             assert tool in registry.tool_names
+        assert "search_manual" not in registry.tool_names
 
-    def test_total_tool_count_is_twelve(self) -> None:
+    def test_total_tool_count_is_eleven(self) -> None:
         from app.harness.tool_registry import (
             create_default_registry,
         )
         registry = create_default_registry()
-        assert len(registry.tool_names) == 12
+        assert len(registry.tool_names) == 11
 
 
 # ── delegate_to_obd_agent handler ────────────────────────────────

@@ -140,7 +140,7 @@ def _echo_tool(
     """Create a tool that echoes its input as a string.
 
     Args:
-        name: Tool name (e.g. ``"search_manual"``).
+        name: Tool name (e.g. ``"list_signals"``).
         required_fields: Required input fields.
             Defaults to ``["session_id"]``.
 
@@ -175,7 +175,7 @@ def _make_golden_registry() -> ToolRegistry:
     registry = ToolRegistry()
     registry.register(_echo_tool("read_obd_data"))
     registry.register(
-        _echo_tool("search_manual", ["query"]),
+        _echo_tool("list_signals", ["session_id"]),
     )
     return registry
 
@@ -488,12 +488,12 @@ class TestAutonomyRoutingIntegration:
             session_id, parsed_summary, deps,
         ):
             yield HarnessEvent("tool_call", {
-                "tool": "search_manual",
+                "tool": "list_signals",
                 "input": {"query": "P0300"},
                 "iteration": 0,
             })
             yield HarnessEvent("tool_result", {
-                "tool": "search_manual",
+                "tool": "list_signals",
                 "output": "manual result",
                 "iteration": 0,
             })
@@ -501,7 +501,7 @@ class TestAutonomyRoutingIntegration:
                 "diagnosis": "Agent diagnosis.",
                 "partial": False,
                 "iterations": 1,
-                "tools_called": ["search_manual"],
+                "tools_called": ["list_signals"],
             })
 
         with patch(

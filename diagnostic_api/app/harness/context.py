@@ -266,7 +266,7 @@ def _summarize_iteration(
 
     Returns:
         Summary string like ``"Iter 1: detect_anomalies ->
-        [HIGH] RPM..., search_manual -> [0.87] MWS..."``.
+        [HIGH] RPM..., get_manual_toc -> MWS150-A#3.2"``.
     """
     assistant_msg = messages[indices[0]]
     tool_calls = assistant_msg.get("tool_calls", [])
