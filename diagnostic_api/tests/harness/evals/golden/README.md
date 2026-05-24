@@ -12,14 +12,17 @@ actually grades against.
 ```
 golden/
   v1/
-    mws150a.jsonl              # manual lane (deprecated; pre-HARNESS-20)
-    yamaha_road_test.jsonl     # OBD lane, Yamaha road-test fixture
+    mws150a.jsonl                # manual lane (deprecated; pre-HARNESS-20)
+    yamaha_road_test.jsonl       # OBD lane, Yamaha road-test fixture (PR [2a/4] authored here)
+    yamaha_road_test_reference.json  # Sidecar: per-signal stats, event windows, DTCs
   v2/
-    mws150a.jsonl              # CANDIDATE tier — mutable; dashboard reads this
+    mws150a.jsonl                # MANUAL CANDIDATE — dashboard /goldens/manual
+    yamaha_road_test.jsonl       # OBD CANDIDATE — dashboard /goldens/obd (PR [2b/4])
     locked/
-      mws150a.jsonl            # LOCKED tier — append-only; eval harness reads this
-      PROMOTIONS.md            # Audit trail; one row per promotion
-    candidates/                # (gitignored) raw author drafts pre-review
+      mws150a.jsonl              # MANUAL LOCKED — manual-eval reads this
+      yamaha_road_test.jsonl     # OBD LOCKED — OBD-eval reads this (empty until first UI promotion)
+      PROMOTIONS.md              # Audit trail; one row per promotion (both lanes)
+    candidates/                  # (gitignored) raw author drafts pre-review
 ```
 
 ## Two-tier policy (HARNESS-20)
