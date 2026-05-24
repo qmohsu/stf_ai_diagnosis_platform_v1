@@ -7,7 +7,7 @@
 | **Architecture doc** | `docs/v2_design_doc.md` |
 | **GitHub Issue** | #26 (discussion: From Context Engineering to Harness Engineering) |
 | **Version** | v1.0 |
-| **Last updated** | 2026-05-24 (HARNESS-20: two-tier golden corpus with promote-by-script lock-in — closes #90) |
+| **Last updated** | 2026-05-24 (HARNESS-20 phase 2: 30 expert-approved candidates retro-locked into golden/v2/locked/; eval harness collects 30 cases) |
 
 ## 1. Scope Boundary
 
@@ -647,27 +647,31 @@ Key design decisions:
 - **Eval harness flip in one line** — `test_manual_agent_eval.py` now loads from `v2/locked/mws150a.jsonl`. The shipped locked file is empty, so the eval suite collects zero parametrised cases (cleanly skipped) until the first promotion. This is the deliberate safety net: no agent-vs-RAG number can be published until an expert-approved entry exists.
 
 Phasing:
-1. **Backend + script** ✅ DONE (this PR) — migration, `golden_sync.py` tier wiring, API tier field, `promote_golden.py`, empty `locked/` directory, audit log skeleton, eval harness pointer flip, README rewrite, unit tests.
-2. **Retro-lock the 30 graded candidates** — separate ticket. Each promotion runs the gate against its existing `golden_reviews` history; admin-note draft reviews are skipped by the "graded review" filter (`star_rating IS NOT NULL`), so the gate looks at real expert grades only.
-3. **UI promotion button** — follow-up. Admin-only; reads `latest_review_*` from `GoldenEntrySummary`, calls a new `POST /v2/goldens/{id}/promote` endpoint that wraps `promote_entry()`.
-4. **Content-hash consistency check** — periodic job (CI or admin-triggered) re-hashes locked entries and flags any drift from `PROMOTIONS.md`. Out of scope here because there are no locked entries to drift yet.
+1. **Backend + script** ✅ DONE (PR #102) — migration, `golden_sync.py` tier wiring, API tier field, `promote_golden.py`, empty `locked/` directory, audit log skeleton, eval harness pointer flip, README rewrite, unit tests.
+2. **Retro-lock the 30 graded candidates** ✅ DONE (2026-05-24, phase 2 PR) — server-side enumeration confirmed all 30 entries had a 5★ accept review from the Towngas workshop expert (reviewer UUID `b34ac0f0-...`). Batch promoted via `_scratch_batch_promote.py` (run-once driver, not committed) using `--force` + new `--expert-review-id` kwarg so the audit row attributes the source review even without a live DB lookup. `locked/mws150a.jsonl` now contains 30 lines; `locked/PROMOTIONS.md` has 30 attributable rows. `test_manual_agent_eval.py` now collects 30 parametrised cases (was 1 skipped placeholder under phase 1's empty-tier safety net).
+3. **First baseline eval run** — pending. Open questions before running: (a) lower `_PASS_THRESHOLD` from 0.7 to something realistic so a sub-baseline number doesn't hard-fail the whole suite on the first run; (b) run both `manual_agent` AND `rag` lanes since the publishable artifact in #74 is the comparison, not either system alone; (c) commit `docs/harness_14_phase6_baseline.md` summarising results (model versions, pass-rate per category, failure attribution). Rough cost: $3-8 per full run on OpenRouter.
+4. **UI promotion button** — follow-up. Admin-only; reads `latest_review_*` from `GoldenEntrySummary`, calls a new `POST /v2/goldens/{id}/promote` endpoint that wraps `promote_entry()`. Lower priority now that the 30-entry retro-lock is done — future promotions will mostly be incremental as new candidates clear the review gate.
+5. **Content-hash consistency check** — periodic job (CI or admin-triggered) re-hashes locked entries and flags any drift from `PROMOTIONS.md`. Becomes meaningful now that the locked tier is non-empty.
 
-Files (this PR):
+Files (phase 1 PR #102):
 - New: `diagnostic_api/alembic/versions/z0a1_add_golden_tier_column.py`, `diagnostic_api/scripts/promote_golden.py`, `diagnostic_api/tests/scripts/test_promote_golden.py`, `diagnostic_api/tests/test_golden_sync.py`, `diagnostic_api/tests/harness/evals/golden/v2/locked/mws150a.jsonl` (empty), `diagnostic_api/tests/harness/evals/golden/v2/locked/PROMOTIONS.md`.
 - Modified: `diagnostic_api/app/models_db.py` (`GoldenEntry.tier` column + check constraint), `diagnostic_api/app/services/golden_sync.py` (`_tier_for_path`, recursive walk, tier propagation), `diagnostic_api/app/api/v2/endpoints/goldens.py` (`tier` in `GoldenEntrySummary` and `GoldenEntryDetail` + mappers), `diagnostic_api/tests/harness/evals/test_manual_agent_eval.py` (load from `v2/locked/`), `diagnostic_api/tests/harness/evals/golden/README.md` (two-tier policy), `diagnostic_api/tests/harness/evals/conftest.py` (docstring path example), `diagnostic_api/scripts/review_golden_candidates.py` (docstring path example).
 
-Acceptance criteria:
-- [x] Empty `locked/mws150a.jsonl` committed; eval harness reads from it.
-- [x] `promote_golden.py` runs end-to-end with review-gate, hash, audit row.
-- [x] `tier` column round-trips through migration, `golden_sync`, and API responses.
-- [x] Unit tests cover happy path, refuse-relock, review-gate failures, `--force`, `--dry-run`.
-- [x] V2 dev plan + design doc updated in the same PR.
-- [ ] At least one entry promoted end-to-end on the server (deferred to phase 2 PR; the empty locked file is the safe initial state).
+Files (phase 2 PR):
+- Modified: `diagnostic_api/scripts/promote_golden.py` (new `expert_review_id_override` kwarg + `--expert-review-id` CLI flag), `diagnostic_api/tests/scripts/test_promote_golden.py` (2 new tests for the kwarg).
+- Populated: `diagnostic_api/tests/harness/evals/golden/v2/locked/mws150a.jsonl` (30 lines), `diagnostic_api/tests/harness/evals/golden/v2/locked/PROMOTIONS.md` (30 audit rows).
 
-Out of scope (this PR):
-- Backfill of the 30 currently-graded candidates as locked (phase 2 ticket).
-- UI promotion button (phase 3 ticket).
-- Content-hash consistency checker (phase 4 ticket).
+Acceptance criteria:
+- [x] Empty `locked/mws150a.jsonl` committed; eval harness reads from it. *(phase 1)*
+- [x] `promote_golden.py` runs end-to-end with review-gate, hash, audit row. *(phase 1)*
+- [x] `tier` column round-trips through migration, `golden_sync`, and API responses. *(phase 1)*
+- [x] Unit tests cover happy path, refuse-relock, review-gate failures, `--force`, `--dry-run`. *(phase 1)*
+- [x] V2 dev plan + design doc updated in the same PR. *(phases 1 + 2)*
+- [x] At least one entry promoted end-to-end (server review history confirms all 30 qualify; batch promoted with audit trail). *(phase 2)*
+
+Out of scope (this PR and follow-ups):
+- UI promotion button (phase 4).
+- Content-hash consistency checker (phase 5).
 - Per-entry revision history (Option C from the design discussion) — revisit only if "amend a locked entry without cloning to a new id" becomes a real workflow need.
 
 #### HARNESS‑21 — OBD Sub-Agent Evaluation Framework 🔧 IN PROGRESS

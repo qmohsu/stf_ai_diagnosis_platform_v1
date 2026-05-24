@@ -264,6 +264,7 @@ def promote_entry(
     locked_file: Path = _DEFAULT_LOCKED_FILE,
     promotions_log: Path = _DEFAULT_PROMOTIONS_LOG,
     force: bool = False,
+    expert_review_id_override: Optional[str] = None,
     dry_run: bool = False,
     now: Optional[datetime] = None,
 ) -> PromotionResult:
@@ -303,6 +304,13 @@ def promote_entry(
         promotions_log: Markdown audit file to append to.
         force: Skip the review-quality gate.  Records the
             override in the audit row.
+        expert_review_id_override: When provided, stamps this id
+            into the audit row's ``expert_review_id`` column
+            regardless of the gate path.  Useful for batch
+            re-promotion runs (HARNESS-20 phase 2) where the
+            promoter has already validated the qualifying review
+            externally and just needs to record its id without
+            establishing a live DB session inside the script.
         dry_run: Validate everything but don't write.
         now: Optional fixed timestamp for deterministic tests.
 
@@ -396,6 +404,12 @@ def promote_entry(
                 dry_run=dry_run,
             )
         expert_review_id = str(review.id)
+
+    # Caller-supplied override wins: lets batch re-promotion
+    # runs (HARNESS-20 phase 2) stamp the qualifying review id
+    # even on the --force path where no live DB lookup occurred.
+    if expert_review_id_override is not None:
+        expert_review_id = expert_review_id_override
 
     # Validation passed.  Compute hash + format audit row.
     content_hash = _sha256_hex(_canonical_dumps(parsed))
@@ -518,6 +532,18 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--expert-review-id",
+        default=None,
+        help=(
+            "Override the audit row's expert_review_id column.  "
+            "Useful in batch re-promotion runs where the gate "
+            "was validated externally (e.g. HARNESS-20 phase 2) "
+            "and the script runs with --force to skip the live "
+            "DB lookup but should still attribute the source "
+            "review."
+        ),
+    )
+    p.add_argument(
         "--dry-run",
         action="store_true",
         help="Validate without writing.",
@@ -547,6 +573,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             locked_file=args.locked_file,
             promotions_log=args.promotions_log,
             force=args.force,
+            expert_review_id_override=args.expert_review_id,
             dry_run=args.dry_run,
         )
     finally:

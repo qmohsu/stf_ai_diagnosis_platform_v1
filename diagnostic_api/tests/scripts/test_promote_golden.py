@@ -474,3 +474,67 @@ def test_missing_db_without_force_refuses(
     )
     assert result.promoted is False
     assert "DB session" in result.message
+
+
+# ── HARNESS-20 phase 2: --expert-review-id override ──────────
+
+
+def test_expert_review_id_override_stamps_audit_row(
+    candidate_file: Path,
+    locked_file: Path,
+    promotions_log: Path,
+) -> None:
+    """`--expert-review-id` lets a batch re-promotion run stamp
+    the qualifying review id even on the --force path where no
+    live DB lookup occurred (HARNESS-20 phase 2)."""
+    review_id = "rev-uuid-phase2-001"
+
+    result = promote_entry(
+        db=None,
+        entry_id="entry-001",
+        reviewer="talon",
+        reason="HARNESS-20 phase 2 retro-lock",
+        candidate_file=candidate_file,
+        locked_file=locked_file,
+        promotions_log=promotions_log,
+        force=True,
+        expert_review_id_override=review_id,
+    )
+    assert result.promoted is True
+    assert result.expert_review_id == review_id
+
+    log_text = promotions_log.read_text(encoding="utf-8")
+    assert review_id in log_text
+    # The "(none)" sentinel must NOT show up for this row — the
+    # override is exactly what prevents it.
+    assert "| (none) |" not in log_text
+
+
+def test_expert_review_id_override_wins_over_db_lookup(
+    candidate_file: Path,
+    locked_file: Path,
+    promotions_log: Path,
+) -> None:
+    """Even on the non-force path (gate runs successfully), an
+    explicit override replaces the DB-derived review id in the
+    audit row.  Lets re-promotions document a *different*
+    canonical review than whatever happens to be latest in the
+    DB at the moment."""
+    db = _fake_db_returning(_review(review_id="rev-from-db"))
+    override = "rev-explicit-override"
+
+    result = promote_entry(
+        db=db,
+        entry_id="entry-001",
+        reviewer="talon",
+        reason="document the canonical review explicitly",
+        candidate_file=candidate_file,
+        locked_file=locked_file,
+        promotions_log=promotions_log,
+        expert_review_id_override=override,
+    )
+    assert result.promoted is True
+    assert result.expert_review_id == override
+    log_text = promotions_log.read_text(encoding="utf-8")
+    assert override in log_text
+    assert "rev-from-db" not in log_text
