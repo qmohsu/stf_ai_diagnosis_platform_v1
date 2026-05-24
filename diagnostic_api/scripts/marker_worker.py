@@ -362,7 +362,14 @@ def _process_request(
     vehicle_model_subdir = request.get(
         "vehicle_model_subdir", True,
     )
-    openai_api_key = request.get("openai_api_key", "")
+    # API key is intentionally absent from the request JSON
+    # (CWE-312 fix).  Fall back to the process environment so
+    # the worker continues to function when the field is missing.
+    openai_api_key = (
+        request.get("openai_api_key")
+        or os.getenv("PREMIUM_LLM_API_KEY")
+        or os.getenv("OPENAI_API_KEY", "")
+    )
     openai_base_url = request.get("openai_base_url", "")
     openai_model = request.get("openai_model", "")
     # User-supplied vehicle-model label; wins over heuristics.

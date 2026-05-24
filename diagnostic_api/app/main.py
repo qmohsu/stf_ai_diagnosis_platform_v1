@@ -165,10 +165,29 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     _recover_stale_conversions()
 
     # Clean orphan manual files (stale failures, missing rows).
-    from app.services.manual_pipeline import (
-        cleanup_orphan_files,
+    # Runs in a background thread so it does not block startup or
+    # delay /health readiness — the scan is idempotent and any
+    # orphans missed on this pass are caught on the next upload.
+    import asyncio
+
+    from app.services.manual_pipeline import cleanup_orphan_files
+
+    def _on_cleanup_done(
+        fut: asyncio.Future,  # type: ignore[type-arg]
+    ) -> None:
+        exc = fut.exception()
+        if exc:
+            logger.error(
+                "cleanup.background_failed",
+                extra={"error": str(exc)},
+            )
+        else:
+            logger.info("cleanup.background_done")
+
+    _cleanup_fut = asyncio.get_running_loop().run_in_executor(
+        None, cleanup_orphan_files,
     )
-    cleanup_orphan_files()
+    _cleanup_fut.add_done_callback(_on_cleanup_done)
 
     # Alembic state guardrail — fail fast on un-applied
     # migrations or duplicate revision ids before any

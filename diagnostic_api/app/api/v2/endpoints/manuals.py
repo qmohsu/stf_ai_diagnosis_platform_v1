@@ -229,7 +229,7 @@ async def upload_manual(
     )
 
     # Background cleanup of orphan files from past failures.
-    asyncio.get_event_loop().run_in_executor(
+    asyncio.get_running_loop().run_in_executor(
         None, cleanup_orphan_files,
     )
 

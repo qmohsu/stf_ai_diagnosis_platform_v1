@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 
@@ -31,6 +32,22 @@ from app.models_db import Manual, RagChunk
 from app.rag.chunker import Chunker
 
 logger = structlog.get_logger(__name__)
+
+
+def _aware_utc(dt: datetime) -> datetime:
+    """Normalise *dt* to a timezone-aware UTC datetime.
+
+    Args:
+        dt: A datetime that may be naive (no tzinfo) or already
+            timezone-aware.
+
+    Returns:
+        A UTC-aware datetime equivalent to *dt*.
+    """
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
 
 # Default chunker for RAG ingestion.
 _DEFAULT_CHUNK_SIZE = 500
@@ -293,11 +310,15 @@ async def _run_marker_convert(
     # on — the API refuses to boot if PREMIUM_LLM_API_KEY is
     # missing (see app.main lifespan), so credentials are
     # guaranteed to be present here.
+    # NOTE: openai_api_key is intentionally omitted from this
+    # JSON file (CWE-312).  The marker worker reads the key
+    # from its process environment via PREMIUM_LLM_API_KEY /
+    # OPENAI_API_KEY, which it inherits from the container env
+    # at launch time.
     request: dict = {
         "pdf_path": pdf_rel,
         "use_llm": True,
         "vehicle_model_subdir": True,
-        "openai_api_key": settings.premium_llm_api_key,
         "openai_base_url": settings.premium_llm_base_url,
         "openai_model": settings.manual_llm_model,
         "original_filename": original_filename,
@@ -725,7 +746,7 @@ def cleanup_orphan_files(
         for m in all_manuals:
             # Keep failed rows within grace period.
             if m.status == "failed":
-                age = (now - m.updated_at).total_seconds()
+                age = (now - _aware_utc(m.updated_at)).total_seconds()
                 if age < grace_seconds:
                     active_ids.add(str(m.id))
                     if m.pdf_file_path:

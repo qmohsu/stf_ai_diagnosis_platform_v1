@@ -4,19 +4,22 @@ Covers PDF staging, conversion status updates, ingestion
 chunk counting, and file cleanup.
 """
 
+import asyncio
+import json
 import os
-import tempfile
 import uuid
-from pathlib import Path
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from app.services.manual_pipeline import (
+    _aware_utc,
+    cleanup_orphan_files,
     compute_file_hash,
-    save_uploaded_pdf,
-    delete_manual_files,
     delete_manual_chunks,
+    delete_manual_files,
+    save_uploaded_pdf,
 )
 
 
@@ -139,4 +142,245 @@ class TestComputeFileHash:
         data = b"service manual pdf bytes"
         assert compute_file_hash(data) == compute_file_hash(
             data,
+        )
+
+
+# ── Tests: _aware_utc ───────────────────────────────────────
+
+
+class TestAwareUtc:
+    """Tests for the _aware_utc timezone-normalisation helper."""
+
+    def test_naive_datetime_becomes_utc_aware(self):
+        """Naive datetime is tagged as UTC without value change."""
+        naive = datetime(2026, 1, 1, 12, 0, 0)
+        result = _aware_utc(naive)
+        assert result.tzinfo is not None
+        assert result == datetime(
+            2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc,
+        )
+
+    def test_already_aware_utc_unchanged(self):
+        """UTC-aware datetime passes through unmodified."""
+        aware = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        result = _aware_utc(aware)
+        assert result == aware
+        assert result.tzinfo == timezone.utc
+
+    def test_does_not_raise_on_naive(self):
+        """Subtracting from now() after normalisation never raises."""
+        now = datetime.now(timezone.utc)
+        naive = datetime.utcnow()
+        # Must not raise TypeError.
+        age = (now - _aware_utc(naive)).total_seconds()
+        assert abs(age) < 2  # Same instant, within 2 seconds.
+
+
+# ── Tests: cleanup_orphan_files (tz-safety) ─────────────────
+
+
+def _make_mock_manual(
+    *,
+    status: str = "failed",
+    updated_at: datetime,
+    manual_id: uuid.UUID | None = None,
+) -> MagicMock:
+    """Build a minimal Manual-like mock for cleanup tests.
+
+    Args:
+        status: Manual status string.
+        updated_at: The ``updated_at`` value to use (naive or aware).
+        manual_id: Optional UUID; auto-generated if omitted.
+
+    Returns:
+        A MagicMock that satisfies cleanup_orphan_files attribute
+        access.
+    """
+    m = MagicMock()
+    m.id = manual_id or uuid.uuid4()
+    m.status = status
+    m.updated_at = updated_at
+    m.pdf_file_path = None
+    m.md_file_path = None
+    return m
+
+
+class TestCleanupOrphanFilesTimezone:
+    """Tests that cleanup_orphan_files handles tz-naive updated_at."""
+
+    def _run(self, tmp_path: object, manuals: list) -> dict:
+        """Execute cleanup_orphan_files with a mocked DB session.
+
+        Args:
+            tmp_path: Temporary directory used as storage root.
+            manuals: List of Manual-like mocks returned by the query.
+
+        Returns:
+            The dict returned by cleanup_orphan_files.
+        """
+        mock_db = MagicMock()
+        mock_db.query.return_value.all.return_value = manuals
+
+        with (
+            patch(
+                "app.services.manual_pipeline.settings"
+            ) as mock_settings,
+            patch(
+                "app.services.manual_pipeline.SessionLocal",
+                return_value=mock_db,
+            ),
+            patch(
+                "app.services.manual_pipeline.delete_manual_files",
+            ),
+        ):
+            mock_settings.manual_storage_path = str(tmp_path)
+            return cleanup_orphan_files(grace_seconds=3600)
+
+    def test_no_type_error_with_naive_updated_at_in_grace(
+        self, tmp_path
+    ):
+        """Naive updated_at within grace period raises no TypeError."""
+        recent_naive = datetime.utcnow() - timedelta(seconds=60)
+        m = _make_mock_manual(
+            status="failed", updated_at=recent_naive,
+        )
+        # Must not raise TypeError.
+        result = self._run(tmp_path, [m])
+        assert isinstance(result, dict)
+
+    def test_no_type_error_with_aware_updated_at_in_grace(
+        self, tmp_path
+    ):
+        """Tz-aware updated_at within grace period raises no TypeError."""
+        recent_aware = datetime.now(timezone.utc) - timedelta(
+            seconds=60,
+        )
+        m = _make_mock_manual(
+            status="failed", updated_at=recent_aware,
+        )
+        result = self._run(tmp_path, [m])
+        assert isinstance(result, dict)
+
+    def test_stale_naive_failed_row_is_removed(self, tmp_path):
+        """Failed row with naive timestamp older than grace is deleted."""
+        old_naive = datetime.utcnow() - timedelta(seconds=7200)
+        m = _make_mock_manual(status="failed", updated_at=old_naive)
+        mock_db = MagicMock()
+        mock_db.query.return_value.all.return_value = [m]
+
+        with (
+            patch(
+                "app.services.manual_pipeline.settings"
+            ) as mock_settings,
+            patch(
+                "app.services.manual_pipeline.SessionLocal",
+                return_value=mock_db,
+            ),
+            patch(
+                "app.services.manual_pipeline.delete_manual_files",
+            ),
+        ):
+            mock_settings.manual_storage_path = str(tmp_path)
+            cleanup_orphan_files(grace_seconds=3600)
+
+        mock_db.delete.assert_called_once_with(m)
+        mock_db.commit.assert_called()
+
+    def test_fresh_naive_failed_row_is_kept(self, tmp_path):
+        """Failed row with naive timestamp within grace is NOT deleted."""
+        recent_naive = datetime.utcnow() - timedelta(seconds=60)
+        m = _make_mock_manual(
+            status="failed", updated_at=recent_naive,
+        )
+        mock_db = MagicMock()
+        mock_db.query.return_value.all.return_value = [m]
+
+        with (
+            patch(
+                "app.services.manual_pipeline.settings"
+            ) as mock_settings,
+            patch(
+                "app.services.manual_pipeline.SessionLocal",
+                return_value=mock_db,
+            ),
+            patch(
+                "app.services.manual_pipeline.delete_manual_files",
+            ),
+        ):
+            mock_settings.manual_storage_path = str(tmp_path)
+            cleanup_orphan_files(grace_seconds=3600)
+
+        mock_db.delete.assert_not_called()
+
+
+# ── Tests: _run_marker_convert (API key not on disk) ────────
+
+
+class TestMarkerConvertApiKeyNotOnDisk:
+    """Tests that the queue request JSON never contains the API key."""
+
+    def test_request_json_omits_api_key(self, tmp_path):
+        """Queue JSON written to disk must not contain the API key.
+
+        _run_marker_convert writes a request JSON to .queue/ before
+        polling for the result.  This test confirms the plaintext
+        API key is absent from that file (CWE-312 regression guard).
+        """
+        from app.services.manual_pipeline import _run_marker_convert
+        import structlog
+
+        queue_dir = tmp_path / ".queue"
+        queue_dir.mkdir()
+        manual_id = uuid.uuid4()
+        req_path = queue_dir / f"{manual_id}.request.json"
+        res_path = queue_dir / f"{manual_id}.result.json"
+        SECRET = "sk-openrouter-super-secret-99999"
+        captured: dict = {}
+
+        async def fake_sleep(_seconds: float) -> None:
+            """Capture the request file then signal completion."""
+            if req_path.exists() and not captured:
+                captured.update(
+                    json.loads(req_path.read_text(encoding="utf-8"))
+                )
+            res_path.write_text(
+                json.dumps(
+                    {"status": "ok", "vehicle_model": "TEST"}
+                ),
+                encoding="utf-8",
+            )
+
+        with (
+            patch(
+                "app.services.manual_pipeline.settings"
+            ) as mock_settings,
+            patch(
+                "app.services.manual_pipeline._sync_progress_to_db",
+                return_value=None,
+            ),
+            patch("asyncio.sleep", side_effect=fake_sleep),
+        ):
+            mock_settings.manual_storage_path = str(tmp_path)
+            mock_settings.premium_llm_api_key = SECRET
+            mock_settings.premium_llm_base_url = (
+                "https://openrouter.ai/api/v1"
+            )
+            mock_settings.manual_llm_model = "gpt-4o"
+            mock_settings.marker_poll_interval_seconds = 0
+
+            log = structlog.get_logger("test")
+            asyncio.run(
+                _run_marker_convert(
+                    "uploads/test.pdf",
+                    manual_id,
+                    log,
+                )
+            )
+
+        assert captured, "Request JSON was never captured"
+        assert "openai_api_key" not in captured, (
+            "openai_api_key key must not appear in queue JSON"
+        )
+        assert SECRET not in json.dumps(captured), (
+            "API key value must not appear in queue JSON"
         )
