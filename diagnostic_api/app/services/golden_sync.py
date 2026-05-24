@@ -174,16 +174,37 @@ def _extract_entry_fields(
         )
         return None
 
-    # Required fields — bail with a warning if missing.
-    # ``golden_citations`` is required for manual entries but is
-    # always ``[]`` for OBD entries (which have native
-    # signal/DTC citations instead).  We still expect the field
-    # to be present in the JSONL to keep the schema explicit.
+    # Required fields — bail with a warning if missing.  Note
+    # that ``golden_citations`` is required for **manual** entries
+    # (the manual eval rubric grades against slug citations) but
+    # is meaningfully empty for **OBD** entries (which carry
+    # signal/DTC citations in their own fields).  We check the
+    # question_type first to decide whether golden_citations is
+    # required, defaulting OBD entries to ``[]`` so authors don't
+    # need to spell out the empty list.
+    question_type = raw.get("question_type")
+    if not question_type:
+        logger.warning(
+            "golden_sync.skip_missing_field",
+            entry_id=entry_id,
+            missing="question_type",
+        )
+        return None
+
+    is_obd = _is_obd_question_type(question_type)
+    lane = "obd" if is_obd else "manual"
+
     required = (
-        "category", "question_type",
-        "difficulty", "question", "golden_summary",
-        "golden_citations",
+        "category",
+        "difficulty",
+        "question",
+        "golden_summary",
     )
+    if not is_obd:
+        # Manual lane: golden_citations is part of the schema
+        # contract.  Adversarial-manual entries may have an
+        # empty list, but the field must be present.
+        required = required + ("golden_citations",)
     for field in required:
         if field not in raw:
             logger.warning(
@@ -192,10 +213,6 @@ def _extract_entry_fields(
                 missing=field,
             )
             return None
-
-    question_type = raw["question_type"]
-    is_obd = _is_obd_question_type(question_type)
-    lane = "obd" if is_obd else "manual"
 
     # manual_id derivation differs by lane:
     # - Manual: nested inside ``golden_citations[0].manual_id``
@@ -233,7 +250,9 @@ def _extract_entry_fields(
         "obd_context": raw.get("obd_context"),
         "golden_summary_en": raw["golden_summary"],
         "golden_summary_zh": raw.get("golden_summary_zh"),
-        "golden_citations": raw["golden_citations"],
+        # OBD entries don't ship a golden_citations field; default
+        # to empty list to satisfy the NOT NULL JSONB column.
+        "golden_citations": raw.get("golden_citations", []),
         "expected_recall_slugs": raw.get(
             "expected_recall_slugs", [],
         ),
