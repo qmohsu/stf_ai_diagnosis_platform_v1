@@ -190,10 +190,20 @@ If in doubt, update the docs. A commit that changes system behavior without upda
 
 When the user says **"deploy to server"** or **"update the server"**, follow this procedure:
 
-1. **Pre-flight check**: Run `git status` and `git log origin/main..HEAD` locally to verify all changes are committed and pushed to `origin/main`. If there are unpushed commits or uncommitted changes, warn the user and do NOT proceed until everything is pushed.
-2. **Pull on server**: `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1 && git pull origin main"`
-3. **Rebuild images**: `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1/infra && ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml build diagnostic-api obd-ui"`
-4. **Force-recreate changed containers**: Podman 3.4 does NOT recreate containers when the image changes — `up -d --build` silently keeps old containers. You MUST use `down`+`up` for changed services:
+1. **Pre-flight: git state**: Run `git status` and `git log origin/main..HEAD` locally to verify all changes are committed and pushed to `origin/main`. If there are unpushed commits or uncommitted changes, warn the user and do NOT proceed until everything is pushed.
+2. **Pre-flight: migration backlog check**: List Alembic migrations added since the last successful deploy. Catches schema drift like the HARNESS-20 backlog that silently 500'd `/goldens` on 2026-05-24:
+   ```
+   ssh polyu-gpu "podman exec stf-diagnostic-api alembic current 2>/dev/null | tail -1"  # what prod is on
+   git log --oneline --name-only -- diagnostic_api/alembic/versions/ | head -30          # what's in the repo
+   ```
+   Any new versions files since the prod head mean migrations will need to run after rebuild. Also confirm a single Alembic head locally — duplicate revision ids (also seen in the HARNESS-20 backlog) make `alembic upgrade head` refuse silently:
+   ```
+   cd diagnostic_api && python -c "from alembic.script import ScriptDirectory; from alembic.config import Config; import os; c = Config('alembic.ini'); c.set_main_option('script_location', os.path.abspath('alembic')); print(ScriptDirectory.from_config(c).get_heads())"
+   ```
+   Expected output: a single-element list (`['<rev_id>']`). If you see two or more heads, fix the conflicting migration files before deploying.
+3. **Pull on server**: `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1 && git pull origin main"`
+4. **Rebuild images**: `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1/infra && ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml build diagnostic-api obd-ui"`
+5. **Force-recreate changed containers**: Podman 3.4 does NOT recreate containers when the image changes — `up -d --build` silently keeps old containers. You MUST use `down`+`up` for changed services:
    ```
    ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1/infra && \
      ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml down && sleep 2 && \
@@ -203,19 +213,34 @@ When the user says **"deploy to server"** or **"update the server"**, follow thi
      ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d obd-ui && sleep 3 && \
      ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d nginx"
    ```
-5. **Verify containers are fresh**: Check that `CREATED AT` timestamps are recent (within the last minute) for ALL rebuilt services. Old timestamps mean the container was NOT recreated:
+6. **Verify containers are fresh**: Check that `CREATED AT` timestamps are recent (within the last minute) for ALL rebuilt services. Old timestamps mean the container was NOT recreated:
    `ssh polyu-gpu "podman ps --format 'table {{.Names}} {{.CreatedAt}}'"`
-6. **Health checks**: Verify all 5 services are healthy:
+7. **Run pending Alembic migrations**: After containers are up but BEFORE final verification. `alembic upgrade head` is a no-op if the DB is already current, but skipping this step is what silently leaves prod on an old schema while serving new code (HARNESS-20 surfaced this on 2026-05-24 — `/goldens` 500'd because the `is_locked` column didn't exist). Confirm the post-upgrade head matches what the repo expects:
+   ```
+   ssh polyu-gpu "podman exec stf-diagnostic-api alembic upgrade head 2>&1 | tail -3 && \
+     podman exec stf-diagnostic-api alembic current 2>&1 | tail -1"
+   ```
+8. **Restart diagnostic-api after migrations**: Startup-time helpers that read from the DB (e.g. `golden_sync`) ran ONCE during the `down`+`up` in step 5 — if migrations applied in step 7 added/changed columns those helpers read, the cached state is stale. Restart so the helpers re-run against the migrated schema:
+   ```
+   ssh polyu-gpu "podman restart stf-diagnostic-api && sleep 5 && podman logs --tail 10 stf-diagnostic-api 2>&1 | grep -iE 'startup|golden_sync|complete' | tail -5"
+   ```
+   Skip only when step 7 reported "already at head" (no migrations ran).
+9. **Health checks**: Verify all 5 services are healthy:
    - `curl -sf http://127.0.0.1:11434/api/version` (Ollama)
    - `curl -sf http://127.0.0.1:8001/health` (Diagnostic API)
    - `curl -sf http://127.0.0.1:3001` (OBD UI)
    - `curl -sf http://127.0.0.1:8080/health` (Nginx gateway)
-7. **Verify deployed commit**: Confirm the running code matches what was pushed:
-   `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1 && git log --oneline -1"`
+10. **Verify deployed commit**: Confirm the running code matches what was pushed:
+    `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1 && git log --oneline -1"`
 
 **Server details**: Podman 3.4 (rootless), host networking, API on port 8001, Nginx on port 8080, `runtime: nvidia` for Ollama GPU.
 
 **CRITICAL Podman 3.4 gotcha**: `podman-compose up -d --build` builds new images but does NOT recreate containers. Always use `down` + `up` to ensure containers run the latest image. Verify via `podman ps` creation timestamps.
+
+**CRITICAL Alembic gotchas**:
+- **Migrations don't auto-run on container start.** The image bakes in the migration files (under `/app/alembic/`), but no startup hook applies them. You MUST run `alembic upgrade head` after every rebuild that includes new migration files (step 7 above). The diagnostic-api container will happily boot against an out-of-date schema and serve 500s when endpoints touch missing columns. The startup guardrail in `app/services/alembic_check.py` now catches this immediately rather than at first-API-call, but the deploy procedure should still run the migrations explicitly.
+- **Duplicate revision ids silently break the whole chain.** If two migration files declare the same `revision = "..."` value, Alembic refuses every upgrade with `Revision X is present more than once`. The wrong way to find out is when prod 500s. The preflight in step 2 catches this — always check `ScriptDirectory.get_heads()` before pushing a migration. When authoring a new migration, copy an unused 12-char hex/alphanum id; don't crib from an old filename.
+- **Lossy downgrades are normal here.** Several migrations (including `b1c2d3e4f5a6` and `c2d3e4f5a6b7`) deliberately drop columns whose data has no meaningful pre-migration form. Don't expect `alembic downgrade` to round-trip cleanly. Use downgrades only to roll back schema, never to roll back data.
 
 ## Memory Management
 

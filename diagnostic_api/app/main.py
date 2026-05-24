@@ -170,6 +170,23 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     cleanup_orphan_files()
 
+    # Alembic state guardrail — fail fast on un-applied
+    # migrations or duplicate revision ids before any
+    # DB-touching helper runs.  See app/services/alembic_check.py
+    # for the full rationale (HARNESS-20 incident on 2026-05-24).
+    # Refusing to start is intentional: an out-of-date schema
+    # serving production traffic 500s on every endpoint that
+    # touches an un-applied column, and the silent failure mode
+    # is what we want to convert to a loud one.
+    try:
+        from app.services.alembic_check import (
+            AlembicStateError,
+            verify_alembic_state,
+        )
+        verify_alembic_state()
+    except AlembicStateError as exc:
+        raise RuntimeError(f"STARTUP FATAL: {exc}") from exc
+
     # Sync golden Q&A entries from JSONL → DB.  Idempotent
     # upsert; safe on every boot.  Failure here doesn't block
     # the app — the dashboard just shows zero entries until
