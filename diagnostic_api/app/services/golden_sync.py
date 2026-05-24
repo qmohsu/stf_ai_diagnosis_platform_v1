@@ -87,6 +87,58 @@ _LOCKED_SUBDIR = "locked"
 # ── Field extraction helpers ─────────────────────────────────
 
 
+_OBD_QUESTION_TYPES = frozenset({
+    "signal_statistics",
+    "event_finding",
+    "dtc_enumeration",
+    "dtc_decode",
+    "compound_obd",
+    "adversarial_obd",
+})
+"""Question-type values that identify an OBD-lane entry.
+
+Mirrors ``OBD_QUESTION_TYPES`` in ``tests/harness/evals/schemas.py``
+(the eval suite's source-of-truth literal).  Duplicated here as a
+frozenset rather than imported to keep the app→tests dependency
+direction one-way.  If the eval suite ever widens the literal,
+update both places.
+"""
+
+
+def _is_obd_question_type(question_type: str) -> bool:
+    """Return True if ``question_type`` is an OBD-lane value."""
+    return question_type in _OBD_QUESTION_TYPES
+
+
+def _derive_obd_manual_id(source_path: str) -> str:
+    """Synthesize a stable ``manual_id`` for an OBD-lane entry.
+
+    OBD entries have no service-manual UUID — they reference an
+    OBD log fixture instead.  We use the JSONL filename stem
+    (without ``.jsonl``) as the synthetic ``manual_id`` so:
+
+    - The NOT NULL constraint on ``golden_entries.manual_id`` is
+      satisfied without a sentinel string.
+    - All entries from the same fixture file share the same
+      ``manual_id``, so the dashboard can group them naturally
+      (mirrors how manual entries group by their service-manual
+      UUID).
+    - The value is deterministic across machines and runs.
+
+    For ``golden/v2/yamaha_road_test.jsonl`` this returns
+    ``"yamaha_road_test"``.
+
+    Args:
+        source_path: Source file path string (the value that
+            will land in ``source_jsonl_path``).  Either
+            relative or absolute; only the filename stem matters.
+
+    Returns:
+        Synthetic manual_id string.
+    """
+    return Path(source_path).stem
+
+
 def _extract_entry_fields(
     raw: Dict[str, Any],
     source_path: str,
@@ -123,9 +175,10 @@ def _extract_entry_fields(
         return None
 
     # Required fields — bail with a warning if missing.
-    # Note: manual_id is derived from the first golden_citation
-    # rather than expected at the top level (the JSONL schema
-    # nests it inside citations).
+    # ``golden_citations`` is required for manual entries but is
+    # always ``[]`` for OBD entries (which have native
+    # signal/DTC citations instead).  We still expect the field
+    # to be present in the JSONL to keep the schema explicit.
     required = (
         "category", "question_type",
         "difficulty", "question", "golden_summary",
@@ -140,26 +193,42 @@ def _extract_entry_fields(
             )
             return None
 
-    citations = raw.get("golden_citations") or []
-    manual_id = ""
-    if isinstance(citations, list) and citations:
-        first = citations[0]
-        if isinstance(first, dict):
-            manual_id = str(first.get("manual_id", ""))
-    if not manual_id:
-        # Adversarial entries can have empty citations; fall
-        # back to a sentinel so they still upsert and the
-        # dashboard can render them.
-        manual_id = raw.get("manual_id", "") or "(none)"
+    question_type = raw["question_type"]
+    is_obd = _is_obd_question_type(question_type)
+    lane = "obd" if is_obd else "manual"
+
+    # manual_id derivation differs by lane:
+    # - Manual: nested inside ``golden_citations[0].manual_id``
+    #   per the manual-eval JSONL schema; fall back to a sentinel
+    #   for adversarial entries that have empty citations.
+    # - OBD: derive a synthetic id from the source filename stem
+    #   so all entries from the same fixture share the same
+    #   manual_id (deterministic; satisfies NOT NULL).
+    if is_obd:
+        manual_id = _derive_obd_manual_id(source_path)
+    else:
+        citations = raw.get("golden_citations") or []
+        manual_id = ""
+        if isinstance(citations, list) and citations:
+            first = citations[0]
+            if isinstance(first, dict):
+                manual_id = str(first.get("manual_id", ""))
+        if not manual_id:
+            # Adversarial entries can have empty citations; fall
+            # back to a sentinel so they still upsert and the
+            # dashboard can render them.
+            manual_id = raw.get("manual_id", "") or "(none)"
 
     return {
         "id": entry_id,
         "manual_id": manual_id,
         "category": raw["category"],
-        "question_type": raw["question_type"],
+        "question_type": question_type,
         "difficulty": raw["difficulty"],
         "question_en": raw["question"],
-        # Bilingual fields — nullable, None if absent.
+        # Bilingual fields — nullable, None if absent.  OBD
+        # entries are English-only at v1; ``question_zh`` /
+        # ``golden_summary_zh`` stay None.
         "question_zh": raw.get("question_zh"),
         "obd_context": raw.get("obd_context"),
         "golden_summary_en": raw["golden_summary"],
@@ -178,6 +247,18 @@ def _extract_entry_fields(
         "notes": raw.get("notes"),
         "source_jsonl_path": source_path,
         "source_jsonl_line": line_number,
+        # HARNESS-21 [2b/4]: lane + OBD-specific columns.
+        # Manual entries get empty defaults; OBD entries pull
+        # from the v1-style fields the eval-side authoring
+        # convention (see golden/v1/yamaha_road_test.jsonl).
+        "lane": lane,
+        "expected_signal_citations": raw.get(
+            "expected_signal_citations", [],
+        ),
+        "expected_dtcs": raw.get("expected_dtcs", []),
+        "expected_no_evidence": bool(
+            raw.get("expected_no_evidence", False),
+        ),
     }
 
 
