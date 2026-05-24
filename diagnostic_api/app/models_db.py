@@ -18,6 +18,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false as sa_false,
     func,
 )
 from pgvector.sqlalchemy import Vector
@@ -393,16 +394,6 @@ class GoldenEntry(Base):
             "difficulty IN ('easy', 'medium', 'hard')",
             name="ck_golden_entry_difficulty",
         ),
-        # HARNESS-20: two-tier corpus.  ``candidate`` rows mirror
-        # ``golden/v2/*.jsonl`` and are mutable; ``locked`` rows
-        # mirror ``golden/v2/locked/*.jsonl`` and are append-only,
-        # representing entries that an expert has accepted and
-        # that ``scripts/promote_golden.py`` has explicitly
-        # promoted.  The eval harness reads only the locked tier.
-        CheckConstraint(
-            "tier IN ('candidate', 'locked')",
-            name="ck_golden_entry_tier",
-        ),
     )
 
     id = Column(String(255), primary_key=True)
@@ -427,14 +418,19 @@ class GoldenEntry(Base):
     notes = Column(Text, nullable=True)
     source_jsonl_path = Column(String(500), nullable=True)
     source_jsonl_line = Column(Integer, nullable=True)
-    # HARNESS-20: tier this row's source file lives under.
-    # ``candidate`` (default) for ``golden/v2/*.jsonl`` rows;
-    # ``locked`` for ``golden/v2/locked/*.jsonl`` rows promoted
-    # via ``scripts/promote_golden.py``.
-    tier = Column(
-        String(20),
+    # HARNESS-20 (post-bugfix migration ``a1b2c3d4e5f6``): each
+    # row holds the **candidate** content (mutable; dashboard
+    # reflects this).  ``is_locked`` means "this entry id also
+    # exists in ``golden/v2/locked/*.jsonl``" — i.e. has been
+    # promoted via ``scripts/promote_golden.py`` and is the
+    # eval source of truth.  The locked tier's *content* stays
+    # on the filesystem; the DB doesn't try to mirror it,
+    # because that's what created the schema bug the prior
+    # ``tier`` column was hit by.
+    is_locked = Column(
+        Boolean,
         nullable=False,
-        server_default="candidate",
+        server_default=sa_false(),
         index=True,
     )
     created_at = Column(

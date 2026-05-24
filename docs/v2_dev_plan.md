@@ -7,7 +7,7 @@
 | **Architecture doc** | `docs/v2_design_doc.md` |
 | **GitHub Issue** | #26 (discussion: From Context Engineering to Harness Engineering) |
 | **Version** | v1.0 |
-| **Last updated** | 2026-05-24 (HARNESS-20 phase 2: 30 expert-approved candidates retro-locked into golden/v2/locked/; eval harness collects 30 cases) |
+| **Last updated** | 2026-05-24 (HARNESS-20 schema fix: tier column → is_locked boolean + two-pass sync; corrects design bug surfaced during phase 2 post-deploy verification) |
 
 ## 1. Scope Boundary
 
@@ -661,13 +661,20 @@ Files (phase 2 PR):
 - Modified: `diagnostic_api/scripts/promote_golden.py` (new `expert_review_id_override` kwarg + `--expert-review-id` CLI flag), `diagnostic_api/tests/scripts/test_promote_golden.py` (2 new tests for the kwarg).
 - Populated: `diagnostic_api/tests/harness/evals/golden/v2/locked/mws150a.jsonl` (30 lines), `diagnostic_api/tests/harness/evals/golden/v2/locked/PROMOTIONS.md` (30 audit rows).
 
+Files (post-phase-2 schema-fix PR):
+- New: `diagnostic_api/alembic/versions/a1b2_rename_tier_to_is_locked.py` (drops the broken `tier` string column, adds `is_locked` boolean).
+- Modified: `diagnostic_api/app/models_db.py` (column rename + type change), `diagnostic_api/app/services/golden_sync.py` (rewritten as two-pass: candidate-content upsert + locked-flag overlay), `diagnostic_api/app/api/v2/endpoints/goldens.py` (`tier` → `is_locked` on response schemas + mappers), `diagnostic_api/tests/test_golden_sync.py` (12 tests for the new helpers — candidate walk, locked walk, overlay flag-flip, orphan warnings).
+
 Acceptance criteria:
 - [x] Empty `locked/mws150a.jsonl` committed; eval harness reads from it. *(phase 1)*
 - [x] `promote_golden.py` runs end-to-end with review-gate, hash, audit row. *(phase 1)*
-- [x] `tier` column round-trips through migration, `golden_sync`, and API responses. *(phase 1)*
+- [x] ~~`tier` column round-trips through migration, `golden_sync`, and API responses.~~ Superseded by `is_locked` boolean (schema-fix PR) — see note below. *(phase 1 → corrected)*
 - [x] Unit tests cover happy path, refuse-relock, review-gate failures, `--force`, `--dry-run`. *(phase 1)*
-- [x] V2 dev plan + design doc updated in the same PR. *(phases 1 + 2)*
+- [x] V2 dev plan + design doc updated in the same PR. *(phases 1 + 2 + schema-fix)*
 - [x] At least one entry promoted end-to-end (server review history confirms all 30 qualify; batch promoted with audit trail). *(phase 2)*
+- [x] DB tier/lock state reflects on-disk reality post-deploy: all 30 rows report `is_locked=True` after the schema-fix PR + container restart. *(schema-fix)*
+
+**Phase 1 schema bug + correction:** Post-deploy verification on 2026-05-24 found that the original `tier` column (added in Alembic `z0a1b2c3d4e5`, phase 1) was conceptually wrong. Both tiers share entry ids by design (the locked file is a verbatim copy of the candidate line — that's how `promote_golden.py` works), but `GoldenEntry.id` is the sole primary key, so the recursive sync walk produced two upserts on the same id and the second one overwrote the first. Net result: every row in `golden_entries.tier` read `'candidate'` regardless of actual lock state, even after phase 2 locked all 30. The schema-fix PR replaces `tier` with an `is_locked` boolean and rewrites `golden_sync` as two passes (candidate-content upsert → locked-flag overlay UPDATE). The candidate's current content always wins in the DB (so the dashboard reflects the latest mutable edit), and the lock badge is just "this id is also in the locked file". Locked-tier *content* stays on the filesystem and is read directly by the eval harness — the DB no longer tries to mirror it.
 
 Out of scope (this PR and follow-ups):
 - UI promotion button (phase 4).

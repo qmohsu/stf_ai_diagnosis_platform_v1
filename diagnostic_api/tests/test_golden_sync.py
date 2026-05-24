@@ -1,17 +1,23 @@
-"""Unit tests for ``app.services.golden_sync`` (HARNESS-20).
+"""Unit tests for ``app.services.golden_sync`` (HARNESS-20 + fix).
 
-Focused on the new tier-detection path introduced for the
-two-tier corpus.  The sync routine itself talks to Postgres, so
-the tests exercise the pure helpers (``_iter_jsonl_files``,
-``_extract_entry_fields``, ``_tier_for_path``) rather than the
-DB.  Coverage:
+Focused on the two-pass sync introduced by migration
+``a1b2c3d4e5f6`` to correct the prior tier-overwrite bug.
+The full ``sync_golden_entries`` end-to-end path talks to
+Postgres, so the suite exercises the pure walk + extraction
+helpers directly and uses a minimal fake session for the
+overlay-update path.
 
-- Files at the v2 root resolve to ``tier='candidate'``.
-- Files under ``v2/locked/`` resolve to ``tier='locked'``.
-- The recursive walk picks up both tiers in one pass.
-- Files under any ``candidates/`` subdir are excluded.
-- ``_extract_entry_fields`` propagates the ``tier`` kwarg into
-  the row payload.
+Coverage:
+
+- Candidate-only walk: top-level ``v2/*.jsonl`` files only,
+  candidates/ subdir excluded, locked/ subdir excluded.
+- Locked-only walk: ``v2/locked/*.jsonl`` only.
+- Missing locked/ directory is a silent no-op (not an error).
+- ``_extract_entry_fields`` returns content fields with NO
+  ``is_locked`` key (the overlay pass is the only writer of
+  that flag).
+- ``_apply_locked_overlay`` flips ``is_locked`` on matching
+  ids and warns on orphan locked-only ids.
 
 Author: Li-Ta Hsu
 """
@@ -23,9 +29,10 @@ from pathlib import Path
 from typing import Dict, List
 
 from app.services.golden_sync import (
+    _apply_locked_overlay,
     _extract_entry_fields,
-    _iter_jsonl_files,
-    _tier_for_path,
+    _iter_candidate_jsonl_files,
+    _iter_locked_jsonl_files,
 )
 
 
@@ -57,102 +64,227 @@ def _write_jsonl(path: Path, entries: List[Dict[str, object]]) -> None:
             f.write(json.dumps(e, ensure_ascii=False) + "\n")
 
 
-# ── _tier_for_path ───────────────────────────────────────────
-
-
-def test_tier_for_path_root_is_candidate(tmp_path: Path) -> None:
-    """Anything not under a ``locked/`` segment is candidate."""
-    p = tmp_path / "v2" / "mws150a.jsonl"
-    assert _tier_for_path(p) == "candidate"
-
-
-def test_tier_for_path_under_locked_is_locked(
-    tmp_path: Path,
-) -> None:
-    """``locked`` segment anywhere in the parts list triggers
-    the locked tier classification."""
-    p = tmp_path / "v2" / "locked" / "mws150a.jsonl"
-    assert _tier_for_path(p) == "locked"
-
-
 # ── _extract_entry_fields ────────────────────────────────────
 
 
-def test_extract_entry_fields_defaults_to_candidate() -> None:
-    """Without an explicit ``tier`` kwarg, the row defaults to
-    candidate — keeps older callers safe."""
+def test_extract_entry_fields_omits_is_locked() -> None:
+    """The extractor must NOT touch ``is_locked``.
+
+    The overlay pass is the sole writer of that flag; if the
+    extractor set it (even to False), the upsert in pass 1
+    would clobber whatever pass 2 set on a previous run when
+    re-running against a static corpus.
+    """
     fields = _extract_entry_fields(
         _candidate_entry("e1"),
         source_path="v2/mws150a.jsonl",
         line_number=1,
     )
     assert fields is not None
-    assert fields["tier"] == "candidate"
+    assert "is_locked" not in fields
+    # Sanity: the content fields we DO need are present.
+    assert fields["id"] == "e1"
+    assert fields["question_en"] == "what does it mean?"
 
 
-def test_extract_entry_fields_honours_locked_tier() -> None:
-    """When ``tier='locked'`` is passed, the row carries it."""
+def test_extract_entry_fields_skips_no_id() -> None:
+    """Missing id → skip (with a warning)."""
+    bad = _candidate_entry("anything")
+    bad.pop("id")
     fields = _extract_entry_fields(
-        _candidate_entry("e1"),
-        source_path="v2/locked/mws150a.jsonl",
-        line_number=1,
-        tier="locked",
+        bad, source_path="x.jsonl", line_number=1,
     )
-    assert fields is not None
-    assert fields["tier"] == "locked"
+    assert fields is None
 
 
-# ── _iter_jsonl_files ────────────────────────────────────────
+def test_extract_entry_fields_skips_missing_required_field() -> None:
+    """Missing required content field → skip."""
+    bad = _candidate_entry("e1")
+    bad.pop("category")
+    fields = _extract_entry_fields(
+        bad, source_path="x.jsonl", line_number=1,
+    )
+    assert fields is None
 
 
-def test_iter_jsonl_files_yields_both_tiers(
+# ── _iter_candidate_jsonl_files ──────────────────────────────
+
+
+def test_candidate_walk_picks_up_top_level_only(
     tmp_path: Path,
 ) -> None:
-    """A v2 dir containing both a candidate file and a locked
-    file yields both, with the correct tier label per row."""
-    candidate = tmp_path / "mws150a.jsonl"
-    locked = tmp_path / "locked" / "mws150a.jsonl"
-    _write_jsonl(candidate, [_candidate_entry("cand-1")])
-    _write_jsonl(locked, [_candidate_entry("lock-1")])
+    """Top-level ``v2/*.jsonl`` files yield; subdirectories don't."""
+    _write_jsonl(tmp_path / "mws150a.jsonl",
+                 [_candidate_entry("cand-1")])
+    _write_jsonl(tmp_path / "locked" / "mws150a.jsonl",
+                 [_candidate_entry("lock-1")])
 
-    rows = list(_iter_jsonl_files(tmp_path))
-    tier_by_id = {
-        raw["id"]: tier for (_p, _ln, raw, tier) in rows
-    }
-    assert tier_by_id == {
-        "cand-1": "candidate",
-        "lock-1": "locked",
-    }
+    rows = list(_iter_candidate_jsonl_files(tmp_path))
+    ids = {raw["id"] for (_p, _ln, raw) in rows}
+    assert ids == {"cand-1"}
 
 
-def test_iter_jsonl_files_skips_candidates_subdir(
+def test_candidate_walk_excludes_candidates_subdir(
     tmp_path: Path,
 ) -> None:
-    """A ``candidates/`` subdirectory (used for raw author drafts
-    before they're folded into the main candidate set) stays
-    excluded from the sync."""
-    real = tmp_path / "mws150a.jsonl"
-    draft = tmp_path / "candidates" / "draft.jsonl"
-    _write_jsonl(real, [_candidate_entry("real-1")])
-    _write_jsonl(draft, [_candidate_entry("draft-1")])
+    """A ``candidates/`` subdir (raw author drafts pre-review)
+    stays excluded.  Same invariant as before the refactor."""
+    _write_jsonl(tmp_path / "mws150a.jsonl",
+                 [_candidate_entry("real-1")])
+    _write_jsonl(
+        tmp_path / "candidates" / "draft.jsonl",
+        [_candidate_entry("draft-1")],
+    )
 
-    rows = list(_iter_jsonl_files(tmp_path))
-    ids = {raw["id"] for (_p, _ln, raw, _tier) in rows}
+    rows = list(_iter_candidate_jsonl_files(tmp_path))
+    ids = {raw["id"] for (_p, _ln, raw) in rows}
+    # Note: ``candidates/draft.jsonl`` would only show up if we
+    # recursed.  We don't, so the only id is the real one.
     assert ids == {"real-1"}
 
 
-def test_iter_jsonl_files_handles_empty_locked_file(
+def test_candidate_walk_handles_missing_root(
     tmp_path: Path,
 ) -> None:
-    """An empty ``locked/mws150a.jsonl`` (the shipped initial
-    state) walks cleanly: no rows yielded for it, candidate
-    rows still picked up."""
-    candidate = tmp_path / "mws150a.jsonl"
-    locked = tmp_path / "locked" / "mws150a.jsonl"
-    _write_jsonl(candidate, [_candidate_entry("cand-1")])
-    locked.parent.mkdir(parents=True, exist_ok=True)
-    locked.write_text("", encoding="utf-8")
+    """A non-existent root path yields nothing without raising."""
+    rows = list(
+        _iter_candidate_jsonl_files(tmp_path / "does-not-exist"),
+    )
+    assert rows == []
 
-    rows = list(_iter_jsonl_files(tmp_path))
-    ids = {raw["id"] for (_p, _ln, raw, _tier) in rows}
-    assert ids == {"cand-1"}
+
+# ── _iter_locked_jsonl_files ─────────────────────────────────
+
+
+def test_locked_walk_picks_up_locked_subdir(
+    tmp_path: Path,
+) -> None:
+    """``v2/locked/*.jsonl`` files yield; top-level files don't."""
+    _write_jsonl(tmp_path / "mws150a.jsonl",
+                 [_candidate_entry("cand-1")])
+    _write_jsonl(tmp_path / "locked" / "mws150a.jsonl",
+                 [_candidate_entry("lock-1")])
+
+    rows = list(_iter_locked_jsonl_files(tmp_path))
+    ids = {raw["id"] for (_p, _ln, raw) in rows}
+    assert ids == {"lock-1"}
+
+
+def test_locked_walk_missing_dir_is_silent(
+    tmp_path: Path,
+) -> None:
+    """No ``locked/`` directory at all → empty iterator, no warning.
+
+    A fresh repo or a pre-first-promotion state is normal; we
+    don't want to fill the logs with warnings about it.
+    """
+    _write_jsonl(tmp_path / "mws150a.jsonl",
+                 [_candidate_entry("cand-1")])
+    # No locked/ created.
+
+    rows = list(_iter_locked_jsonl_files(tmp_path))
+    assert rows == []
+
+
+def test_locked_walk_handles_empty_locked_file(
+    tmp_path: Path,
+) -> None:
+    """An empty locked file (no entries promoted yet) yields
+    nothing without crashing — same shape as the directory-
+    missing case."""
+    (tmp_path / "locked").mkdir(parents=True)
+    (tmp_path / "locked" / "mws150a.jsonl").write_text(
+        "", encoding="utf-8",
+    )
+
+    rows = list(_iter_locked_jsonl_files(tmp_path))
+    assert rows == []
+
+
+# ── _apply_locked_overlay ────────────────────────────────────
+
+
+class _FakeExecResult:
+    """Stand-in for SQLAlchemy ``CursorResult`` — only needs
+    ``rowcount`` for our use case."""
+
+    def __init__(self, rowcount: int) -> None:
+        self.rowcount = rowcount
+
+
+class _FakeDB:
+    """Records executed statements and returns canned rowcounts.
+
+    Enough surface for ``_apply_locked_overlay`` (it only calls
+    ``db.execute(stmt)`` once per overlay).
+    """
+
+    def __init__(self, rowcount_to_return: int = 0) -> None:
+        self.executed = []
+        self._rowcount = rowcount_to_return
+
+    def execute(self, stmt):
+        self.executed.append(stmt)
+        return _FakeExecResult(self._rowcount)
+
+
+def test_locked_overlay_flips_flag_for_matching_ids(
+    tmp_path: Path,
+) -> None:
+    """The overlay UPDATE fires once with the locked-id list and
+    the returned ``rowcount`` becomes ``locked_flagged``."""
+    _write_jsonl(tmp_path / "mws150a.jsonl",
+                 [_candidate_entry("e1"),
+                  _candidate_entry("e2")])
+    _write_jsonl(tmp_path / "locked" / "mws150a.jsonl",
+                 [_candidate_entry("e1")])
+
+    # Pretend Postgres reports 1 row updated.
+    db = _FakeDB(rowcount_to_return=1)
+    flagged, orphans = _apply_locked_overlay(
+        db, tmp_path, candidate_ids=["e1", "e2"],
+    )
+    assert flagged == 1
+    assert orphans == 0
+    assert len(db.executed) == 1
+
+
+def test_locked_overlay_warns_on_orphan_locked_id(
+    tmp_path: Path,
+) -> None:
+    """A locked entry whose id has no candidate row increments
+    ``locked_orphans`` and logs a warning.
+
+    The UPDATE still fires (with the orphan id in the IN-list);
+    Postgres simply matches zero rows for that id.  The
+    in-memory fake rowcount reflects only the non-orphan
+    matches.
+    """
+    _write_jsonl(tmp_path / "mws150a.jsonl",
+                 [_candidate_entry("e1")])
+    _write_jsonl(tmp_path / "locked" / "mws150a.jsonl",
+                 [_candidate_entry("e1"),
+                  _candidate_entry("ghost-1")])
+
+    db = _FakeDB(rowcount_to_return=1)
+    flagged, orphans = _apply_locked_overlay(
+        db, tmp_path, candidate_ids=["e1"],
+    )
+    assert flagged == 1
+    assert orphans == 1
+
+
+def test_locked_overlay_no_locked_tier_is_noop(
+    tmp_path: Path,
+) -> None:
+    """No locked file → no UPDATE issued, counts are zero."""
+    _write_jsonl(tmp_path / "mws150a.jsonl",
+                 [_candidate_entry("e1")])
+
+    db = _FakeDB()
+    flagged, orphans = _apply_locked_overlay(
+        db, tmp_path, candidate_ids=["e1"],
+    )
+    assert flagged == 0
+    assert orphans == 0
+    assert db.executed == []
