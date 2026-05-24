@@ -27,7 +27,7 @@ Usage::
     # Explicit target path (default: infer by manual prefix):
     python -m scripts.review_golden_candidates \\
         tests/harness/evals/golden/candidates/mws150a-dtc.jsonl \\
-        --out tests/harness/evals/golden/v1/mws150a.jsonl
+        --out tests/harness/evals/golden/v2/mws150a.jsonl
 
 Author: Li-Ta Hsu
 """

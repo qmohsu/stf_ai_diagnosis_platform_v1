@@ -2,20 +2,54 @@
 
 This directory stores the human-reviewed golden datasets used by the
 two evaluation lanes — the **manual-agent** lane (HARNESS-14) and
-the **OBD-agent** lane (HARNESS-21).  Each subdirectory is a
-**frozen version** of the set: once committed, entries in a version
-directory are immutable.
+the **OBD-agent** lane (HARNESS-21).  The v2 set is a **two-tier
+corpus** per HARNESS-20: a mutable candidate set for in-progress
+refinement, and an append-only locked set that the eval harness
+actually grades against.
 
 ## Directory layout
 
 ```
 golden/
   v1/
-    mws150a.jsonl              # manual lane, MWS150-A service manual
+    mws150a.jsonl              # manual lane (deprecated; pre-HARNESS-20)
     yamaha_road_test.jsonl     # OBD lane, Yamaha road-test fixture
-  v2/                          # (HARNESS-15 expansions)
-  candidates/                  # (gitignored) staging for unreviewed candidates
+  v2/
+    mws150a.jsonl              # CANDIDATE tier — mutable; dashboard reads this
+    locked/
+      mws150a.jsonl            # LOCKED tier — append-only; eval harness reads this
+      PROMOTIONS.md            # Audit trail; one row per promotion
+    candidates/                # (gitignored) raw author drafts pre-review
 ```
+
+## Two-tier policy (HARNESS-20)
+
+Every entry is born into the **candidate** tier
+(`v2/mws150a.jsonl`).  Candidates are mutable: typo fixes, citation
+swaps, prose rewrites all land here in response to dashboard review
+feedback.  The dashboard syncs the candidate set into Postgres on
+app startup and surfaces it to expert reviewers.
+
+Once an expert posts a review with `status='accept'` and
+`star_rating >= 4`, the entry becomes eligible for promotion to the
+**locked** tier (`v2/locked/mws150a.jsonl`).  The eval harness
+(`tests/harness/evals/test_manual_agent_eval.py`) reads ONLY the
+locked tier.  Promoting an entry is what makes it count against any
+agent-vs-RAG benchmark we publish.
+
+Promotion is one-way and audit-trailed.  Run
+`python -m scripts.promote_golden --entry-id <id> --reviewer <name>
+--reason <why>` to append the candidate's JSONL line verbatim into
+the locked file and record one row in `PROMOTIONS.md` (timestamp,
+SHA-256 content hash, expert review id, reason).  The script refuses
+the review-gate unless you pass `--force`; forced promotions are
+flagged in the audit row so future readers can see why.
+
+To revise a locked entry, **clone it under a new id** (e.g.
+`<old-id>-revB`).  Edits to an already-locked line are caught by
+the content hash on the next consistency check and would silently
+re-score every historical eval report — exactly the drift the
+two-tier split exists to prevent.
 
 ## Lane routing
 
@@ -32,16 +66,20 @@ literal in `schemas.py` and updating the dispatcher.
 
 ## Immutability rules
 
-1. **Do not edit entries in `v1/` in place.** If an entry is found
-   to be incorrect after freeze, bump the whole set to a new version
-   (`v2/`) and fix the entry there. This prevents silent eval-set
-   drift and keeps historical eval reports comparable.
-2. **Additions** to an existing version directory are allowed only
-   during the active build-out window (phase 3/4 of HARNESS-14). Once
-   a version is declared frozen in the dev plan, it is append-only
-   closed.
-3. **Deletions** always require a version bump.
-4. Every entry must round-trip through
+1. **Candidate tier** (`v2/mws150a.jsonl`): mutable.  In-place
+   edits are expected and routine during the review iteration
+   window.  Always followed by an "admin note" review post in the
+   dashboard so the expert is asked to re-grade the updated entry.
+2. **Locked tier** (`v2/locked/mws150a.jsonl`): append-only.  The
+   only legitimate way to write to it is `scripts/promote_golden.py`.
+   `PROMOTIONS.md` records every write.  Revising a locked entry
+   requires cloning to a new id; the script refuses to re-promote
+   an id that is already locked.
+3. **Deletions** from the locked tier always require a version bump
+   (`v2/` → `v3/locked/`).
+4. **v1** (`v1/mws150a.jsonl`) is deprecated.  Kept only for
+   historical eval report comparability; new evals read v2/locked.
+5. Every entry must round-trip through
    `tests.harness.evals.schemas.GoldenEntry.model_validate()` — the
    eval loader will refuse to load a malformed file.
 

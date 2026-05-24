@@ -393,6 +393,16 @@ class GoldenEntry(Base):
             "difficulty IN ('easy', 'medium', 'hard')",
             name="ck_golden_entry_difficulty",
         ),
+        # HARNESS-20: two-tier corpus.  ``candidate`` rows mirror
+        # ``golden/v2/*.jsonl`` and are mutable; ``locked`` rows
+        # mirror ``golden/v2/locked/*.jsonl`` and are append-only,
+        # representing entries that an expert has accepted and
+        # that ``scripts/promote_golden.py`` has explicitly
+        # promoted.  The eval harness reads only the locked tier.
+        CheckConstraint(
+            "tier IN ('candidate', 'locked')",
+            name="ck_golden_entry_tier",
+        ),
     )
 
     id = Column(String(255), primary_key=True)
@@ -417,6 +427,16 @@ class GoldenEntry(Base):
     notes = Column(Text, nullable=True)
     source_jsonl_path = Column(String(500), nullable=True)
     source_jsonl_line = Column(Integer, nullable=True)
+    # HARNESS-20: tier this row's source file lives under.
+    # ``candidate`` (default) for ``golden/v2/*.jsonl`` rows;
+    # ``locked`` for ``golden/v2/locked/*.jsonl`` rows promoted
+    # via ``scripts/promote_golden.py``.
+    tier = Column(
+        String(20),
+        nullable=False,
+        server_default="candidate",
+        index=True,
+    )
     created_at = Column(
         DateTime, server_default=func.now(), nullable=False,
     )

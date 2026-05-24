@@ -7,7 +7,7 @@
 | **Architecture doc** | `docs/v2_design_doc.md` |
 | **GitHub Issue** | #26 (discussion: From Context Engineering to Harness Engineering) |
 | **Version** | v1.0 |
-| **Last updated** | 2026-05-20 (HARNESS-17: citation scroll-to-quote + plain-text-heading fallback — fixes #101) |
+| **Last updated** | 2026-05-24 (HARNESS-20: two-tier golden corpus with promote-by-script lock-in — closes #90) |
 
 ## 1. Scope Boundary
 
@@ -631,9 +631,48 @@ Out of scope (separate tickets):
 - OBD eval suite — parallel to HARNESS-14 but blocked on labelled fault data.
 - Pure-orchestrator main agent rewrite (Pattern 3 from design doc) — long-term direction.
 
+#### HARNESS‑20 — Lock-In Path for Expert-Approved Goldens 🔧 IN PROGRESS
+
+Depends on: HARNESS-14 (golden infrastructure), HARNESS-17 (review dashboard providing the `golden_reviews` table that the promotion gate consults).
+GitHub Issue: #90.
+Status: **IN PROGRESS** (2026-05-24) — two-tier corpus + promote-by-script landed; UI promotion button + retro-lock of the 30 already-graded entries deferred to follow-ups.
+
+Scope: Split the V2 golden corpus into a mutable **candidate** tier (`tests/harness/evals/golden/v2/*.jsonl`) and an append-only **locked** tier (`tests/harness/evals/golden/v2/locked/*.jsonl`). The eval harness reads only the locked tier, so an edit to `must_contain` or to a `golden_citations[].quote` on a candidate cannot retroactively re-score an entry that has already been graded against. Promotion is one-way and audit-trailed: `scripts/promote_golden.py` enforces a review-quality gate (latest expert review must be `status='accept'` with `star_rating >= 4`), appends the candidate line verbatim into the locked file, stamps SHA-256 of the canonical-serialised JSON, and writes one row to `locked/PROMOTIONS.md` recording the timestamp, hash, reviewer, expert review id, and reason. `--force` bypasses the gate and is itself recorded.
+
+Key design decisions:
+- **Option A (two-tier files)** chosen over Option B (in-place `frozen` flag + content hash) and Option C (immutable revisions). Selected because the dashboard already treats the candidate file as canonical-source-on-disk, the operational cost of two files is near-zero, and "edit a locked entry" needing a new id is exactly the constraint we want — it falls out of file-layout instead of requiring schema changes.
+- **`tier` column on `golden_entries`** added via Alembic `z0a1b2c3d4e5`; `golden_sync.py` populates it from path detection (recursive walk under `v2/`; `"locked"` in path parts → `tier='locked'`). Surfaced through `GoldenEntrySummary.tier` and `GoldenEntryDetail.tier` so the dashboard can render a lock badge in a follow-up UI change without an API contract bump.
+- **Audit log is plain Markdown** (`locked/PROMOTIONS.md`), not a DB table. A flat file shows up in `git diff` on every promotion, can't be rewritten with `psql`, and is permanently attributable via `git blame`.
+- **Verbatim append** to the locked JSONL — the script writes the exact bytes from the candidate line, not a re-serialised form. Keeps future diffs against the candidate clean and makes the content hash stable.
+- **Eval harness flip in one line** — `test_manual_agent_eval.py` now loads from `v2/locked/mws150a.jsonl`. The shipped locked file is empty, so the eval suite collects zero parametrised cases (cleanly skipped) until the first promotion. This is the deliberate safety net: no agent-vs-RAG number can be published until an expert-approved entry exists.
+
+Phasing:
+1. **Backend + script** ✅ DONE (this PR) — migration, `golden_sync.py` tier wiring, API tier field, `promote_golden.py`, empty `locked/` directory, audit log skeleton, eval harness pointer flip, README rewrite, unit tests.
+2. **Retro-lock the 30 graded candidates** — separate ticket. Each promotion runs the gate against its existing `golden_reviews` history; admin-note draft reviews are skipped by the "graded review" filter (`star_rating IS NOT NULL`), so the gate looks at real expert grades only.
+3. **UI promotion button** — follow-up. Admin-only; reads `latest_review_*` from `GoldenEntrySummary`, calls a new `POST /v2/goldens/{id}/promote` endpoint that wraps `promote_entry()`.
+4. **Content-hash consistency check** — periodic job (CI or admin-triggered) re-hashes locked entries and flags any drift from `PROMOTIONS.md`. Out of scope here because there are no locked entries to drift yet.
+
+Files (this PR):
+- New: `diagnostic_api/alembic/versions/z0a1_add_golden_tier_column.py`, `diagnostic_api/scripts/promote_golden.py`, `diagnostic_api/tests/scripts/test_promote_golden.py`, `diagnostic_api/tests/test_golden_sync.py`, `diagnostic_api/tests/harness/evals/golden/v2/locked/mws150a.jsonl` (empty), `diagnostic_api/tests/harness/evals/golden/v2/locked/PROMOTIONS.md`.
+- Modified: `diagnostic_api/app/models_db.py` (`GoldenEntry.tier` column + check constraint), `diagnostic_api/app/services/golden_sync.py` (`_tier_for_path`, recursive walk, tier propagation), `diagnostic_api/app/api/v2/endpoints/goldens.py` (`tier` in `GoldenEntrySummary` and `GoldenEntryDetail` + mappers), `diagnostic_api/tests/harness/evals/test_manual_agent_eval.py` (load from `v2/locked/`), `diagnostic_api/tests/harness/evals/golden/README.md` (two-tier policy), `diagnostic_api/tests/harness/evals/conftest.py` (docstring path example), `diagnostic_api/scripts/review_golden_candidates.py` (docstring path example).
+
+Acceptance criteria:
+- [x] Empty `locked/mws150a.jsonl` committed; eval harness reads from it.
+- [x] `promote_golden.py` runs end-to-end with review-gate, hash, audit row.
+- [x] `tier` column round-trips through migration, `golden_sync`, and API responses.
+- [x] Unit tests cover happy path, refuse-relock, review-gate failures, `--force`, `--dry-run`.
+- [x] V2 dev plan + design doc updated in the same PR.
+- [ ] At least one entry promoted end-to-end on the server (deferred to phase 2 PR; the empty locked file is the safe initial state).
+
+Out of scope (this PR):
+- Backfill of the 30 currently-graded candidates as locked (phase 2 ticket).
+- UI promotion button (phase 3 ticket).
+- Content-hash consistency checker (phase 4 ticket).
+- Per-entry revision history (Option C from the design discussion) — revisit only if "amend a locked entry without cloning to a new id" becomes a real workflow need.
+
 #### HARNESS‑21 — OBD Sub-Agent Evaluation Framework 🔧 IN PROGRESS
 
-Depends on: HARNESS-14 (judge + golden infrastructure), HARNESS-19 (OBD sub-agent under test), HARNESS-20 (Yamaha road-test fixture #80).
+Depends on: HARNESS-14 (judge + golden infrastructure), HARNESS-19 (OBD sub-agent under test), Yamaha road-test fixture (#80, merged).
 GitHub Issue: #97.
 Status: **PR [1/3] COMPLETE** (2026-05-17) — scaffolding + 3 dummy goldens landed. PR [2/3] adds 10–15 hand-authored Yamaha goldens; PR [3/3] runs the baseline + iterates prompts. Design doc: `docs/plans/2026-05-17-harness-21-obd-eval-design.md`.
 
