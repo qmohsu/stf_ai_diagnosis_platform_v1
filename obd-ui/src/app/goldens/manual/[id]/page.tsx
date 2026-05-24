@@ -80,7 +80,7 @@ export default function GoldenDetailPage() {
     return (
       <div className="container mx-auto px-4 py-6 space-y-3">
         <Link
-          href="/goldens"
+          href="/goldens/manual"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -99,7 +99,7 @@ export default function GoldenDetailPage() {
     <div className="container mx-auto px-4 py-6 space-y-4">
       <div className="flex items-center justify-between">
         <Link
-          href="/goldens"
+          href="/goldens/manual"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
