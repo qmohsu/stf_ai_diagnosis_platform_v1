@@ -135,15 +135,17 @@ class GoldenEntrySummary(BaseModel):
     question_en: str
     question_zh: Optional[str] = None
     has_zh: bool
-    # HARNESS-20: which two-tier corpus file this entry lives in.
-    # ``candidate`` (the default) means the entry is in the
-    # mutable ``golden/v2/*.jsonl`` set; ``locked`` means it has
-    # been promoted to ``golden/v2/locked/*.jsonl`` via
-    # ``scripts/promote_golden.py`` and is the canonical source
-    # the eval harness grades against.  Surfaced now so the
-    # dashboard can render a lock badge in a follow-up UI change
-    # without requiring an API contract bump.
-    tier: str = "candidate"
+    # HARNESS-20 (post-bugfix): true when this entry has been
+    # promoted via ``scripts/promote_golden.py`` and now also
+    # lives in ``golden/v2/locked/mws150a.jsonl``.  The row's
+    # content (text, citations, etc.) always reflects the
+    # mutable candidate, so the dashboard can keep editing
+    # and re-grading without the locked copy interfering;
+    # ``is_locked`` is just the badge the UI uses to mark
+    # "this entry counts against the eval harness now, edits
+    # require a new id".  Replaces the earlier ``tier`` field
+    # which was wrong because both tiers share entry ids.
+    is_locked: bool = False
     # Team's latest review state (most-recent submit across ALL
     # reviewers).  None if nobody has reviewed yet.  This is the
     # "headline" status shown on the listing dashboard — every
@@ -241,10 +243,10 @@ class GoldenEntryDetail(BaseModel):
     # ``imageBaseUrl`` the ManualViewer uses, so embedded figure
     # images on the question card resolve to the right URL.
     md_file_path: Optional[str] = None
-    # HARNESS-20: see ``GoldenEntrySummary.tier`` for the
+    # HARNESS-20: see ``GoldenEntrySummary.is_locked`` for the
     # semantics.  Mirrored here so a single-entry fetch carries
-    # the same lock/candidate signal as the listing.
-    tier: str = "candidate"
+    # the same lock signal as the listing.
+    is_locked: bool = False
 
 
 class GoldenListResponse(BaseModel):
@@ -323,10 +325,10 @@ def _to_summary(
             if latest_review else None
         ),
         review_count=review_count,
-        # HARNESS-20: source-file tier; ``getattr`` keeps the
+        # HARNESS-20: lock-state flag.  ``getattr`` keeps the
         # mapper resilient if a test passes a bare object that
         # predates the column.
-        tier=getattr(e, "tier", None) or "candidate",
+        is_locked=bool(getattr(e, "is_locked", False)),
     )
 
 
@@ -574,8 +576,8 @@ async def get_golden(
         ),
         notes=None,  # author-internal notes not exposed
         md_file_path=md_file_path,
-        # HARNESS-20: source-file tier (candidate vs locked).
-        tier=getattr(entry, "tier", None) or "candidate",
+        # HARNESS-20: lock-state flag.
+        is_locked=bool(getattr(entry, "is_locked", False)),
     )
 
 
