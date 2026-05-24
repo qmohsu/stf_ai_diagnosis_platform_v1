@@ -62,8 +62,31 @@ _LANE_CHECK = "lane IN ('manual', 'obd')"
 
 def upgrade() -> None:
     """Add ``lane`` to both tables; add OBD-specific columns to
-    ``golden_entries``."""
+    ``golden_entries``; widen the ``question_type`` CHECK to
+    accept OBD-lane values."""
     # ── golden_entries ───────────────────────────────────────────
+    # Widen question_type CHECK to accept the six OBD-lane values
+    # (signal_statistics, event_finding, dtc_enumeration,
+    # dtc_decode, compound_obd, adversarial_obd) alongside the
+    # existing five manual-lane values.  PostgreSQL requires
+    # drop + recreate; no data migration needed (existing rows
+    # use the manual values and stay valid).
+    op.drop_constraint(
+        "ck_golden_entry_question_type",
+        "golden_entries",
+        type_="check",
+    )
+    op.create_check_constraint(
+        "ck_golden_entry_question_type",
+        "golden_entries",
+        "question_type IN ("
+        "'lookup', 'procedural', 'cross-section', "
+        "'image-required', 'adversarial', "
+        "'signal_statistics', 'event_finding', "
+        "'dtc_enumeration', 'dtc_decode', "
+        "'compound_obd', 'adversarial_obd')",
+    )
+
     op.add_column(
         "golden_entries",
         sa.Column(
@@ -160,3 +183,23 @@ def downgrade() -> None:
         "ck_golden_entry_lane", "golden_entries", type_="check",
     )
     op.drop_column("golden_entries", "lane")
+
+    # Restore the narrower question_type CHECK constraint
+    # (manual-lane values only).  Any OBD entries left in the
+    # table at downgrade time will violate this constraint and
+    # the drop_constraint + create_constraint sequence will
+    # raise — operators must delete OBD rows manually before
+    # downgrading, which is the desired behaviour (OBD entries
+    # without the lane discriminator are meaningless).
+    op.drop_constraint(
+        "ck_golden_entry_question_type",
+        "golden_entries",
+        type_="check",
+    )
+    op.create_check_constraint(
+        "ck_golden_entry_question_type",
+        "golden_entries",
+        "question_type IN ("
+        "'lookup', 'procedural', 'cross-section', "
+        "'image-required', 'adversarial')",
+    )
