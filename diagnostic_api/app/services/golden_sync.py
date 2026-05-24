@@ -52,6 +52,7 @@ def _extract_entry_fields(
     raw: Dict[str, Any],
     source_path: str,
     line_number: int,
+    tier: str = "candidate",
 ) -> Optional[Dict[str, Any]]:
     """Pull the fields we care about out of a raw JSONL line.
 
@@ -63,6 +64,10 @@ def _extract_entry_fields(
         raw: Parsed JSON object from one JSONL line.
         source_path: Source file path (relative to repo root).
         line_number: 1-based line number for round-trip.
+        tier: ``"candidate"`` or ``"locked"`` — which two-tier
+            corpus directory this row's source file lives under
+            (HARNESS-20).  Defaults to ``"candidate"`` so older
+            callers that don't pass the kwarg get the safe value.
 
     Returns:
         Dict of column-value pairs, or ``None`` to skip.
@@ -132,25 +137,41 @@ def _extract_entry_fields(
         "notes": raw.get("notes"),
         "source_jsonl_path": source_path,
         "source_jsonl_line": line_number,
+        "tier": tier,
     }
+
+
+def _tier_for_path(path: Path) -> str:
+    """Return ``"locked"`` if path is under the locked tier dir,
+    else ``"candidate"`` (HARNESS-20).
+
+    The lookup is parts-based so it works identically on POSIX
+    and Windows path separators.
+    """
+    return "locked" if "locked" in path.parts else "candidate"
 
 
 def _iter_jsonl_files(
     root: Path,
-) -> Iterator[Tuple[Path, int, Dict[str, Any]]]:
+) -> Iterator[Tuple[Path, int, Dict[str, Any], str]]:
     """Walk ``*.jsonl`` files under root, yielding parsed lines.
 
-    Yields ``(path, line_number, parsed_dict)`` tuples.  Lines
-    that fail to parse are logged and skipped.
+    Yields ``(path, line_number, parsed_dict, tier)`` tuples.
+    Lines that fail to parse are logged and skipped.
 
-    The candidates directory is excluded — those are author
-    drafts not yet promoted into the canonical set.
+    Walks recursively so both the candidate tier
+    (``v2/*.jsonl``) and the locked tier
+    (``v2/locked/*.jsonl``, HARNESS-20) are picked up in one
+    pass.  Files under any ``candidates/`` directory are
+    excluded — those are unreviewed author drafts not yet
+    promoted into the candidate corpus.
 
     Args:
         root: Directory to walk.
 
     Yields:
-        Tuples of (path, 1-based line number, parsed JSON dict).
+        Tuples of (path, 1-based line number, parsed JSON dict,
+        ``"candidate"`` | ``"locked"``).
     """
     if not root.is_dir():
         logger.warning(
@@ -159,10 +180,11 @@ def _iter_jsonl_files(
         )
         return
 
-    for jsonl_path in sorted(root.glob("*.jsonl")):
+    for jsonl_path in sorted(root.rglob("*.jsonl")):
         # Skip files under candidates/ — those are drafts.
         if "candidates" in jsonl_path.parts:
             continue
+        tier = _tier_for_path(jsonl_path)
         try:
             with jsonl_path.open(encoding="utf-8") as f:
                 for line_no, line in enumerate(f, start=1):
@@ -179,7 +201,7 @@ def _iter_jsonl_files(
                             error=str(exc),
                         )
                         continue
-                    yield (jsonl_path, line_no, parsed)
+                    yield (jsonl_path, line_no, parsed, tier)
         except OSError as exc:
             logger.error(
                 "golden_sync.file_read_error",
@@ -223,7 +245,7 @@ def sync_golden_entries(
     upserted = 0
     skipped = 0
 
-    for jsonl_path, line_no, raw in _iter_jsonl_files(
+    for jsonl_path, line_no, raw, tier in _iter_jsonl_files(
         effective_root,
     ):
         # Source path is logged relative to the repo root if we
@@ -237,7 +259,9 @@ def sync_golden_entries(
         except ValueError:
             rel = str(jsonl_path)
 
-        fields = _extract_entry_fields(raw, rel, line_no)
+        fields = _extract_entry_fields(
+            raw, rel, line_no, tier=tier,
+        )
         if fields is None:
             skipped += 1
             continue

@@ -46,7 +46,9 @@ def load_golden(rel_path: str) -> List[GoldenEntry]:
 
     Args:
         rel_path: Path relative to the ``golden/`` directory, e.g.
-            ``"v1/mws150a.jsonl"``.
+            ``"v2/locked/mws150a.jsonl"`` (canonical eval set per
+            HARNESS-20) or ``"v2/mws150a.jsonl"`` (candidate set
+            used by ad-hoc tools).
 
     Returns:
         List of ``GoldenEntry`` objects in file order.
