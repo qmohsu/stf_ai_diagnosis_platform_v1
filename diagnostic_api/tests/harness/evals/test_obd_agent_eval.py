@@ -79,13 +79,52 @@ from tests.harness.evals.schemas import GoldenEntry
 # ── Module-level config ──────────────────────────────────────────
 
 
-_V1_YAMAHA_ENTRIES = load_golden("v1/yamaha_road_test.jsonl")
-"""Parametrize ID list, resolved at import time.
+_LOCKED_ENTRIES = load_golden("v2/locked/yamaha_road_test.jsonl")
+"""HARNESS-21 [3/4]: reader migrated from
+``v1/yamaha_road_test.jsonl`` to
+``v2/locked/yamaha_road_test.jsonl`` to align with the manual
+lane's HARNESS-20 safety-net policy.  The locked file is
+populated by ``scripts/promote_golden.py --lane=obd`` after a
+workshop expert reviews the candidate at ``/goldens/obd`` and
+marks it accept-with-5★ via the UI.
+
+Until the first OBD promotion happens, ``v2/locked/
+yamaha_road_test.jsonl`` is empty.  PR [2a/4]'s pre-migration
+baseline lives in ``docs/harness_21_phase5_baseline.md`` and
+stands as the HARNESS-21 reference until enough OBD candidates
+clear expert review to support a follow-up run from the locked
+tier.
 
 Loading at import keeps pytest IDs stable (each entry's ``id``
 becomes the test ID) and surfaces JSONL schema issues during
 collection rather than mid-run.
 """
+
+
+# An empty locked file is the shipped initial state (no OBD
+# entries promoted yet).  Parametrising on an empty list crashes
+# pytest's ``ids=lambda`` evaluator, so substitute a single
+# skipped placeholder explaining how to populate the tier —
+# gives a clean "1 skipped" line instead of a collection error.
+# Mirrors the pattern used in ``test_manual_agent_eval.py``.
+_NO_LOCKED_REASON = (
+    "No entries in golden/v2/locked/yamaha_road_test.jsonl yet.  "
+    "Promote OBD candidates via `python -m scripts.promote_golden "
+    "--lane=obd --entry-id <id> --reviewer <name> --reason <why>` "
+    "after the workshop expert accepts them at /goldens/obd "
+    "(HARNESS-21 [3/4])."
+)
+_PARAM_ENTRIES = (
+    _LOCKED_ENTRIES
+    if _LOCKED_ENTRIES
+    else [
+        pytest.param(
+            None,
+            id="no-locked-entries",
+            marks=pytest.mark.skip(reason=_NO_LOCKED_REASON),
+        ),
+    ]
+)
 
 
 _PASS_THRESHOLD = 0.6
@@ -103,7 +142,9 @@ local-Qwen + GLM-5.1 baseline numbers.
 @pytest.mark.eval
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "entry", _V1_YAMAHA_ENTRIES, ids=lambda e: e.id,
+    "entry",
+    _PARAM_ENTRIES,
+    ids=lambda e: e.id if _LOCKED_ENTRIES else None,
 )
 async def test_obd_agent(
     entry: GoldenEntry,

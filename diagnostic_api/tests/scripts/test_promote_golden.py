@@ -538,3 +538,123 @@ def test_expert_review_id_override_wins_over_db_lookup(
     log_text = promotions_log.read_text(encoding="utf-8")
     assert override in log_text
     assert "rev-from-db" not in log_text
+
+
+# ── HARNESS-21 [3/4]: --lane=obd defaults ────────────────────
+
+
+def test_defaults_for_lane_manual_returns_mws_paths() -> None:
+    """``_defaults_for_lane('manual')`` returns the original
+    HARNESS-20 mws150a defaults."""
+    from scripts.promote_golden import (
+        _DEFAULT_CANDIDATE_FILE,
+        _DEFAULT_LOCKED_FILE,
+        _DEFAULT_PROMOTIONS_LOG,
+        _defaults_for_lane,
+    )
+    cand, locked, log = _defaults_for_lane("manual")
+    assert cand == _DEFAULT_CANDIDATE_FILE
+    assert locked == _DEFAULT_LOCKED_FILE
+    assert log == _DEFAULT_PROMOTIONS_LOG
+
+
+def test_defaults_for_lane_obd_returns_yamaha_paths() -> None:
+    """``_defaults_for_lane('obd')`` returns
+    yamaha_road_test.jsonl paths and the shared PROMOTIONS.md."""
+    from scripts.promote_golden import (
+        _DEFAULT_OBD_CANDIDATE_FILE,
+        _DEFAULT_OBD_LOCKED_FILE,
+        _DEFAULT_PROMOTIONS_LOG,
+        _defaults_for_lane,
+    )
+    cand, locked, log = _defaults_for_lane("obd")
+    assert cand == _DEFAULT_OBD_CANDIDATE_FILE
+    assert locked == _DEFAULT_OBD_LOCKED_FILE
+    # PROMOTIONS.md shared between lanes.
+    assert log == _DEFAULT_PROMOTIONS_LOG
+    # OBD files target the yamaha corpus.
+    assert "yamaha_road_test.jsonl" in cand.name
+    assert "yamaha_road_test.jsonl" in locked.name
+
+
+def test_defaults_for_lane_unknown_raises() -> None:
+    """Unknown lane values raise ValueError."""
+    from scripts.promote_golden import _defaults_for_lane
+
+    with pytest.raises(ValueError) as exc:
+        _defaults_for_lane("manual_eval")  # close to valid
+    assert "manual_eval" in str(exc.value)
+
+
+def test_cli_lane_flag_defaults_to_manual() -> None:
+    """CLI without --lane gets manual-lane defaults."""
+    from scripts.promote_golden import _build_parser
+
+    args = _build_parser().parse_args(
+        [
+            "--entry-id", "x",
+            "--reviewer", "y",
+            "--reason", "z",
+        ],
+    )
+    assert args.lane == "manual"
+    # The path defaults stay None — resolution happens in main()
+    # via _defaults_for_lane.  Tests of that resolution live in
+    # the main()-level tests below; here we just pin that the
+    # parser doesn't carry stale per-flag defaults that would
+    # win over the lane-derived ones.
+    assert args.candidate_file is None
+    assert args.locked_file is None
+    assert args.promotions_log is None
+
+
+def test_cli_lane_flag_accepts_obd() -> None:
+    """``--lane=obd`` parses cleanly."""
+    from scripts.promote_golden import _build_parser
+
+    args = _build_parser().parse_args(
+        [
+            "--entry-id", "x",
+            "--reviewer", "y",
+            "--reason", "z",
+            "--lane", "obd",
+        ],
+    )
+    assert args.lane == "obd"
+
+
+def test_cli_lane_flag_rejects_unknown() -> None:
+    """``--lane=garbage`` rejected by argparse choices."""
+    from scripts.promote_golden import _build_parser
+
+    with pytest.raises(SystemExit):
+        _build_parser().parse_args(
+            [
+                "--entry-id", "x",
+                "--reviewer", "y",
+                "--reason", "z",
+                "--lane", "garbage",
+            ],
+        )
+
+
+def test_explicit_path_overrides_win_over_lane(tmp_path) -> None:
+    """When ``--lane=obd`` is passed but explicit --candidate-file
+    is also given, the explicit override wins.  Mirrors the
+    documented main() resolution order."""
+    from scripts.promote_golden import _build_parser
+
+    custom = tmp_path / "custom.jsonl"
+    args = _build_parser().parse_args(
+        [
+            "--entry-id", "x",
+            "--reviewer", "y",
+            "--reason", "z",
+            "--lane", "obd",
+            "--candidate-file", str(custom),
+        ],
+    )
+    assert args.lane == "obd"
+    # parser keeps the explicit path; main() will use it as-is
+    # without applying the OBD default.
+    assert args.candidate_file == custom
