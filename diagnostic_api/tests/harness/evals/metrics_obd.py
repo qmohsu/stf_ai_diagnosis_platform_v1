@@ -345,7 +345,19 @@ def compute_dtc_accuracy(
     equality plus, when ``expected[i].status`` is set, status
     equality.
 
-    Both-empty returns 1.0 (vacuously perfect).
+    Vacuous-1.0 cases (none of which mean "perfect agent" — they
+    mean "this entry isn't grading DTC accuracy"):
+
+    - Both empty: no DTC expectations, no DTC citations → 1.0.
+    - Empty expected, non-empty cited (without
+      ``expected_no_evidence``): the golden isn't testing DTC
+      accuracy (e.g. a ``signal_statistics`` question), but the
+      agent cited DTCs as a side effect of investigation.  Returns
+      1.0 — don't penalise.  Deliberate divergence from a strict
+      Jaccard 0/N; symmetric with ``compute_signal_precision``'s
+      handling of empty-expected (see that function's docstring
+      for the rationale).  Adversarial cases use
+      ``expected_no_evidence`` explicitly, not this branch.
 
     When ``expected_no_evidence=True`` the polarity flips: empty
     cited scores 1.0; non-empty scores 0.0.
@@ -360,8 +372,17 @@ def compute_dtc_accuracy(
     """
     if expected_no_evidence:
         return 1.0 if not cited else 0.0
-    if not expected and not cited:
+    if not expected:
+        # Entry isn't testing DTC accuracy (typical for
+        # signal_statistics / event_finding goldens); don't
+        # penalise side-effect DTC citations.  Matches the
+        # symmetric handling in compute_signal_precision.
         return 1.0
+    if not cited:
+        # Expected DTCs but agent cited none — strict miss
+        # (Jaccard 0/|expected|).  Falls through to the main
+        # path which returns 0/|expected|=0.0.
+        pass
 
     # Match policy: each cited entry is considered "in the
     # expected set" iff its (lowercased code, status?) tuple
