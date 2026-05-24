@@ -113,7 +113,13 @@ def test_extract_entry_fields_skips_missing_required_field() -> None:
 
 
 def _obd_entry(entry_id: str) -> Dict[str, object]:
-    """Minimal valid OBD-lane entry dict for the extractor."""
+    """Minimal valid OBD-lane entry dict for the extractor.
+
+    Deliberately omits ``golden_citations`` to match the real
+    PR [2a/4] JSONL shape — OBD entries don't carry manual-side
+    slug citations, and ``golden_sync`` defaults the field to
+    ``[]`` for OBD lanes (it remains required for manual lanes).
+    """
     return {
         "id": entry_id,
         "category": "component",
@@ -121,7 +127,6 @@ def _obd_entry(entry_id: str) -> Dict[str, object]:
         "difficulty": "easy",
         "question": "Peak RPM?",
         "golden_summary": "Peak RPM was 3906.",
-        "golden_citations": [],  # empty for OBD
         "must_contain": ["RPM"],
         "expected_signal_citations": [
             {
@@ -239,6 +244,39 @@ def test_extract_entry_fields_manual_lane_unchanged() -> None:
     # Manual extraction unchanged.
     assert fields["manual_id"] == "MWS150A"
     assert fields["golden_citations"] == raw["golden_citations"]
+
+
+def test_extract_entry_fields_obd_omits_golden_citations_ok() -> None:
+    """OBD entry without ``golden_citations`` should NOT be skipped.
+
+    Regression test for the deploy hotfix: the production OBD
+    JSONL doesn't carry ``golden_citations`` (the field is
+    manual-lane-specific), but the original required-fields
+    check insisted on it being present and skipped all 15
+    entries on the first deploy of [2b/4].  golden_sync now
+    treats ``golden_citations`` as optional for OBD entries and
+    defaults to ``[]`` in the persisted row.
+    """
+    raw = _obd_entry("yamaha-noref-001")
+    assert "golden_citations" not in raw  # sanity
+    fields = _extract_entry_fields(
+        raw, source_path="yamaha_road_test.jsonl", line_number=1,
+    )
+    assert fields is not None
+    assert fields["lane"] == "obd"
+    assert fields["golden_citations"] == []
+
+
+def test_extract_entry_fields_manual_still_requires_golden_citations() -> None:
+    """Manual entries without ``golden_citations`` are still
+    skipped — the schema contract is unchanged for manual lane.
+    """
+    raw = _candidate_entry("manual-noref-001")
+    raw.pop("golden_citations")
+    fields = _extract_entry_fields(
+        raw, source_path="golden/v2/mws150a.jsonl", line_number=1,
+    )
+    assert fields is None
 
 
 def test_extract_entry_fields_obd_lane_dtc_decode() -> None:
