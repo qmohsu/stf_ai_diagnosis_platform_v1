@@ -34,8 +34,8 @@ from tests.harness.evals.conftest import (
     EvalReport,
     load_golden,
 )
-from tests.harness.evals.judge import judge_result
-from tests.harness.evals.runner import run_manual_agent
+from tests.harness.evals.judge import grade_run
+from tests.harness.evals.runner import run_manual_agent_unified
 from tests.harness.evals.schemas import GoldenEntry
 
 
@@ -48,17 +48,38 @@ _PASS_THRESHOLD = 0.7
 # Load goldens at import time so pytest parametrization shows one
 # test id per entry.  HARNESS-20: the locked tier is the canonical
 # source — promote_golden.py is the only way an entry lands here.
-# An empty file means "no entries yet promoted", which collects
-# to zero tests (cleanly skipped) rather than a collection error.
 _LOCKED_ENTRIES = load_golden("v2/locked/mws150a.jsonl")
+
+# An empty locked file is the shipped initial state (no entries
+# promoted yet).  Parametrising on an empty list crashes pytest's
+# ``ids=lambda`` evaluator, so substitute a single skipped
+# placeholder that explains how to populate the tier — gives a
+# clean "1 skipped" line instead of a collection error.
+_NO_LOCKED_REASON = (
+    "No entries in golden/v2/locked/mws150a.jsonl yet.  Promote "
+    "candidates via `python -m scripts.promote_golden "
+    "--entry-id <id> --reviewer <name> --reason <why>` "
+    "(HARNESS-20)."
+)
+_PARAM_ENTRIES = (
+    _LOCKED_ENTRIES
+    if _LOCKED_ENTRIES
+    else [
+        pytest.param(
+            None,
+            id="no-locked-entries",
+            marks=pytest.mark.skip(reason=_NO_LOCKED_REASON),
+        ),
+    ]
+)
 
 
 @pytest.mark.eval
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "entry",
-    _LOCKED_ENTRIES,
-    ids=lambda e: e.id,
+    _PARAM_ENTRIES,
+    ids=lambda e: e.id if _LOCKED_ENTRIES else None,
 )
 async def test_manual_agent(
     entry: GoldenEntry,
@@ -78,12 +99,18 @@ async def test_manual_agent(
             local Ollama, or a stub deps object when
             ``--mock-agent`` is passed.
     """
-    result = await run_manual_agent(
+    # Mirror the OBD eval's pattern: produce a unified
+    # SystemRunResult so the shared judge (grade_run) can grade
+    # the manual agent and RAG on the same rubric.  The legacy
+    # judge_result helper that took a ManualAgentResult directly
+    # was removed during HARNESS-21's judge rewrite when the
+    # grader was generalised across systems.
+    run = await run_manual_agent_unified(
         entry.question, entry.obd_context,
         deps=manual_agent_deps,
     )
-    grade = await judge_result(entry, result, client=judge_client)
-    eval_report.record(entry, result, grade)
+    grade = await grade_run(entry, run, client=judge_client)
+    eval_report.record(entry, run, grade)  # type: ignore[arg-type]
 
     assert grade.overall >= _PASS_THRESHOLD, (
         f"[{entry.id}] overall={grade.overall:.2f} "
