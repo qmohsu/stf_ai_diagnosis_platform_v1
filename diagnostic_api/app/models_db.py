@@ -20,6 +20,7 @@ from sqlalchemy import (
     UniqueConstraint,
     false as sa_false,
     func,
+    text,
 )
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -384,19 +385,36 @@ class GoldenEntry(Base):
             "'adversarial', 'image')",
             name="ck_golden_entry_category",
         ),
+        # HARNESS-21 [2b/4]: widened to accept six OBD-lane
+        # values alongside the five manual-lane values.
+        # Migration c2d3e4f5a6b7 drops + recreates the DB-level
+        # CHECK to match this.
         CheckConstraint(
             "question_type IN ("
             "'lookup', 'procedural', 'cross-section', "
-            "'image-required', 'adversarial')",
+            "'image-required', 'adversarial', "
+            "'signal_statistics', 'event_finding', "
+            "'dtc_enumeration', 'dtc_decode', "
+            "'compound_obd', 'adversarial_obd')",
             name="ck_golden_entry_question_type",
         ),
         CheckConstraint(
             "difficulty IN ('easy', 'medium', 'hard')",
             name="ck_golden_entry_difficulty",
         ),
+        # HARNESS-21 [2b/4]: lane discriminator (manual / obd)
+        # added in migration c2d3e4f5a6b7.  CHECK is defined in
+        # the migration; SQLAlchemy doesn't need a duplicate
+        # named constraint here since the column itself is
+        # declared below.
     )
 
     id = Column(String(255), primary_key=True)
+    # For OBD entries: synthetic id derived from the fixture file
+    # stem (e.g. ``yamaha_dual_road_test_20260508``) so the
+    # NOT NULL constraint is satisfied without needing a true
+    # service-manual UUID.  Manual entries continue to use the
+    # ingested manual's UUID.
     manual_id = Column(String(255), nullable=False, index=True)
     category = Column(String(50), nullable=False, index=True)
     question_type = Column(
@@ -407,7 +425,12 @@ class GoldenEntry(Base):
     question_zh = Column(Text, nullable=True)
     obd_context = Column(Text, nullable=True)
     golden_summary_en = Column(Text, nullable=False)
+    # OBD entries are English-only at v1 (see HARNESS-21 design
+    # doc); ``golden_summary_zh`` stays NULL.
     golden_summary_zh = Column(Text, nullable=True)
+    # Empty list ``[]`` for OBD entries — they have no
+    # slug-anchored manual citations; expected_signal_citations
+    # / expected_dtcs (below) carry the OBD-lane references.
     golden_citations = Column(JSONB, nullable=False)
     expected_recall_slugs = Column(JSONB, nullable=True)
     must_contain = Column(JSONB, nullable=True)
@@ -418,6 +441,44 @@ class GoldenEntry(Base):
     notes = Column(Text, nullable=True)
     source_jsonl_path = Column(String(500), nullable=True)
     source_jsonl_line = Column(Integer, nullable=True)
+    # ── HARNESS-21 [2b/4]: OBD-lane support ───────────────────
+    # Lane discriminator.  'manual' for entries from
+    # golden/v2/*.jsonl (manual-agent eval); 'obd' for entries
+    # from golden/v2/yamaha_road_test.jsonl (OBD-agent eval).
+    # CHECK ``lane IN ('manual', 'obd')`` enforced at the DB
+    # via migration c2d3e4f5a6b7.
+    lane = Column(
+        String(20),
+        nullable=False,
+        server_default="manual",
+        index=True,
+    )
+    # Golden reference for the OBD sub-agent's ``signal_citations``
+    # output.  JSON-serialised list of ``ExpectedSignalCitation``
+    # dicts (signal / stat / value / value_tolerance_rel /
+    # time_range).  Empty list ``[]`` for manual entries.
+    expected_signal_citations = Column(
+        JSONB,
+        nullable=False,
+        server_default=text("'[]'::jsonb"),
+    )
+    # Golden reference for the OBD sub-agent's ``dtc_citations``
+    # output.  JSON-serialised list of ``ExpectedDTC`` dicts
+    # (code / status).  Empty list ``[]`` for manual entries.
+    expected_dtcs = Column(
+        JSONB,
+        nullable=False,
+        server_default=text("'[]'::jsonb"),
+    )
+    # Adversarial-OBD polarity-flip flag: when ``True``, the
+    # rubric inverts so empty citations score 1.0 (compliant)
+    # rather than the usual 0.0.  Always ``False`` for manual
+    # entries.
+    expected_no_evidence = Column(
+        Boolean,
+        nullable=False,
+        server_default=sa_false(),
+    )
     # HARNESS-20 (post-bugfix migration ``b1c2d3e4f5a6``): each
     # row holds the **candidate** content (mutable; dashboard
     # reflects this).  ``is_locked`` means "this entry id also
@@ -508,6 +569,17 @@ class GoldenReview(Base):
         String(255),
         ForeignKey("golden_entries.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+    # HARNESS-21 [2b/4]: lane discriminator copied from
+    # ``GoldenEntry.lane`` at review-creation time so the
+    # ``/goldens`` landing-page reviewed-count progress can be
+    # computed without a join.  CHECK enforced at the DB via
+    # migration c2d3e4f5a6b7.
+    lane = Column(
+        String(20),
+        nullable=False,
+        server_default="manual",
         index=True,
     )
     reviewer_id = Column(

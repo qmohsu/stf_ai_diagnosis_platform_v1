@@ -389,9 +389,20 @@
       "loading": "Loading...",
       "home": "Home"
     },
-    "listing": {
+    "landing": {
       "title": "Golden Q&A review",
-      "description": "Workshop-expert validation of the golden set used for evaluating the AI diagnostic assistant. Click any entry to read the question card and grade it.",
+      "description": "Two evaluation lanes: the manual-agent golden set (HARNESS-14) and the OBD-agent golden set (HARNESS-21). Click a card to enter that lane's listing.",
+      "loading": "Loading lane counts...",
+      "manualTitle": "Manual agent",
+      "manualDescription": "Workshop-expert validation of golden Q&A pairs grounded in service-manual sections.",
+      "obdTitle": "OBD agent",
+      "obdDescription": "Validation of the OBD-investigation sub-agent against the Yamaha road-test fixture: signal stats, event finding, DTC handling, and adversarial refusal.",
+      "totalLabel": "total",
+      "reviewedLabel": "reviewed"
+    },
+    "listing": {
+      "title": "Golden Q&A review — Manual lane",
+      "description": "Workshop-expert validation of the manual-eval golden set. Click any entry to read the question card and grade it.",
       "reviewed": "Reviewed",
       "bucket": "Bucket",
       "allBuckets": "All buckets",
@@ -399,6 +410,7 @@
       "noEntries": "No golden entries found. The startup sync may not have run yet — check the API logs.",
       "noEntriesInBucket": "No entries authored in this bucket yet.",
       "byReviewer": "by {{user}}",
+      "reviewCount": "({{count}} reviews)",
       "reviewStatus": {
         "unreviewed": "Unreviewed",
         "draft": "Draft",
@@ -407,6 +419,29 @@
         "reject": "Reject"
       }
     },
+    "obdListing": {
+      "title": "Golden Q&A review — OBD lane",
+      "description": "Workshop-expert validation of OBD-eval goldens authored against the Yamaha road-test fixture. Each entry expects specific signal citations, DTC citations, or honest refusal.",
+      "backToLanding": "Back to lanes"
+    },
+    "obdDetail": {
+      "refusalExpected": "Refusal expected",
+      "locked": "Locked",
+      "goldenSummary": "Golden summary",
+      "context": "OBD context",
+      "expectedSignalCitations": "Expected signal citations",
+      "expectedDtcs": "Expected DTCs",
+      "pitfallDirectives": "Pitfall directives",
+      "signal": "Signal",
+      "stat": "Stat",
+      "expectedValue": "Expected value",
+      "tolerance": "Tolerance",
+      "fixtureRange": "Fixture range",
+      "code": "Code",
+      "status": "Status",
+      "ecu": "ECU",
+      "submitReview": "Add feedback"
+    },
     "detail": {
       "backToListing": "Back to listing",
       "openManual": "Open manual",
@@ -414,8 +449,10 @@
       "switchToEn": "Switch to English",
       "questionCard": "Question card",
       "yourReview": "Add feedback",
+      "submitReview": "Add feedback",
       "teamHistory": "Team feedback history",
-      "loadingEntry": "Loading entry..."
+      "loadingEntry": "Loading entry...",
+      "loading": "Loading entry..."
     },
     "questionCard": {
       "fellBackToEn": "Chinese translation not yet authored — showing English.",

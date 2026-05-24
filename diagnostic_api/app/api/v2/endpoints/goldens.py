@@ -35,9 +35,11 @@ Date: May 2026
 from __future__ import annotations
 
 import glob
+import json as _json
 import os
 import shutil
 import uuid
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import structlog
@@ -50,7 +52,7 @@ from fastapi import (
     UploadFile,
     status,
 )
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -135,6 +137,13 @@ class GoldenEntrySummary(BaseModel):
     question_en: str
     question_zh: Optional[str] = None
     has_zh: bool
+    # HARNESS-21 [2b/4]: lane discriminator ('manual' | 'obd').
+    # Drives which dashboard route surfaces this entry
+    # (`/goldens/manual` vs `/goldens/obd`) and which bucket set
+    # the listing's filter dropdown shows.  Default 'manual' for
+    # back-compat with pre-[2b/4] callers (they'll never see
+    # OBD entries because the filter defaults the same way).
+    lane: str = "manual"
     # HARNESS-20 (post-bugfix): true when this entry has been
     # promoted via ``scripts/promote_golden.py`` and now also
     # lives in ``golden/v2/locked/mws150a.jsonl``.  The row's
@@ -236,6 +245,22 @@ class GoldenEntryDetail(BaseModel):
     golden_summary_zh: Optional[str] = None
     golden_citations: List[GoldenCitationOut]
     notes: Optional[str] = None
+    # HARNESS-21 [2b/4]: lane discriminator + OBD-specific fields.
+    # ``lane`` is always populated; OBD fields are empty/false for
+    # manual entries (the dashboard branches on ``lane`` to decide
+    # which detail components to render).
+    lane: str = "manual"
+    expected_signal_citations: List[Dict[str, Any]] = Field(
+        default_factory=list,
+    )
+    expected_dtcs: List[Dict[str, Any]] = Field(default_factory=list)
+    expected_no_evidence: bool = False
+    # OBD-side pitfall directives — shown to the reviewer alongside
+    # the question.  Manual entries already render
+    # pitfall_directives elsewhere; OBD entries need the same on
+    # the OBD detail page.  Both lanes populate from
+    # ``GoldenEntry.pitfall_directives``.
+    pitfall_directives: List[str] = Field(default_factory=list)
     # Relative path to the manual's markdown file (mirrors the
     # ``Manual.md_file_path`` column).  None when the manual_id
     # is the adversarial sentinel ``(none)`` or the manual was
@@ -329,6 +354,9 @@ def _to_summary(
         # mapper resilient if a test passes a bare object that
         # predates the column.
         is_locked=bool(getattr(e, "is_locked", False)),
+        # HARNESS-21 [2b/4]: lane discriminator.  ``getattr`` for
+        # the same resilience reason.
+        lane=str(getattr(e, "lane", "manual") or "manual"),
     )
 
 
@@ -386,12 +414,28 @@ def _coerce_citations(raw: Any) -> List[GoldenCitationOut]:
     summary="List golden Q&A entries",
 )
 async def list_goldens(
+    lane: str = Query(
+        default="manual",
+        description=(
+            "Lane discriminator: 'manual' (default — manual-eval "
+            "goldens, 5 buckets: lookup, procedural, "
+            "cross-section, image-required, adversarial) or 'obd' "
+            "(OBD-eval goldens, 6 buckets: signal_statistics, "
+            "event_finding, dtc_enumeration, dtc_decode, "
+            "compound_obd, adversarial_obd).  HARNESS-21 [2b/4]: "
+            "default 'manual' preserves back-compat with pre-[2b/4] "
+            "callers that don't pass the param."
+        ),
+        pattern="^(manual|obd)$",
+    ),
     bucket: Optional[str] = Query(
         default=None,
         description=(
-            "Filter by question_type bucket: lookup, "
-            "procedural, cross-section, image-required, "
-            "adversarial."
+            "Filter by question_type bucket.  Manual lane buckets: "
+            "lookup, procedural, cross-section, image-required, "
+            "adversarial.  OBD lane buckets: signal_statistics, "
+            "event_finding, dtc_enumeration, dtc_decode, "
+            "compound_obd, adversarial_obd."
         ),
     ),
     difficulty: Optional[str] = Query(default=None),
@@ -410,7 +454,13 @@ async def list_goldens(
     the detail page's ``/reviews`` endpoint.
 
     Args:
-        bucket: Optional ``question_type`` filter.
+        lane: Required lane filter — 'manual' (default) or 'obd'.
+            HARNESS-21 [2b/4] split the dashboard into per-lane
+            routes; the API correspondingly returns only the
+            chosen lane's entries.  No "both lanes" mode — the
+            UI never wants that, and it would muddy the bucket
+            filter.
+        bucket: Optional ``question_type`` filter (lane-specific).
         difficulty: Optional ``difficulty`` filter.
         has_reviews: If True, only entries that have at least
             one review (any reviewer).  If False, only entries
@@ -426,7 +476,7 @@ async def list_goldens(
         Paginated list of entry summaries with the team's latest
         review attached.
     """
-    query = db.query(GoldenEntry)
+    query = db.query(GoldenEntry).filter(GoldenEntry.lane == lane)
     if bucket:
         query = query.filter(
             GoldenEntry.question_type == bucket,
@@ -559,6 +609,21 @@ async def get_golden(
         if manual is not None:
             md_file_path = manual[0]
 
+    # HARNESS-21 [2b/4]: pass-through of the OBD-side JSONB
+    # columns.  Manual entries get the empty defaults.  The
+    # ``getattr`` calls keep the mapper resilient against
+    # pre-[2b/4] rows that predate the columns (the migration
+    # back-fills defaults, so this is a belt-and-braces).
+    pitfall_raw = getattr(entry, "pitfall_directives", None) or []
+    pitfall_list = (
+        [str(p) for p in pitfall_raw]
+        if isinstance(pitfall_raw, list) else []
+    )
+    sig_cites = getattr(
+        entry, "expected_signal_citations", None,
+    ) or []
+    dtc_cites = getattr(entry, "expected_dtcs", None) or []
+
     return GoldenEntryDetail(
         id=entry.id,
         manual_id=entry.manual_id,
@@ -578,6 +643,18 @@ async def get_golden(
         md_file_path=md_file_path,
         # HARNESS-20: lock-state flag.
         is_locked=bool(getattr(entry, "is_locked", False)),
+        # HARNESS-21 [2b/4]: lane + OBD-specific fields.
+        lane=str(getattr(entry, "lane", "manual") or "manual"),
+        expected_signal_citations=(
+            sig_cites if isinstance(sig_cites, list) else []
+        ),
+        expected_dtcs=(
+            dtc_cites if isinstance(dtc_cites, list) else []
+        ),
+        expected_no_evidence=bool(
+            getattr(entry, "expected_no_evidence", False),
+        ),
+        pitfall_directives=pitfall_list,
     )
 
 
@@ -1025,3 +1102,80 @@ async def get_any_review_audio(
 # DB-level cleanup (e.g. anonymisation, GDPR-style erasure) must be
 # performed by a server administrator via direct SQL, deliberately
 # leaving an out-of-band audit trail.
+
+
+# ── HARNESS-21 [2b/4]: OBD reference-stats endpoint ──────────
+
+
+_OBD_REFERENCE_STATS_PATH = Path(
+    "/app/tests/harness/evals/golden/v1/"
+    "yamaha_road_test_reference.json"
+)
+"""Absolute path inside the container where the precomputed
+Yamaha reference stats JSON lives.
+
+Generated offline by ``scripts/compute_yamaha_reference.py
+--json …`` and committed in PR [2a/4].  The Dockerfile's
+``COPY ... yamaha_road_test_reference.json`` ensures this path
+resolves at runtime.
+
+The sidecar carries per-signal min/p50/p95/max/mean/std and
+event-window time-ranges; the ``/goldens/obd`` detail-page
+sparkline renderer reads it client-side.
+"""
+
+
+_obd_reference_cache: Optional[Dict[str, Any]] = None
+"""Module-level cache so repeated calls don't re-read the disk."""
+
+
+def _load_obd_reference() -> Dict[str, Any]:
+    """Load + cache the Yamaha reference-stats sidecar JSON.
+
+    Cache is in-process and never invalidated — the sidecar is
+    immutable post-PR-[2a/4] and pinned by SHA-256 to the
+    fixture file.  Re-deploy refreshes the container, which
+    repopulates the cache from disk.
+    """
+    global _obd_reference_cache
+    if _obd_reference_cache is None:
+        if not _OBD_REFERENCE_STATS_PATH.is_file():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=(
+                    "OBD reference stats sidecar is missing "
+                    "from this image — verify the Dockerfile "
+                    "copies yamaha_road_test_reference.json."
+                ),
+            )
+        _obd_reference_cache = _json.loads(
+            _OBD_REFERENCE_STATS_PATH.read_text(
+                encoding="utf-8",
+            ),
+        )
+    return _obd_reference_cache
+
+
+@router.get(
+    "/obd/reference-stats",
+    summary="OBD reference statistics (Yamaha fixture)",
+)
+async def get_obd_reference_stats(
+    current_user: User = Depends(get_current_user),  # noqa: ARG001
+) -> JSONResponse:
+    """Serve the precomputed Yamaha-fixture stats sidecar.
+
+    The ``/goldens/obd/[id]`` detail page calls this to render
+    sparklines + value previews next to each
+    ``expected_signal_citation`` on a golden entry.  Auth-gated
+    like every other ``/v2/goldens/...`` route.
+
+    Returns:
+        The full sidecar JSON: ``{schema_version, fixture,
+        signal_stats, event_windows, metadata_dtcs}``.
+
+    Raises:
+        HTTPException: 404 if the sidecar isn't in the image
+            (deploy / Dockerfile bug).
+    """
+    return JSONResponse(content=_load_obd_reference())

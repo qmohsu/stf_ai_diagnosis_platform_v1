@@ -64,6 +64,16 @@ COPY diagnostic_api/alembic.ini /app/alembic.ini
 # gitignored author drafts; the sync skips candidates/ explicitly.
 COPY diagnostic_api/tests/harness/evals/golden/v2/ /app/tests/harness/evals/golden/v2/
 
+# HARNESS-21 [2b/4]: also copy the Yamaha reference-stats sidecar
+# from the v1/ tree so the /v2/goldens/obd/reference-stats endpoint
+# can read it.  The sidecar is a precomputed JSON of per-signal
+# stats + event windows generated offline by
+# scripts/compute_yamaha_reference.py; the /goldens/obd detail page
+# uses it for the sparkline render.  v1/yamaha_road_test.jsonl
+# itself is NOT copied — that's just author-side input to commit 4's
+# v2/ seed.
+COPY diagnostic_api/tests/harness/evals/golden/v1/yamaha_road_test_reference.json /app/tests/harness/evals/golden/v1/yamaha_road_test_reference.json
+
 # Create logs directory
 RUN mkdir -p /app/logs
 

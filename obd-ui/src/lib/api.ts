@@ -698,19 +698,25 @@ import type {
   GoldenBucket,
   GoldenDifficulty,
   GoldenEntryDetail,
+  GoldenLane,
   GoldenListResponse,
   GoldenReviewOut,
   GoldenReviewSubmitRequest,
+  YamahaReferenceStats,
 } from "./types";
 
 /** List golden entries with optional filters.
  *
- * Each entry's headline review status reflects the team's
- * most-recent submit across ALL reviewers — every user sees
- * the same dashboard.
+ * HARNESS-21 [2b/4]: `lane` is required (defaults to "manual" for
+ * back-compat with pre-[2b/4] callers).  The dashboard's
+ * `/goldens/manual` route passes `lane="manual"`; `/goldens/obd`
+ * passes `lane="obd"`.  Each entry's headline review status
+ * reflects the team's most-recent submit across ALL reviewers
+ * — every user sees the same dashboard.
  */
 export async function listGoldens(
   filters: {
+    lane?: GoldenLane;
     bucket?: GoldenBucket;
     difficulty?: GoldenDifficulty;
     has_reviews?: boolean;
@@ -719,6 +725,9 @@ export async function listGoldens(
   } = {},
 ): Promise<GoldenListResponse> {
   const params = new URLSearchParams();
+  // Always send the lane to make the API contract explicit
+  // — defaults to "manual" if the caller omits it.
+  params.set("lane", filters.lane ?? "manual");
   if (filters.bucket) params.set("bucket", filters.bucket);
   if (filters.difficulty) params.set("difficulty", filters.difficulty);
   if (filters.has_reviews !== undefined) {
@@ -738,6 +747,25 @@ export async function listGoldens(
   handle401(res);
   if (!res.ok) {
     throw new Error(`Failed to list goldens: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/** Fetch the precomputed Yamaha reference-stats sidecar JSON
+ *  for the /goldens/obd detail page sparkline renderer.
+ *  (HARNESS-21 [2b/4]) */
+export async function getYamahaReferenceStats():
+  Promise<YamahaReferenceStats>
+{
+  const res = await fetch(
+    `${API_URL}/v2/goldens/obd/reference-stats`,
+    { headers: getAuthHeaders() },
+  );
+  handle401(res);
+  if (!res.ok) {
+    throw new Error(
+      `Failed to load OBD reference stats: HTTP ${res.status}`,
+    );
   }
   return res.json();
 }

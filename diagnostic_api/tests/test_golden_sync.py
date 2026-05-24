@@ -30,7 +30,9 @@ from typing import Dict, List
 
 from app.services.golden_sync import (
     _apply_locked_overlay,
+    _derive_obd_manual_id,
     _extract_entry_fields,
+    _is_obd_question_type,
     _iter_candidate_jsonl_files,
     _iter_locked_jsonl_files,
 )
@@ -105,6 +107,158 @@ def test_extract_entry_fields_skips_missing_required_field() -> None:
         bad, source_path="x.jsonl", line_number=1,
     )
     assert fields is None
+
+
+# ── Lane detection + OBD extraction (HARNESS-21 [2b/4]) ──────
+
+
+def _obd_entry(entry_id: str) -> Dict[str, object]:
+    """Minimal valid OBD-lane entry dict for the extractor."""
+    return {
+        "id": entry_id,
+        "category": "component",
+        "question_type": "signal_statistics",
+        "difficulty": "easy",
+        "question": "Peak RPM?",
+        "golden_summary": "Peak RPM was 3906.",
+        "golden_citations": [],  # empty for OBD
+        "must_contain": ["RPM"],
+        "expected_signal_citations": [
+            {
+                "signal": "A_KL_RPM",
+                "stat": "max",
+                "value": 3906.0,
+                "value_tolerance_rel": 0.01,
+            },
+        ],
+        "expected_dtcs": [],
+        "expected_no_evidence": False,
+    }
+
+
+def test_is_obd_question_type_recognises_six_obd_values() -> None:
+    """The frozenset matches the six OBD literals."""
+    for qt in (
+        "signal_statistics",
+        "event_finding",
+        "dtc_enumeration",
+        "dtc_decode",
+        "compound_obd",
+        "adversarial_obd",
+    ):
+        assert _is_obd_question_type(qt), qt
+
+
+def test_is_obd_question_type_rejects_manual_values() -> None:
+    """Manual question_types must not match."""
+    for qt in (
+        "lookup",
+        "procedural",
+        "cross-section",
+        "image-required",
+        "adversarial",
+    ):
+        assert not _is_obd_question_type(qt), qt
+
+
+def test_derive_obd_manual_id_from_path_stem() -> None:
+    """Helper returns the filename stem."""
+    assert _derive_obd_manual_id(
+        "diagnostic_api/tests/harness/evals/golden/v2/"
+        "yamaha_road_test.jsonl"
+    ) == "yamaha_road_test"
+    assert _derive_obd_manual_id(
+        "yamaha_road_test.jsonl"
+    ) == "yamaha_road_test"
+    assert _derive_obd_manual_id(
+        "/abs/path/yamaha_road_test.jsonl"
+    ) == "yamaha_road_test"
+
+
+def test_extract_entry_fields_obd_lane_basic() -> None:
+    """OBD entry populates lane + OBD fields; manual fields safe."""
+    raw = _obd_entry("yamaha-stats-001")
+    fields = _extract_entry_fields(
+        raw,
+        source_path="tests/harness/evals/golden/v2/yamaha_road_test.jsonl",
+        line_number=1,
+    )
+    assert fields is not None
+    assert fields["lane"] == "obd"
+    # Synthetic manual_id from the source filename stem.
+    assert fields["manual_id"] == "yamaha_road_test"
+    # OBD-specific fields populated.
+    assert fields["expected_signal_citations"] == [
+        {
+            "signal": "A_KL_RPM",
+            "stat": "max",
+            "value": 3906.0,
+            "value_tolerance_rel": 0.01,
+        },
+    ]
+    assert fields["expected_dtcs"] == []
+    assert fields["expected_no_evidence"] is False
+    # Manual-specific fields stay at their empty defaults.
+    assert fields["golden_citations"] == []
+    assert fields["expected_recall_slugs"] == []
+
+
+def test_extract_entry_fields_obd_lane_adversarial() -> None:
+    """expected_no_evidence=True is preserved through extraction."""
+    raw = _obd_entry("yamaha-adv-001")
+    raw["question_type"] = "adversarial_obd"
+    raw["expected_signal_citations"] = []
+    raw["expected_no_evidence"] = True
+    fields = _extract_entry_fields(
+        raw,
+        source_path="yamaha_road_test.jsonl",
+        line_number=2,
+    )
+    assert fields is not None
+    assert fields["lane"] == "obd"
+    assert fields["expected_no_evidence"] is True
+    assert fields["expected_signal_citations"] == []
+
+
+def test_extract_entry_fields_manual_lane_unchanged() -> None:
+    """Manual entries get lane='manual' + empty OBD field
+    defaults; pre-existing behavior is preserved."""
+    raw = _candidate_entry("mws150a-dtc-001")
+    fields = _extract_entry_fields(
+        raw,
+        source_path="golden/v2/mws150a.jsonl",
+        line_number=1,
+    )
+    assert fields is not None
+    assert fields["lane"] == "manual"
+    # OBD fields default to empty/false even though the raw
+    # input didn't supply them.
+    assert fields["expected_signal_citations"] == []
+    assert fields["expected_dtcs"] == []
+    assert fields["expected_no_evidence"] is False
+    # Manual extraction unchanged.
+    assert fields["manual_id"] == "MWS150A"
+    assert fields["golden_citations"] == raw["golden_citations"]
+
+
+def test_extract_entry_fields_obd_lane_dtc_decode() -> None:
+    """dtc_decode entry pulls expected_dtcs through."""
+    raw = _obd_entry("yamaha-decode-001")
+    raw["question_type"] = "dtc_decode"
+    raw["expected_signal_citations"] = []
+    raw["expected_dtcs"] = [
+        {"code": "87F11043000000000000CB", "status": "stored"},
+    ]
+    fields = _extract_entry_fields(
+        raw,
+        source_path="yamaha_road_test.jsonl",
+        line_number=3,
+    )
+    assert fields is not None
+    assert fields["lane"] == "obd"
+    assert fields["expected_dtcs"] == [
+        {"code": "87F11043000000000000CB", "status": "stored"},
+    ]
 
 
 # ── _iter_candidate_jsonl_files ──────────────────────────────

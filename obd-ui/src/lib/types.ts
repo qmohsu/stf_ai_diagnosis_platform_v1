@@ -295,12 +295,70 @@ export interface ToolInvocation {
 // Golden review dashboard (HARNESS-17 / Issue #82)
 // -----------------------------------------------------------
 
-export type GoldenBucket =
+// -----------------------------------------------------------
+// HARNESS-21 [2b/4]: lane discriminator + OBD-side types
+// -----------------------------------------------------------
+
+export type GoldenLane = "manual" | "obd";
+
+/** Buckets for the manual-agent eval lane (HARNESS-14). */
+export type ManualGoldenBucket =
   | "lookup"
   | "procedural"
   | "cross-section"
   | "image-required"
   | "adversarial";
+
+/** Buckets for the OBD-agent eval lane (HARNESS-21). */
+export type OBDGoldenBucket =
+  | "signal_statistics"
+  | "event_finding"
+  | "dtc_enumeration"
+  | "dtc_decode"
+  | "compound_obd"
+  | "adversarial_obd";
+
+/** Union of all bucket values across both lanes. Use the
+ *  lane-specific types above when the lane is known statically. */
+export type GoldenBucket = ManualGoldenBucket | OBDGoldenBucket;
+
+export const MANUAL_BUCKETS: ManualGoldenBucket[] = [
+  "lookup",
+  "procedural",
+  "cross-section",
+  "image-required",
+  "adversarial",
+];
+
+export const OBD_BUCKETS: OBDGoldenBucket[] = [
+  "signal_statistics",
+  "event_finding",
+  "dtc_enumeration",
+  "dtc_decode",
+  "compound_obd",
+  "adversarial_obd",
+];
+
+/** OBD-side expected citation: a signal name with optional
+ *  stat / value / units / time_range pinning.  The OBD eval
+ *  framework grades against these in metrics_obd.py; the
+ *  /goldens/obd detail page renders them as a table beside
+ *  the question. */
+export interface ExpectedSignalCitation {
+  signal: string;
+  stat?: string | null;
+  value?: number | null;
+  value_tolerance_rel?: number | null;
+  units?: string | null;
+  time_range?: [string, string] | null;
+}
+
+/** OBD-side expected DTC: a code + optional status / ECU. */
+export interface ExpectedDTC {
+  code: string;
+  status?: "stored" | "pending" | null;
+  ecu?: string | null;
+}
 
 export type GoldenDifficulty = "easy" | "medium" | "hard";
 
@@ -331,6 +389,12 @@ export interface GoldenEntrySummary {
   question_en: string;
   question_zh: string | null;
   has_zh: boolean;
+  /** HARNESS-21 [2b/4]: lane discriminator. Drives whether the
+   *  /goldens/manual or /goldens/obd route surfaces this entry. */
+  lane: GoldenLane;
+  /** HARNESS-20: true when this entry has been promoted into
+   *  the locked tier via scripts/promote_golden.py. */
+  is_locked: boolean;
   /** Team's most-recent review (across ALL reviewers). */
   latest_review_status: GoldenReviewStatus | null;
   latest_review_star: number | null;
@@ -376,6 +440,54 @@ export interface GoldenEntryDetail {
    *  alias. Null when the manual has been deleted or the
    *  entry references a sentinel manual_id. */
   md_file_path: string | null;
+  /** HARNESS-20 lock-state flag. */
+  is_locked: boolean;
+  /** HARNESS-21 [2b/4]: lane + OBD-specific fields.
+   *  All present for both lanes; OBD fields are empty/false
+   *  for manual entries. */
+  lane: GoldenLane;
+  expected_signal_citations: ExpectedSignalCitation[];
+  expected_dtcs: ExpectedDTC[];
+  expected_no_evidence: boolean;
+  pitfall_directives: string[];
+}
+
+/** Yamaha reference-stats sidecar payload served by
+ *  `GET /v2/goldens/obd/reference-stats`.  Generated offline by
+ *  scripts/compute_yamaha_reference.py from the canonical fixture.
+ *  Used by the /goldens/obd detail page sparkline renderer. */
+export interface YamahaSignalStats {
+  samples_valid: number;
+  min: number;
+  min_at: string;
+  max: number;
+  max_at: string;
+  mean: number;
+  p50: number;
+  p95: number;
+  std: number;
+}
+
+export interface YamahaEventWindow {
+  signal: string;
+  op: string;
+  threshold: number;
+  ranges: [string, string][];
+}
+
+export interface YamahaReferenceStats {
+  schema_version: number;
+  fixture: {
+    name: string;
+    sha256: string;
+    rows: number;
+    columns: number;
+    channels_present: string[];
+    format: string;
+  };
+  signal_stats: Record<string, YamahaSignalStats>;
+  event_windows: YamahaEventWindow[];
+  metadata_dtcs: { code: string; status: string; ecu: string }[];
 }
 
 export interface GoldenListResponse {
