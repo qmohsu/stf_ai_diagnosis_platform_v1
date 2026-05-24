@@ -364,6 +364,167 @@ def obd_agent_deps(
 # ── Yamaha session bootstrap (HARNESS-21) ────────────────────────
 
 
+_YAMAHA_FIXTURE_PATH = (
+    # 5 .parent's: conftest.py → evals → harness → tests →
+    # diagnostic_api → repo root.  PR [1/3]'s code had 4 .parent's
+    # (latent bug — masked by pytest.skip), corrected here in
+    # HARNESS-21 [2a/4] now that the bootstrap actually reads the
+    # file.
+    Path(__file__).resolve().parents[4]
+    / "obd_agent" / "fixtures"
+    / "yamaha_dual_road_test_20260508.csv"
+)
+"""Repo-relative path to the canonical Yamaha road-test fixture.
+
+Frozen here so all helpers (UUID derivation, bootstrap, tests)
+agree on the same source-of-truth file.  Same path used by
+``scripts/compute_yamaha_reference.py``.
+"""
+
+_YAMAHA_EVAL_USERNAME = "eval-fixture-user"
+"""Synthetic User row owning the Yamaha eval session.
+
+Created idempotently on first real-LLM eval run; no login
+credentials are needed (this user never authenticates against
+``/auth/login`` — it exists purely to satisfy the FK constraint
+on ``OBDAnalysisSession.user_id``).
+"""
+
+
+def _yamaha_session_uuid() -> "uuid.UUID":
+    """Deterministic UUID5 of the fixture path.
+
+    Stable across machines and runs because ``uuid5`` is a hash
+    of the absolute path string.  Same value the eval suite and
+    any external probe (e.g. ``scripts/_real_obd_smoke.py``) would
+    derive independently.
+    """
+    import uuid as _uuid_mod
+    return _uuid_mod.uuid5(
+        _uuid_mod.NAMESPACE_OID, str(_YAMAHA_FIXTURE_PATH),
+    )
+
+
+def _materialise_fixture_in_storage(session_uuid: "uuid.UUID") -> str:
+    """Copy the fixture into ``settings.obd_log_storage_path``.
+
+    The OBD tools look up the raw log via ``resolve_log_path``,
+    which joins ``settings.obd_log_storage_path`` with the
+    ``OBDAnalysisSession.raw_input_file_path`` column.  Our
+    committed fixture lives at ``obd_agent/fixtures/...`` —
+    nowhere near the storage root.  Copy on first use so the
+    production loader path works unchanged.
+
+    Idempotent: if the destination file already exists and its
+    SHA-256 matches the fixture, skip the copy.
+
+    Args:
+        session_uuid: Used as the per-session subdirectory name.
+
+    Returns:
+        Relative path string to store in
+        ``OBDAnalysisSession.raw_input_file_path`` — i.e.
+        ``"<uuid>/raw_input.csv"``.
+    """
+    import hashlib
+    import shutil
+    from app.config import settings
+
+    rel_path = f"{session_uuid}/raw_input.csv"
+    dest_dir = Path(settings.obd_log_storage_path) / str(session_uuid)
+    dest_file = dest_dir / "raw_input.csv"
+
+    src_bytes = _YAMAHA_FIXTURE_PATH.read_bytes()
+    src_sha = hashlib.sha256(src_bytes).hexdigest()
+
+    if dest_file.exists():
+        dst_sha = hashlib.sha256(dest_file.read_bytes()).hexdigest()
+        if dst_sha == src_sha:
+            return rel_path
+        # Hash mismatch — fixture changed.  Overwrite.
+
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(_YAMAHA_FIXTURE_PATH, dest_file)
+    return rel_path
+
+
+def _get_or_create_yamaha_session(
+    session_uuid: "uuid.UUID",
+) -> None:
+    """Idempotently upsert the User + OBDAnalysisSession rows
+    backing the Yamaha eval session.
+
+    All writes are committed in a single transaction.  Safe to
+    call repeatedly across pytest sessions — uses get-or-create on
+    both rows by their natural keys (``username`` for the User,
+    ``id`` for the session).
+
+    Raises:
+        Any SQLAlchemy/connection error propagates.  The eval test
+        will surface it via fixture setup failure.
+    """
+    import hashlib
+    from app.auth.security import get_password_hash
+    from app.db.session import SessionLocal
+    from app.models_db import OBDAnalysisSession, User
+
+    raw_path = _materialise_fixture_in_storage(session_uuid)
+    fixture_bytes = _YAMAHA_FIXTURE_PATH.read_bytes()
+    input_text_hash = hashlib.sha256(fixture_bytes).hexdigest()
+    input_size_bytes = len(fixture_bytes)
+
+    db = SessionLocal()
+    try:
+        # Get-or-create User.
+        user = (
+            db.query(User)
+            .filter(User.username == _YAMAHA_EVAL_USERNAME)
+            .first()
+        )
+        if user is None:
+            user = User(
+                username=_YAMAHA_EVAL_USERNAME,
+                hashed_password=get_password_hash(
+                    "eval-fixture-no-login",
+                ),
+                is_active=True,
+            )
+            db.add(user)
+            db.flush()  # populates user.id
+
+        # Get-or-create OBDAnalysisSession by deterministic id.
+        session = (
+            db.query(OBDAnalysisSession)
+            .filter(OBDAnalysisSession.id == session_uuid)
+            .first()
+        )
+        if session is None:
+            session = OBDAnalysisSession(
+                id=session_uuid,
+                user_id=user.id,
+                vehicle_id="JYAMA00000XX000001",  # fixture's redacted VIN
+                status="COMPLETED",
+                input_text_hash=input_text_hash,
+                input_size_bytes=input_size_bytes,
+                raw_input_file_path=raw_path,
+            )
+            db.add(session)
+        else:
+            # If the fixture file changed (hash mismatch with what
+            # was stored), refresh the row.  Keeps the eval honest.
+            if session.input_text_hash != input_text_hash:
+                session.input_text_hash = input_text_hash
+                session.input_size_bytes = input_size_bytes
+                session.raw_input_file_path = raw_path
+
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
 @pytest.fixture(scope="session")
 def yamaha_session_id(
     request: pytest.FixtureRequest,
@@ -379,18 +540,11 @@ def yamaha_session_id(
     - When ``--mock-agent`` is set, return the UUID immediately
       WITHOUT touching the database — the canned LLM client
       doesn't call tools, so the session row is never read.  This
-      lets PR [1/3]'s plumbing run with zero external
-      dependencies.
-    - When ``--mock-agent`` is NOT set (real-LLM path in PR
-      [2/3]), idempotently upsert the ``OBDAnalysisSession`` row
-      and return the UUID.
-
-    Path-resolution caveat (R4 from the design plan): the real-LLM
-    path requires the fixture to be reachable via
-    ``settings.obd_log_storage_path``.  PR [1/3] only exercises
-    the mocked path; PR [2/3] will address the path-resolution
-    gap (copy the fixture into the storage dir at suite start, or
-    teach ``resolve_log_path`` about absolute paths).
+      keeps PR [1/3]'s plumbing verification dependency-free.
+    - When ``--mock-agent`` is NOT set (real-LLM path), idempotently
+      bootstrap the User + OBDAnalysisSession rows AND copy the
+      fixture into ``settings.obd_log_storage_path`` so
+      ``resolve_log_path`` resolves correctly.
 
     Args:
         request: Injected by pytest; used to read CLI options.
@@ -398,30 +552,19 @@ def yamaha_session_id(
     Returns:
         Stable session UUID as a string.
     """
-    import uuid as _uuid_mod
-
-    fixture_path = (
-        Path(__file__).resolve().parent.parent.parent.parent
-        / "obd_agent" / "fixtures"
-        / "yamaha_dual_road_test_20260508.csv"
-    )
-    session_uuid = _uuid_mod.uuid5(
-        _uuid_mod.NAMESPACE_OID, str(fixture_path),
-    )
+    session_uuid = _yamaha_session_uuid()
 
     # Mocked path: skip DB.  The canned LLM client never calls the
     # OBD tools, so the session row is never read.
     if request.config.getoption("--mock-agent"):
         return str(session_uuid)
 
-    # Real-LLM path: address in PR [2/3].  Raise loudly here so a
-    # premature real-LLM run produces an actionable error rather
-    # than a silent file-not-found in the OBD tools.
-    pytest.skip(
-        "Yamaha session bootstrap for real-LLM runs is deferred "
-        "to PR [2/3] (HARNESS-21).  Run with --mock-agent for "
-        "PR [1/3] plumbing verification."
-    )
+    # Real-LLM path: idempotent bootstrap.  Raises on connection
+    # failure (e.g. running outside the diagnostic-api container
+    # with no Postgres reachable) — surfaces an actionable error
+    # rather than a silent file-not-found later.
+    _get_or_create_yamaha_session(session_uuid)
+    return str(session_uuid)
 
 
 @pytest.fixture(scope="session")
