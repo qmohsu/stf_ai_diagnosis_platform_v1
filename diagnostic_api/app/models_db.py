@@ -418,7 +418,7 @@ class GoldenEntry(Base):
     notes = Column(Text, nullable=True)
     source_jsonl_path = Column(String(500), nullable=True)
     source_jsonl_line = Column(Integer, nullable=True)
-    # HARNESS-20 (post-bugfix migration ``a1b2c3d4e5f6``): each
+    # HARNESS-20 (post-bugfix migration ``b1c2d3e4f5a6``): each
     # row holds the **candidate** content (mutable; dashboard
     # reflects this).  ``is_locked`` means "this entry id also
     # exists in ``golden/v2/locked/*.jsonl``" — i.e. has been
