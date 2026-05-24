@@ -11,19 +11,52 @@ Parametrized over the goldens in
    ``eval_report``.
 4. Asserts ``grade.overall >= _PASS_THRESHOLD``.
 
-PR [1/3] verification command (zero external dependencies — no
-Ollama, no OpenRouter, no DB)::
+Run modes
+---------
+
+**Plumbing verification (zero external dependencies)** — no
+Ollama, no OpenRouter, no Postgres::
 
     pytest -m eval --run-eval --mock-agent --mock-judge \\
         tests/harness/evals/test_obd_agent_eval.py
 
-Real-LLM runs are deferred to PR [2/3] (the goldens here are
-"dummies" that mirror what the mock OBD agent returns).  PR [3/3]
-will raise ``_PASS_THRESHOLD`` from 0.6 to whatever the baseline
-supports.
+Under ``--mock-agent``, a canned LLM client returns the same
+RPM/DTC-focused response regardless of question.  This was
+designed in PR [1/3] to satisfy the 3 dummy goldens that mirrored
+the canned response.  PR [2a/4] added 12 more diverse real
+goldens (SPEED, coolant, event_finding, dtc_decode, adversarial,
+etc.) which the canned response cannot answer correctly — so
+under mocks you should expect roughly **3 entries pass, 12 fail
+with non-fabrication-related score drops**.  That's the right
+behaviour: the mocked path verifies the pipeline doesn't crash,
+not that scores are meaningful.
+
+**Real-LLM run (PolyU server, inside the diagnostic-api
+container)**::
+
+    podman exec stf-diagnostic-api pytest -m eval --run-eval \\
+        tests/harness/evals/test_obd_agent_eval.py --tb=short
+
+The ``yamaha_session_id`` fixture idempotently bootstraps a
+Postgres ``OBDAnalysisSession`` row + materialises the fixture
+into ``settings.obd_log_storage_path``.  Requires Postgres
+reachable AND Ollama serving the model in
+``OBDAgentConfig().model``.  Pass-or-fail at ``_PASS_THRESHOLD``
+is meaningful here; the resulting ``reports/eval_{ts}.json`` is
+the input to PR [3/4]'s baseline scorecard.
+
+**Ceiling run (OpenRouter model for comparison)**::
+
+    OBD_EVAL_AGENT_MODEL=z-ai/glm-5.1 \\
+        podman exec stf-diagnostic-api pytest -m eval \\
+        --run-eval tests/harness/evals/test_obd_agent_eval.py
 
 Default ``pytest`` runs skip this module entirely via the
 ``eval`` marker registered in ``tests/conftest.py``.
+
+PR [3/4] will raise ``_PASS_THRESHOLD`` from 0.6 to whatever the
+baseline supports + tune ``obd_agent_prompts.py`` based on
+failure analysis.
 
 Author: Li-Ta Hsu
 """
