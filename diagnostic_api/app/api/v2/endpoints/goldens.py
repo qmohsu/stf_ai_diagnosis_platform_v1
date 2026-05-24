@@ -35,9 +35,11 @@ Date: May 2026
 from __future__ import annotations
 
 import glob
+import json as _json
 import os
 import shutil
 import uuid
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import structlog
@@ -50,7 +52,7 @@ from fastapi import (
     UploadFile,
     status,
 )
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -1100,3 +1102,80 @@ async def get_any_review_audio(
 # DB-level cleanup (e.g. anonymisation, GDPR-style erasure) must be
 # performed by a server administrator via direct SQL, deliberately
 # leaving an out-of-band audit trail.
+
+
+# ── HARNESS-21 [2b/4]: OBD reference-stats endpoint ──────────
+
+
+_OBD_REFERENCE_STATS_PATH = Path(
+    "/app/tests/harness/evals/golden/v1/"
+    "yamaha_road_test_reference.json"
+)
+"""Absolute path inside the container where the precomputed
+Yamaha reference stats JSON lives.
+
+Generated offline by ``scripts/compute_yamaha_reference.py
+--json …`` and committed in PR [2a/4].  The Dockerfile's
+``COPY ... yamaha_road_test_reference.json`` ensures this path
+resolves at runtime.
+
+The sidecar carries per-signal min/p50/p95/max/mean/std and
+event-window time-ranges; the ``/goldens/obd`` detail-page
+sparkline renderer reads it client-side.
+"""
+
+
+_obd_reference_cache: Optional[Dict[str, Any]] = None
+"""Module-level cache so repeated calls don't re-read the disk."""
+
+
+def _load_obd_reference() -> Dict[str, Any]:
+    """Load + cache the Yamaha reference-stats sidecar JSON.
+
+    Cache is in-process and never invalidated — the sidecar is
+    immutable post-PR-[2a/4] and pinned by SHA-256 to the
+    fixture file.  Re-deploy refreshes the container, which
+    repopulates the cache from disk.
+    """
+    global _obd_reference_cache
+    if _obd_reference_cache is None:
+        if not _OBD_REFERENCE_STATS_PATH.is_file():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=(
+                    "OBD reference stats sidecar is missing "
+                    "from this image — verify the Dockerfile "
+                    "copies yamaha_road_test_reference.json."
+                ),
+            )
+        _obd_reference_cache = _json.loads(
+            _OBD_REFERENCE_STATS_PATH.read_text(
+                encoding="utf-8",
+            ),
+        )
+    return _obd_reference_cache
+
+
+@router.get(
+    "/obd/reference-stats",
+    summary="OBD reference statistics (Yamaha fixture)",
+)
+async def get_obd_reference_stats(
+    current_user: User = Depends(get_current_user),  # noqa: ARG001
+) -> JSONResponse:
+    """Serve the precomputed Yamaha-fixture stats sidecar.
+
+    The ``/goldens/obd/[id]`` detail page calls this to render
+    sparklines + value previews next to each
+    ``expected_signal_citation`` on a golden entry.  Auth-gated
+    like every other ``/v2/goldens/...`` route.
+
+    Returns:
+        The full sidecar JSON: ``{schema_version, fixture,
+        signal_stats, event_windows, metadata_dtcs}``.
+
+    Raises:
+        HTTPException: 404 if the sidecar isn't in the image
+            (deploy / Dockerfile bug).
+    """
+    return JSONResponse(content=_load_obd_reference())
