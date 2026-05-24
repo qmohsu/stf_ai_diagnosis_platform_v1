@@ -23,12 +23,12 @@ import { Select } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { listGoldens } from "@/lib/api";
 import type {
-  GoldenBucket,
+  ManualGoldenBucket,
   GoldenEntrySummary,
   GoldenReviewStatus,
 } from "@/lib/types";
 
-const BUCKETS: GoldenBucket[] = [
+const BUCKETS: ManualGoldenBucket[] = [
   "lookup",
   "procedural",
   "cross-section",
@@ -105,7 +105,7 @@ export default function GoldensListingPage() {
       bucket:
         bucketFilter === "all"
           ? undefined
-          : (bucketFilter as GoldenBucket),
+          : (bucketFilter as ManualGoldenBucket),
       limit: 200,
     })
       .then((res) => setItems(res.items))
@@ -116,7 +116,7 @@ export default function GoldensListingPage() {
   }, [bucketFilter]);
 
   const grouped = useMemo(() => {
-    const out: Record<GoldenBucket, GoldenEntrySummary[]> = {
+    const out: Record<ManualGoldenBucket, GoldenEntrySummary[]> = {
       lookup: [],
       procedural: [],
       "cross-section": [],
