@@ -11,6 +11,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Column,
+    Computed,
     DateTime,
     ForeignKey,
     Index,
@@ -23,7 +24,7 @@ from sqlalchemy import (
     text,
 )
 from pgvector.sqlalchemy import Vector
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
@@ -666,6 +667,17 @@ class RagChunk(Base):
     )
     metadata_json = Column(JSONB, nullable=True)
     embedding = Column(Vector(768), nullable=False)
+    # APP-56 / Issue #18: generated tsvector for hybrid keyword
+    # search.  Postgres maintains the value; SQLAlchemy treats this
+    # as read-only so it never appears in INSERT/UPDATE statements.
+    tsv = Column(
+        TSVECTOR,
+        Computed(
+            "to_tsvector('english', text)",
+            persisted=True,
+        ),
+        nullable=True,
+    )
     created_at = Column(DateTime, default=_utcnow)
 
     manual = relationship("Manual")

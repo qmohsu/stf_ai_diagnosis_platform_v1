@@ -1,7 +1,7 @@
 """RAG related endpoints."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -19,6 +19,11 @@ class RetrievalRequest(BaseModel):
     query: str
     top_k: int = Field(default=3, ge=1, le=20)
     filters: Optional[Dict[str, Any]] = None
+    # APP-56 / Issue #18: hybrid keyword + vector retrieval.
+    # ``mode`` defaults to ``"vector"`` so existing callers see
+    # no behavioural change.
+    mode: Literal["vector", "keyword", "hybrid"] = "vector"
+    alpha: float = Field(default=0.5, ge=0.0, le=1.0)
 
 
 class RetrievalResponse(BaseModel):
@@ -52,6 +57,8 @@ async def retrieve(request: RetrievalRequest) -> RetrievalResponse:
             query=request.query,
             top_k=request.top_k,
             filters=request.filters,
+            mode=request.mode,
+            alpha=request.alpha,
         )
         return RetrievalResponse(results=results)
     except Exception as e:

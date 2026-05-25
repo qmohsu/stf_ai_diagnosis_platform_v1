@@ -20,12 +20,15 @@ Author: Li-Ta Hsu
 from __future__ import annotations
 
 import time
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 import structlog
 
 from app.harness_tools.manual_fs import slugify
 from app.rag.retrieve import retrieve_context, RetrievalResult
+
+
+RagMode = Literal["vector", "keyword", "hybrid"]
 from tests.harness.evals.schemas import (
     RetrievedChunkMetadata,
     SystemRunResult,
@@ -57,6 +60,8 @@ async def run_rag(
     question: str,
     top_k: int = _DEFAULT_TOP_K,
     vehicle_model: Optional[str] = None,
+    mode: RagMode = "vector",
+    alpha: float = 0.5,
 ) -> SystemRunResult:
     """Execute RAG retrieval against pgvector and normalise the result.
 
@@ -72,6 +77,15 @@ async def run_rag(
             ``"MWS-150-A"``.  Pass ``"MWS150-A"`` to filter the
             current corpus, or ``None`` for unfiltered retrieval
             across all manuals.
+        mode: Retrieval mode passed to ``retrieve_context``.
+            ``"vector"`` reproduces pre-APP-56 behaviour and is
+            the default.  ``"hybrid"`` enables linear fusion with
+            ``ts_rank`` keyword scoring (Issue #18).  The
+            ``system_label`` on the returned result stays
+            ``"rag"`` regardless — callers tag their own report
+            rows with the mode they invoked.
+        alpha: Weight on the vector branch in ``[0, 1]`` when
+            ``mode="hybrid"``.  Ignored otherwise.
 
     Returns:
         ``SystemRunResult`` with ``system_label="rag"`` and
@@ -90,6 +104,8 @@ async def run_rag(
             query=question,
             top_k=top_k,
             vehicle_model=vehicle_model,
+            mode=mode,
+            alpha=alpha,
         )
     except Exception as exc:  # noqa: BLE001 — eval should not crash
         logger.error(
@@ -174,6 +190,8 @@ async def run_rag(
         "rag_runner.complete",
         question_preview=question[:80],
         top_k=top_k,
+        mode=mode,
+        alpha=alpha if mode == "hybrid" else None,
         retrieved=len(chunks),
         unique_slugs=len(unique_slugs),
         latency_ms_wall=round(latency_ms_wall, 1),
