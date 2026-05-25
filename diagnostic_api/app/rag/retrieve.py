@@ -23,6 +23,7 @@ APP-56 / Issue #18.
 
 import asyncio
 import logging
+import re
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from typing import Any, Dict, List, Literal, Optional
@@ -170,6 +171,36 @@ def _candidate_pool_size(top_k: int) -> int:
     return min(top_k * _CANDIDATE_MULTIPLIER, _CANDIDATE_CAP)
 
 
+# A tsquery token is alphanumeric or alphanumeric-with-internal-dot
+# (for things like part-number ``ABC.123``).  Any token that doesn't
+# match is dropped — keeps single-quotes, backslashes, and other
+# operators that ``to_tsquery`` would reject out of the query.
+_TSQUERY_TOKEN_RE = re.compile(r"[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*")
+
+
+def _build_or_tsquery(query_str: str) -> str:
+    """Build an OR-joined tsquery string for keyword retrieval.
+
+    ``plainto_tsquery`` AND-joins terms, which makes the keyword
+    branch return zero rows for any query longer than ~2 words.
+    We want OR semantics — any matching term contributes — so we
+    tokenise client-side and emit ``term1 | term2 | ...`` for
+    ``to_tsquery``.
+
+    Returns an empty string if no tokens survive (caller must
+    avoid passing this to ``to_tsquery`` since the empty query
+    raises).
+    """
+    tokens = [
+        tok.lower()
+        for tok in _TSQUERY_TOKEN_RE.findall(query_str)
+        if tok
+    ]
+    if not tokens:
+        return ""
+    return " | ".join(tokens)
+
+
 def _build_filter_clause(
     vehicle_model: Optional[str],
     exclude_chunk_ids: Optional[List[int]],
@@ -202,15 +233,22 @@ def _sync_keyword_query(
     """Pure full-text keyword query ranked by ``ts_rank``.
 
     Args:
-        query_str: User query (plain text — passed through
-            ``plainto_tsquery`` for safety).
+        query_str: User query (plain text — tokenised client-side
+            into an OR-joined ``to_tsquery`` for OR semantics; see
+            ``_build_or_tsquery`` for why ``plainto_tsquery`` is
+            unsuitable here).
         top_k: Maximum number of results.
         vehicle_model: Optional vehicle model filter.
         exclude_chunk_ids: Optional chunk indices to exclude.
 
     Returns:
         List of RetrievalResult sorted by descending ts_rank.
+        Empty list if the query contains no usable tokens.
     """
+    tsq = _build_or_tsquery(query_str)
+    if not tsq:
+        return []
+
     filter_sql, filter_params = _build_filter_clause(
         vehicle_model, exclude_chunk_ids,
     )
@@ -223,9 +261,9 @@ def _sync_keyword_query(
             section_title,
             chunk_index,
             metadata_json,
-            ts_rank(tsv, plainto_tsquery('english', :q)) AS rank
+            ts_rank(tsv, to_tsquery('english', :tsq)) AS rank
         FROM rag_chunks
-        WHERE tsv @@ plainto_tsquery('english', :q)
+        WHERE tsv @@ to_tsquery('english', :tsq)
         {filter_sql}
         ORDER BY rank DESC
         LIMIT :limit
@@ -236,7 +274,7 @@ def _sync_keyword_query(
     try:
         rows = db.execute(
             sql,
-            {"q": query_str, "limit": top_k, **filter_params},
+            {"tsq": tsq, "limit": top_k, **filter_params},
         ).fetchall()
         return [_row_to_result(r, float(r.rank)) for r in rows]
     except Exception as e:
@@ -288,6 +326,35 @@ def _sync_hybrid_query(
     filter_sql, filter_params = _build_filter_clause(
         vehicle_model, exclude_chunk_ids,
     )
+    tsq = _build_or_tsquery(query_str)
+
+    # If the query has no usable keyword tokens, fall back to the
+    # pure semantic CTE — keyword AS would otherwise raise on an
+    # empty to_tsquery argument.
+    keyword_cte = "" if not tsq else f"""
+        , keyword AS (
+            SELECT
+                id,
+                text,
+                doc_id,
+                source_type,
+                section_title,
+                chunk_index,
+                metadata_json,
+                NULL::double precision AS vec_score,
+                ts_rank(tsv, to_tsquery('english', :tsq))
+                    AS kw_rank
+            FROM rag_chunks
+            WHERE tsv @@ to_tsquery('english', :tsq)
+            {filter_sql}
+            ORDER BY kw_rank DESC
+            LIMIT :pool
+        )
+    """
+    keyword_union = (
+        "" if not tsq
+        else "UNION ALL SELECT * FROM keyword"
+    )
 
     sql = sa_text(
         f"""
@@ -307,29 +374,11 @@ def _sync_hybrid_query(
             WHERE TRUE {filter_sql}
             ORDER BY embedding <=> CAST(:qvec AS vector)
             LIMIT :pool
-        ),
-        keyword AS (
-            SELECT
-                id,
-                text,
-                doc_id,
-                source_type,
-                section_title,
-                chunk_index,
-                metadata_json,
-                NULL::double precision AS vec_score,
-                ts_rank(tsv, plainto_tsquery('english', :q))
-                    AS kw_rank
-            FROM rag_chunks
-            WHERE tsv @@ plainto_tsquery('english', :q)
-            {filter_sql}
-            ORDER BY kw_rank DESC
-            LIMIT :pool
-        ),
+        )
+        {keyword_cte},
         unioned AS (
             SELECT * FROM semantic
-            UNION ALL
-            SELECT * FROM keyword
+            {keyword_union}
         )
         SELECT
             id,
@@ -346,17 +395,17 @@ def _sync_hybrid_query(
         """
     )
 
+    params: Dict[str, Any] = {
+        "qvec": _format_pgvector(vector),
+        "pool": pool,
+        **filter_params,
+    }
+    if tsq:
+        params["tsq"] = tsq
+
     db = SessionLocal()
     try:
-        rows = db.execute(
-            sql,
-            {
-                "q": query_str,
-                "qvec": _format_pgvector(vector),
-                "pool": pool,
-                **filter_params,
-            },
-        ).fetchall()
+        rows = db.execute(sql, params).fetchall()
 
         if not rows:
             return []

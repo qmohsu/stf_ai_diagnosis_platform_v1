@@ -28,6 +28,7 @@ import pytest
 from app.rag.retrieve import (
     RetrievalResult,
     _build_filter_clause,
+    _build_or_tsquery,
     _format_pgvector,
     _row_to_result,
     retrieve_context,
@@ -49,6 +50,43 @@ def test_format_pgvector_brackets_and_commas():
 def test_format_pgvector_empty():
     """Empty list still produces a valid literal (degenerate)."""
     assert _format_pgvector([]) == "[]"
+
+
+# ── _build_or_tsquery ─────────────────────────────────────────────
+
+
+def test_or_tsquery_joins_with_or():
+    """Multi-word query becomes ``term | term | term`` for to_tsquery."""
+    out = _build_or_tsquery("P0117 coolant temperature sensor")
+    assert out == "p0117 | coolant | temperature | sensor"
+
+
+def test_or_tsquery_lowercases():
+    """Tokens are lowercased so they match the english tsvector analyser."""
+    assert _build_or_tsquery("P0117") == "p0117"
+    assert _build_or_tsquery("ABS Sensor") == "abs | sensor"
+
+
+def test_or_tsquery_drops_punctuation():
+    """Operators and quotes that to_tsquery would reject are stripped out."""
+    out = _build_or_tsquery("don't & break tsquery")
+    assert "&" not in out
+    assert "'" not in out
+    # Apostrophe splits 'don' from 't' — both valid tokens.
+    assert "don" in out and "break" in out and "tsquery" in out
+
+
+def test_or_tsquery_empty_input():
+    """All-punctuation input produces an empty string (caller must check)."""
+    assert _build_or_tsquery("") == ""
+    assert _build_or_tsquery("   ") == ""
+    assert _build_or_tsquery("!@#$%") == ""
+
+
+def test_or_tsquery_keeps_dotted_identifiers():
+    """Part numbers like ABC.123 stay as one token."""
+    out = _build_or_tsquery("part ABC.123")
+    assert "abc.123" in out
 
 
 # ── _build_filter_clause ──────────────────────────────────────────
