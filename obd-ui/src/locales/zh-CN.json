@@ -320,6 +320,7 @@
     "showLess": "收起",
     "expandTool": "展开工具详情",
     "collapseTool": "收起工具详情",
+    "thinking": "思考中…",
     "partialDiagnosis": "部分诊断（Agent 达到迭代上限）",
     "tierLabel": {
       "0": "简单（一次生成）",

@@ -9,11 +9,13 @@ import { streamAgentDiagnosis } from "@/lib/api";
 import type {
   AgentDoneEvent,
   AgentErrorEvent,
+  AgentReasoningEvent,
   AgentToolCallEvent,
   AgentToolResultEvent,
   ToolInvocation,
 } from "@/lib/types";
 import { IterationProgress } from "@/components/IterationProgress";
+import { ReasoningPanel } from "@/components/ReasoningPanel";
 import { ToolCallCard } from "@/components/ToolCallCard";
 
 interface AgentDiagnosisViewProps {
@@ -41,6 +43,7 @@ export function AgentDiagnosisView({
 
   // Agent-specific state
   const [toolInvocations, setToolInvocations] = useState<ToolInvocation[]>([]);
+  const [reasoningText, setReasoningText] = useState("");
   const [currentIteration, setCurrentIteration] = useState(0);
   const [maxIterations, setMaxIterations] = useState<number | null>(null);
   const [autonomyTier, setAutonomyTier] = useState<number | null>(null);
@@ -61,6 +64,7 @@ export function AgentDiagnosisView({
       setStatusMsg(t("agent.connecting"));
       setDiagnosisText("");
       setToolInvocations([]);
+      setReasoningText("");
       setCurrentIteration(0);
       setMaxIterations(null);
       setAutonomyTier(null);
@@ -79,9 +83,23 @@ export function AgentDiagnosisView({
               setDiagnosisText(textRef.current);
             },
 
+            onReasoning: (data: AgentReasoningEvent) => {
+              setStatusMsg(null);
+              setCurrentIteration(data.iteration);
+              setReasoningText((prev) => prev + data.text);
+            },
+
             onToolCall: (data: AgentToolCallEvent) => {
               setStatusMsg(null);
               setCurrentIteration(data.iteration);
+              // Iteration boundary: the thinking that led here is
+              // done, and any content streamed before a tool call
+              // was narration, not the final answer — clear both
+              // so the panel is per-iteration and the diagnosis
+              // area only ever holds the final answer.
+              setReasoningText("");
+              textRef.current = "";
+              setDiagnosisText("");
               const inv: ToolInvocation = {
                 id: data.tool_call_id,
                 name: data.name,
@@ -119,6 +137,7 @@ export function AgentDiagnosisView({
               doneRef.current = true;
               historyIdRef.current = data.diagnosis_history_id;
               setStatusMsg(null);
+              setReasoningText("");
               setDiagnosisText(data.text);
               setAutonomyTier(data.autonomy_tier);
               setAutonomyStrategy(data.autonomy_strategy);
@@ -177,6 +196,7 @@ export function AgentDiagnosisView({
   );
 
   const hasToolCalls = toolInvocations.length > 0;
+  const hasReasoning = reasoningText.length > 0;
 
   // Not started yet — show generate button
   if (!streaming && !diagnosisText && !error) {
@@ -227,8 +247,8 @@ export function AgentDiagnosisView({
           </Alert>
         )}
 
-        {/* Status spinner while waiting for first event */}
-        {streaming && statusMsg && !hasToolCalls && !diagnosisText && (
+        {/* Status spinner while waiting for the first event */}
+        {streaming && statusMsg && !hasToolCalls && !hasReasoning && !diagnosisText && (
           <div className="flex items-center gap-3 py-8 justify-center text-sm text-muted-foreground">
             <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -239,7 +259,7 @@ export function AgentDiagnosisView({
         )}
 
         {/* Iteration progress + autonomy tier badge */}
-        {(hasToolCalls || autonomyTier !== null) && (
+        {(hasToolCalls || hasReasoning || autonomyTier !== null) && (
           <IterationProgress
             currentIteration={currentIteration}
             maxIterations={maxIterations}
@@ -247,6 +267,11 @@ export function AgentDiagnosisView({
             autonomyStrategy={autonomyStrategy}
             streaming={streaming}
           />
+        )}
+
+        {/* Live reasoning (thinking) panel */}
+        {hasReasoning && (
+          <ReasoningPanel text={reasoningText} active={streaming} />
         )}
 
         {/* Tool call cards */}

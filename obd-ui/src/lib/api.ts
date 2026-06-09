@@ -2,6 +2,7 @@ import type {
   AgentCachedEvent,
   AgentDoneEvent,
   AgentErrorEvent,
+  AgentReasoningEvent,
   AgentToolCallEvent,
   AgentToolResultEvent,
   DiagnosisHistoryResponse,
@@ -349,6 +350,7 @@ export type AgentSSECallbacks = {
   onDone: (data: AgentDoneEvent) => void;
   onError: (data: AgentErrorEvent) => void;
   onCached: (data: AgentCachedEvent) => void;
+  onReasoning?: (data: AgentReasoningEvent) => void;
   onStatus?: (message: string) => void;
   onSessionStart?: (data: { max_iterations: number }) => void;
 };
@@ -361,6 +363,9 @@ async function streamAgentSSE(
     switch (event) {
       case "token":
         cb.onToken(parsed as string);
+        break;
+      case "reasoning":
+        cb.onReasoning?.(parsed as AgentReasoningEvent);
         break;
       case "tool_call":
         cb.onToolCall(parsed as AgentToolCallEvent);

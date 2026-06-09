@@ -190,6 +190,11 @@ export interface AgentToolResultEvent {
   iteration: number;
 }
 
+export interface AgentReasoningEvent {
+  text: string;
+  iteration: number;
+}
+
 export interface AgentDoneEvent {
   text: string;
   diagnosis_history_id: string | null;
