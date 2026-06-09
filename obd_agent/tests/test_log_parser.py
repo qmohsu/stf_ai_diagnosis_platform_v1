@@ -9,8 +9,10 @@ from pathlib import Path
 import pytest
 
 from obd_agent.log_parser import (
+    MalformedRowError,
     _extract_vin,
     _parse_dtc_list,
+    _parse_timestamp,
     _try_float,
     log_file_to_snapshots,
     parse_log_file,
@@ -209,6 +211,37 @@ class TestParseLogFile:
 
 
 # ---------------------------------------------------------------------------
+# _parse_timestamp
+# ---------------------------------------------------------------------------
+
+class TestParseTimestamp:
+    def test_valid_timestamp(self) -> None:
+        """A well-formed timestamp parses to a UTC datetime."""
+        ts = _parse_timestamp("2026-05-28 11:25:55")
+        assert ts == datetime(2026, 5, 28, 11, 25, 55, tzinfo=timezone.utc)
+
+    def test_surrounding_whitespace_tolerated(self) -> None:
+        """Leading/trailing whitespace is stripped before parsing."""
+        ts = _parse_timestamp("  2026-05-28 11:25:55  ")
+        assert ts == datetime(2026, 5, 28, 11, 25, 55, tzinfo=timezone.utc)
+
+    def test_empty_raises(self) -> None:
+        """An empty timestamp is rejected, not coerced to now()."""
+        with pytest.raises(MalformedRowError):
+            _parse_timestamp("")
+
+    def test_garbage_raises(self) -> None:
+        """A non-date string is rejected."""
+        with pytest.raises(MalformedRowError):
+            _parse_timestamp("not-a-date")
+
+    def test_null_bytes_raise(self) -> None:
+        """A null-byte-padded value (truncated row) is rejected."""
+        with pytest.raises(MalformedRowError):
+            _parse_timestamp("\x00" * 1100)
+
+
+# ---------------------------------------------------------------------------
 # row_to_snapshot
 # ---------------------------------------------------------------------------
 
@@ -304,12 +337,25 @@ class TestRowToSnapshot:
         snap = row_to_snapshot(rows[0])
         assert snap.freeze_frame == {}
 
-    def test_fallback_timestamp(self) -> None:
-        """Bad timestamp falls back to now(UTC)."""
+    def test_bad_timestamp_raises(self) -> None:
+        """Bad timestamp raises MalformedRowError (no now() fallback).
+
+        A silent now() fallback used to poison time_range/duration for
+        the whole session when a single trailing row was truncated.
+        """
         row = {"Timestamp": "not-a-date", "VIN": ""}
-        snap = row_to_snapshot(row, vehicle_id="V-TEST")
-        delta = abs((datetime.now(timezone.utc) - snap.ts).total_seconds())
-        assert delta < 5
+        with pytest.raises(MalformedRowError):
+            row_to_snapshot(row, vehicle_id="V-TEST")
+
+    def test_null_byte_timestamp_raises(self) -> None:
+        """A truncated, null-byte-padded trailing row is rejected.
+
+        Reproduces the 2026-06-09 Yamaha upload: the logger was killed
+        mid-write, leaving a final record of ~1100 null bytes.
+        """
+        row = {"Timestamp": "\x00" * 1100, "VIN": ""}
+        with pytest.raises(MalformedRowError):
+            row_to_snapshot(row, vehicle_id="V-TEST")
 
     def test_missing_vin_defaults_to_unknown(self) -> None:
         """Row without VIN column gets V-UNKNOWN."""
@@ -397,3 +443,31 @@ class TestLogFileToSnapshots:
             assert restored.vehicle_id == snap.vehicle_id
             assert restored.ts == snap.ts
             assert len(restored.baseline_pids) == len(snap.baseline_pids)
+
+    def test_malformed_trailing_row_skipped(self, tmp_path: Path) -> None:
+        """A truncated null-byte trailing row is skipped, not assigned now().
+
+        Regression for the 2026-06-09 Yamaha upload: a single corrupt
+        trailing row inflated time_range.end to the upload time (~12-day
+        duration). The corrupt row must be dropped so the last good
+        timestamp bounds the range.
+        """
+        last_good = datetime(2026, 5, 28, 11, 25, 55, tzinfo=timezone.utc)
+        content = (
+            "# Test Log\n"
+            "Timestamp\tVIN\tRPM\n"
+            "---\t---\t---\n"
+            "2026-05-28 11:25:54\t1HGCM82633A123456\t800\n"
+            "2026-05-28 11:25:55\t1HGCM82633A123456\t810\n"
+            # Truncated final record: logger killed mid-write.
+            + "\x00" * 1100 + "\t\t\n"
+        )
+        log_path = tmp_path / "truncated.txt"
+        log_path.write_text(content, encoding="utf-8")
+
+        snapshots = log_file_to_snapshots(log_path)
+
+        assert len(snapshots) == 2
+        assert snapshots[-1].ts == last_good
+        # No snapshot should carry a now()-style timestamp.
+        assert max(s.ts for s in snapshots) == last_good
