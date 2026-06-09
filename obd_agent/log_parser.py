@@ -12,12 +12,28 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import logging
 import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from obd_agent.schemas import AdapterInfo, DTCEntry, OBDSnapshot, PIDValue
+
+logger = logging.getLogger(__name__)
+
+# Timestamp format emitted by ``format_normalizer`` (sub-second precision is
+# already stripped upstream).
+_TS_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+
+class MalformedRowError(ValueError):
+    """Raised when a log row cannot be parsed into an ``OBDSnapshot``.
+
+    Currently raised only for an unparseable ``Timestamp`` field.  Callers
+    that iterate over many rows should catch this and skip the offending
+    row rather than aborting the whole file.
+    """
 
 # PID name -> engineering unit.  Only PIDs with numeric float values.
 _PID_UNITS: Dict[str, str] = {
@@ -172,6 +188,36 @@ def _try_float(raw: str) -> Optional[float]:
         return None
 
 
+def _parse_timestamp(ts_raw: str) -> datetime:
+    """Parse a normalised log timestamp into a UTC ``datetime``.
+
+    Args:
+        ts_raw: Raw ``Timestamp`` field value (expected
+            ``YYYY-MM-DD HH:MM:SS``).
+
+    Returns:
+        Timezone-aware ``datetime`` in UTC.
+
+    Raises:
+        MalformedRowError: If ``ts_raw`` is empty or does not match the
+            expected format.  Notably this guards against truncated /
+            null-byte-padded trailing rows (e.g. a logger killed
+            mid-write).  A silent ``now()`` fallback is deliberately NOT
+            used: it would poison ``time_range`` and ``duration`` for the
+            whole session.
+    """
+    # Strip null bytes from truncated rows so the error message is legible.
+    cleaned = ts_raw.replace("\x00", "").strip()
+    try:
+        return datetime.strptime(cleaned, _TS_FORMAT).replace(
+            tzinfo=timezone.utc
+        )
+    except ValueError as exc:
+        raise MalformedRowError(
+            f"Unparseable timestamp: {cleaned[:32]!r}"
+        ) from exc
+
+
 def row_to_snapshot(
     row: Dict[str, str],
     *,
@@ -189,15 +235,16 @@ def row_to_snapshot(
         into a pseudonymous ID via ``pseudonymise_vin()``.
     adapter_port:
         Value for ``AdapterInfo.port``.
+
+    Raises
+    ------
+    MalformedRowError
+        If the row's ``Timestamp`` field cannot be parsed.
     """
     # --- timestamp ---------------------------------------------------------
-    ts_raw = row.get("Timestamp", "")
-    try:
-        ts = datetime.strptime(ts_raw, "%Y-%m-%d %H:%M:%S").replace(
-            tzinfo=timezone.utc
-        )
-    except ValueError:
-        ts = datetime.now(timezone.utc)
+    # Raises MalformedRowError on a bad timestamp (caught and skipped by
+    # log_file_to_snapshots).  No now() fallback -- see _parse_timestamp.
+    ts = _parse_timestamp(row.get("Timestamp", ""))
 
     # --- vehicle ID --------------------------------------------------------
     # APP-54: experimental-vehicle / internal-development stage policy is to
@@ -257,9 +304,36 @@ def log_file_to_snapshots(
     vehicle_id: Optional[str] = None,
     adapter_port: str = "log-replay",
 ) -> List[OBDSnapshot]:
-    """Parse an entire log file and return one ``OBDSnapshot`` per row."""
+    """Parse an entire log file into one ``OBDSnapshot`` per valid row.
+
+    Rows whose timestamp cannot be parsed (e.g. a truncated, null-byte
+    trailing record from a logger killed mid-write) are skipped with a
+    warning rather than silently assigned ``now()``.
+
+    Args:
+        path: Path to a normalised OBD TSV log file.
+        vehicle_id: Optional override applied to every snapshot.
+        adapter_port: Value for ``AdapterInfo.port`` on every snapshot.
+
+    Returns:
+        One ``OBDSnapshot`` per parseable data row, in file order.
+    """
     rows = parse_log_file(path)
-    return [
-        row_to_snapshot(row, vehicle_id=vehicle_id, adapter_port=adapter_port)
-        for row in rows
-    ]
+    snapshots: List[OBDSnapshot] = []
+    skipped = 0
+    for row in rows:
+        try:
+            snapshots.append(
+                row_to_snapshot(
+                    row, vehicle_id=vehicle_id, adapter_port=adapter_port
+                )
+            )
+        except MalformedRowError:
+            skipped += 1
+    if skipped:
+        logger.warning(
+            "Skipped %d malformed row(s) (unparseable timestamp) in %s",
+            skipped,
+            path,
+        )
+    return snapshots
