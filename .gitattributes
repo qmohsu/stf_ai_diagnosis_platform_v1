@@ -3,3 +3,6 @@
 
 # Ensure SQL scripts use LF line endings
 *.sql text eol=lf
+
+# Treat PDFs and other binaries as binary (no line-ending conversion)
+*.pdf binary
