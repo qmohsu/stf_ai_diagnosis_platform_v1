@@ -6,9 +6,10 @@ diagnostic API once the trip ends.  The backend pipeline handles the
 1 Hz time-series windowing, anomaly detection, and clue generation —
 the device just needs to deliver the bytes.
 
-The legacy ``api_poster.APIPoster`` + ``schemas.OBDSnapshot`` machinery
-targets ``/v1/telemetry/obd_snapshot``, which was never deployed.  Use
-this module instead.
+This is the platform's sole edge ingestion path (GitHub issue #76).
+The legacy per-snapshot transport (``api_poster.APIPoster``, targeting
+the never-deployed ``/v1/telemetry/obd_snapshot``) was removed under
+APP-53 cleanup.
 
 Typical usage from a shell::
 

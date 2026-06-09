@@ -183,7 +183,7 @@ smoke-test: ## Run comprehensive smoke tests
 	@echo "$(GREEN)Running smoke tests...$(NC)"
 	@bash smoke_test.sh
 
-obd-agent-test: ## Run OBD agent tests (simulation only, no GPL deps)
+obd-agent-test: ## Run OBD agent tests (GPL-free since APP-53 cleanup)
 	@echo "$(GREEN)Running OBD agent tests...$(NC)"
-	@cd .. && pip install -q -r obd_agent/requirements-sim.txt && python -m pytest obd_agent/tests/ -v
+	@cd .. && pip install -q -r obd_agent/requirements.txt && python -m pytest obd_agent/tests/ -v
 	@echo "$(GREEN)OBD agent tests complete$(NC)"
