@@ -46,7 +46,7 @@ export function ToolCallCard({ invocation, defaultExpanded = false }: ToolCallCa
     ) : status === "error" ? (
       <span className="text-red-500 text-sm font-bold">&times;</span>
     ) : (
-      <span className="text-green-500 text-sm font-bold">&check;</span>
+      <span className="text-green-500 text-sm font-bold">{"✓"}</span>
     );
 
   const rawOutput = result?.output ?? "";

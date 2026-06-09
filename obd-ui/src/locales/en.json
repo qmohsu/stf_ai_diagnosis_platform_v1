@@ -320,6 +320,7 @@
     "showLess": "Show less",
     "expandTool": "Expand tool details",
     "collapseTool": "Collapse tool details",
+    "thinking": "Thinking…",
     "partialDiagnosis": "Partial diagnosis (agent iteration limit reached)",
     "tierLabel": {
       "0": "Simple (One-shot)",

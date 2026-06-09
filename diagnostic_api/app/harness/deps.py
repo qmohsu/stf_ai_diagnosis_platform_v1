@@ -11,11 +11,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import (
     Any,
+    AsyncIterator,
     Dict,
     List,
     Literal,
     Optional,
     Protocol,
+    Union,
 )
 
 import structlog
@@ -63,8 +65,25 @@ class LLMResponse:
     finish_reason: str
 
 
+@dataclass(frozen=True)
+class LLMStreamChunk:
+    """An incremental delta yielded by ``LLMClient.chat_stream()``.
+
+    Attributes:
+        kind: ``"reasoning"`` for chain-of-thought tokens (the
+            model's hidden thinking channel) or ``"content"`` for
+            visible answer tokens.
+        text: The token fragment.
+    """
+
+    kind: Literal["reasoning", "content"]
+    text: str
+
+
 EventType = Literal[
     "session_start",
+    "reasoning",
+    "token",
     "tool_call",
     "tool_result",
     "hypothesis",
@@ -156,6 +175,36 @@ class LLMClient(Protocol):
         """
         ...  # pragma: no cover
 
+    def chat_stream(
+        self,
+        *,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        model: str,
+        temperature: float,
+        max_tokens: int,
+    ) -> AsyncIterator[Union[LLMStreamChunk, LLMResponse]]:
+        """Stream a chat-completions request.
+
+        Yields ``LLMStreamChunk`` objects (reasoning / content
+        deltas) as they arrive, then terminates by yielding a
+        single ``LLMResponse`` carrying the assembled content,
+        tool calls, and finish reason — identical in shape to
+        what ``chat()`` returns, so the loop can dispatch tools
+        the same way.
+
+        Args:
+            messages: Conversation history in OpenAI format.
+            tools: Tool schemas in OpenAI function-calling format.
+            model: Model identifier.
+            temperature: Sampling temperature.
+            max_tokens: Token budget for the response.
+
+        Yields:
+            ``LLMStreamChunk`` deltas, then a final ``LLMResponse``.
+        """
+        ...  # pragma: no cover
+
 
 class OpenAILLMClient:
     """Adapter that wraps ``AsyncOpenAI`` into ``LLMClient``.
@@ -230,6 +279,124 @@ class OpenAILLMClient:
             tool_calls=tool_calls,
             finish_reason=finish,
         )
+
+    async def chat_stream(
+        self,
+        *,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        model: str,
+        temperature: float,
+        max_tokens: int,
+    ) -> AsyncIterator[Union[LLMStreamChunk, LLMResponse]]:
+        """Stream chat completions, reassembling a final response.
+
+        Surfaces reasoning (thinking) and content tokens as they
+        arrive, accumulates streamed tool-call deltas by index,
+        and yields a terminal ``LLMResponse`` matching ``chat()``.
+
+        Args:
+            messages: Conversation history.
+            tools: Tool schemas.
+            model: Model identifier.
+            temperature: Sampling temperature.
+            max_tokens: Token budget.
+
+        Yields:
+            ``LLMStreamChunk`` deltas, then a final ``LLMResponse``.
+        """
+        stream = await self._client.chat.completions.create(
+            model=model,
+            messages=messages,
+            tools=tools,
+            tool_choice="auto",
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=True,
+        )
+
+        content_parts: List[str] = []
+        # index -> {"id", "name", "args"} accumulator.
+        tool_acc: Dict[int, Dict[str, Any]] = {}
+        finish: Optional[str] = None
+
+        async for chunk in stream:
+            if not chunk.choices:
+                continue
+            choice = chunk.choices[0]
+            if choice.finish_reason:
+                finish = choice.finish_reason
+            delta = choice.delta
+            if delta is None:
+                continue
+
+            reasoning = _extract_reasoning(delta)
+            if reasoning:
+                yield LLMStreamChunk("reasoning", reasoning)
+
+            if delta.content:
+                content_parts.append(delta.content)
+                yield LLMStreamChunk("content", delta.content)
+
+            for tcd in delta.tool_calls or []:
+                acc = tool_acc.setdefault(
+                    tcd.index,
+                    {"id": None, "name": None, "args": ""},
+                )
+                if tcd.id:
+                    acc["id"] = tcd.id
+                if tcd.function:
+                    if tcd.function.name:
+                        acc["name"] = tcd.function.name
+                    if tcd.function.arguments:
+                        acc["args"] += tcd.function.arguments
+
+        tool_calls: List[ToolCallInfo] = []
+        for idx in sorted(tool_acc):
+            acc = tool_acc[idx]
+            if not acc["name"]:
+                continue
+            tool_calls.append(
+                ToolCallInfo(
+                    id=acc["id"] or f"call_{idx}",
+                    name=acc["name"],
+                    arguments=acc["args"] or "{}",
+                )
+            )
+
+        finish = finish or "stop"
+        if tool_calls and finish != "tool_calls":
+            finish = "tool_calls"
+
+        yield LLMResponse(
+            content="".join(content_parts) or None,
+            tool_calls=tool_calls,
+            finish_reason=finish,
+        )
+
+
+def _extract_reasoning(delta: Any) -> Optional[str]:
+    """Pull a reasoning/thinking token from a streamed delta.
+
+    Different OpenAI-compatible backends expose the thinking
+    channel under different keys.  qwen3 via Ollama uses
+    ``reasoning``; some providers use ``reasoning_content``.
+    Both may surface as a direct attribute or in ``model_extra``.
+
+    Args:
+        delta: The streamed ``choices[0].delta`` object.
+
+    Returns:
+        The reasoning token text, or ``None`` if this delta
+        carries no thinking content.
+    """
+    direct = getattr(delta, "reasoning", None) or getattr(
+        delta, "reasoning_content", None
+    )
+    if direct:
+        return direct
+    extra = getattr(delta, "model_extra", None) or {}
+    return extra.get("reasoning") or extra.get("reasoning_content")
 
 
 # ── Dependency container ─────────────────────────────────────────────

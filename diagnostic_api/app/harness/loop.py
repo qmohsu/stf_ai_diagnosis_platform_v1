@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from typing import Any, AsyncIterator, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional, Union
 
 import structlog
 
@@ -21,9 +21,11 @@ from app.harness.context import (
     truncate_tool_result,
 )
 from app.harness.deps import (
+    HarnessConfig,
     HarnessDeps,
     HarnessEvent,
     LLMResponse,
+    LLMStreamChunk,
     ToolCallInfo,
 )
 from app.harness.harness_prompts import (
@@ -243,6 +245,85 @@ def _extract_partial_diagnosis(
 # ── Core loop ────────────────────────────────────────────────────────
 
 
+async def _stream_llm_turn(
+    deps: HarnessDeps,
+    messages: List[Dict[str, Any]],
+    tool_schemas: List[Dict[str, Any]],
+    cfg: HarnessConfig,
+    iteration: int,
+) -> AsyncIterator[Union[HarnessEvent, LLMResponse]]:
+    """Run one streaming LLM turn, yielding live token events.
+
+    Yields ``HarnessEvent`` objects (``reasoning`` for thinking
+    tokens, ``token`` for answer tokens) as they stream, then
+    yields the terminal ``LLMResponse``.  If the streaming call
+    fails (e.g. a backend that won't stream with tools), falls
+    back to a single blocking ``chat()`` and yields its
+    ``LLMResponse`` — so a streaming quirk degrades gracefully to
+    the prior behaviour instead of failing the diagnosis.
+
+    Args:
+        deps: Injected dependencies (LLM client, config).
+        messages: Conversation history.
+        tool_schemas: Tool schemas in OpenAI function-calling form.
+        cfg: Harness configuration.
+        iteration: Current iteration index (for event payloads).
+
+    Yields:
+        ``HarnessEvent`` token deltas, then a final ``LLMResponse``.
+    """
+    response: Optional[LLMResponse] = None
+    try:
+        async for item in deps.llm_client.chat_stream(
+            messages=messages,
+            tools=tool_schemas,
+            model=cfg.model,
+            temperature=cfg.temperature,
+            max_tokens=cfg.max_tokens,
+        ):
+            if isinstance(item, LLMResponse):
+                response = item
+            elif isinstance(item, LLMStreamChunk):
+                if item.kind == "reasoning":
+                    yield HarnessEvent(
+                        "reasoning",
+                        {
+                            "text": item.text,
+                            "iteration": iteration,
+                        },
+                    )
+                else:  # content → streamed answer tokens
+                    yield HarnessEvent(
+                        "token",
+                        {
+                            "text": item.text,
+                            "iteration": iteration,
+                        },
+                    )
+    except Exception as exc:
+        logger.warning(
+            "harness_stream_fallback",
+            iteration=iteration,
+            error=str(exc),
+        )
+        response = None
+
+    if response is not None:
+        yield response
+        return
+
+    # Streaming failed or produced no terminal response — fall
+    # back to a single blocking call (may raise; the caller's
+    # handler converts that into the partial-diagnosis path).
+    yield await deps.llm_client.chat(
+        messages=messages,
+        tools=tool_schemas,
+        model=cfg.model,
+        temperature=cfg.temperature,
+        max_tokens=cfg.max_tokens,
+    )
+
+
 async def run_diagnosis_loop(
     session_id: uuid.UUID,
     parsed_summary: Dict[str, Any],
@@ -294,15 +375,27 @@ async def run_diagnosis_loop(
     try:
         async with asyncio.timeout(cfg.timeout_seconds):
             while iteration < cfg.max_iterations:
-                # ── 1. Call LLM ──────────────────────────────
+                # ── 1. Call LLM (streaming) ──────────────────
+                response: Optional[LLMResponse] = None
                 try:
-                    response = await deps.llm_client.chat(
-                        messages=messages,
-                        tools=tool_schemas,
-                        model=cfg.model,
-                        temperature=cfg.temperature,
-                        max_tokens=cfg.max_tokens,
-                    )
+                    async for item in _stream_llm_turn(
+                        deps, messages, tool_schemas, cfg,
+                        iteration,
+                    ):
+                        if isinstance(item, LLMResponse):
+                            response = item
+                        else:
+                            yield item
+                    if response is None:
+                        # Defensive: helper yielded no terminal
+                        # response — fall back to a blocking call.
+                        response = await deps.llm_client.chat(
+                            messages=messages,
+                            tools=tool_schemas,
+                            model=cfg.model,
+                            temperature=cfg.temperature,
+                            max_tokens=cfg.max_tokens,
+                        )
                 except Exception as exc:
                     logger.error(
                         "harness_llm_error",
