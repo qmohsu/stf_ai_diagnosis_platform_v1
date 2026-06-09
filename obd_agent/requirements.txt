@@ -1,33 +1,24 @@
-# OBD Agent -- Full dependencies (includes GPL-licensed python-obd)
-# NOTE: python-obd is GPL-2.0. This file is for live-mode or full installs.
-# For simulation/CI without GPL deps, use requirements-sim.txt instead.
+# OBD Agent -- analysis library + upload client dependencies.
+# GPL-free since APP-53 cleanup (2026-06-09): the live ELM327
+# acquisition loop (and its GPL-2.0 python-obd dependency) was
+# removed; ingestion is end-of-trip log upload via jetson_uploader.
 
-# OBD adapter communication (GPL-2.0)
-obd==0.7.2
-
-# HTTP client
+# HTTP client (jetson_uploader)
 httpx==0.26.0
 
 # Data validation
 pydantic==2.5.3
 
-# Time-series processing (Stage 0 pipeline)
+# Time-series processing (Stage 1 pipeline)
 pandas==2.1.4
 numpy==1.26.3
-pydantic-settings==2.1.0
 
-# Anomaly detection (Stage 2 pipeline)
+# Anomaly detection (Stage 3 pipeline)
 ruptures==1.1.9
 scikit-learn==1.4.0
 
-# Rule configuration
+# Rule configuration (Stage 4 clue generation)
 PyYAML==6.0.1
-
-# Structured logging
-structlog==24.1.0
-
-# Environment variable loading
-python-dotenv==1.0.0
 
 # --- Testing ---
 pytest==7.4.4
