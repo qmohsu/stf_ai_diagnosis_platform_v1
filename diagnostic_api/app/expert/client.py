@@ -10,7 +10,7 @@ Date: January 2026
 import os
 import httpx
 import structlog
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator, Optional, Union
 from openai import AsyncOpenAI
 from app.config import settings
 from app.expert import prompts
@@ -25,7 +25,7 @@ THINKING_SENTINEL = "\x00__THINKING__\x00"
 async def prewarm_local_model(
     endpoint: Optional[str] = None,
     model: Optional[str] = None,
-    keep_alive: str = "-1",
+    keep_alive: Union[int, str] = -1,
     timeout: float = 600.0,
 ) -> bool:
     """Pre-load the local Ollama model so it is resident.
@@ -47,8 +47,11 @@ async def prewarm_local_model(
     Args:
         endpoint: Ollama base URL.  Defaults to ``settings.llm_endpoint``.
         model: Model tag to load.  Defaults to ``settings.llm_model``.
-        keep_alive: Ollama ``keep_alive`` value (``"-1"`` = never
-            unload).  Passed through verbatim.
+        keep_alive: Ollama ``keep_alive`` value, passed through
+            verbatim.  Use the integer ``-1`` for "never unload"
+            (a *string* ``"-1"`` is rejected with HTTP 400 — Ollama
+            parses non-numeric strings as Go durations like
+            ``"60m"``), or a duration string for a bounded TTL.
         timeout: Request timeout in seconds.  Generous, because a
             cold load on a shared GPU can take minutes.
 

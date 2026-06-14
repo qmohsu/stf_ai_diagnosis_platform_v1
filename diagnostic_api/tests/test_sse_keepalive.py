@@ -156,7 +156,10 @@ class TestPrewarmLocalModel:
         """A successful warm-up returns True and posts the right body.
 
         Verifies the native ``/api/generate`` URL, the model tag, and
-        a ``keep_alive`` that keeps the model resident.
+        a ``keep_alive`` that keeps the model resident.  ``keep_alive``
+        MUST be the integer ``-1``, not the string ``"-1"`` — Ollama
+        parses non-numeric strings as Go durations and rejects ``"-1"``
+        with HTTP 400 (caught only in the live deploy E2E for #128).
         """
         client_cls, post = _mock_httpx_client()
         with patch(
@@ -174,7 +177,9 @@ class TestPrewarmLocalModel:
         # Trailing slash on endpoint must be normalised away.
         assert called_url == "http://127.0.0.1:11434/api/generate"
         assert called_json["model"] == "qwen3.5:27b-q8_0"
-        assert called_json["keep_alive"] == "-1"
+        # Integer -1, NOT the string "-1" (Ollama 400s on the string).
+        assert called_json["keep_alive"] == -1
+        assert isinstance(called_json["keep_alive"], int)
         assert called_json["stream"] is False
 
     @pytest.mark.asyncio
