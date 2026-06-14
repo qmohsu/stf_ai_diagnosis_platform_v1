@@ -27,7 +27,15 @@ import shutil
 import tempfile
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Literal, NamedTuple, Optional, Type, Union
+from typing import (
+    Any,
+    AsyncIterator,
+    Literal,
+    NamedTuple,
+    Optional,
+    Type,
+    Union,
+)
 
 import structlog
 from fastapi import (
@@ -1677,7 +1685,10 @@ async def generate_diagnosis(
             yield _sse_event("error", str(exc))
 
     return StreamingResponse(
-        _stream(),
+        # Timer-based keep-alive covers the silent gap before the
+        # first token — notably an Ollama cold-load after a deploy,
+        # which otherwise trips the proxy idle timeout (Issue #128).
+        _with_keepalive(_stream()),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -1693,6 +1704,59 @@ def _sse_event(event: str, data: Union[str, dict]) -> str:
     """
     escaped = json.dumps(data)
     return f"event: {event}\ndata: {escaped}\n\n"
+
+
+# Max silence (seconds) before a keep-alive ping is emitted.  Must
+# stay well under the shortest idle timeout in the
+# browser → Cloudflare → Nginx chain (~2 min, per Issue #128).
+_KEEPALIVE_INTERVAL_SECONDS = 15.0
+
+
+async def _with_keepalive(
+    source: AsyncIterator[str],
+    interval: float = _KEEPALIVE_INTERVAL_SECONDS,
+) -> AsyncIterator[str]:
+    """Inject SSE keep-alive comments during silent gaps.
+
+    Yields every frame from ``source`` unchanged, but if no frame
+    arrives within ``interval`` seconds it emits a ``": ping"``
+    comment so idle proxies and the Cloudflare tunnel don't drop a
+    long-running stream.  This is timer-based and starts ticking
+    from the moment a frame is awaited — so it covers the silent
+    gap *before the first upstream chunk*, e.g. while Ollama
+    cold-loads a model after a deploy (Issue #128) — unlike the
+    per-chunk ``: thinking`` comments, which only flow once the
+    model has started emitting reasoning tokens.  Comments are
+    ignored by the SSE client.
+
+    Args:
+        source: The underlying SSE frame generator.
+        interval: Max silence (seconds) before a ping is sent.
+
+    Yields:
+        SSE frame strings, interleaved with ``": ping"`` comments.
+    """
+    ait = source.__aiter__()
+    pending: Optional[asyncio.Future] = None
+    try:
+        while True:
+            if pending is None:
+                pending = asyncio.ensure_future(ait.__anext__())
+            try:
+                frame = await asyncio.wait_for(
+                    asyncio.shield(pending), interval,
+                )
+            except asyncio.TimeoutError:
+                # Underlying __anext__ is shielded — still running.
+                yield ": ping\n\n"
+                continue
+            except StopAsyncIteration:
+                return
+            pending = None
+            yield frame
+    finally:
+        if pending is not None and not pending.done():
+            pending.cancel()
 
 
 @router.post(

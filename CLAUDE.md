@@ -230,7 +230,13 @@ When the user says **"deploy to server"** or **"update the server"**, follow thi
    - `curl -sf http://127.0.0.1:8001/health` (Diagnostic API)
    - `curl -sf http://127.0.0.1:3001` (OBD UI)
    - `curl -sf http://127.0.0.1:8080/health` (Nginx gateway)
-10. **Verify deployed commit**: Confirm the running code matches what was pushed:
+10. **Warm up the local LLM** (APP-58, GitHub issue #128): The `down`+`up` in step 5 evicts the resident model, so the FIRST `/v2/obd/{id}/diagnose` triggers a multi-minute cold load. The API now auto-pre-warms in the background at startup (`LLM_PREWARM_ON_STARTUP`, default on) and every diagnose stream has a timer-based SSE keep-alive, so a real user request will survive the load — but a green step-9 health check does NOT yet mean "first generation will succeed", because `/health` returns before the model is resident. Force the load explicitly and confirm it sticks so the first expert request is instant:
+    ```
+    ssh polyu-gpu "curl -sf http://127.0.0.1:11434/api/generate -d '{\"model\":\"qwen3.5:27b-q8_0\",\"prompt\":\"hi\",\"stream\":false,\"keep_alive\":-1,\"options\":{\"num_predict\":5}}' >/dev/null && echo warmup_ok"
+    ssh polyu-gpu "podman exec stf-ollama ollama ps"   # model should be listed as loaded (UNTIL = Forever with keep_alive=-1)
+    ```
+    On a shared GPU the warm-up POST can take a couple of minutes — that is the cold load happening here instead of in front of a user. If it times out, other tenants may be holding VRAM; re-run once the card frees up.
+11. **Verify deployed commit**: Confirm the running code matches what was pushed:
     `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1 && git log --oneline -1"`
 
 **Server details**: Podman 3.4 (rootless), host networking, API on port 8001, Nginx on port 8080, `runtime: nvidia` for Ollama GPU.

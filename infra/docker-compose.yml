@@ -86,6 +86,11 @@ services:
     environment:
       OLLAMA_HOST: 0.0.0.0:11434
       OLLAMA_FLASH_ATTENTION: "true"
+      # Keep the model resident after first load so it survives idle
+      # periods.  The first request after a container recreate still
+      # cold-loads (Issue #128) — that gap is covered by the API
+      # startup pre-warm and the SSE keep-alive.
+      OLLAMA_KEEP_ALIVE: "-1"
     # GPU access is environment-specific:
     #   - Docker: use docker-compose.gpu-docker.yml overlay
     #   - Podman (PolyU): uses direct /dev/nvidia* device passthrough
@@ -121,6 +126,7 @@ services:
       # LLM Configuration
       LLM_ENDPOINT: ${OLLAMA_BASE_URL:-http://ollama:11434}
       LLM_MODEL: ${OLLAMA_DEFAULT_MODEL:-qwen3.5:27b-q8_0}
+      LLM_PREWARM_ON_STARTUP: ${LLM_PREWARM_ON_STARTUP:-true}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
       VISION_MODEL: ${VISION_MODEL:-llava}
 

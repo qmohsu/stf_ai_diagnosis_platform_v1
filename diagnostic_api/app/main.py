@@ -225,6 +225,29 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             "golden_sync_startup_error: %s", exc,
         )
 
+    # Pre-warm the local Ollama model in the background so the first
+    # post-deploy diagnosis doesn't cold-load past the SSE idle
+    # timeout (Issue #128).  Fire-and-forget: it must not block
+    # startup or delay /health readiness, and any failure is benign
+    # because the timer-based SSE keep-alive is the backstop.
+    if settings.llm_prewarm_on_startup:
+        from app.expert.client import prewarm_local_model
+
+        def _on_prewarm_done(
+            fut: asyncio.Future,  # type: ignore[type-arg]
+        ) -> None:
+            exc = fut.exception()
+            if exc:
+                logger.warning(
+                    "llm_prewarm.background_failed",
+                    extra={"error": str(exc)},
+                )
+
+        _prewarm_fut = asyncio.ensure_future(
+            prewarm_local_model(),
+        )
+        _prewarm_fut.add_done_callback(_on_prewarm_done)
+
     yield
 
     # --- Shutdown ---

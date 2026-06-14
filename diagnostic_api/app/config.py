@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     # LLM Configuration
     llm_endpoint: str = os.getenv("LLM_ENDPOINT", "http://ollama:11434")
     llm_model: str = os.getenv("LLM_MODEL", "qwen3.5:27b-q8_0")
+    # Pre-load the local model at startup so the first post-deploy
+    # diagnosis doesn't cold-load past the SSE idle timeout (Issue
+    # #128).  Disable in environments with no local Ollama.
+    llm_prewarm_on_startup: bool = (
+        os.getenv("LLM_PREWARM_ON_STARTUP", "true").lower() == "true"
+    )
 
     # Embedding Configuration
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
