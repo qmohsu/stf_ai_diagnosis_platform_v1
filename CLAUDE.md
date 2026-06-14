@@ -186,6 +186,26 @@ obd_agent/        # OBD-II edge agent
 
 If in doubt, update the docs. A commit that changes system behavior without updating docs is incomplete. Include the doc updates **in the same commit** as the code change — not in a follow-up commit.
 
+## Post-Implementation Verification (Mandatory)
+
+After implementing something new (a feature, endpoint, or bug fix that is observable in the running app), do NOT stop at "code written + unit tests pass". Carry it through this loop before declaring it done, then hand the merge decision to the user:
+
+1. **Open a PR.** Commit on a feature branch (never `main`; branch from clean `main` before the first commit), push, and open a PR referencing the issue. Doc updates ride in the same commit (per the Documentation Update Rule above).
+2. **Deploy the *branch* on the PolyU server.** Run the Server Deployment procedure below, but check out the feature branch instead of pulling `main` in step 3:
+   ```
+   ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1 && git fetch origin && git checkout <branch> && git pull origin <branch>"
+   ```
+   Then do the rebuild → force-recreate → Alembic → restart → health-check → LLM warm-up steps exactly as written. Note the current branch/commit first so you can restore it afterward.
+3. **Test end-to-end with the Chrome MCP** against the live deployment (`https://stf-diagnosis.dev`). Drive the actual user flow the change touches — log in, exercise the new path, and confirm the observable behaviour with screenshots / network / DB rows. Test in **Incognito** (no extensions, DevTools closed): the Claude-in-Chrome extension buffers streaming fetch/SSE, so streams look stuck until close. For streaming endpoints, trust server-side signals (GPU util, `ollama` logs, `diagnosis_history` / `harness_event_log` rows) and `curl -N`, not in-extension probes.
+4. **Report back to the user** with an explicit verdict: what you tested, what passed/failed (with evidence), and **"good to merge"** or **"not yet, because …"**. Do NOT merge yourself — the merge call is the user's.
+5. **Restore the server to `main`** after testing (unless the user says to leave the branch up), so prod is never left on an unmerged branch:
+   ```
+   ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1 && git checkout main && git pull origin main"
+   ```
+   Redeploy `main` if you had rebuilt containers off the branch.
+
+Skip this loop only for changes with no observable runtime behaviour (pure docs, comments, or internal refactors that can't be exercised in the browser) — those still get a PR and a report, just no deploy/E2E.
+
 ## Server Deployment (PolyU GPU Server)
 
 When the user says **"deploy to server"** or **"update the server"**, follow this procedure:
