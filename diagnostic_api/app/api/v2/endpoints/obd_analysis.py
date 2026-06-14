@@ -71,6 +71,7 @@ from app.expert.client import ExpertLLMClient, THINKING_SENTINEL
 from app.config import settings
 from app.models_db import (
     DiagnosisHistory,
+    OBDAgentDiagnosisFeedback,
     OBDAIDiagnosisFeedback,
     OBDDetailedFeedback,
     OBDPremiumDiagnosisFeedback,
@@ -85,10 +86,11 @@ from obd_agent.summary_formatter import format_summary_flat_strings
 FeedbackModel = Type[Union[
     OBDSummaryFeedback, OBDDetailedFeedback, OBDRAGFeedback,
     OBDAIDiagnosisFeedback, OBDPremiumDiagnosisFeedback,
+    OBDAgentDiagnosisFeedback,
 ]]
 FeedbackType = Literal[
     "summary", "detailed", "rag", "ai_diagnosis",
-    "premium_diagnosis",
+    "premium_diagnosis", "agent_diagnosis",
 ]
 
 _MAX_FEEDBACK_PER_SESSION: int = 10
@@ -867,9 +869,11 @@ async def get_obd_session(
 )
 async def get_diagnosis_history(
     session_id: uuid.UUID,
-    provider: Optional[Literal["local", "premium"]] = Query(
+    provider: Optional[Literal["local", "premium", "agent"]] = Query(
         default=None,
-        description="Filter by provider: 'local' or 'premium'.",
+        description=(
+            "Filter by provider: 'local', 'premium', or 'agent'."
+        ),
     ),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -879,11 +883,12 @@ async def get_diagnosis_history(
     """Return diagnosis generations for a session (paginated).
 
     Results are ordered by created_at descending (newest first).
-    Optionally filtered by provider ('local' or 'premium').
+    Optionally filtered by provider ('local', 'premium', 'agent').
 
     Args:
         session_id: OBD analysis session UUID.
-        provider: Optional provider filter ('local' or 'premium').
+        provider: Optional provider filter
+            ('local', 'premium', or 'agent').
         limit: Maximum number of items to return (1-200).
         offset: Number of items to skip before returning.
         current_user: Authenticated user from JWT.
@@ -945,10 +950,12 @@ _FEEDBACK_TABLES: list[tuple[FeedbackModel, FeedbackType]] = [
     (OBDRAGFeedback, "rag"),
     (OBDAIDiagnosisFeedback, "ai_diagnosis"),
     (OBDPremiumDiagnosisFeedback, "premium_diagnosis"),
+    (OBDAgentDiagnosisFeedback, "agent_diagnosis"),
 ]
 
 _FEEDBACK_TABLES_WITH_HISTORY: frozenset[FeedbackModel] = frozenset({
     OBDAIDiagnosisFeedback, OBDPremiumDiagnosisFeedback,
+    OBDAgentDiagnosisFeedback,
 })
 
 
@@ -1040,13 +1047,13 @@ async def get_feedback_history(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> FeedbackHistoryResponse:
-    """Return all feedback across all 5 tables for a session.
+    """Return all feedback across all 6 tables for a session.
 
     Results are ordered by created_at descending (newest first).
     Merges rows from obd_summary_feedback,
     obd_detailed_feedback, obd_rag_feedback,
-    obd_ai_diagnosis_feedback, and
-    obd_premium_diagnosis_feedback.
+    obd_ai_diagnosis_feedback, obd_premium_diagnosis_feedback,
+    and obd_agent_diagnosis_feedback.
 
     Args:
         session_id: OBD analysis session UUID.
@@ -1064,7 +1071,7 @@ async def get_feedback_history(
     """
     _get_owned_session(session_id, current_user, db)
 
-    # Max 50 rows total (10 per table x 5 tables) due to
+    # Max 60 rows total (10 per table x 6 tables) due to
     # _MAX_FEEDBACK_PER_SESSION cap, so in-memory merge
     # is acceptable.
     #
@@ -1413,7 +1420,7 @@ def _validate_diagnosis_history_id(
     Args:
         diagnosis_history_id: Client-supplied string (may be None).
         session_id: The session the feedback is being submitted for.
-        expected_provider: ``"local"`` or ``"premium"``.
+        expected_provider: ``"local"``, ``"premium"``, or ``"agent"``.
         db: Database session.
 
     Returns:
@@ -1497,7 +1504,10 @@ def _store_diagnosis(
 
     Args:
         session_id: Target session UUID.
-        provider: ``"local"`` or ``"premium"``.
+        provider: ``"local"``, ``"premium"``, or ``"agent"``.
+            Only ``"premium"`` writes the dedicated
+            ``premium_diagnosis_text`` column; ``"local"`` and
+            ``"agent"`` both update ``diagnosis_text``.
         model_name: Model identifier that produced the text
             (e.g. ``"qwen3.5:27b-q8_0"``, ``"anthropic/claude-sonnet-4.6"``).
         text: Full diagnosis text (truncated to
@@ -1788,5 +1798,61 @@ async def submit_ai_diagnosis_feedback(
     return await _submit_feedback(
         session_id, feedback, current_user, db,
         OBDAIDiagnosisFeedback, "ai_diagnosis",
+        extra_fields=extra,
+    )
+
+
+@router.post(
+    "/{session_id}/feedback/agent_diagnosis",
+    status_code=status.HTTP_201_CREATED,
+    summary="Submit expert feedback for the agent AI diagnosis view",
+)
+async def submit_agent_diagnosis_feedback(
+    session_id: uuid.UUID,
+    feedback: OBDFeedbackRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Store expert feedback on the agent AI diagnosis.
+
+    Mirrors :func:`submit_ai_diagnosis_feedback` but validates the
+    optional ``diagnosis_history_id`` against ``provider='agent'``
+    and persists into the dedicated ``obd_agent_diagnosis_feedback``
+    table (HARNESS-24, issue #127).
+
+    Snapshot source: when a specific generation is linked, the
+    snapshot is read from that immutable ``DiagnosisHistory`` row
+    rather than the session's ``diagnosis_text`` column.  The agent
+    loop shares that column with the local one-shot path, so a later
+    local generation could otherwise overwrite it — sourcing from
+    the validated history row keeps the agent training-data snapshot
+    unambiguous.  Falls back to the session column when no
+    generation is linked.
+    """
+    # Ownership check FIRST — prevents information disclosure.
+    session_data = _get_session_data(
+        session_id, current_user, db,
+    )
+    # Validate optional link to a specific agent generation.
+    hist_id = _validate_diagnosis_history_id(
+        feedback.diagnosis_history_id, session_id, "agent", db,
+    )
+    diag_text = session_data.diagnosis_text
+    if hist_id is not None:
+        hist_text = (
+            db.query(DiagnosisHistory.diagnosis_text)
+            .filter(DiagnosisHistory.id == hist_id)
+            .scalar()
+        )
+        if hist_text is not None:
+            diag_text = hist_text
+    if diag_text and len(diag_text) > _MAX_DIAGNOSIS_LENGTH:
+        diag_text = diag_text[:_MAX_DIAGNOSIS_LENGTH]
+    extra: dict[str, Any] = {"diagnosis_text": diag_text}
+    if hist_id is not None:
+        extra["diagnosis_history_id"] = hist_id
+    return await _submit_feedback(
+        session_id, feedback, current_user, db,
+        OBDAgentDiagnosisFeedback, "agent_diagnosis",
         extra_fields=extra,
     )

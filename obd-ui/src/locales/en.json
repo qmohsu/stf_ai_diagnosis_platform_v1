@@ -74,7 +74,8 @@
     "agentLlm": "Agent AI",
     "localModel": "Local Model",
     "cloudModel": "Cloud Model",
-    "feedback": "Feedback"
+    "feedback": "Feedback",
+    "agentModel": "Agent Model"
   },
   "summary": {
     "pidSummary": "PID Summary",
@@ -237,7 +238,9 @@
     "pageOf": "Page {{current}} of {{total}}",
     "next": "Next",
     "retry": "Retry",
-    "loadFailed": "Failed to load history"
+    "loadFailed": "Failed to load history",
+    "agent": "Agent",
+    "emptyAgent": "No agent diagnosis generations yet. Generate one from the \"AI Diagnostic Result\" → Agent AI tab first."
   },
   "feedbackForm": {
     "title": "Expert Feedback — {{view}} View",
@@ -246,7 +249,8 @@
       "detailed": "Detailed",
       "rag": "RAG",
       "ai_diagnosis": "AI Diagnosis",
-      "premium_diagnosis": "Premium AI Diagnosis"
+      "premium_diagnosis": "Premium AI Diagnosis",
+      "agent_diagnosis": "Agent AI Diagnosis"
     },
     "rating": "Rating",
     "rateOutOf5": "Rate {{n}} out of 5",
@@ -280,7 +284,8 @@
       "detailed": "Detailed",
       "rag": "RAG",
       "ai_diagnosis": "AI Diagnosis",
-      "premium_diagnosis": "Premium AI"
+      "premium_diagnosis": "Premium AI",
+      "agent_diagnosis": "Agent AI"
     },
     "helpful": "Helpful",
     "notHelpful": "Not helpful",

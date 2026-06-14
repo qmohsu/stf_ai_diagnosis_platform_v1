@@ -170,6 +170,206 @@ class TestValidateDiagnosisHistoryId:
         )
         assert result == hist_id
 
+    def test_accepts_agent_provider(self):
+        """A provider='agent' row validates for expected 'agent'.
+
+        Regression for issue #127: agent generations must be a
+        valid feedback target, not just local/premium.
+        """
+        from app.api.v2.endpoints.obd_analysis import (
+            _validate_diagnosis_history_id,
+        )
+
+        hist_id = uuid.uuid4()
+        sid = uuid.uuid4()
+        row = _make_history_row(hist_id, sid, provider="agent")
+        db = MagicMock()
+        db.query.return_value.filter.return_value \
+            .first.return_value = row
+
+        result = _validate_diagnosis_history_id(
+            str(hist_id), sid, "agent", db,
+        )
+        assert result == hist_id
+
+    def test_rejects_local_row_for_agent_feedback(self):
+        """A provider='local' row is rejected for expected 'agent'.
+
+        The mirror of the original #127 bug: previously the agent
+        view posted to the ai_diagnosis endpoint (expected
+        'local'), so an agent row 400'd.  Now the agent endpoint
+        expects 'agent', so a stray local row must still 400.
+        """
+        from fastapi import HTTPException
+
+        from app.api.v2.endpoints.obd_analysis import (
+            _validate_diagnosis_history_id,
+        )
+
+        hist_id = uuid.uuid4()
+        sid = uuid.uuid4()
+        row = _make_history_row(hist_id, sid, provider="local")
+        db = MagicMock()
+        db.query.return_value.filter.return_value \
+            .first.return_value = row
+
+        with pytest.raises(HTTPException) as exc_info:
+            _validate_diagnosis_history_id(
+                str(hist_id), sid, "agent", db,
+            )
+        assert exc_info.value.status_code == 400
+        assert "mismatch" in exc_info.value.detail.lower()
+
+
+# ---------------------------------------------------------------------------
+# Tests for the agent diagnosis feedback endpoint (issue #127)
+# ---------------------------------------------------------------------------
+
+
+class TestAgentDiagnosisFeedbackEndpoint:
+    """End-to-end wiring of submit_agent_diagnosis_feedback.
+
+    Exercises the endpoint coroutine directly (it lives in
+    ``obd_analysis`` and pulls in no harness modules, so it runs
+    offline) to prove an agent generation's history id is accepted
+    and routed to the dedicated agent feedback table.
+    """
+
+    def _run(self, coro):
+        import asyncio
+
+        return asyncio.run(coro)
+
+    def test_agent_feedback_accepts_agent_history_id(self):
+        """A provider='agent' history id is persisted via the agent table."""
+        from app.api.v2 import schemas
+        from app.api.v2.endpoints import obd_analysis
+        from app.models_db import OBDAgentDiagnosisFeedback
+
+        sid = uuid.uuid4()
+        hist_id = uuid.uuid4()
+
+        session_row = _make_session(sid)
+        # Distinct from the session column so the test proves the
+        # snapshot is sourced from the linked history row, not the
+        # (potentially stale, local-shared) session diagnosis_text.
+        session_row.diagnosis_text = "stale local text"
+        agent_row = _make_history_row(
+            hist_id, sid, provider="agent",
+        )
+
+        # db.query() is called in this order:
+        #   1. _get_session_data -> _get_owned_session (session)
+        #   2. _validate_diagnosis_history_id (history row)
+        #   3. authoritative snapshot fetch (history text scalar)
+        #   4. _submit_feedback -> _get_owned_session (session)
+        #   5. _submit_feedback count guard (count)
+        sess1 = MagicMock()
+        sess1.filter.return_value.first.return_value = session_row
+        hist = MagicMock()
+        hist.filter.return_value.first.return_value = agent_row
+        hist_text = MagicMock()
+        hist_text.filter.return_value.scalar.return_value = (
+            "agent diagnosis snapshot"
+        )
+        sess2 = MagicMock()
+        sess2.filter.return_value.first.return_value = session_row
+        count = MagicMock()
+        count.filter.return_value.count.return_value = 0
+
+        db = MagicMock()
+        db.query.side_effect = [sess1, hist, hist_text, sess2, count]
+
+        feedback = schemas.OBDFeedbackRequest(
+            rating=5,
+            is_helpful=True,
+            comments="agent did well",
+            diagnosis_history_id=str(hist_id),
+        )
+        user = make_mock_user()
+
+        captured = {}
+
+        def _fake_insert(
+            session_id, fb, db_, model_class,
+            feedback_type, extra_fields=None,
+        ):
+            captured["model_class"] = model_class
+            captured["feedback_type"] = feedback_type
+            captured["extra_fields"] = extra_fields
+            return {
+                "status": "ok",
+                "feedback_id": str(uuid.uuid4()),
+            }
+
+        with patch.object(
+            obd_analysis, "_insert_feedback", _fake_insert,
+        ):
+            result = self._run(
+                obd_analysis.submit_agent_diagnosis_feedback(
+                    session_id=sid,
+                    feedback=feedback,
+                    current_user=user,
+                    db=db,
+                )
+            )
+
+        assert result["status"] == "ok"
+        assert (
+            captured["model_class"] is OBDAgentDiagnosisFeedback
+        )
+        assert captured["feedback_type"] == "agent_diagnosis"
+        assert (
+            captured["extra_fields"]["diagnosis_history_id"]
+            == hist_id
+        )
+        assert (
+            captured["extra_fields"]["diagnosis_text"]
+            == "agent diagnosis snapshot"
+        )
+
+    def test_agent_feedback_rejects_local_history_id(self):
+        """Linking a local generation to agent feedback 400s."""
+        from fastapi import HTTPException
+
+        from app.api.v2 import schemas
+        from app.api.v2.endpoints import obd_analysis
+
+        sid = uuid.uuid4()
+        hist_id = uuid.uuid4()
+
+        session_row = _make_session(sid)
+        local_row = _make_history_row(
+            hist_id, sid, provider="local",
+        )
+
+        sess1 = MagicMock()
+        sess1.filter.return_value.first.return_value = session_row
+        hist = MagicMock()
+        hist.filter.return_value.first.return_value = local_row
+
+        db = MagicMock()
+        db.query.side_effect = [sess1, hist]
+
+        feedback = schemas.OBDFeedbackRequest(
+            rating=3,
+            is_helpful=False,
+            diagnosis_history_id=str(hist_id),
+        )
+        user = make_mock_user()
+
+        with pytest.raises(HTTPException) as exc_info:
+            self._run(
+                obd_analysis.submit_agent_diagnosis_feedback(
+                    session_id=sid,
+                    feedback=feedback,
+                    current_user=user,
+                    db=db,
+                )
+            )
+        assert exc_info.value.status_code == 400
+        assert "mismatch" in exc_info.value.detail.lower()
+
 
 # ---------------------------------------------------------------------------
 # Tests for SSE done event format

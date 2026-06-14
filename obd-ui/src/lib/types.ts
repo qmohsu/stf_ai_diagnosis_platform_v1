@@ -119,7 +119,7 @@ export interface FeedbackResponse {
 export interface DiagnosisHistoryItem {
   id: string;
   session_id: string;
-  provider: "local" | "premium";
+  provider: "local" | "premium" | "agent";
   model_name: string;
   diagnosis_text: string;
   created_at: string;
@@ -139,7 +139,8 @@ export interface FeedbackHistoryItem {
     | "detailed"
     | "rag"
     | "ai_diagnosis"
-    | "premium_diagnosis";
+    | "premium_diagnosis"
+    | "agent_diagnosis";
   rating: number;
   is_helpful: boolean;
   comments: string | null;

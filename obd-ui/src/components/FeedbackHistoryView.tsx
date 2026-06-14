@@ -320,7 +320,9 @@ export function FeedbackHistoryView({
               </div>
 
               {/* Diagnosis generation info */}
-              {(item.tab_name === "ai_diagnosis" || item.tab_name === "premium_diagnosis") &&
+              {(item.tab_name === "ai_diagnosis"
+                || item.tab_name === "premium_diagnosis"
+                || item.tab_name === "agent_diagnosis") &&
                 item.diagnosis_model_name && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span className="font-mono">{item.diagnosis_model_name}</span>

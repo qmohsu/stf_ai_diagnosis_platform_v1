@@ -27,7 +27,7 @@ const PAGE_SIZE = 5;
 interface DiagnosisHistoryViewProps {
   sessionId: string;
   active?: boolean;
-  provider?: "local" | "premium";
+  provider?: "local" | "premium" | "agent";
 }
 
 export function DiagnosisHistoryView({
@@ -169,7 +169,11 @@ export function DiagnosisHistoryView({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            {provider === "premium" ? t("history.emptyCloud") : t("history.emptyLocal")}
+            {provider === "premium"
+              ? t("history.emptyCloud")
+              : provider === "agent"
+                ? t("history.emptyAgent")
+                : t("history.emptyLocal")}
           </p>
         </CardContent>
       </Card>
@@ -209,10 +213,12 @@ export function DiagnosisHistoryView({
             <div
               key={item.id}
               className={
-                "border rounded-lg p-4 space-y-2"
+                "border rounded-lg p-4 space-y-2 border-l-4"
                 + (item.provider === "premium"
-                  ? " border-l-4 border-l-primary"
-                  : " border-l-4 border-l-muted-foreground/30")
+                  ? " border-l-primary"
+                  : item.provider === "agent"
+                    ? " border-l-emerald-500"
+                    : " border-l-muted-foreground/30")
               }
             >
               <div className="flex items-center gap-2 flex-wrap">
@@ -220,12 +226,16 @@ export function DiagnosisHistoryView({
                   variant={
                     item.provider === "premium"
                       ? "default"
-                      : "secondary"
+                      : item.provider === "agent"
+                        ? "outline"
+                        : "secondary"
                   }
                 >
                   {item.provider === "premium"
                     ? t("history.cloud")
-                    : t("history.local")}
+                    : item.provider === "agent"
+                      ? t("history.agent")
+                      : t("history.local")}
                 </Badge>
                 <span className="text-sm font-mono text-muted-foreground">
                   {item.model_name}

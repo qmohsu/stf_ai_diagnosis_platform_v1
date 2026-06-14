@@ -563,7 +563,7 @@ class TestGetSessionEndpoint:
 class TestFeedbackEndpoints:
     """Tests for all three feedback tab endpoints."""
 
-    @pytest.mark.parametrize("tab", ["summary", "detailed", "rag", "ai_diagnosis", "premium_diagnosis"])
+    @pytest.mark.parametrize("tab", ["summary", "detailed", "rag", "ai_diagnosis", "premium_diagnosis", "agent_diagnosis"])
     def test_feedback_unknown_session_returns_404(self, tab, client, app_ref):
         from app.api.deps import get_db
         app_ref.dependency_overrides[get_db] = _mock_db_none
@@ -815,6 +815,79 @@ class TestAIDiagnosisFeedback:
 
         extra = mock_insert.call_args[0][5]
         assert len(extra["diagnosis_text"]) == 50_000
+
+
+# ---------------------------------------------------------------------------
+# Agent AI Diagnosis feedback (issue #127)
+# ---------------------------------------------------------------------------
+
+
+class TestAgentDiagnosisFeedback:
+    """Tests for POST /feedback/agent_diagnosis.
+
+    The agent view used to post to /feedback/ai_diagnosis with an
+    agent generation's history id and 400'd on provider mismatch.
+    These cover the dedicated endpoint that fixes it.
+    """
+
+    @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
+    def test_agent_feedback_routes_to_agent_table(
+        self, mock_insert, client, app_ref,
+    ):
+        """Endpoint persists via OBDAgentDiagnosisFeedback / 'agent_diagnosis'."""
+        from app.models_db import OBDAgentDiagnosisFeedback
+
+        sid = uuid.uuid4()
+
+        mock_db = MagicMock()
+        mock_session_row = MagicMock()
+        mock_session_row.parsed_summary_payload = FAKE_PARSED_SUMMARY
+        mock_session_row.diagnosis_text = "Agent diagnosis output"
+
+        get_data_chain = MagicMock()
+        get_data_chain.filter.return_value.first.return_value = (
+            mock_session_row
+        )
+        exists_chain = MagicMock()
+        exists_chain.filter.return_value.first.return_value = (sid,)
+        count_chain = MagicMock()
+        count_chain.filter.return_value.count.return_value = 0
+        mock_db.query.side_effect = [
+            get_data_chain, exists_chain, count_chain,
+        ]
+
+        mock_insert.return_value = {
+            "status": "ok",
+            "feedback_id": str(uuid.uuid4()),
+        }
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+
+        resp = client.post(
+            f"/v2/obd/{sid}/feedback/agent_diagnosis",
+            json=VALID_FEEDBACK,
+        )
+        assert resp.status_code == 201
+
+        # _insert_feedback(session_id, feedback, db, model_class,
+        #                  feedback_type, extra_fields)
+        args = mock_insert.call_args[0]
+        assert args[3] is OBDAgentDiagnosisFeedback
+        assert args[4] == "agent_diagnosis"
+        assert args[5] == {"diagnosis_text": "Agent diagnosis output"}
+
+    def test_agent_feedback_unknown_session_returns_404(
+        self, client, app_ref,
+    ):
+        """Unknown session yields 404, not a leak."""
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = _mock_db_none
+        resp = client.post(
+            f"/v2/obd/{uuid.uuid4()}/feedback/agent_diagnosis",
+            json=VALID_FEEDBACK,
+        )
+        assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -1100,6 +1173,59 @@ class TestDiagnosisHistory:
         assert body["total"] == 1
         assert len(body["items"]) == 1
         assert body["items"][0]["provider"] == "local"
+
+    def test_provider_filter_agent(
+        self, client, app_ref,
+    ):
+        """Returns agent items when provider=agent (issue #127).
+
+        Before the schema fix, ``DiagnosisHistoryItem.provider``
+        was ``Literal['local', 'premium']`` and an agent row would
+        500 on response validation.
+        """
+        from datetime import datetime, timezone
+
+        sid = uuid.uuid4()
+        row = MagicMock()
+        row.id = uuid.uuid4()
+        row.session_id = sid
+        row.provider = "agent"
+        row.model_name = "deepseek/deepseek-v3.2"
+        row.diagnosis_text = "Agent generation"
+        row.created_at = datetime(
+            2026, 6, 9, 12, 0, 0, tzinfo=timezone.utc,
+        )
+
+        mock_db = MagicMock()
+        exists_chain = MagicMock()
+        exists_chain.filter.return_value.first.return_value = (
+            sid,
+        )
+        history_chain = MagicMock()
+        filtered_session = history_chain.filter.return_value
+        filtered_provider = (
+            filtered_session.filter.return_value
+        )
+        filtered_provider.count.return_value = 1
+        filtered_provider.order_by.return_value \
+            .limit.return_value.offset.return_value \
+            .all.return_value = [row]
+        mock_db.query.side_effect = [
+            exists_chain, history_chain,
+        ]
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = (
+            lambda: mock_db
+        )
+
+        resp = client.get(
+            f"/v2/obd/{sid}/history?provider=agent",
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 1
+        assert body["items"][0]["provider"] == "agent"
 
     def test_response_schema_has_required_fields(
         self, client, app_ref,

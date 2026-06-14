@@ -439,7 +439,7 @@ export async function streamAgentDiagnosis(
 export async function submitFeedback(
   sessionId: string,
   feedback: OBDFeedbackRequest,
-  tab: "summary" | "detailed" | "rag" | "ai_diagnosis" | "premium_diagnosis",
+  tab: "summary" | "detailed" | "rag" | "ai_diagnosis" | "premium_diagnosis" | "agent_diagnosis",
 ): Promise<FeedbackResponse> {
   const res = await fetch(`${API_URL}/v2/obd/${sessionId}/feedback/${tab}`, {
     method: "POST",
@@ -466,13 +466,13 @@ export async function submitFeedback(
  * @param sessionId  OBD analysis session UUID.
  * @param limit      Max items to return (1-200, default 50).
  * @param offset     Number of items to skip (default 0).
- * @param provider   Optional filter: "local" or "premium".
+ * @param provider   Optional filter: "local", "premium", or "agent".
  */
 export async function getDiagnosisHistory(
   sessionId: string,
   limit?: number,
   offset?: number,
-  provider?: "local" | "premium",
+  provider?: "local" | "premium" | "agent",
 ): Promise<DiagnosisHistoryResponse> {
   const params = new URLSearchParams();
   if (limit !== undefined) params.set("limit", String(limit));
