@@ -74,7 +74,8 @@
     "agentLlm": "Agent AI",
     "localModel": "本機模型",
     "cloudModel": "雲端模型",
-    "feedback": "回饋"
+    "feedback": "回饋",
+    "agentModel": "Agent 模型"
   },
   "summary": {
     "pidSummary": "PID 彙總",
@@ -237,7 +238,9 @@
     "pageOf": "第 {{current}} 頁 / 共 {{total}} 頁",
     "next": "下一頁",
     "retry": "重試",
-    "loadFailed": "載入歷史失敗"
+    "loadFailed": "載入歷史失敗",
+    "agent": "Agent",
+    "emptyAgent": "尚無 Agent 診斷紀錄。請先在「AI 診斷結果」 → Agent AI 標籤頁產生診斷。"
   },
   "feedbackForm": {
     "title": "專家回饋 — {{view}}檢視",
@@ -246,7 +249,8 @@
       "detailed": "詳情",
       "rag": "RAG",
       "ai_diagnosis": "AI 診斷",
-      "premium_diagnosis": "進階 AI 診斷"
+      "premium_diagnosis": "進階 AI 診斷",
+      "agent_diagnosis": "Agent AI 診斷"
     },
     "rating": "評分",
     "rateOutOf5": "評 {{n}} 分（滿分 5 分）",
@@ -280,7 +284,8 @@
       "detailed": "詳情",
       "rag": "RAG",
       "ai_diagnosis": "AI 診斷",
-      "premium_diagnosis": "進階 AI"
+      "premium_diagnosis": "進階 AI",
+      "agent_diagnosis": "Agent AI"
     },
     "helpful": "有幫助",
     "notHelpful": "無幫助",

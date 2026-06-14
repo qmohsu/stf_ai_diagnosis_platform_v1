@@ -176,7 +176,7 @@ class DiagnosisHistoryItem(BaseModel):
 
     id: str
     session_id: str
-    provider: Literal["local", "premium"]
+    provider: Literal["local", "premium", "agent"]
     model_name: str
     diagnosis_text: str
     created_at: str
@@ -204,7 +204,7 @@ class FeedbackHistoryItem(BaseModel):
     session_id: str
     tab_name: Literal[
         "summary", "detailed", "rag",
-        "ai_diagnosis", "premium_diagnosis",
+        "ai_diagnosis", "premium_diagnosis", "agent_diagnosis",
     ]
     rating: int = Field(..., ge=1, le=5)
     is_helpful: bool

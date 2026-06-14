@@ -306,15 +306,29 @@ export function AgentDiagnosisView({
           </p>
         )}
 
-        {/* Regenerate button */}
+        {/* Regenerate controls — keep the force-agent toggle
+            visible and editable after the result panel replaces
+            the initial form, so a regeneration carries the
+            intended force_agent value (issue #127). */}
         {done && (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => handleGenerate(true)}
-          >
-            {t("agent.regenerateShort")}
-          </Button>
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={forceAgent}
+                onChange={(e) => setForceAgent(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              {t("agent.forceAgent")}
+            </label>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => handleGenerate(true)}
+            >
+              {t("agent.regenerateShort")}
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>

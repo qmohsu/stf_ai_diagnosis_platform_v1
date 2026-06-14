@@ -13,7 +13,7 @@ import { AudioRecorder } from "./AudioRecorder";
 
 interface FeedbackFormProps {
   sessionId: string;
-  feedbackTab: "summary" | "detailed" | "rag" | "ai_diagnosis" | "premium_diagnosis";
+  feedbackTab: "summary" | "detailed" | "rag" | "ai_diagnosis" | "premium_diagnosis" | "agent_diagnosis";
   diagnosisHistoryId?: string | null;
 }
 
@@ -61,7 +61,9 @@ export function FeedbackForm({ sessionId, feedbackTab, diagnosisHistoryId }: Fee
         is_helpful: isHelpful,
         comments: comments || undefined,
         diagnosis_history_id:
-          (feedbackTab === "ai_diagnosis" || feedbackTab === "premium_diagnosis")
+          (feedbackTab === "ai_diagnosis"
+            || feedbackTab === "premium_diagnosis"
+            || feedbackTab === "agent_diagnosis")
             ? (diagnosisHistoryId ?? undefined)
             : undefined,
         audio_token: audioToken,

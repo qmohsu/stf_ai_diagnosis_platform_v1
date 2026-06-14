@@ -153,7 +153,7 @@ export function AnalysisLayout({
                   onDiagnosisGenerated={setAgentDiagnosisText}
                   onDiagnosisHistoryIdChanged={setAgentDiagnosisHistoryId}
                 />
-                <FeedbackForm sessionId={sessionId} feedbackTab="ai_diagnosis" diagnosisHistoryId={agentDiagnosisHistoryId} />
+                <FeedbackForm sessionId={sessionId} feedbackTab="agent_diagnosis" diagnosisHistoryId={agentDiagnosisHistoryId} />
               </TabsContent>
             </Tabs>
           ) : (
@@ -175,6 +175,7 @@ export function AnalysisLayout({
             <TabsList className="mb-4">
               <TabsTrigger value="local_history">{t("tabs.localModel")}</TabsTrigger>
               <TabsTrigger value="cloud_history">{t("tabs.cloudModel")}</TabsTrigger>
+              <TabsTrigger value="agent_history">{t("tabs.agentModel")}</TabsTrigger>
               <TabsTrigger value="feedback_history">{t("tabs.feedback")}</TabsTrigger>
             </TabsList>
 
@@ -191,6 +192,14 @@ export function AnalysisLayout({
                 sessionId={sessionId}
                 active={activeTab === "history"}
                 provider="premium"
+              />
+            </TabsContent>
+
+            <TabsContent value="agent_history" forceMount className="space-y-6 data-[state=inactive]:hidden">
+              <DiagnosisHistoryView
+                sessionId={sessionId}
+                active={activeTab === "history"}
+                provider="agent"
               />
             </TabsContent>
 

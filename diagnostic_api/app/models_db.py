@@ -106,6 +106,7 @@ class OBDAnalysisSession(Base):
     rag_feedback = relationship("OBDRAGFeedback", back_populates="session", uselist=True)
     ai_diagnosis_feedback = relationship("OBDAIDiagnosisFeedback", back_populates="session", uselist=True)
     premium_diagnosis_feedback = relationship("OBDPremiumDiagnosisFeedback", back_populates="session", uselist=True)
+    agent_diagnosis_feedback = relationship("OBDAgentDiagnosisFeedback", back_populates="session", uselist=True)
     diagnosis_history = relationship("DiagnosisHistory", back_populates="session", uselist=True)
 
 
@@ -213,6 +214,36 @@ class OBDPremiumDiagnosisFeedback(_OBDFeedbackMixin, Base):
     )
 
 
+class OBDAgentDiagnosisFeedback(_OBDFeedbackMixin, Base):
+    """Expert feedback on OBD agent AI diagnosis view.
+
+    Mirrors ``OBDPremiumDiagnosisFeedback`` but is keyed to the
+    ``provider='agent'`` generations produced by the harness loop
+    (``/diagnose/agent``).  Kept as a dedicated table so agent
+    feedback stays separable from local/premium feedback for
+    training-data collection (HARNESS-24, GitHub issue #127).
+    """
+
+    __tablename__ = "obd_agent_diagnosis_feedback"
+
+    # Snapshot of the agent diagnosis text the user was rating
+    diagnosis_text = Column(Text, nullable=True)
+
+    # Optional link to the specific diagnosis generation
+    diagnosis_history_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("diagnosis_history.id"),
+        nullable=True,
+        index=True,
+    )
+
+    session = relationship("OBDAnalysisSession", back_populates="agent_diagnosis_feedback")
+    diagnosis_history = relationship(
+        "DiagnosisHistory",
+        foreign_keys=[diagnosis_history_id],
+    )
+
+
 class DiagnosisHistory(Base):
     """Immutable log of every AI diagnosis generation.
 
@@ -239,7 +270,7 @@ class DiagnosisHistory(Base):
     )
     provider = Column(
         String(20), nullable=False,
-    )  # "local" | "premium"
+    )  # "local" | "premium" | "agent"
     model_name = Column(
         String(200), nullable=False,
     )  # e.g. "qwen3.5:27b-q8_0", "anthropic/claude-sonnet-4.6"
