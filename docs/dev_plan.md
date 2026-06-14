@@ -1953,6 +1953,73 @@ Acceptance Criteria:
 - Responsive layout works on mobile ✓
 - Only Nginx restart required (no API/UI rebuild) ✓
 
+#### APP‑58 — Fix first-diagnosis-after-deploy "network error" (Ollama cold-load vs SSE idle timeout)
+
+Owner: AI Engineer
+Depends on: APP‑41
+GitHub Issue: #128
+
+PROMPT (task ticket):
+Title: APP‑58 Timer-based SSE keep-alives + LLM pre-warm so the first post-deploy diagnosis survives an Ollama cold-load
+
+Task:
+After every deploy, the `down`+`up` recreation of `stf-ollama` evicts
+the resident `qwen3.5:27b-q8_0`, so the **first** `POST
+/v2/obd/{id}/diagnose` triggers a multi-minute cold load.  During the
+load no SSE bytes flow — APP‑41's `": thinking"` keep-alive is emitted
+only *per reasoning chunk*, and Ollama returns no chunks until the
+model is resident — so the browser → Cloudflare → Nginx chain's ~2 min
+idle timeout kills the silent stream.  The cancelled client disconnect
+propagates to Ollama, which aborts the load (`499`, "client connection
+closed before server finished loading"), and the UI shows `network
+error`.  Reproduced during post-deploy E2E on prod (2026-06-09, commit
+67ca3a0); aggravated by shared-GPU contention making the load slower
+than the timeout window.
+
+Key changes:
+- **Timer-based SSE keep-alive from request start.** Promoted the
+  harness router's `_with_keepalive` (15 s `": ping"` on silence) to a
+  shared helper next to `_sse_event` in `obd_analysis.py`, and wrapped
+  every local/premium diagnose generator with it: `generate_diagnosis`
+  (local), `generate_premium_diagnosis`, and the harness Tier‑0
+  one-shot path.  Unlike `": thinking"`, the timer ticks before the
+  first upstream chunk, so it covers the cold-load gap.  Removed the
+  duplicate definition from `harness/router.py` (now imports the
+  shared one).
+- **Startup pre-warm.** New `prewarm_local_model()` in
+  `expert/client.py` POSTs a minimal `keep_alive:"-1"` request to
+  Ollama's native `/api/generate` at API startup (fire-and-forget
+  background task in `main.py` lifespan; non-blocking, failure is
+  benign because the keep-alive is the backstop).  Gated by new
+  `LLM_PREWARM_ON_STARTUP` config (default true).
+- **Keep model resident.** Added `OLLAMA_KEEP_ALIVE: "-1"` to the base
+  `docker-compose.yml` ollama service (already present in the PolyU
+  overlay) and surfaced `LLM_PREWARM_ON_STARTUP` in both compose files.
+- **Deploy runbook.** Added a post-health-check warm-up step to the
+  `CLAUDE.md` deploy procedure so step 9's green checks also mean "the
+  first generation will succeed".
+
+Files changed:
+`diagnostic_api/app/api/v2/endpoints/obd_analysis.py` (shared `_with_keepalive` + wrap local stream)
+`diagnostic_api/app/api/v2/endpoints/obd_premium.py` (wrap premium stream)
+`diagnostic_api/app/harness/router.py` (import shared helper, drop duplicate, wrap Tier‑0 one-shot)
+`diagnostic_api/app/expert/client.py` (`prewarm_local_model`)
+`diagnostic_api/app/config.py` (`llm_prewarm_on_startup`)
+`diagnostic_api/app/main.py` (background pre-warm in lifespan)
+`infra/docker-compose.yml`, `infra/docker-compose.polyu.yml` (`OLLAMA_KEEP_ALIVE`, `LLM_PREWARM_ON_STARTUP`)
+`diagnostic_api/tests/test_sse_keepalive.py` (new — 6 tests)
+`CLAUDE.md` (deploy runbook warm-up step)
+
+Acceptance Criteria:
+- Local + premium diagnose streams emit `": ping"` during a silent
+  pre-first-chunk gap (covered by `test_pings_during_silent_first_chunk`) ✓
+- `_with_keepalive` passes real frames through unchanged and cancels a
+  pending `__anext__` on early disconnect ✓
+- `prewarm_local_model` posts a `keep_alive` warm-up and is non-fatal
+  on failure ✓
+- API startup schedules the pre-warm without blocking `/health` ✓
+- Deploy runbook includes a warm-up step after health checks ✓
+
 ### 3.3 Integration and Finalization Tickets
 #### INT‑01 — End-to-end demo script (“one command demo”)
 
@@ -2084,6 +2151,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-06-14 | v5.11 | APP-58 (fix): First diagnosis after a deploy dies with "network error" — a silent Ollama cold-load exceeds the SSE idle timeout (GitHub issue #128).  After `down`+`up` recreates `stf-ollama`, the resident `qwen3.5:27b-q8_0` is evicted; the first `POST /v2/obd/{id}/diagnose` triggers a multi-minute cold load during which **no SSE bytes flow** — APP‑41's `": thinking"` keep-alive only fires *per reasoning chunk*, and Ollama emits no chunks until the model is loaded — so the browser → Cloudflare → Nginx chain's ~2 min idle timeout kills the stream, the cancelled disconnect propagates to Ollama (`499`, "client connection closed before server finished loading, aborting load"), and the UI shows `network error`.  Reproduced in post-deploy E2E on prod (2026-06-09, commit 67ca3a0); aggravated by shared-GPU contention.  **Three combined fixes**: (1) **Timer-based SSE keep-alive from request start** — the harness router's `_with_keepalive` (15 s `": ping"` on silence) is promoted to a shared helper beside `_sse_event` in `obd_analysis.py` and now wraps every local/premium generator (`generate_diagnosis`, `generate_premium_diagnosis`, and the harness Tier‑0 one-shot); unlike `": thinking"`, the timer ticks *before* the first upstream chunk, covering the cold-load gap.  `harness/router.py`'s duplicate definition is removed (imports the shared one).  (2) **Startup pre-warm** — new `prewarm_local_model()` in `expert/client.py` POSTs a minimal `keep_alive:"-1"` request to Ollama's native `/api/generate`, scheduled fire-and-forget in the `main.py` lifespan (non-blocking; failure is benign because the keep-alive is the backstop).  Gated by new `LLM_PREWARM_ON_STARTUP` setting (default true).  (3) **Keep model resident** — `OLLAMA_KEEP_ALIVE: "-1"` added to the base `docker-compose.yml` ollama service (already in the PolyU overlay) and `LLM_PREWARM_ON_STARTUP` surfaced in both compose files.  The `CLAUDE.md` deploy runbook gains a post-health-check warm-up step.  **Tests**: new `diagnostic_api/tests/test_sse_keepalive.py` (6 tests) — ping-during-silent-first-chunk, frame passthrough, clean termination, pending-`__anext__` cancellation on early disconnect, and pre-warm success/non-fatal-failure. |
 | 2026-06-09 | v5.10 | APP-53 (cleanup): Removed the deprecated edge snapshot-transport path, completing the one-release retention window opened in v5.5.  Deleted from `obd_agent/`: `api_poster.py` (POSTed per-snapshot JSON to `/v1/telemetry/obd_snapshot` — an endpoint that never existed server-side), `agent_loop.py`, `__main__.py`, `snapshot_builder.py`, `config.py` (`AgentSettings`, all consumers deleted), `reader/` (`base`/`live`/`simulation`), `fixtures/simulation_scenarios.json`, `Dockerfile`, `requirements-sim.txt`, and the four paired test files (`test_api_poster`, `test_agent_loop`, `test_snapshot_builder`, `test_simulation_reader`).  Also deleted `infra/obd-agent.compose.override.yml` (containerised agent mode — it ran the dead transport).  The GPL-2.0 `python-obd` dependency disappears with the live reader, so the GPL/non-GPL requirements split collapses into a single GPL-free `requirements.txt`; `infra/Makefile` `obd-agent-test` retargeted.  **Kept (live production path)**: `schemas.py` (`OBDSnapshot` is the in-memory row model of `log_parser`/`log_summarizer` on `POST /v2/obd/analyze` — its stale "will be removed" deprecation note replaced with the actual role), the full analysis pipeline, and `jetson_uploader.py` (the team's active 4G upload client, GitHub issue #76 — untouched).  `obd_agent/pyproject.toml` bumped to 0.2.0: drops the `obd_agent.reader` package, adds the previously-missing `httpx` runtime dep (jetson_uploader imports it; the install via `pip install ./obd_agent` was relying on diagnostic_api's own pin).  `infra/README_OBD_AGENT_SETUP.md` rewritten for the upload-client role.  obd_agent test suite passes post-removal; diagnostic_api unaffected (it never imported the deleted modules). |
 | 2026-06-09 | v5.9 | APP-57 (fix): Silent `now()` timestamp fallback corrupts `time_range` on truncated logs (GitHub issue #119).  Surfaced while skimming the first real Yamaha upload (`yamaha_dual_ex_20260528_105915.csv`, session `b368f85a…`): the session reported `duration_seconds=1024112` (~11.85 days) for what was a ~27-minute capture.  Root cause in `obd_agent/log_parser.py:row_to_snapshot` — an unparseable `Timestamp` field fell back to `datetime.now(timezone.utc)`.  The Jetson logger had been killed mid-write, leaving a final record of ~1100 null bytes; that one corrupt trailing row was assigned the upload wall-clock time, which became `max(all_ts)` in `summarize_snapshots`, so `time_range.end` = upload time and `duration` ballooned.  A silent `now()` substitution also violates the project's "never allow silent failures" rule.  **Fix**: new `_parse_timestamp` helper raises `MalformedRowError` (a `ValueError` subclass) on an empty / null-byte / malformed timestamp instead of inventing `now()`; `log_file_to_snapshots` catches it, skips the row, and emits a single `logger.warning` with the dropped-row count and file path.  This makes the legacy summariser path consistent with `time_series_normalizer._rows_to_raw_dataframe`, which already `continue`d past unparseable timestamps — so `value_statistics` / `anomaly_events` / `diagnostic_clues` were already correct; only the legacy-path `time_range` (end / duration / sample_count) was poisoned.  Validated against the real file on PolyU: 1 row skipped, corrected `start=2026-05-28T10:59:16Z`, `end=2026-05-28T11:25:55Z`, `duration_seconds=1599`.  **Tests**: replaced the obsolete `test_fallback_timestamp` (which asserted the buggy now() behaviour) with `test_bad_timestamp_raises` + `test_null_byte_timestamp_raises`; new `TestParseTimestamp` class (valid, whitespace, empty, garbage, null-byte cases); new end-to-end `test_malformed_trailing_row_skipped` reproducing the truncated-trailing-row case from a temp fixture.  All 408 obd_agent tests pass. |
 | 2026-05-24 | v5.8 | APP-56: Hybrid keyword + vector RAG retrieval (GitHub issue #18).  **Keyword-branch query parsing**: `plainto_tsquery` AND-joins terms, which caused the keyword CTE to return zero rows for any query longer than ~2 words — hybrid silently degenerated to pure vector.  Discovered during the live PolyU A/B benchmark: `"P0117 coolant temperature sensor"` matched zero chunks even though 8 contain `P0117`, because the conjunction `p0117 & coolant & temperatur & sensor` is unsatisfiable.  New `_build_or_tsquery` tokenises the query client-side (alphanumeric or alphanumeric-with-internal-dot for part numbers), lowercases, joins with `|`, and passes through `to_tsquery` for OR semantics.  Hybrid CTE skips the keyword sub-CTE entirely when the input has no usable tokens (avoids `to_tsquery('')` raising).  Operator characters, quotes, and other tsquery-unfriendly punctuation are stripped.  5 new unit tests cover token extraction, lowercasing, punctuation stripping, empty input, and dotted-identifier preservation (18 RAG tests total, all passing). |

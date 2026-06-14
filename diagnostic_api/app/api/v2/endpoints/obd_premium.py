@@ -24,6 +24,7 @@ from app.api.v2.endpoints.obd_analysis import (
     _store_diagnosis,
     _submit_feedback,
     _validate_diagnosis_history_id,
+    _with_keepalive,
     _MAX_DIAGNOSIS_LENGTH,
 )
 from app.api.v2.schemas import OBDFeedbackRequest
@@ -447,7 +448,9 @@ async def generate_premium_diagnosis(
         })
 
     return StreamingResponse(
-        _stream(),
+        # Timer-based keep-alive keeps the stream open during the
+        # silent gap before the first upstream token (Issue #128).
+        _with_keepalive(_stream()),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

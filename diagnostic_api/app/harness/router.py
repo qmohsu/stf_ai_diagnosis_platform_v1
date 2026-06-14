@@ -10,9 +10,8 @@ Wires ``run_diagnosis_loop()`` to a ``StreamingResponse`` with
 
 from __future__ import annotations
 
-import asyncio
 import uuid
-from typing import Any, AsyncIterator, Dict, Optional
+from typing import Any, Dict, Optional
 
 import structlog
 from fastapi import (
@@ -31,6 +30,7 @@ from app.api.v2.endpoints.obd_analysis import (
     _get_session_data,
     _sse_event,
     _store_diagnosis,
+    _with_keepalive,
 )
 from app.auth.security import get_current_user
 from app.config import settings
@@ -62,50 +62,9 @@ router = APIRouter()
 _expert_client = ExpertLLMClient()
 
 
-_KEEPALIVE_INTERVAL_SECONDS = 15.0
-
-
-async def _with_keepalive(
-    source: AsyncIterator[str],
-    interval: float = _KEEPALIVE_INTERVAL_SECONDS,
-) -> AsyncIterator[str]:
-    """Inject SSE keep-alive comments during silent gaps.
-
-    Yields every frame from ``source`` unchanged, but if no frame
-    arrives within ``interval`` seconds it emits a ``": ping"``
-    comment so idle proxies and the Cloudflare tunnel don't drop a
-    long-running agent stream (e.g. while the model processes the
-    prompt before the first reasoning token).  Comments are
-    ignored by the SSE client.
-
-    Args:
-        source: The underlying SSE frame generator.
-        interval: Max silence (seconds) before a ping is sent.
-
-    Yields:
-        SSE frame strings, interleaved with ``": ping"`` comments.
-    """
-    ait = source.__aiter__()
-    pending: Optional[asyncio.Future] = None
-    try:
-        while True:
-            if pending is None:
-                pending = asyncio.ensure_future(ait.__anext__())
-            try:
-                frame = await asyncio.wait_for(
-                    asyncio.shield(pending), interval,
-                )
-            except asyncio.TimeoutError:
-                # Underlying __anext__ is shielded — still running.
-                yield ": ping\n\n"
-                continue
-            except StopAsyncIteration:
-                return
-            pending = None
-            yield frame
-    finally:
-        if pending is not None and not pending.done():
-            pending.cancel()
+# ``_with_keepalive`` (timer-based SSE keep-alive) is shared with the
+# V1 local + premium diagnose endpoints; it lives next to ``_sse_event``
+# in ``obd_analysis`` and is imported above (Issue #128).
 
 
 # ── V1 one-shot streaming helper ────────────────────────────────────
@@ -364,13 +323,16 @@ async def generate_agent_diagnosis(
     # --- V1 one-shot path (Tier 0 or force_oneshot) ---
     if not decision.use_agent:
         return StreamingResponse(
-            _oneshot_stream(
+            # Local Ollama path — wrap with keep-alive so a
+            # post-deploy cold-load doesn't trip the idle
+            # timeout before the first token (Issue #128).
+            _with_keepalive(_oneshot_stream(
                 session_id,
                 parsed_summary,
                 locale,
                 tier=decision.tier,
                 strategy=decision.strategy,
-            ),
+            )),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
