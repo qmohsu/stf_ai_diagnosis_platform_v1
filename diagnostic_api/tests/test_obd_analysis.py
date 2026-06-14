@@ -1269,11 +1269,11 @@ def _mock_feedback_db(
 ):
     """Build a mock db for the feedback history endpoint.
 
-    The endpoint issues 1 exists query + 5 feedback table
-    queries.  ``table_rows`` is a list of 5 lists, one per
+    The endpoint issues 1 exists query + 6 feedback table
+    queries.  ``table_rows`` is a list of 6 lists, one per
     feedback table (summary, detailed, rag, ai_diagnosis,
-    premium_diagnosis).  Each inner list contains mock row
-    objects.
+    premium_diagnosis, agent_diagnosis).  Each inner list
+    contains mock row objects.
     """
     mock_db = MagicMock()
 
@@ -1286,7 +1286,7 @@ def _mock_feedback_db(
             .first.return_value = None
 
     if table_rows is None:
-        table_rows = [[] for _ in range(5)]
+        table_rows = [[] for _ in range(6)]
 
     feedback_chains = []
     for rows in table_rows:
@@ -1366,7 +1366,7 @@ class TestFeedbackHistory:
         # Put the row in the first table (summary)
         mock_db = _mock_feedback_db(
             session_exists=True,
-            table_rows=[[row], [], [], [], []],
+            table_rows=[[row], [], [], [], [], []],
         )
 
         from app.api.deps import get_db
@@ -1415,7 +1415,7 @@ class TestFeedbackHistory:
         # merge ordering.
         mock_db = _mock_feedback_db(
             session_exists=True,
-            table_rows=[[older], [newer], [], [], []],
+            table_rows=[[older], [newer], [], [], [], []],
         )
 
         from app.api.deps import get_db
@@ -1473,7 +1473,7 @@ class TestFeedbackHistory:
 
         mock_db = _mock_feedback_db(
             session_exists=True,
-            table_rows=[rows, [], [], [], []],
+            table_rows=[rows, [], [], [], [], []],
         )
 
         from app.api.deps import get_db

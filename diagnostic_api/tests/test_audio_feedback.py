@@ -369,8 +369,9 @@ class TestDBModelAudioColumns:
         assert "audio_size_bytes" in cols
 
     def test_all_feedback_tables_have_audio(self):
-        """All 5 feedback tables inherit audio columns."""
+        """All 6 feedback tables inherit audio columns."""
         from app.models_db import (
+            OBDAgentDiagnosisFeedback,
             OBDAIDiagnosisFeedback,
             OBDDetailedFeedback,
             OBDPremiumDiagnosisFeedback,
@@ -384,6 +385,7 @@ class TestDBModelAudioColumns:
             OBDRAGFeedback,
             OBDAIDiagnosisFeedback,
             OBDPremiumDiagnosisFeedback,
+            OBDAgentDiagnosisFeedback,
         ):
             cols = {
                 c.name for c in model.__table__.columns
