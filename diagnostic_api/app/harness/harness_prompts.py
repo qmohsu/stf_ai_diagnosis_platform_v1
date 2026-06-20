@@ -149,12 +149,43 @@ def build_system_prompt(
 _USER_MESSAGE_TEMPLATE = """\
 Diagnose the following OBD-II case.
 
-Vehicle: {vehicle_id}
+Vehicle: {vehicle}
 Time range: {time_range}
 DTC codes: {dtc_codes}
 
 Use your tools to investigate the OBD data and service manuals.\
 """
+
+
+def _format_vehicle(parsed_summary: Dict[str, Any]) -> str:
+    """Build the vehicle identity line for the user message.
+
+    Prefers the make/model the uploader stated (APP-60) so the agent
+    grounds on the real vehicle and matches the right manual; appends
+    the VIN/label for traceability.  Falls back to the bare
+    ``vehicle_id`` for historical sessions that have no make/model.
+
+    Args:
+        parsed_summary: The session's parsed-summary dict.
+
+    Returns:
+        e.g. ``"Toyota Hiace (VIN JTFHT02P500072677)"`` or, with no
+        make/model, the ``vehicle_id`` value (or ``"unknown"``).
+    """
+    manufacturer = (parsed_summary.get("manufacturer") or "").strip()
+    vehicle_model = (parsed_summary.get("vehicle_model") or "").strip()
+    vehicle_id = (parsed_summary.get("vehicle_id") or "").strip()
+
+    if manufacturer or vehicle_model:
+        canonical = " ".join(
+            p for p in (manufacturer, vehicle_model) if p
+        )
+        if vehicle_id and vehicle_id.lower() not in (
+            "unknown", "v-unknown",
+        ):
+            return f"{canonical} (VIN {vehicle_id})"
+        return canonical
+    return vehicle_id or "unknown"
 
 
 _LOCALE_LABELS: Dict[str, str] = {
@@ -187,9 +218,7 @@ def build_user_message(
         Formatted user message string.
     """
     msg = _USER_MESSAGE_TEMPLATE.format(
-        vehicle_id=parsed_summary.get(
-            "vehicle_id", "unknown"
-        ),
+        vehicle=_format_vehicle(parsed_summary),
         time_range=parsed_summary.get(
             "time_range", "unknown"
         ),

@@ -37,6 +37,10 @@
   "input": {
     "title": "OBD Log Analysis",
     "description": "Paste raw OBD log data or upload a file (.txt, .csv, .tsv) to run the full diagnostic pipeline.",
+    "manufacturer": "Manufacturer",
+    "manufacturerPlaceholder": "e.g. Toyota, Yamaha",
+    "vehicleModel": "Vehicle Model",
+    "vehicleModelPlaceholder": "e.g. Hiace, TRICITY155",
     "pasteText": "Paste Text",
     "uploadFile": "Upload File",
     "placeholder": "Paste OBD log data here...",

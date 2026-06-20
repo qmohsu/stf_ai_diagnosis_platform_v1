@@ -76,8 +76,17 @@ export async function registerUser(
 // OBD endpoints
 // ---------------------------------------------------------------------------
 
-export async function analyzeOBDLog(rawText: string): Promise<OBDAnalysisResponse> {
-  const res = await fetch(`${API_URL}/v2/obd/analyze`, {
+export async function analyzeOBDLog(
+  rawText: string,
+  manufacturer: string,
+  vehicleModel: string,
+): Promise<OBDAnalysisResponse> {
+  // APP-60: manufacturer + model are required, sent as query params.
+  const params = new URLSearchParams({
+    manufacturer,
+    vehicle_model: vehicleModel,
+  });
+  const res = await fetch(`${API_URL}/v2/obd/analyze?${params.toString()}`, {
     method: "POST",
     body: rawText,
     headers: {

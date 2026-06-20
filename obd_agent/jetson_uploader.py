@@ -17,7 +17,14 @@ Typical usage from a shell::
         --base-url https://stf-diagnosis.dev \\
         --username perry \\
         --password '...' \\
+        --manufacturer Toyota \\
+        --model Hiace \\
         --log-file /var/log/obd/trip_20260505_164119.csv
+
+The vehicle make/model are required (APP-60) — a model cannot be derived
+from an OBD log.  The device is installed in one fixed vehicle, so set
+them once via ``--manufacturer`` / ``--model`` or the ``STF_MANUFACTURER``
+/ ``STF_MODEL`` env vars; they are sent as query params on every upload.
 
 The script writes the resulting ``session_id`` to stdout on success
 and exits non-zero on failure.  Token caching is intentionally not
@@ -29,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Optional
@@ -95,6 +103,8 @@ def upload_log(
     base_url: str,
     token: str,
     log_path: Path,
+    manufacturer: str,
+    vehicle_model: str,
 ) -> str:
     """POST a trip log file to ``/v2/obd/analyze``.
 
@@ -121,9 +131,14 @@ def upload_log(
 
     body = log_path.read_bytes()
     url = base_url.rstrip("/") + _ANALYZE_PATH
+    # APP-60: manufacturer + vehicle_model are required query params.
     response = client.post(
         url,
         content=body,
+        params={
+            "manufacturer": manufacturer,
+            "vehicle_model": vehicle_model,
+        },
         headers={
             "Authorization": f"Bearer {token}",
             "Content-Type": "text/plain; charset=utf-8",
@@ -150,6 +165,8 @@ def upload_trip(
     username: str,
     password: str,
     log_path: Path,
+    manufacturer: str,
+    vehicle_model: str,
     timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
 ) -> str:
     """Single-call helper: log in, upload, return ``session_id``.
@@ -159,6 +176,9 @@ def upload_trip(
         username: Account username.
         password: Account password.
         log_path: Path to the trip log file on disk.
+        manufacturer: Vehicle manufacturer the device is installed in
+            (required by the API — APP-60).
+        vehicle_model: Vehicle model (required by the API — APP-60).
         timeout_seconds: Per-request HTTP timeout.
 
     Returns:
@@ -166,7 +186,10 @@ def upload_trip(
     """
     with httpx.Client(timeout=timeout_seconds) as client:
         token = login(client, base_url, username, password)
-        return upload_log(client, base_url, token, log_path)
+        return upload_log(
+            client, base_url, token, log_path,
+            manufacturer, vehicle_model,
+        )
 
 
 def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
@@ -200,6 +223,26 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         type=Path,
         help="Path to the OBD trip log file.",
     )
+    # APP-60: vehicle make/model are required by the API.  The device
+    # is installed in one fixed vehicle, so configure these once (flag
+    # or STF_MANUFACTURER / STF_MODEL env) and they ride every upload.
+    parser.add_argument(
+        "--manufacturer",
+        default=os.environ.get("STF_MANUFACTURER"),
+        help=(
+            "Vehicle manufacturer (e.g. 'Toyota').  Required; may also "
+            "be set via the STF_MANUFACTURER env var."
+        ),
+    )
+    parser.add_argument(
+        "--model",
+        dest="vehicle_model",
+        default=os.environ.get("STF_MODEL"),
+        help=(
+            "Vehicle model (e.g. 'Hiace').  Required; may also be set "
+            "via the STF_MODEL env var."
+        ),
+    )
     parser.add_argument(
         "--timeout",
         type=float,
@@ -221,12 +264,25 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
     args = _parse_args(argv)
 
+    # APP-60: fail loudly and locally when the device's vehicle identity
+    # is not configured, rather than sending a request the API will 422.
+    manufacturer = (args.manufacturer or "").strip()
+    vehicle_model = (args.vehicle_model or "").strip()
+    if not manufacturer or not vehicle_model:
+        logger.error(
+            "vehicle_identity_missing: --manufacturer and --model "
+            "(or STF_MANUFACTURER / STF_MODEL) are required.",
+        )
+        return 1
+
     try:
         session_id = upload_trip(
             base_url=args.base_url,
             username=args.username,
             password=args.password,
             log_path=args.log_file,
+            manufacturer=manufacturer,
+            vehicle_model=vehicle_model,
             timeout_seconds=args.timeout,
         )
     except FileNotFoundError as exc:

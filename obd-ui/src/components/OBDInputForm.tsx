@@ -21,13 +21,26 @@ export function OBDInputForm() {
   const [mode, setMode] = useState<"paste" | "file">("paste");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // APP-60: vehicle make/model are required for every upload.
+  const [manufacturer, setManufacturer] = useState("");
+  const [vehicleModel, setVehicleModel] = useState("");
+
+  const canAnalyze =
+    text.trim().length > 0 &&
+    manufacturer.trim().length > 0 &&
+    vehicleModel.trim().length > 0 &&
+    !loading;
 
   const handleAnalyze = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || !manufacturer.trim() || !vehicleModel.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      const response = await analyzeOBDLog(text);
+      const response = await analyzeOBDLog(
+        text,
+        manufacturer.trim(),
+        vehicleModel.trim(),
+      );
       router.push(`/analysis/${response.session_id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("input.analysisFailed"));
@@ -45,6 +58,38 @@ export function OBDInputForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* APP-60: required vehicle identity */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-sm font-medium">
+              {t("input.manufacturer")}
+              <span className="text-destructive"> *</span>
+            </label>
+            <input
+              type="text"
+              value={manufacturer}
+              onChange={(e) => setManufacturer(e.target.value)}
+              placeholder={t("input.manufacturerPlaceholder")}
+              className="w-full rounded-md border px-3 py-1.5 text-sm bg-background"
+              disabled={loading}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">
+              {t("input.vehicleModel")}
+              <span className="text-destructive"> *</span>
+            </label>
+            <input
+              type="text"
+              value={vehicleModel}
+              onChange={(e) => setVehicleModel(e.target.value)}
+              placeholder={t("input.vehicleModelPlaceholder")}
+              className="w-full rounded-md border px-3 py-1.5 text-sm bg-background"
+              disabled={loading}
+            />
+          </div>
+        </div>
+
         <div className="flex gap-2">
           <Button
             variant={mode === "paste" ? "default" : "outline"}
@@ -87,7 +132,7 @@ export function OBDInputForm() {
 
         <Button
           onClick={handleAnalyze}
-          disabled={!text.trim() || loading}
+          disabled={!canAnalyze}
           className="w-full"
           size="lg"
         >

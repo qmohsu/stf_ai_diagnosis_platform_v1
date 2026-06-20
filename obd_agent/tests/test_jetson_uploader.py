@@ -102,6 +102,9 @@ class TestUploadLog:
             assert (
                 request.headers["authorization"] == "Bearer tok-xyz"
             )
+            # APP-60: make/model ride as query params.
+            assert request.url.params["manufacturer"] == "Toyota"
+            assert request.url.params["vehicle_model"] == "Hiace"
             # Body contains the file bytes verbatim.
             assert b"A_KL_RPM" in request.content
             return httpx.Response(
@@ -119,6 +122,8 @@ class TestUploadLog:
                 "https://example.invalid",
                 "tok-xyz",
                 log,
+                "Toyota",
+                "Hiace",
             )
         assert session_id == "abc-123"
 
@@ -135,6 +140,8 @@ class TestUploadLog:
                     "https://example.invalid",
                     "tok-xyz",
                     tmp_path / "missing.csv",
+                    "Toyota",
+                    "Hiace",
                 )
 
     def test_upload_non_200_raises(self, tmp_path: Path) -> None:
@@ -152,6 +159,8 @@ class TestUploadLog:
                     "https://example.invalid",
                     "tok-xyz",
                     log,
+                    "Toyota",
+                    "Hiace",
                 )
         assert "422" in str(exc_info.value)
 
@@ -204,6 +213,8 @@ class TestUploadTrip:
                 "--base-url", "https://example.invalid",
                 "--username", "perry",
                 "--password", "secret",
+                "--manufacturer", "Toyota",
+                "--model", "Hiace",
                 "--log-file", str(log),
             ]
         )
@@ -257,6 +268,8 @@ class TestUploadTrip:
                 "perry",
                 "secret",
                 log,
+                "Toyota",
+                "Hiace",
             )
         finally:
             ju.httpx.Client = original_factory  # type: ignore[assignment]
@@ -274,7 +287,29 @@ class TestUploadTrip:
                 "--base-url", "https://example.invalid",
                 "--username", "perry",
                 "--password", "secret",
+                "--manufacturer", "Toyota",
+                "--model", "Hiace",
                 "--log-file", str(tmp_path / "missing.csv"),
+            ]
+        )
+        captured = capsys.readouterr()
+        assert rc == 1
+        assert captured.out == ""
+
+    def test_main_returns_1_on_missing_vehicle_identity(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """APP-60: missing --manufacturer/--model fails locally (rc 1)."""
+        log = tmp_path / "trip.csv"
+        log.write_text("Timestamp,A_KL_RPM\n2026-05-05 16:41:21,0\n")
+        rc = main(
+            [
+                "--base-url", "https://example.invalid",
+                "--username", "perry",
+                "--password", "secret",
+                "--log-file", str(log),
             ]
         )
         captured = capsys.readouterr()

@@ -210,7 +210,8 @@ class TestPerUserDedup:
         app_ref.dependency_overrides[get_db] = lambda: mock_db
 
         resp = client.post(
-            "/v2/obd/analyze", content=b"test data\n",
+            "/v2/obd/analyze?manufacturer=Toyota&vehicle_model=Hiace",
+            content=b"test data\n",
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -268,7 +269,8 @@ class TestPerUserDedup:
         app_ref.dependency_overrides[get_db] = lambda: mock_db
 
         resp = client.post(
-            "/v2/obd/analyze", content=b"test data\n",
+            "/v2/obd/analyze?manufacturer=Toyota&vehicle_model=Hiace",
+            content=b"test data\n",
         )
         assert resp.status_code == 200
 

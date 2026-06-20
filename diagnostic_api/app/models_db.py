@@ -70,6 +70,15 @@ class OBDAnalysisSession(Base):
         index=True,
     )
     vehicle_id = Column(String(50), nullable=True, index=True)
+    # APP-60 (issue #135 follow-up): vehicle make/model stated by the
+    # uploader.  A model cannot be derived from an OBD log (the sensor
+    # log carries no VIN/model), so the uploader must supply it; this
+    # lets the agent ground on the real vehicle and match the right
+    # service manual instead of guessing from the manual shelf.
+    # Required at the API layer (422 on blank); nullable in the DB so
+    # historical sessions stay valid.
+    manufacturer = Column(String(100), nullable=True)
+    vehicle_model = Column(String(100), nullable=True)
 
     # Status tracking
     status = Column(String(20), default="PENDING", index=True)  # PENDING, COMPLETED, FAILED
@@ -98,6 +107,18 @@ class OBDAnalysisSession(Base):
 
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    @property
+    def canonical_name(self):
+        """Canonical ``"<Manufacturer> <Model>"`` vehicle identity.
+
+        Returns ``None`` when neither field is set (historical
+        sessions), so callers can fall back to ``vehicle_id``.
+        """
+        parts = [
+            p for p in (self.manufacturer, self.vehicle_model) if p
+        ]
+        return " ".join(parts) if parts else None
 
     # Relationships
     user = relationship("User", back_populates="sessions")
