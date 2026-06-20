@@ -120,12 +120,12 @@ class TestAnalyzeEndpoint:
     """Tests for the analyze OBD log endpoint."""
 
     def test_empty_body_returns_422(self, client):
-        resp = client.post("/v2/obd/analyze", content=b"")
+        resp = client.post("/v2/obd/analyze?manufacturer=Toyota&vehicle_model=Hiace", content=b"")
         assert resp.status_code == 422
 
     @patch("app.api.v2.endpoints.obd_analysis._MAX_FILE_SIZE", 1024)
     def test_oversized_body_returns_413(self, client):
-        resp = client.post("/v2/obd/analyze", content=b"x" * 1025)
+        resp = client.post("/v2/obd/analyze?manufacturer=Toyota&vehicle_model=Hiace", content=b"x" * 1025)
         assert resp.status_code == 413
         assert "limit" in resp.json()["detail"].lower()
 
@@ -140,7 +140,7 @@ class TestAnalyzeEndpoint:
         from app.api.deps import get_db
         app_ref.dependency_overrides[get_db] = lambda: mock_db
 
-        resp = client.post("/v2/obd/analyze", content=b"corrupt\tdata\n")
+        resp = client.post("/v2/obd/analyze?manufacturer=Toyota&vehicle_model=Hiace", content=b"corrupt\tdata\n")
         assert resp.status_code == 422
         assert "Failed to parse" in resp.json()["detail"]
 
@@ -168,7 +168,7 @@ class TestAnalyzeEndpoint:
             mock_settings.premium_llm_enabled = False
 
             resp = client.post(
-                "/v2/obd/analyze", content=b"valid log data\n",
+                "/v2/obd/analyze?manufacturer=Toyota&vehicle_model=Hiace", content=b"valid log data\n",
             )
         assert resp.status_code == 200
 
@@ -177,6 +177,12 @@ class TestAnalyzeEndpoint:
         assert body["session_id"]
         assert body["result"] is not None
         assert body["parsed_summary"] is not None
+        # APP-60: make/model surfaced in the response + parsed_summary.
+        assert body["manufacturer"] == "Toyota"
+        assert body["vehicle_model"] == "Hiace"
+        assert body["canonical_name"] == "Toyota Hiace"
+        assert body["parsed_summary"]["manufacturer"] == "Toyota"
+        assert body["parsed_summary"]["vehicle_model"] == "Hiace"
         # Verify DB write happened
         mock_db.add.assert_called_once()
         mock_db.commit.assert_called_once()
@@ -205,7 +211,7 @@ class TestAnalyzeEndpoint:
             mock_settings.premium_llm_enabled = False
 
             resp = client.post(
-                "/v2/obd/analyze", content=b"valid log data\n",
+                "/v2/obd/analyze?manufacturer=Toyota&vehicle_model=Hiace", content=b"valid log data\n",
             )
         assert resp.status_code == 200
         assert "raw_input_file_path" not in resp.json()
@@ -236,7 +242,7 @@ class TestAnalyzeEndpoint:
             mock_settings.premium_llm_enabled = False
 
             resp = client.post(
-                "/v2/obd/analyze", content=b"valid log data\n",
+                "/v2/obd/analyze?manufacturer=Toyota&vehicle_model=Hiace", content=b"valid log data\n",
             )
 
         assert resp.status_code == 200
@@ -267,7 +273,7 @@ class TestAnalyzeEndpoint:
             mock_settings.premium_llm_enabled = False
 
             resp = client.post(
-                "/v2/obd/analyze", content=b"corrupt\tdata\n",
+                "/v2/obd/analyze?manufacturer=Toyota&vehicle_model=Hiace", content=b"corrupt\tdata\n",
             )
 
         assert resp.status_code == 422
@@ -303,7 +309,8 @@ class TestAnalyzeEndpoint:
             mock_settings.premium_llm_enabled = False
 
             resp = client.post(
-                "/v2/obd/analyze?vehicle_id=1HGCM82633A123456",
+                "/v2/obd/analyze?vehicle_id=1HGCM82633A123456"
+                "&manufacturer=Toyota&vehicle_model=Hiace",
                 content=b"valid log data\n",
             )
         assert resp.status_code == 200
@@ -343,7 +350,7 @@ class TestAnalyzeEndpoint:
             mock_settings.premium_llm_enabled = False
 
             resp = client.post(
-                "/v2/obd/analyze", content=body_with_header,
+                "/v2/obd/analyze?manufacturer=Toyota&vehicle_model=Hiace", content=body_with_header,
             )
         assert resp.status_code == 200
         body = resp.json()
@@ -378,7 +385,8 @@ class TestAnalyzeEndpoint:
             mock_settings.premium_llm_enabled = False
 
             resp = client.post(
-                "/v2/obd/analyze?vehicle_id=from-query-param",
+                "/v2/obd/analyze?vehicle_id=from-query-param"
+                "&manufacturer=Toyota&vehicle_model=Hiace",
                 content=body_with_header,
             )
         assert resp.status_code == 200
@@ -391,7 +399,8 @@ class TestAnalyzeEndpoint:
 
         # Whitespace + special chars are outside the allowed charset.
         resp = client.post(
-            "/v2/obd/analyze?vehicle_id=has spaces!",
+            "/v2/obd/analyze?vehicle_id=has spaces!"
+            "&manufacturer=Toyota&vehicle_model=Hiace",
             content=b"Timestamp,RPM\n2026-05-05 16:41:21,0\n",
         )
         assert resp.status_code == 422
@@ -403,10 +412,41 @@ class TestAnalyzeEndpoint:
         app_ref.dependency_overrides[get_db] = lambda: _mock_db_none()
 
         resp = client.post(
-            "/v2/obd/analyze?vehicle_id=" + "A" * 51,
+            "/v2/obd/analyze?manufacturer=Toyota&vehicle_model=Hiace"
+            "&vehicle_id=" + "A" * 51,
             content=b"Timestamp,RPM\n2026-05-05 16:41:21,0\n",
         )
         assert resp.status_code == 422
+
+    # ── APP-60: required vehicle make/model ─────────────────────────
+
+    def test_missing_manufacturer_returns_422(self, client):
+        """Omitting manufacturer is rejected (required query param)."""
+        resp = client.post(
+            "/v2/obd/analyze?vehicle_model=Hiace",
+            content=b"valid log data\n",
+        )
+        assert resp.status_code == 422
+
+    def test_missing_vehicle_model_returns_422(self, client):
+        """Omitting vehicle_model is rejected (required query param)."""
+        resp = client.post(
+            "/v2/obd/analyze?manufacturer=Toyota",
+            content=b"valid log data\n",
+        )
+        assert resp.status_code == 422
+
+    def test_blank_manufacturer_returns_422(self, client, app_ref):
+        """A whitespace-only manufacturer is rejected with a 422."""
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: _mock_db_none()
+
+        resp = client.post(
+            "/v2/obd/analyze?manufacturer=%20%20&vehicle_model=Hiace",
+            content=b"valid log data\n",
+        )
+        assert resp.status_code == 422
+        assert "manufacturer" in resp.json()["detail"].lower()
 
 
 # ---------------------------------------------------------------------------

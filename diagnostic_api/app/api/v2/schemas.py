@@ -115,6 +115,10 @@ class OBDAnalysisResponse(BaseModel):
     result: Optional[LogSummaryV2] = None
     error_message: Optional[str] = None
     parsed_summary: Optional[dict] = None
+    # APP-60: vehicle identity stated at upload.
+    manufacturer: Optional[str] = None
+    vehicle_model: Optional[str] = None
+    canonical_name: Optional[str] = None
     diagnosis_text: Optional[str] = None
     premium_diagnosis_text: Optional[str] = None
     premium_llm_enabled: bool = False

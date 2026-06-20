@@ -298,7 +298,8 @@ class TestProtectedEndpoints:
     def test_analyze_requires_auth(self, client):
         """POST /v2/obd/analyze returns 401 without token."""
         resp = client.post(
-            "/v2/obd/analyze", content=b"data",
+            "/v2/obd/analyze?manufacturer=Toyota&vehicle_model=Hiace",
+            content=b"data",
         )
         assert resp.status_code == 401
 

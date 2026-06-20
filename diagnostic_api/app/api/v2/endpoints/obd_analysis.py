@@ -142,6 +142,28 @@ def _validate_vehicle_id(value: str) -> str:
     )
 
 
+def _clean_required_vehicle_field(value: str, field_name: str) -> str:
+    """Trim + collapse whitespace; reject blank with a 422 (APP-60).
+
+    Args:
+        value: Raw query-param value.
+        field_name: Human-facing field name for the error message.
+
+    Returns:
+        The normalised (single-spaced, trimmed) value.
+
+    Raises:
+        HTTPException: 422 if the value is empty after trimming.
+    """
+    cleaned = " ".join((value or "").split())
+    if not cleaned:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"{field_name} is required.",
+        )
+    return cleaned
+
+
 def _extract_vehicle_id_from_body(body_bytes: bytes) -> Optional[str]:
     """Look for a ``# vehicle_id: <value>`` line in a CSV/TSV header.
 
@@ -594,11 +616,24 @@ async def list_sessions(
 )
 async def analyze_obd_log(
     request: Request,
+    manufacturer: str = Query(
+        ...,
+        description=(
+            "Vehicle manufacturer (e.g. 'Toyota').  REQUIRED (APP-60): "
+            "a model cannot be derived from an OBD log, so the uploader "
+            "must state the vehicle so the agent can ground on it and "
+            "match the right service manual."
+        ),
+    ),
+    vehicle_model: str = Query(
+        ...,
+        description="Vehicle model (e.g. 'Hiace').  REQUIRED (APP-60).",
+    ),
     vehicle_id: Optional[str] = Query(
         default=None,
         description=(
-            "Vehicle identifier to attach to this upload.  Accepts a "
-            "17-char ISO 3779 VIN or a short label (1-50 chars, "
+            "Optional VIN/label for traceability.  Accepts a 17-char "
+            "ISO 3779 VIN or a short label (1-50 chars, "
             "[A-Za-z0-9._-:]).  If omitted, the body is scanned for a "
             "'# vehicle_id: <value>' header line; if neither is "
             "present the legacy parser fallback is used."
@@ -627,6 +662,15 @@ async def analyze_obd_log(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="Text exceeds 10 MB limit.",
         )
+
+    # APP-60: vehicle make/model are required — a model cannot be
+    # derived from an OBD log, so the uploader must state it.
+    manufacturer = _clean_required_vehicle_field(
+        manufacturer, "Manufacturer",
+    )
+    vehicle_model = _clean_required_vehicle_field(
+        vehicle_model, "Vehicle model",
+    )
 
     # APP-54: resolve vehicle_id from (1) query param, (2) body header,
     # (3) legacy in-row VIN column.  Query param wins.  Validation runs
@@ -667,6 +711,18 @@ async def analyze_obd_log(
                 stored=existing.vehicle_id,
                 supplied=resolved_vehicle_id,
             )
+        # APP-60: surface a make/model mismatch on dedup too — the
+        # stored row stays the source of truth (not mutated here).
+        if (
+            existing.manufacturer != manufacturer
+            or existing.vehicle_model != vehicle_model
+        ):
+            logger.warning(
+                "obd_analyze_dedup_vehicle_model_mismatch",
+                session_id=str(existing.id),
+                stored=existing.canonical_name,
+                supplied=f"{manufacturer} {vehicle_model}",
+            )
         logger.info("obd_analyze_dedup", session_id=str(existing.id), hash=input_hash)
         return OBDAnalysisResponse(
             premium_llm_enabled=settings.premium_llm_enabled,
@@ -674,6 +730,9 @@ async def analyze_obd_log(
             status=existing.status,
             result=result,
             parsed_summary=existing.parsed_summary_payload,
+            manufacturer=existing.manufacturer,
+            vehicle_model=existing.vehicle_model,
+            canonical_name=existing.canonical_name,
             diagnosis_text=existing.diagnosis_text,
             premium_diagnosis_text=existing.premium_diagnosis_text,
         )
@@ -709,6 +768,11 @@ async def analyze_obd_log(
 
         result_dict = result.model_dump(mode="json")
         parsed_dict = format_summary_flat_strings(result_dict)
+        # APP-60: stamp the stated make/model into the parsed summary
+        # so the agent's context (build_user_message) can ground on the
+        # real vehicle and match the right manual (HARNESS-26).
+        parsed_dict["manufacturer"] = manufacturer
+        parsed_dict["vehicle_model"] = vehicle_model
 
         # Write raw OBD log to persistent filesystem storage
         os.makedirs(
@@ -723,6 +787,8 @@ async def analyze_obd_log(
             user_id=current_user.id,
             status="COMPLETED",
             vehicle_id=final_vehicle_id,
+            manufacturer=manufacturer,
+            vehicle_model=vehicle_model,
             input_text_hash=input_hash,
             input_size_bytes=len(body_bytes),
             raw_input_file_path=file_rel_path,
@@ -759,6 +825,9 @@ async def analyze_obd_log(
                     status=existing.status,
                     result=result_obj,
                     parsed_summary=existing.parsed_summary_payload,
+                    manufacturer=existing.manufacturer,
+                    vehicle_model=existing.vehicle_model,
+                    canonical_name=existing.canonical_name,
                     diagnosis_text=existing.diagnosis_text,
                     premium_diagnosis_text=existing.premium_diagnosis_text,
                 )
@@ -776,6 +845,9 @@ async def analyze_obd_log(
             status="COMPLETED",
             result=result,
             parsed_summary=parsed_dict,
+            manufacturer=manufacturer,
+            vehicle_model=vehicle_model,
+            canonical_name=db_session.canonical_name,
         )
 
     except HTTPException:

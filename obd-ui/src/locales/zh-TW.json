@@ -37,6 +37,10 @@
   "input": {
     "title": "OBD 日誌分析",
     "description": "貼上原始 OBD 日誌資料或上傳檔案（.txt、.csv、.tsv），執行完整診斷流程。",
+    "manufacturer": "製造商",
+    "manufacturerPlaceholder": "例如 Toyota, Yamaha",
+    "vehicleModel": "車型",
+    "vehicleModelPlaceholder": "例如 Hiace, TRICITY155",
     "pasteText": "貼上文字",
     "uploadFile": "上傳檔案",
     "placeholder": "在此貼上 OBD 日誌資料...",
