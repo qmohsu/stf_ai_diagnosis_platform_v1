@@ -77,12 +77,29 @@ _PARAM_ENTRIES = (
 
 
 # RAG-side knobs.  ``top_k=5`` matches the production endpoint
-# default.  ``vehicle_model="MWS150-A"`` filters to the single
-# manual currently ingested — bumping the corpus to multiple
-# manuals would lift this to a parametrize axis (recall@k per
-# manual scope).
+# default.
+#
+# ``vehicle_model="TRICITY155"``: HARNESS-23 found the corpus had
+# drifted since the issue was written — the goldens' Yamaha manual
+# ("MWS150-A 中文SERVICE MANUAL.pdf") is stored under vehicle_model
+# ``TRICITY155``, and a second manual (``Corolla E11``, Toyota) was
+# ingested into the same pgvector table.  The old ``"MWS150-A"``
+# label matched zero rows.
+#
+# ``_RAG_EXACT_SCAN``: with two manuals sharing the HNSW index, a
+# hard single-manual filter is starved to zero rows — HNSW selects
+# the approximate nearest neighbours first (all from the larger
+# English Corolla manual for cross-language queries) and only then
+# applies the filter, so nothing survives even at the max
+# ef_search=1000.  The exact sequential-scan path makes the filter
+# faithful again so the RAG lane actually retrieves Yamaha content.
+# See ``rag_runner._sync_exact_vector_query`` for the full rationale.
+#
+# Bumping the corpus to N>2 manuals would lift this to a parametrize
+# axis (recall@k per manual scope).
 _RAG_TOP_K = 5
-_RAG_VEHICLE_MODEL = "MWS150-A"
+_RAG_VEHICLE_MODEL = "TRICITY155"
+_RAG_EXACT_SCAN = True
 
 
 @pytest.mark.eval
@@ -112,6 +129,7 @@ async def test_rag(
         question=entry.question,
         top_k=_RAG_TOP_K,
         vehicle_model=_RAG_VEHICLE_MODEL,
+        exact=_RAG_EXACT_SCAN,
     )
     grade = await grade_run(entry, run, client=judge_client)
     eval_report.record(entry, run, grade)  # type: ignore[arg-type]
