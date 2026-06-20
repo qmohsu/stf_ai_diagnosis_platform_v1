@@ -223,16 +223,30 @@ async def list_manuals(
 
         fm = parse_frontmatter(text)
         model = fm.get("vehicle_model", "unknown")
+        manufacturer = fm.get("manufacturer", "")
+        # Canonical "<Manufacturer> <Model>" identity (APP-59).
+        canonical = (
+            f"{manufacturer} {model}".strip()
+            if manufacturer
+            else model
+        )
 
         if vehicle_filter:
-            if model.lower() != vehicle_filter.lower():
+            vf = vehicle_filter.lower()
+            # Match leniently against model, manufacturer, or the
+            # canonical name so the agent can filter by any of them.
+            if (
+                vf not in model.lower()
+                and vf not in manufacturer.lower()
+                and vf not in canonical.lower()
+            ):
                 continue
 
         page_count = fm.get("page_count", "?")
         section_count = fm.get("section_count", "?")
         entries.append(
             f"- {md_file.stem}  "
-            f"model={model}  "
+            f"vehicle=\"{canonical}\"  "
             f"pages={page_count}  "
             f"sections={section_count}"
         )
@@ -240,15 +254,28 @@ async def list_manuals(
     if not entries:
         if vehicle_filter:
             return (
-                f"No manuals found for vehicle model "
-                f"'{vehicle_filter}'. Use list_manuals "
-                f"without a filter to see all available "
-                f"manuals."
+                f"No manuals found matching '{vehicle_filter}'. "
+                f"Use list_manuals without a filter to see all "
+                f"available manuals."
             )
         return "No manuals found in storage."
 
     header = f"Available manuals ({len(entries)}):\n"
-    return header + "\n".join(entries)
+    # HARNESS-25 (issue #136): force an explicit make/model match
+    # against the vehicle under diagnosis so the agent stops adopting
+    # an unrelated manual as authoritative (the P00AF Hiace run cited
+    # a Yamaha scooter manual — #135).
+    footer = (
+        "\n\nIMPORTANT: only treat a manual as authoritative for "
+        "this diagnosis if its `vehicle=` make/model matches the "
+        "vehicle under investigation (check the session's "
+        "vehicle_id / VIN). If none of the manuals above match "
+        "this vehicle, say so explicitly — e.g. \"no service "
+        "manual is available for this vehicle\" — and do NOT adopt "
+        "an unrelated manual's vehicle identity or use it as "
+        "ground truth."
+    )
+    return header + "\n".join(entries) + footer
 
 
 # ── Tool: get_manual_toc ──────────────────────────────────────────

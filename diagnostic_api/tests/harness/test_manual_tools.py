@@ -169,6 +169,54 @@ class TestListManuals:
         assert "without a filter" in result
 
     @pytest.mark.asyncio
+    async def test_canonical_name_and_match_note(
+        self, tmp_path: Path,
+    ) -> None:
+        """Canonical name + honest match-or-refuse note (HARNESS-25)."""
+        d = tmp_path / "vault"
+        d.mkdir()
+        (d / "hiace.md").write_text(
+            "---\nmanufacturer: Toyota\nvehicle_model: Hiace\n"
+            "page_count: 100\nsection_count: 5\n---\n\n# Body\n",
+            encoding="utf-8",
+        )
+        with patch(
+            "app.harness_tools.manual_tools._MANUAL_DIR", d,
+        ):
+            result = await list_manuals({})
+        assert 'vehicle="Toyota Hiace"' in result
+        # Honest match-or-refuse guidance is present.
+        assert (
+            "no service manual is available for this vehicle"
+            in result
+        )
+        assert "do NOT adopt" in result
+
+    @pytest.mark.asyncio
+    async def test_filter_by_manufacturer(
+        self, tmp_path: Path,
+    ) -> None:
+        """Filter matches on manufacturer, not just model (HARNESS-25)."""
+        d = tmp_path / "vault2"
+        d.mkdir()
+        (d / "hiace.md").write_text(
+            "---\nmanufacturer: Toyota\nvehicle_model: Hiace\n"
+            "---\n\n# B\n",
+            encoding="utf-8",
+        )
+        (d / "tricity.md").write_text(
+            "---\nmanufacturer: Yamaha\nvehicle_model: TRICITY155\n"
+            "---\n\n# B\n",
+            encoding="utf-8",
+        )
+        with patch(
+            "app.harness_tools.manual_tools._MANUAL_DIR", d,
+        ):
+            result = await list_manuals({"vehicle_model": "Toyota"})
+        assert "hiace" in result
+        assert "tricity" not in result
+
+    @pytest.mark.asyncio
     async def test_empty_directory(
         self, tmp_path: Path,
     ) -> None:
