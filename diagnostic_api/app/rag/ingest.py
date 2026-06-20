@@ -36,7 +36,7 @@ from uuid import UUID
 import structlog
 from sqlalchemy.orm import Session
 
-from app.models_db import RagChunk
+from app.models_db import Manual, RagChunk
 from app.rag.chunker import ChunkedSection, Chunker
 from app.rag.embedding import embedding_service
 from app.rag.parser import parse_document
@@ -211,6 +211,15 @@ async def embed_and_insert_chunks(
 
     existing = _existing_checksums(db, manual_id)
 
+    # APP-59: the parent Manual row is the authoritative source of
+    # vehicle identity (the user supplied it at upload).  Stamp its
+    # manufacturer + model onto every chunk so retrieval can filter
+    # by make + model reliably, rather than trusting the per-section
+    # fuzzy extraction in the parser.
+    manual = db.query(Manual).get(manual_id)
+    manual_manufacturer = manual.manufacturer if manual else None
+    manual_vehicle_model = manual.vehicle_model if manual else None
+
     inserted = 0
     skipped = 0
 
@@ -245,7 +254,10 @@ async def embed_and_insert_chunks(
             doc_id=doc_id,
             source_type="manual",
             section_title=chunk.section_title,
-            vehicle_model=chunk.vehicle_model,
+            vehicle_model=(
+                manual_vehicle_model or chunk.vehicle_model
+            ),
+            manufacturer=manual_manufacturer,
             chunk_index=chunk.chunk_index,
             checksum=cs,
             metadata_json=meta,

@@ -54,7 +54,10 @@ class ManualSummary(BaseModel):
 
     id: str
     filename: str
+    manufacturer: Optional[str] = None
     vehicle_model: Optional[str] = None
+    # Canonical "<Manufacturer> <Model>" identity (APP-59).
+    canonical_name: Optional[str] = None
     status: str
     file_size_bytes: int
     page_count: Optional[int] = None
@@ -100,6 +103,9 @@ class ManualUploadResponse(BaseModel):
     manual_id: str
     status: str
     filename: str
+    manufacturer: str
+    vehicle_model: str
+    canonical_name: str
 
 
 class ManualStatusResponse(BaseModel):
@@ -119,12 +125,36 @@ class ManualStatusResponse(BaseModel):
 _PDF_MAGIC = b"%PDF"
 
 
+def _clean_required_field(value: str, field_name: str) -> str:
+    """Trim + collapse whitespace; reject blank with a 422.
+
+    Args:
+        value: Raw form value.
+        field_name: Human-facing field name for the error message.
+
+    Returns:
+        The normalised (single-spaced, trimmed) value.
+
+    Raises:
+        HTTPException: 422 if the value is empty after trimming.
+    """
+    cleaned = " ".join((value or "").split())
+    if not cleaned:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"{field_name} is required.",
+        )
+    return cleaned
+
+
 def _to_summary(m: Manual) -> ManualSummary:
     """Map a Manual ORM row to a ManualSummary."""
     return ManualSummary(
         id=str(m.id),
         filename=m.filename,
+        manufacturer=m.manufacturer,
         vehicle_model=m.vehicle_model,
+        canonical_name=m.canonical_name,
         status=m.status,
         file_size_bytes=m.file_size_bytes,
         page_count=m.page_count,
@@ -150,7 +180,8 @@ def _to_summary(m: Manual) -> ManualSummary:
 )
 async def upload_manual(
     file: UploadFile = File(...),
-    vehicle_model: Optional[str] = Form(default=None),
+    manufacturer: str = Form(...),
+    vehicle_model: str = Form(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> ManualUploadResponse:
@@ -158,18 +189,31 @@ async def upload_manual(
 
     Validates file type, size, and deduplicates by SHA-256.
 
+    ``manufacturer`` and ``vehicle_model`` are required (APP-59):
+    every manual must carry a structured vehicle identity so the
+    harness can match it against the session vehicle.
+
     Args:
         file: The uploaded PDF file.
-        vehicle_model: Optional vehicle model override.
+        manufacturer: Required manufacturer (e.g. ``Toyota``).
+        vehicle_model: Required model (e.g. ``Hiace``).
         current_user: Authenticated user.
         db: Database session.
 
     Returns:
-        Manual ID and initial status.
+        Manual ID, initial status, and canonical name.
 
     Raises:
         HTTPException: On validation or duplicate errors.
     """
+    # APP-59: required vehicle identity — reject blank values.
+    manufacturer = _clean_required_field(
+        manufacturer, "Manufacturer",
+    )
+    vehicle_model = _clean_required_field(
+        vehicle_model, "Vehicle model",
+    )
+
     # Read the entire file (capped at max + 1 byte to
     # detect oversized uploads without reading everything).
     max_size = settings.manual_max_file_size_bytes
@@ -210,6 +254,7 @@ async def upload_manual(
         user_id=current_user.id,
         filename=file.filename or "unknown.pdf",
         file_hash=file_hash,
+        manufacturer=manufacturer,
         vehicle_model=vehicle_model,
         status="uploading",
         file_size_bytes=len(data),
@@ -244,6 +289,9 @@ async def upload_manual(
         manual_id=str(manual_id),
         status="converting",
         filename=file.filename or "unknown.pdf",
+        manufacturer=manufacturer,
+        vehicle_model=vehicle_model,
+        canonical_name=manual.canonical_name,
     )
 
 

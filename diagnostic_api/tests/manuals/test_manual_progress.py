@@ -533,7 +533,9 @@ class TestStatusResponseSerialization:
         manual = MagicMock()
         manual.id = uuid.uuid4()
         manual.filename = "x.pdf"
+        manual.manufacturer = "Yamaha"
         manual.vehicle_model = "TRICITY-155"
+        manual.canonical_name = "Yamaha TRICITY-155"
         manual.status = "converting"
         manual.file_size_bytes = 1024
         manual.page_count = None

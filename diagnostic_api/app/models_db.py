@@ -354,7 +354,15 @@ class Manual(Base):
     file_hash = Column(
         String(64), unique=True, nullable=False, index=True,
     )
-    vehicle_model = Column(String(100), nullable=True)
+    # APP-59 (issue #136): structured vehicle identity.  Both are
+    # required so every manual is unambiguously tied to a vehicle
+    # and the harness can match it against the session under
+    # diagnosis instead of confabulating (e.g. calling a Toyota
+    # Hiace a Yamaha scooter).  The canonical identity shown to the
+    # agent / UI is ``"{manufacturer} {vehicle_model}"`` — the raw
+    # PDF filename is no longer the identity.
+    manufacturer = Column(String(100), nullable=False)
+    vehicle_model = Column(String(100), nullable=False)
     status = Column(
         String(20), nullable=False, default="uploading",
     )
@@ -391,6 +399,15 @@ class Manual(Base):
     )
 
     user = relationship("User")
+
+    @property
+    def canonical_name(self) -> str:
+        """Canonical vehicle identity: ``"<Manufacturer> <Model>"``.
+
+        Used everywhere the manual is shown to the agent or the UI
+        (lists, citations) in place of the raw PDF filename.
+        """
+        return f"{self.manufacturer} {self.vehicle_model}".strip()
 
 
 class GoldenEntry(Base):
@@ -690,6 +707,13 @@ class RagChunk(Base):
     source_type = Column(String(50), nullable=False)
     section_title = Column(Text, nullable=True)
     vehicle_model = Column(
+        String(100), nullable=True, index=True,
+    )
+    # APP-59 (issue #136): manufacturer stamped from the parent
+    # manual at ingestion so retrieval can filter by make + model
+    # and the agent can scope to the session's vehicle.  Nullable
+    # for older chunks ingested before this column existed.
+    manufacturer = Column(
         String(100), nullable=True, index=True,
     )
     chunk_index = Column(Integer, nullable=False)

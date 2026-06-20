@@ -25,6 +25,7 @@ from pathlib import Path
 from uuid import UUID
 
 import structlog
+import yaml
 
 from app.config import settings
 from app.db.session import SessionLocal
@@ -102,6 +103,73 @@ def save_uploaded_pdf(
         path=rel_path,
     )
     return rel_path
+
+
+def write_frontmatter_identity(
+    md_abs: str,
+    manufacturer: str,
+    vehicle_model: str,
+) -> bool:
+    """Stamp manufacturer + vehicle_model into a manual's frontmatter.
+
+    The harness ``list_manuals`` tool reads each manual's vehicle
+    identity from the markdown YAML frontmatter (not the DB), so the
+    authoritative make/model from the upload form must be written
+    there for the agent to see the canonical name (APP-59).
+
+    Idempotent: existing keys are overwritten and a frontmatter block
+    is created if the file has none.  Also used to backfill the
+    manuals already in the vault.
+
+    Args:
+        md_abs: Absolute path to the converted ``.md`` file.
+        manufacturer: Authoritative manufacturer from the Manual row.
+        vehicle_model: Authoritative model from the Manual row.
+
+    Returns:
+        ``True`` on success, ``False`` if the file could not be
+        read or written (logged, non-fatal).
+    """
+    try:
+        text = Path(md_abs).read_text(encoding="utf-8")
+    except OSError as exc:
+        logger.warning(
+            "manual.frontmatter_read_failed",
+            path=md_abs, error=str(exc),
+        )
+        return False
+
+    stripped = text.lstrip()
+    fm: dict = {}
+    body = text
+    if stripped.startswith("---"):
+        end_idx = stripped.find("---", 3)
+        if end_idx >= 0:
+            block = stripped[3:end_idx]
+            try:
+                loaded = yaml.safe_load(block)
+                if isinstance(loaded, dict):
+                    fm = loaded
+            except yaml.YAMLError:
+                fm = {}
+            body = stripped[end_idx + 3:].lstrip("\n")
+
+    fm["manufacturer"] = manufacturer
+    fm["vehicle_model"] = vehicle_model
+
+    new_block = yaml.safe_dump(
+        fm, allow_unicode=True, sort_keys=False,
+    ).strip()
+    new_text = f"---\n{new_block}\n---\n\n{body}"
+    try:
+        Path(md_abs).write_text(new_text, encoding="utf-8")
+    except OSError as exc:
+        logger.warning(
+            "manual.frontmatter_write_failed",
+            path=md_abs, error=str(exc),
+        )
+        return False
+    return True
 
 
 async def run_conversion_and_ingestion(
@@ -209,6 +277,12 @@ async def run_conversion_and_ingestion(
 
         md_abs = os.path.join(
             settings.manual_storage_path, output_path,
+        )
+        # APP-59: stamp the authoritative make/model from the upload
+        # form into the .md frontmatter so the harness list_manuals
+        # tool shows the canonical "<Manufacturer> <Model>" identity.
+        write_frontmatter_identity(
+            md_abs, manual.manufacturer, manual.vehicle_model,
         )
         try:
             chunk_count = await _run_ingestion(

@@ -230,7 +230,10 @@ export type ManualStatus =
 export interface ManualSummary {
   id: string;
   filename: string;
+  manufacturer: string | null;
   vehicle_model: string | null;
+  /** Canonical "<Manufacturer> <Model>" identity (APP-59). */
+  canonical_name: string | null;
   status: ManualStatus;
   file_size_bytes: number;
   page_count: number | null;
@@ -271,6 +274,9 @@ export interface ManualUploadResponse {
   manual_id: string;
   status: string;
   filename: string;
+  manufacturer: string;
+  vehicle_model: string;
+  canonical_name: string;
 }
 
 export interface ManualStatusResponse {
