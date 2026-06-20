@@ -201,6 +201,11 @@ class TestPerUserDedup:
             "clue_details": [],
         }
         existing_row.parsed_summary_payload = {"parse_ok": "YES"}
+        # APP-60: the dedup return surfaces the stored vehicle identity,
+        # so the mock row must carry real (non-MagicMock) values.
+        existing_row.manufacturer = "Toyota"
+        existing_row.vehicle_model = "Hiace"
+        existing_row.canonical_name = "Toyota Hiace"
         existing_row.diagnosis_text = None
         existing_row.premium_diagnosis_text = None
         mock_db.query.return_value.filter.return_value \
