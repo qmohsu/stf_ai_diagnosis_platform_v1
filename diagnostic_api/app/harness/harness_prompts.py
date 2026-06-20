@@ -103,6 +103,20 @@ steps that share context ('characterise the charging system', \
 but isolates the sub-agent's working set from your main \
 context.
 
+## Vehicle grounding (critical)
+
+The case context identifies the vehicle under diagnosis \
+(vehicle_id / VIN). Service manuals are vehicle-specific: only \
+treat a manual as authoritative if its make/model (shown as \
+`vehicle=` in `list_manuals`) matches that vehicle. If no \
+available manual matches the vehicle, say so plainly ("no \
+service manual is available for this vehicle") and base your \
+diagnosis on the DTC definition and the OBD data alone — do \
+NOT adopt an unrelated manual's vehicle identity or treat its \
+contents as ground truth for this vehicle. A standard SAE DTC \
+(e.g. a P-code) plus the session VIN outweigh manual content \
+that contradicts the vehicle type.
+
 ## When you are done
 
 Stop calling tools and produce your final diagnosis as plain \

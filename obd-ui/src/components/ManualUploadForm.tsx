@@ -29,8 +29,16 @@ export function ManualUploadForm({ onUploaded }: ManualUploadFormProps) {
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // APP-59: manufacturer + model are both required.
+  const [manufacturer, setManufacturer] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const canSubmit =
+    !!selectedFile &&
+    manufacturer.trim().length > 0 &&
+    vehicleModel.trim().length > 0 &&
+    !uploading;
 
   const selectFile = useCallback(
     (file: File) => {
@@ -45,12 +53,19 @@ export function ManualUploadForm({ onUploaded }: ManualUploadFormProps) {
   );
 
   const handleSubmit = useCallback(async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || !manufacturer.trim() || !vehicleModel.trim()) {
+      return;
+    }
     setError(null);
     setUploading(true);
     try {
-      await uploadManual(selectedFile, vehicleModel || undefined);
+      await uploadManual(
+        selectedFile,
+        manufacturer.trim(),
+        vehicleModel.trim(),
+      );
       setSelectedFile(null);
+      setManufacturer("");
       setVehicleModel("");
       onUploaded();
     } catch (err) {
@@ -58,7 +73,7 @@ export function ManualUploadForm({ onUploaded }: ManualUploadFormProps) {
     } finally {
       setUploading(false);
     }
-  }, [selectedFile, vehicleModel, onUploaded]);
+  }, [selectedFile, manufacturer, vehicleModel, onUploaded]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -172,10 +187,27 @@ export function ManualUploadForm({ onUploaded }: ManualUploadFormProps) {
           />
         </div>
 
-        {/* Vehicle model input */}
+        {/* Manufacturer input (required) */}
         <div className="flex items-center gap-3">
-          <label className="text-sm font-medium whitespace-nowrap">
+          <label className="text-sm font-medium whitespace-nowrap w-32">
+            {t("manuals.manufacturer")}
+            <span className="text-destructive"> *</span>
+          </label>
+          <input
+            type="text"
+            value={manufacturer}
+            onChange={(e) => setManufacturer(e.target.value)}
+            placeholder={t("manuals.manufacturerPlaceholder")}
+            className="flex-1 rounded-md border px-3 py-1.5 text-sm bg-background"
+            disabled={uploading}
+          />
+        </div>
+
+        {/* Vehicle model input (required) */}
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-medium whitespace-nowrap w-32">
             {t("manuals.vehicleModel")}
+            <span className="text-destructive"> *</span>
           </label>
           <input
             type="text"
@@ -190,7 +222,7 @@ export function ManualUploadForm({ onUploaded }: ManualUploadFormProps) {
         {/* Submit button */}
         <Button
           className="w-full"
-          disabled={!selectedFile || uploading}
+          disabled={!canSubmit}
           onClick={handleSubmit}
         >
           {uploading ? (

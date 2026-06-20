@@ -596,13 +596,14 @@ export async function fetchAudioBlob(
  */
 export async function uploadManual(
   file: File,
-  vehicleModel?: string,
+  manufacturer: string,
+  vehicleModel: string,
 ): Promise<ManualUploadResponse> {
   const formData = new FormData();
   formData.append("file", file);
-  if (vehicleModel) {
-    formData.append("vehicle_model", vehicleModel);
-  }
+  // APP-59: manufacturer + model are required.
+  formData.append("manufacturer", manufacturer);
+  formData.append("vehicle_model", vehicleModel);
   const res = await fetch(`${API_URL}/v2/manuals/upload`, {
     method: "POST",
     headers: getAuthHeaders(),
