@@ -41,13 +41,15 @@ from tests.harness.evals.rag_runner import run_rag
 from tests.harness.evals.schemas import GoldenEntry
 
 
-# Minimum overall score the RAG lane must achieve.  Held at the
-# same value as the agent lane for the first baseline — phase 3
-# will lower BOTH to a justified number after seeing real data.
-# Hard-failing on this threshold is intentional: it makes the
-# CI / pytest output mirror the agent lane and prevents a
-# silent regression from sneaking in once a baseline exists.
-_PASS_THRESHOLD = 0.7
+# Minimum overall score the RAG lane must achieve.  Pinned from the
+# HARNESS-23 baseline (#107, run 2026-06-20): rag mean 0.337, stdev
+# 0.133 over the 30 locked goldens → mean − 1·stdev = 0.204, floored
+# to 0.2.  Deliberately lower than the agent lane (0.4): single-shot
+# top-5 concatenation has no synthesis step, so it sits just above
+# the rubric's structural floor (answer_quality ~0.05).  Revisit if
+# the RAG lane ever grows a synthesis step.  See
+# docs/harness_14_phase6_baseline.md.
+_PASS_THRESHOLD = 0.2
 
 
 # Load goldens at import time so pytest parametrization shows one
