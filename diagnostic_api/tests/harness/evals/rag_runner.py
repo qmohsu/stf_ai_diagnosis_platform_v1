@@ -19,13 +19,19 @@ Author: Li-Ta Hsu
 
 from __future__ import annotations
 
+import asyncio
 import time
-from typing import List, Literal, Optional
+from functools import partial
+from typing import Any, Dict, List, Literal, Optional
 
+import httpx
 import structlog
+from sqlalchemy import text as sa_text
 
+from app.config import settings
+from app.db.session import SessionLocal
 from app.harness_tools.manual_fs import slugify
-from app.rag.retrieve import retrieve_context, RetrievalResult
+from app.rag.retrieve import RetrievalResult, retrieve_context
 
 
 RagMode = Literal["vector", "keyword", "hybrid"]
@@ -53,6 +59,187 @@ _TEXT_PREVIEW_CHARS = 120
 of the eval report."""
 
 
+# ── Exact (non-HNSW) retrieval for the comparative baseline ───────
+
+
+def _format_pgvector(vector: List[float]) -> str:
+    """Format a float list as a pgvector text literal."""
+    return "[" + ",".join(f"{v:.7f}" for v in vector) + "]"
+
+
+def _sync_exact_vector_query(
+    vector: List[float],
+    top_k: int,
+    vehicle_model: Optional[str],
+) -> List[RetrievalResult]:
+    """Exact (sequential-scan) cosine query, optionally model-filtered.
+
+    The production ``retrieve_context`` path uses the HNSW index,
+    which applies the ``vehicle_model`` filter *after* selecting the
+    approximate nearest neighbours.  Once a second, larger manual
+    shares the index, a hard single-manual filter is starved to zero
+    rows for cross-language queries: the English ``Corolla E11``
+    manual crowds the Chinese-translated ``TRICITY155`` manual out of
+    the candidate pool entirely — even at ``hnsw.ef_search`` = 1000
+    (the pgvector 0.7.4 max), the TRICITY155 filter returns 0 rows
+    (HARNESS-23, verified 2026-06-20).
+
+    Forcing a sequential scan makes the filter exact again, so the
+    agent-vs-RAG baseline measures the *corpus's* retrieval quality
+    rather than the HNSW recall pathology.  The scores are identical
+    cosine similarities — HNSW is purely an approximate-NN speedup,
+    so an exact scan is the faithful "cosine-distance retrieval" the
+    ticket calls for.  Per-manual corpora are small (≤3051 chunks),
+    so the full scan is sub-100 ms.
+
+    This stays in the eval suite (a measurement adapter); production
+    retrieval is left untouched.
+
+    Args:
+        vector: Query embedding (768-dim float list).
+        top_k: Maximum rows to return.
+        vehicle_model: Optional exact ``vehicle_model`` filter.
+
+    Returns:
+        ``RetrievalResult`` list sorted by descending similarity.
+        Empty list on failure (the eval must not crash).
+    """
+    db = SessionLocal()
+    try:
+        # ``SET LOCAL`` scopes the planner override to this
+        # transaction only; production queries on other connections
+        # keep using the HNSW index.
+        db.execute(sa_text("SET LOCAL enable_indexscan = off"))
+        db.execute(sa_text("SET LOCAL enable_bitmapscan = off"))
+
+        filter_sql = ""
+        params: Dict[str, Any] = {
+            "qv": _format_pgvector(vector),
+            "limit": top_k,
+        }
+        if vehicle_model:
+            filter_sql = "WHERE vehicle_model = :vm"
+            params["vm"] = vehicle_model
+
+        sql = sa_text(
+            f"""
+            SELECT
+                text,
+                doc_id,
+                source_type,
+                section_title,
+                chunk_index,
+                metadata_json,
+                1 - (embedding <=> CAST(:qv AS vector)) AS score
+            FROM rag_chunks
+            {filter_sql}
+            ORDER BY embedding <=> CAST(:qv AS vector)
+            LIMIT :limit
+            """
+        )
+        rows = db.execute(sql, params).fetchall()
+        results: List[RetrievalResult] = []
+        for row in rows:
+            results.append(RetrievalResult(
+                text=row.text,
+                score=(
+                    float(row.score)
+                    if row.score is not None else 0.0
+                ),
+                doc_id=row.doc_id or "unknown",
+                source_type=row.source_type or "unknown",
+                section_title=row.section_title or "unknown",
+                chunk_index=row.chunk_index or 0,
+                metadata=row.metadata_json or {},
+            ))
+        return results
+    except Exception as exc:  # noqa: BLE001 — eval must not crash.
+        logger.error(
+            "rag_runner.exact_retrieve_failed",
+            error=repr(exc),
+        )
+        return []
+    finally:
+        db.close()
+
+
+async def _embed_query(text: str, attempts: int = 3) -> List[float]:
+    """Embed ``text`` with a fresh per-call ``httpx.AsyncClient``.
+
+    The production ``embedding_service`` reuses a single module-level
+    ``httpx.AsyncClient``.  That is correct inside the app's
+    long-lived event loop, but breaks under pytest-asyncio, where each
+    test runs in its OWN event loop: the singleton client stays bound
+    to the loop that first created it, so every-other RAG test hit a
+    dead-loop connection and silently retrieved zero chunks
+    (HARNESS-23 baseline run 2026-06-20: 15/30 RAG entries came back
+    empty in an alternating pattern).  A short-lived client created in
+    the current loop sidesteps the cross-loop reuse entirely.  This is
+    an eval-harness concern only — production embedding is untouched.
+
+    Args:
+        text: Query string to embed.
+        attempts: Max tries before giving up (transient Ollama hiccup
+            resilience).
+
+    Returns:
+        768-dim embedding, or empty list after ``attempts`` failures.
+    """
+    base_url = settings.embedding_endpoint or settings.llm_endpoint
+    payload = {"model": settings.embedding_model, "input": text}
+    last_exc: Optional[Exception] = None
+    for _ in range(attempts):
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                resp = await client.post(
+                    f"{base_url}/api/embed", json=payload,
+                )
+                resp.raise_for_status()
+                embeddings = resp.json().get("embeddings", [])
+                if embeddings and embeddings[0]:
+                    return embeddings[0]
+        except Exception as exc:  # noqa: BLE001 — retry then give up.
+            last_exc = exc
+    if last_exc is not None:
+        logger.error("rag_runner.embed_failed", error=repr(last_exc))
+    return []
+
+
+async def _exact_vector_retrieve(
+    question: str,
+    top_k: int,
+    vehicle_model: Optional[str],
+) -> List[RetrievalResult]:
+    """Embed the query, then run an exact cosine scan off-thread.
+
+    Mirrors ``retrieve_context``'s embed-then-``run_in_executor``
+    shape so the surrounding ``run_rag`` normalisation is identical
+    for both the exact and HNSW paths.
+
+    Args:
+        question: User inquiry, embedded verbatim.
+        top_k: Maximum rows to return.
+        vehicle_model: Optional exact ``vehicle_model`` filter.
+
+    Returns:
+        ``RetrievalResult`` list, or empty on embedding failure.
+    """
+    vector = await _embed_query(question)
+    if not vector:
+        logger.warning(
+            "rag_runner.embed_empty",
+            question_preview=question[:80],
+        )
+        return []
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        None,
+        partial(
+            _sync_exact_vector_query, vector, top_k, vehicle_model,
+        ),
+    )
+
+
 # ── Public entry point ────────────────────────────────────────────
 
 
@@ -62,6 +249,7 @@ async def run_rag(
     vehicle_model: Optional[str] = None,
     mode: RagMode = "vector",
     alpha: float = 0.5,
+    exact: bool = False,
 ) -> SystemRunResult:
     """Execute RAG retrieval against pgvector and normalise the result.
 
@@ -86,6 +274,15 @@ async def run_rag(
             rows with the mode they invoked.
         alpha: Weight on the vector branch in ``[0, 1]`` when
             ``mode="hybrid"``.  Ignored otherwise.
+        exact: When ``True``, bypass the HNSW index and run an exact
+            sequential-scan cosine query (``_exact_vector_retrieve``)
+            instead of ``retrieve_context``.  Required for the
+            agent-vs-RAG baseline when a ``vehicle_model`` filter is
+            set: HNSW applies the filter *after* approximate-NN
+            selection, which starves a single-manual filter to zero
+            rows once a second, larger manual shares the index
+            (HARNESS-23).  Ignores ``mode``/``alpha`` (exact cosine
+            only).
 
     Returns:
         ``SystemRunResult`` with ``system_label="rag"`` and
@@ -100,13 +297,20 @@ async def run_rag(
     """
     wall_start = time.perf_counter()
     try:
-        chunks: List[RetrievalResult] = await retrieve_context(
-            query=question,
-            top_k=top_k,
-            vehicle_model=vehicle_model,
-            mode=mode,
-            alpha=alpha,
-        )
+        if exact:
+            chunks: List[RetrievalResult] = await _exact_vector_retrieve(
+                question=question,
+                top_k=top_k,
+                vehicle_model=vehicle_model,
+            )
+        else:
+            chunks = await retrieve_context(
+                query=question,
+                top_k=top_k,
+                vehicle_model=vehicle_model,
+                mode=mode,
+                alpha=alpha,
+            )
     except Exception as exc:  # noqa: BLE001 — eval should not crash
         logger.error(
             "rag_runner.retrieve_failed",
