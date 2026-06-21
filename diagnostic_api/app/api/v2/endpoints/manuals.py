@@ -56,6 +56,8 @@ class ManualSummary(BaseModel):
     filename: str
     manufacturer: Optional[str] = None
     vehicle_model: Optional[str] = None
+    # APP-61: optional factory / manual code alias (e.g. MWS150-A).
+    factory_code: Optional[str] = None
     # Canonical "<Manufacturer> <Model>" identity (APP-59).
     canonical_name: Optional[str] = None
     status: str
@@ -105,6 +107,7 @@ class ManualUploadResponse(BaseModel):
     filename: str
     manufacturer: str
     vehicle_model: str
+    factory_code: Optional[str] = None
     canonical_name: str
 
 
@@ -154,6 +157,7 @@ def _to_summary(m: Manual) -> ManualSummary:
         filename=m.filename,
         manufacturer=m.manufacturer,
         vehicle_model=m.vehicle_model,
+        factory_code=m.factory_code,
         canonical_name=m.canonical_name,
         status=m.status,
         file_size_bytes=m.file_size_bytes,
@@ -182,6 +186,7 @@ async def upload_manual(
     file: UploadFile = File(...),
     manufacturer: str = Form(...),
     vehicle_model: str = Form(...),
+    factory_code: Optional[str] = Form(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> ManualUploadResponse:
@@ -197,6 +202,9 @@ async def upload_manual(
         file: The uploaded PDF file.
         manufacturer: Required manufacturer (e.g. ``Toyota``).
         vehicle_model: Required model (e.g. ``Hiace``).
+        factory_code: Optional factory / manual code alias (APP-61,
+            e.g. ``MWS150-A`` for the Yamaha Tricity 155) so the
+            agent matches a question phrased by either identifier.
         current_user: Authenticated user.
         db: Database session.
 
@@ -213,6 +221,9 @@ async def upload_manual(
     vehicle_model = _clean_required_field(
         vehicle_model, "Vehicle model",
     )
+    # APP-61: optional factory / manual code alias.  Normalise to
+    # ``None`` when blank so the column stays NULL rather than "".
+    factory_code = " ".join((factory_code or "").split()) or None
 
     # Read the entire file (capped at max + 1 byte to
     # detect oversized uploads without reading everything).
@@ -256,6 +267,7 @@ async def upload_manual(
         file_hash=file_hash,
         manufacturer=manufacturer,
         vehicle_model=vehicle_model,
+        factory_code=factory_code,
         status="uploading",
         file_size_bytes=len(data),
     )
@@ -291,6 +303,7 @@ async def upload_manual(
         filename=file.filename or "unknown.pdf",
         manufacturer=manufacturer,
         vehicle_model=vehicle_model,
+        factory_code=factory_code,
         canonical_name=manual.canonical_name,
     )
 

@@ -224,6 +224,11 @@ async def list_manuals(
         fm = parse_frontmatter(text)
         model = fm.get("vehicle_model", "unknown")
         manufacturer = fm.get("manufacturer", "")
+        # APP-61: optional factory / manual code alias (e.g.
+        # ``MWS150-A`` for the Yamaha Tricity 155).  Surfaced so the
+        # agent can match a question phrased by the code on the
+        # manual cover, not just the marketing model name.
+        factory_code = fm.get("factory_code") or ""
         # Canonical "<Manufacturer> <Model>" identity (APP-59).
         canonical = (
             f"{manufacturer} {model}".strip()
@@ -233,20 +238,26 @@ async def list_manuals(
 
         if vehicle_filter:
             vf = vehicle_filter.lower()
-            # Match leniently against model, manufacturer, or the
-            # canonical name so the agent can filter by any of them.
+            # Match leniently against model, manufacturer, the
+            # canonical name, or the factory code so the agent can
+            # filter by any of them.
             if (
                 vf not in model.lower()
                 and vf not in manufacturer.lower()
                 and vf not in canonical.lower()
+                and vf not in factory_code.lower()
             ):
                 continue
 
         page_count = fm.get("page_count", "?")
         section_count = fm.get("section_count", "?")
+        code_part = (
+            f"factory_code=\"{factory_code}\"  " if factory_code else ""
+        )
         entries.append(
             f"- {md_file.stem}  "
             f"vehicle=\"{canonical}\"  "
+            f"{code_part}"
             f"pages={page_count}  "
             f"sections={section_count}"
         )
@@ -267,10 +278,14 @@ async def list_manuals(
     # a Yamaha scooter manual — #135).
     footer = (
         "\n\nIMPORTANT: only treat a manual as authoritative for "
-        "this diagnosis if its `vehicle=` make/model matches the "
-        "vehicle under investigation (check the session's "
-        "vehicle_id / VIN). If none of the manuals above match "
-        "this vehicle, say so explicitly — e.g. \"no service "
+        "this diagnosis if its `vehicle=` make/model OR its "
+        "`factory_code=` matches the vehicle under investigation "
+        "(check the session's vehicle_id / VIN). A manual's "
+        "`factory_code` is an alternate identifier for the SAME "
+        "vehicle (e.g. factory_code=\"MWS150-A\" is the Yamaha "
+        "Tricity 155), so a question that names the factory code is "
+        "a match for that manual. If none of the manuals above "
+        "match this vehicle, say so explicitly — e.g. \"no service "
         "manual is available for this vehicle\" — and do NOT adopt "
         "an unrelated manual's vehicle identity or use it as "
         "ground truth."

@@ -20,6 +20,7 @@ from app.services.manual_pipeline import (
     delete_manual_chunks,
     delete_manual_files,
     save_uploaded_pdf,
+    write_frontmatter_identity,
 )
 
 
@@ -384,3 +385,55 @@ class TestMarkerConvertApiKeyNotOnDisk:
         assert SECRET not in json.dumps(captured), (
             "API key value must not appear in queue JSON"
         )
+
+
+# ── Tests: write_frontmatter_identity factory_code (APP-61) ──
+
+
+class TestFrontmatterFactoryCode:
+    """Tests for the optional factory_code stamp in frontmatter."""
+
+    def _md(self, tmp_path) -> str:
+        """Write a minimal manual .md and return its path."""
+        p = tmp_path / "manual.md"
+        p.write_text(
+            "---\nvehicle_model: TRICITY155\n---\n\n# Body\n",
+            encoding="utf-8",
+        )
+        return str(p)
+
+    def test_writes_factory_code_when_present(self, tmp_path):
+        """factory_code is stamped into the YAML frontmatter."""
+        md = self._md(tmp_path)
+        ok = write_frontmatter_identity(
+            md, "Yamaha", "TRICITY155", factory_code="MWS150-A",
+        )
+        assert ok is True
+        text = (tmp_path / "manual.md").read_text(encoding="utf-8")
+        assert "factory_code: MWS150-A" in text
+        assert "manufacturer: Yamaha" in text
+        assert "# Body" in text
+
+    def test_omits_factory_code_when_blank(self, tmp_path):
+        """No factory_code key is written when none is supplied."""
+        md = self._md(tmp_path)
+        ok = write_frontmatter_identity(md, "Yamaha", "TRICITY155")
+        assert ok is True
+        text = (tmp_path / "manual.md").read_text(encoding="utf-8")
+        assert "factory_code" not in text
+
+    def test_clears_stale_factory_code(self, tmp_path):
+        """A previously-stamped factory_code is dropped when cleared."""
+        p = tmp_path / "manual.md"
+        p.write_text(
+            "---\nvehicle_model: TRICITY155\n"
+            "factory_code: OLD-CODE\n---\n\n# Body\n",
+            encoding="utf-8",
+        )
+        ok = write_frontmatter_identity(
+            str(p), "Yamaha", "TRICITY155", factory_code=None,
+        )
+        assert ok is True
+        text = p.read_text(encoding="utf-8")
+        assert "OLD-CODE" not in text
+        assert "factory_code" not in text
