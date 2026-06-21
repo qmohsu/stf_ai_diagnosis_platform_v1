@@ -607,12 +607,17 @@ export async function uploadManual(
   file: File,
   manufacturer: string,
   vehicleModel: string,
+  factoryCode?: string,
 ): Promise<ManualUploadResponse> {
   const formData = new FormData();
   formData.append("file", file);
   // APP-59: manufacturer + model are required.
   formData.append("manufacturer", manufacturer);
   formData.append("vehicle_model", vehicleModel);
+  // APP-61: optional factory / manual code alias (e.g. MWS150-A).
+  if (factoryCode && factoryCode.trim()) {
+    formData.append("factory_code", factoryCode.trim());
+  }
   const res = await fetch(`${API_URL}/v2/manuals/upload`, {
     method: "POST",
     headers: getAuthHeaders(),

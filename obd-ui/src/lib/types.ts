@@ -232,6 +232,8 @@ export interface ManualSummary {
   filename: string;
   manufacturer: string | null;
   vehicle_model: string | null;
+  /** Optional factory / manual code alias (APP-61, e.g. MWS150-A). */
+  factory_code: string | null;
   /** Canonical "<Manufacturer> <Model>" identity (APP-59). */
   canonical_name: string | null;
   status: ManualStatus;
@@ -276,6 +278,8 @@ export interface ManualUploadResponse {
   filename: string;
   manufacturer: string;
   vehicle_model: string;
+  /** Optional factory / manual code alias (APP-61). */
+  factory_code: string | null;
   canonical_name: string;
 }
 
