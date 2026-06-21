@@ -32,6 +32,8 @@ export function ManualUploadForm({ onUploaded }: ManualUploadFormProps) {
   // APP-59: manufacturer + model are both required.
   const [manufacturer, setManufacturer] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
+  // APP-61: optional factory / manual code alias (e.g. MWS150-A).
+  const [factoryCode, setFactoryCode] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const canSubmit =
@@ -63,17 +65,19 @@ export function ManualUploadForm({ onUploaded }: ManualUploadFormProps) {
         selectedFile,
         manufacturer.trim(),
         vehicleModel.trim(),
+        factoryCode.trim() || undefined,
       );
       setSelectedFile(null);
       setManufacturer("");
       setVehicleModel("");
+      setFactoryCode("");
       onUploaded();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
     }
-  }, [selectedFile, manufacturer, vehicleModel, onUploaded]);
+  }, [selectedFile, manufacturer, vehicleModel, factoryCode, onUploaded]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -218,6 +222,28 @@ export function ManualUploadForm({ onUploaded }: ManualUploadFormProps) {
             disabled={uploading}
           />
         </div>
+
+        {/* Factory code input (APP-61, optional) */}
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-medium whitespace-nowrap w-32">
+            {t("manuals.factoryCode")}
+            <span className="text-muted-foreground font-normal">
+              {" "}
+              ({t("manuals.factoryCodeOptional")})
+            </span>
+          </label>
+          <input
+            type="text"
+            value={factoryCode}
+            onChange={(e) => setFactoryCode(e.target.value)}
+            placeholder={t("manuals.factoryCodePlaceholder")}
+            className="flex-1 rounded-md border px-3 py-1.5 text-sm bg-background"
+            disabled={uploading}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground -mt-2 ml-[8.75rem]">
+          {t("manuals.factoryCodeHint")}
+        </p>
 
         {/* Submit button */}
         <Button

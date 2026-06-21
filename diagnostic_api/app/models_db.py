@@ -384,6 +384,13 @@ class Manual(Base):
     # PDF filename is no longer the identity.
     manufacturer = Column(String(100), nullable=False)
     vehicle_model = Column(String(100), nullable=False)
+    # APP-61: optional factory / service-manual code (e.g. Yamaha's
+    # ``MWS150-A`` for the Tricity 155).  Many manuals are referred
+    # to by this code on the cover rather than the marketing model
+    # name; storing it as an alias lets the agent match a question
+    # phrased by either identifier to the same manual.  Nullable —
+    # most manuals have no distinct factory code.
+    factory_code = Column(String(100), nullable=True)
     status = Column(
         String(20), nullable=False, default="uploading",
     )

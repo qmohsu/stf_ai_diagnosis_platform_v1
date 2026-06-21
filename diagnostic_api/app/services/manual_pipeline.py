@@ -22,6 +22,7 @@ import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 from uuid import UUID
 
 import structlog
@@ -109,8 +110,9 @@ def write_frontmatter_identity(
     md_abs: str,
     manufacturer: str,
     vehicle_model: str,
+    factory_code: Optional[str] = None,
 ) -> bool:
-    """Stamp manufacturer + vehicle_model into a manual's frontmatter.
+    """Stamp the vehicle identity into a manual's frontmatter.
 
     The harness ``list_manuals`` tool reads each manual's vehicle
     identity from the markdown YAML frontmatter (not the DB), so the
@@ -125,6 +127,10 @@ def write_frontmatter_identity(
         md_abs: Absolute path to the converted ``.md`` file.
         manufacturer: Authoritative manufacturer from the Manual row.
         vehicle_model: Authoritative model from the Manual row.
+        factory_code: Optional factory / service-manual code alias
+            (APP-61, e.g. ``MWS150-A``).  Written when present;
+            removed from the frontmatter when ``None``/blank so the
+            stamp stays consistent with the DB row.
 
     Returns:
         ``True`` on success, ``False`` if the file could not be
@@ -156,6 +162,13 @@ def write_frontmatter_identity(
 
     fm["manufacturer"] = manufacturer
     fm["vehicle_model"] = vehicle_model
+    # APP-61: keep the optional factory-code alias in sync with the
+    # DB row — write it when set, drop a stale one when cleared.
+    cleaned_code = " ".join((factory_code or "").split())
+    if cleaned_code:
+        fm["factory_code"] = cleaned_code
+    else:
+        fm.pop("factory_code", None)
 
     new_block = yaml.safe_dump(
         fm, allow_unicode=True, sort_keys=False,
@@ -283,6 +296,7 @@ async def run_conversion_and_ingestion(
         # tool shows the canonical "<Manufacturer> <Model>" identity.
         write_frontmatter_identity(
             md_abs, manual.manufacturer, manual.vehicle_model,
+            factory_code=manual.factory_code,
         )
         try:
             chunk_count = await _run_ingestion(

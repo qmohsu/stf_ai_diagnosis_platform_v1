@@ -35,6 +35,7 @@ def _make_manual(**overrides):
         "file_hash": hashlib.sha256(b"test").hexdigest(),
         "manufacturer": "Yamaha",
         "vehicle_model": "TRICITY-155",
+        "factory_code": "MWS150-A",
         "canonical_name": "Yamaha TRICITY-155",
         "status": "ingested",
         "file_size_bytes": 1024,
@@ -74,6 +75,7 @@ class TestToSummary:
         assert summary.filename == manual.filename
         assert summary.manufacturer == manual.manufacturer
         assert summary.vehicle_model == manual.vehicle_model
+        assert summary.factory_code == manual.factory_code
         assert summary.canonical_name == manual.canonical_name
         assert summary.status == manual.status
         assert summary.page_count == manual.page_count

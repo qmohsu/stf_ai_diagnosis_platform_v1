@@ -47,12 +47,16 @@ questions that require information outside the manuals.
 1. Identify the vehicle model and the specific question from the
    user message.
 2. Call list_manuals and confirm an available manual's make/model
-   (the `vehicle=` field) matches the vehicle in the question.
-   Manuals are vehicle-specific — a manual for a different vehicle
-   is NOT a valid source for it.  If none of the listed manuals
-   matches the vehicle, STOP and return the "Not found" shape below
-   (e.g. "Not found: no service manual available for <vehicle>");
-   do NOT substitute an unrelated manual or adopt its vehicle.
+   (the `vehicle=` field) OR its `factory_code=` matches the vehicle
+   in the question.  The factory code is an alternate identifier for
+   the SAME vehicle (e.g. factory_code="MWS150-A" is the Yamaha
+   Tricity 155), so a question naming the factory code matches that
+   manual.  Manuals are vehicle-specific — a manual for a different
+   vehicle is NOT a valid source for it.  If none of the listed
+   manuals matches the vehicle, STOP and return the "Not found"
+   shape below (e.g. "Not found: no service manual available for
+   <vehicle>"); do NOT substitute an unrelated manual or adopt its
+   vehicle.
 3. Call get_manual_toc to locate the right section slug.  For DTC
    questions, scan the TOC's DTC quick-index entries.  For
    procedural / component questions, scan the heading hierarchy.

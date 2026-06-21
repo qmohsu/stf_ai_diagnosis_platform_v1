@@ -217,6 +217,77 @@ class TestListManuals:
         assert "tricity" not in result
 
     @pytest.mark.asyncio
+    async def test_renders_factory_code(
+        self, tmp_path: Path,
+    ) -> None:
+        """factory_code frontmatter is surfaced + footer notes it (APP-61)."""
+        d = tmp_path / "vault_fc"
+        d.mkdir()
+        (d / "tricity.md").write_text(
+            "---\nmanufacturer: Yamaha\nvehicle_model: TRICITY155\n"
+            "factory_code: MWS150-A\n---\n\n# Body\n",
+            encoding="utf-8",
+        )
+        with patch(
+            "app.harness_tools.manual_tools._MANUAL_DIR", d,
+        ):
+            result = await list_manuals({})
+        assert 'vehicle="Yamaha TRICITY155"' in result
+        assert 'factory_code="MWS150-A"' in result
+        # Footer explains the factory code is an alias match signal.
+        assert "factory_code" in result.split("IMPORTANT")[1]
+
+    @pytest.mark.asyncio
+    async def test_filter_by_factory_code(
+        self, tmp_path: Path,
+    ) -> None:
+        """A question naming the factory code matches the manual (APP-61)."""
+        d = tmp_path / "vault_fcf"
+        d.mkdir()
+        (d / "tricity.md").write_text(
+            "---\nmanufacturer: Yamaha\nvehicle_model: TRICITY155\n"
+            "factory_code: MWS150-A\n---\n\n# Body\n",
+            encoding="utf-8",
+        )
+        (d / "hiace.md").write_text(
+            "---\nmanufacturer: Toyota\nvehicle_model: Hiace\n"
+            "---\n\n# Body\n",
+            encoding="utf-8",
+        )
+        with patch(
+            "app.harness_tools.manual_tools._MANUAL_DIR", d,
+        ):
+            # The model name is TRICITY155, so this only matches via
+            # the factory_code alias.
+            result = await list_manuals({"vehicle_model": "MWS150-A"})
+        assert "tricity" in result
+        assert "hiace" not in result
+
+    @pytest.mark.asyncio
+    async def test_omits_factory_code_when_absent(
+        self, tmp_path: Path,
+    ) -> None:
+        """No factory_code= token for manuals without one (APP-61)."""
+        d = tmp_path / "vault_nofc"
+        d.mkdir()
+        (d / "hiace.md").write_text(
+            "---\nmanufacturer: Toyota\nvehicle_model: Hiace\n"
+            "---\n\n# Body\n",
+            encoding="utf-8",
+        )
+        with patch(
+            "app.harness_tools.manual_tools._MANUAL_DIR", d,
+        ):
+            result = await list_manuals({})
+        # The footer always documents factory_code; assert the manual's
+        # own entry line carries no factory_code token.
+        entry_line = next(
+            ln for ln in result.splitlines()
+            if ln.startswith("- hiace")
+        )
+        assert "factory_code=" not in entry_line
+
+    @pytest.mark.asyncio
     async def test_empty_directory(
         self, tmp_path: Path,
     ) -> None:

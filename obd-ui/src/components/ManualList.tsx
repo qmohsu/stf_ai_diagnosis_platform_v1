@@ -233,7 +233,12 @@ export function ManualList({ refreshKey, onSelect }: ManualListProps) {
               {m.filename}
             </TableCell>
             <TableCell className="text-sm">
-              {m.canonical_name || m.vehicle_model || "-"}
+              <div>{m.canonical_name || m.vehicle_model || "-"}</div>
+              {m.factory_code && (
+                <div className="text-xs text-muted-foreground font-mono">
+                  {m.factory_code}
+                </div>
+              )}
             </TableCell>
             <TableCell className="space-x-1">
               {statusBadge(m, t)}
