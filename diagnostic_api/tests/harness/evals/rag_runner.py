@@ -24,12 +24,13 @@ import time
 from functools import partial
 from typing import Any, Dict, List, Literal, Optional
 
+import httpx
 import structlog
 from sqlalchemy import text as sa_text
 
+from app.config import settings
 from app.db.session import SessionLocal
 from app.harness_tools.manual_fs import slugify
-from app.rag.embedding import embedding_service
 from app.rag.retrieve import RetrievalResult, retrieve_context
 
 
@@ -162,6 +163,48 @@ def _sync_exact_vector_query(
         db.close()
 
 
+async def _embed_query(text: str, attempts: int = 3) -> List[float]:
+    """Embed ``text`` with a fresh per-call ``httpx.AsyncClient``.
+
+    The production ``embedding_service`` reuses a single module-level
+    ``httpx.AsyncClient``.  That is correct inside the app's
+    long-lived event loop, but breaks under pytest-asyncio, where each
+    test runs in its OWN event loop: the singleton client stays bound
+    to the loop that first created it, so every-other RAG test hit a
+    dead-loop connection and silently retrieved zero chunks
+    (HARNESS-23 baseline run 2026-06-20: 15/30 RAG entries came back
+    empty in an alternating pattern).  A short-lived client created in
+    the current loop sidesteps the cross-loop reuse entirely.  This is
+    an eval-harness concern only — production embedding is untouched.
+
+    Args:
+        text: Query string to embed.
+        attempts: Max tries before giving up (transient Ollama hiccup
+            resilience).
+
+    Returns:
+        768-dim embedding, or empty list after ``attempts`` failures.
+    """
+    base_url = settings.embedding_endpoint or settings.llm_endpoint
+    payload = {"model": settings.embedding_model, "input": text}
+    last_exc: Optional[Exception] = None
+    for _ in range(attempts):
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                resp = await client.post(
+                    f"{base_url}/api/embed", json=payload,
+                )
+                resp.raise_for_status()
+                embeddings = resp.json().get("embeddings", [])
+                if embeddings and embeddings[0]:
+                    return embeddings[0]
+        except Exception as exc:  # noqa: BLE001 — retry then give up.
+            last_exc = exc
+    if last_exc is not None:
+        logger.error("rag_runner.embed_failed", error=repr(last_exc))
+    return []
+
+
 async def _exact_vector_retrieve(
     question: str,
     top_k: int,
@@ -181,10 +224,10 @@ async def _exact_vector_retrieve(
     Returns:
         ``RetrievalResult`` list, or empty on embedding failure.
     """
-    vector = await embedding_service.get_embedding(question)
+    vector = await _embed_query(question)
     if not vector:
         logger.warning(
-            "rag_runner.embed_failed",
+            "rag_runner.embed_empty",
             question_preview=question[:80],
         )
         return []
