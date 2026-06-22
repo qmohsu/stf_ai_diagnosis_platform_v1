@@ -8,6 +8,73 @@ This is the actionable backlog derived **only from confirmed first-round finding
 
 ---
 
+## Start here — orientation for a fresh session working any T-ticket
+
+> If you opened this from a ticket link, you have enough context to do the task once you've read this section + the ticket. Read **`CLAUDE.md` first** (non-negotiable repo workflow: branch before the first commit; a PR for every change; the PolyU deploy runbook; the pre-commit doc gate that blocks substantive commits unless `docs/dev_plan.md` + `docs/design_doc.md` are staged or the message contains `[docs-ok]`; doc routing V1 `APP-XX` vs V2 `HARNESS-XX`).
+
+### Where the eval lives (all paths under `diagnostic_api/`)
+- **Goldens (source of truth, locked):** `tests/harness/evals/golden/v2/locked/mws150a.jsonl` — 30 entries, 6 each × `lookup` / `procedural` / `cross-section` / `image-required` / `adversarial`. The locked tier is append-only; changes go through `scripts/promote_golden.py` (re-promotion), not hand-edits.
+- **Runners:** `tests/harness/evals/runner.py` (`run_manual_agent_unified`) and `rag_runner.py` (`run_rag`, with the exact-scan path `_exact_vector_retrieve` + `_embed_query`).
+- **Judge:** `tests/harness/evals/judge.py` (model `z-ai/glm-5.1` via OpenRouter; reads `settings.premium_llm_api_key` / `premium_llm_base_url`), prompts in `judge_prompts.py`.
+- **Deterministic metrics:** `tests/harness/evals/metrics.py` (manual dims + `DEFAULT_OVERALL_WEIGHTS`) and `metrics_obd.py`.
+- **Schemas:** `tests/harness/evals/schemas.py` (`GoldenEntry`, `SystemRunResult`, `Grade` — the 9 weighted dims).
+- **Test entrypoints:** `test_manual_agent_eval.py`, `test_rag_eval.py` (parametrised over the 30 goldens; `_PASS_THRESHOLD` pinned 0.4 / 0.2).
+- **Agent under test:** `app/harness_agents/manual_agent.py` (+ `manual_agent_prompts.py`); navigation tools in `app/harness_tools/manual_tools.py`.
+- **First-round artifacts:** result writeup `docs/harness_14_phase6_baseline.md`; raw 60-grade report `docs/eval-reports/phase6_baseline_eval.json`; aggregator `docs/eval-reports/aggregate_phase6.py`.
+
+### Re-derive the first-round numbers (offline, instant)
+```
+python docs/eval-reports/aggregate_phase6.py docs/eval-reports/phase6_baseline_eval.json
+```
+This prints the per-lane, per-question_type, per-dimension, and per-entry tables every ticket's "evidence" refers to.
+
+### Fast feedback (offline, no server) — use this for most Phase-1/2 tickets
+Metric / judge / golden / prompt / agent-config changes are validated by **offline unit tests** — you do **not** need the full eval per change:
+```
+cd diagnostic_api
+python -m pytest tests/harness/evals/test_metrics.py tests/harness/evals/test_judge.py -q   # metric/judge logic
+python -m pytest tests/harness/test_manual_tools.py -q                                       # manual tools/prompts
+```
+Add unit tests alongside your change. **Run the full eval only at the Phase-3 re-baseline gate (#155)** — not after each individual fix.
+
+### Running the FULL eval (server, ~73 min; ~2× after T1) — the correct invocation
+Runs on the PolyU GPU server (`ssh polyu-gpu`) against local Ollama + pgvector + the GLM judge. The originally-documented command was wrong three ways; use this:
+1. Deploy your branch to the server per the `CLAUDE.md` "Post-Implementation Verification" loop (checkout branch → rebuild `diagnostic-api` → `alembic upgrade head` if there's a migration).
+2. Generate the env from the **running container** (NOT `infra/.env` — the app reads `DB_*`/`LLM_*`, which compose maps from differently-named keys):
+   ```
+   ssh polyu-gpu "podman exec stf-diagnostic-api env | grep -E '^(DB_|LLM_|EMBEDDING_|VISION_|PREMIUM_LLM_|MANUAL_|JWT_|STRICT_MODE|LOG_|OBD_LOG_|AUDIO_|ALLOW_EXTERNAL)' > /tmp/eval.env"
+   ```
+3. Run **both lanes in one invocation** (shared report); mount `tests/` **RW** + the **real** manuals volume (APP-61 backfilled `factory_code`, so the real volume now works — the old `/tmp` frontmatter patch is no longer needed):
+   ```
+   ssh polyu-gpu "podman run --rm \
+     -v ~/stf_ai_diagnosis_platform_v1/diagnostic_api/tests:/app/tests \
+     -v ~/stf_ai_diagnosis_platform_v1/diagnostic_api/scripts:/app/scripts:ro \
+     -v infra_diagnostic_api_manuals:/app/data/manuals:ro \
+     --env-file /tmp/eval.env -e PYTHONPATH=/app -e LOG_FILE=/tmp/diag.log \
+     --network host localhost/stf-diagnostic-api:0.1.0 \
+     pytest --run-eval -p no:cacheprovider \
+       /app/tests/harness/evals/test_manual_agent_eval.py \
+       /app/tests/harness/evals/test_rag_eval.py --tb=short 2>&1 | tee /tmp/eval_run.log"
+   ```
+   A **non-zero exit is expected** (entries below threshold); the report is written at teardown regardless. It is long-running — launch detached and poll for the report file.
+4. Pull + aggregate:
+   ```
+   scp polyu-gpu:~/stf_ai_diagnosis_platform_v1/diagnostic_api/tests/harness/evals/reports/eval_<ts>.json docs/eval-reports/<name>.json
+   python docs/eval-reports/aggregate_phase6.py docs/eval-reports/<name>.json
+   ```
+
+### Gotchas that will bite a cold session
+- Test files are **not** in the image → must mount `tests/`. `reports/` must be **RW** or the JSON is lost at teardown.
+- `--env-file infra/.env` does **not** work (wrong key names) — use the running-container env (step 2).
+- **tiktoken**: importing `app.harness`/`app.main` downloads `cl100k_base` at import → fails **offline**. On the server (online) it is fine. For offline unit tests, stick to modules that don't pull the harness (the eval metric/judge/manual_tools tests are offline-safe).
+- After a server `down`+`up`, the local LLM is evicted — warm it (`CLAUDE.md` deploy step 10) before timing anything.
+- **Restore the server to `main` when done** (`CLAUDE.md` step 5).
+
+### One golden rule for this backlog
+Phase-1/2 tickets change how scores are computed or what the agent can do. **Do not re-run the full eval (or re-pin thresholds) per ticket.** Land the offline-verified change, then the **single** clean re-baseline at #155 produces the comparable number. The first-round `phase6_baseline_eval.json` stays the labelled "v1, confounded" reference.
+
+---
+
 ## First-round result (the thing we are fixing against)
 
 | Lane | mean | median | stdev | pass@0.7 |
