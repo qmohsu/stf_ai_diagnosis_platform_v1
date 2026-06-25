@@ -65,15 +65,27 @@ agent under evaluation — what actually ships.  Override via
 ``ManualAgentConfig.model`` to run a ceiling comparison (e.g.
 ``z-ai/glm-5.1`` or ``moonshotai/kimi-k2``)."""
 
-_DEFAULT_MAX_ITERATIONS = 8
-"""ReAct iteration cap.  Matches the HARNESS-14 ticket plan."""
+_DEFAULT_MAX_ITERATIONS = 12
+"""ReAct iteration cap.  Raised 8 → 12 in HARNESS-23 T1 (#143)
+after the first-round eval: 6/30 runs exhausted the old 8-iter cap
+mid-answer.  Multi-part ``cross-section`` questions need more
+TOC-navigate / section-read cycles than the original HARNESS-14
+plan assumed."""
 
 _DEFAULT_MAX_TOKENS = 12_288
 """Per-call output token cap.  Leaves headroom for the final JSON
-payload plus a few large tool_result messages in context."""
+payload plus a few large tool_result messages in context.  Kept at
+12288 in HARNESS-23 T1 (#143): the first-round budget failures were
+iteration/wall-clock bound, not output-token bound (no run hit the
+per-call cap), so this stays put."""
 
-_DEFAULT_TIMEOUT = 120.0
-"""Wall-clock budget for the whole sub-agent run."""
+_DEFAULT_TIMEOUT = 240.0
+"""Wall-clock budget for the whole sub-agent run.  Raised 120 → 240
+in HARNESS-23 T1 (#143), mirroring the OBD agent's 240 s precedent.
+At a stable ~10-24 s/iter (``qwen3.5:27b`` in thinking mode) the old
+120 s wall cut runs off at only 5-7 iterations — 13/30 first-round
+runs timed out before converging.  The cap and the wall bind
+*different* entries, so both moved together."""
 
 _DEFAULT_TEMPERATURE = 0.2
 """Low but non-zero — deterministic enough for eval, with small

@@ -190,6 +190,42 @@ class TestManualAgentRegistry:
         assert "search_manual" not in registry.tool_names
 
 
+# ── Config defaults ──────────────────────────────────────────────
+
+
+class TestManualAgentConfigDefaults:
+    """Pin the default-config values that affect eval behaviour."""
+
+    def test_default_max_iterations_is_12(self) -> None:
+        """HARNESS-23 T1 (#143) raised the cap 8 → 12 after the
+        first-round eval: 6/30 runs hit the old 8-iter cap mid-answer
+        (``stopped_reason='max_iterations'``).  The cap and the wall
+        timeout bind *different* entries, so both moved together.
+
+        Tighten only when a re-baseline shows deterministic
+        convergence below 12 cycles.
+        """
+        assert ManualAgentConfig().max_iterations == 12
+
+    def test_default_timeout_is_240_seconds(self) -> None:
+        """HARNESS-23 T1 (#143) raised the wall 120 → 240 s, mirroring
+        the OBD agent's precedent.  At a stable ~10-24 s/iter
+        (``qwen3.5:27b`` thinking mode) the old 120 s wall cut runs
+        off at 5-7 iterations — 13/30 first-round runs timed out
+        before converging.
+        """
+        assert ManualAgentConfig().timeout_seconds == 240.0
+
+    def test_default_max_tokens_unchanged(self) -> None:
+        """The first-round budget failures were iteration/wall-clock
+        bound, not output-token bound (no run hit the per-call cap),
+        so T1 left ``max_tokens`` at 12288.  Pinned so a sloppy edit
+        doesn't silently change it alongside the two limits that
+        did move.
+        """
+        assert ManualAgentConfig().max_tokens == 12_288
+
+
 # ── Parse helpers ─────────────────────────────────────────────────
 
 
