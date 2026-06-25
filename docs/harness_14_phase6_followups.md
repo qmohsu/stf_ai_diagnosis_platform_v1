@@ -147,5 +147,6 @@ Legend — Effort: S/M/L. "Evidence" is the first-round datum that justifies the
 After Phase 1–2, the re-baselined number (T18) **will not be comparable** to the first-round 0.590 / 0.337 — that is expected and correct: the first number is a confounded floor; the second is the real capability read. Keep `phase6_baseline_eval.json` as the labelled "v1, confounded" reference.
 
 ## Already fixed (do not re-open)
+- **T1** — raise the agent budget — **#143** (merged): `manual_agent.py` `_DEFAULT_MAX_ITERATIONS` 8 → 12 and `_DEFAULT_TIMEOUT` 120 → 240 s (`_DEFAULT_MAX_TOKENS` reviewed, left at 12288 — no run hit the per-call cap). Fixes the 19/30 budget-exhaustion failures (13 wall-timeouts at 5-7 iters + 6 iter-cap hits). Config-only; defaults pinned by `TestManualAgentConfigDefaults`. **Full-eval wall-time roughly doubles** as a result — manual-lane runs that were cut off now run to completion (already reflected in the "~2× after T1" note in the "Running the FULL eval" section above).
 - Identifier drift MWS-150-A ↔ TRICITY155 — **APP-61** (#141/#142, merged): the manual now carries a `factory_code` alias; the agent matches a question by either name (verified on the server).
 - Eval embedding-client zeroing 15/30 — fixed in the eval adapter (`rag_runner._embed_query`); see T17 for the doc-only note.
