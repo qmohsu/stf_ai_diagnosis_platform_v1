@@ -21,8 +21,8 @@ from app.harness.tool_registry import (
     ToolResult,
 )
 from app.harness_agents.manual_agent import (
-    _DECLINE_NUDGE,
     _FORCED_DECLINE_SUMMARY,
+    _MAX_SECTION_READS_BEFORE_FINAL,
     ManualAgentConfig,
     ManualAgentDeps,
     _extract_last_assistant_content,
@@ -596,22 +596,22 @@ class TestRunManualAgentBudget:
     async def test_max_iterations_exits_cleanly(self) -> None:
         """Hitting max_iterations yields stopped_reason='max_iterations'.
 
-        Each queued response reads a *distinct* section so the
-        no-progress backstop (HARNESS-23 T2) does not fire — this
-        exercises the genuine iteration-cap exit, where the agent
-        keeps making progress but never finalizes.
+        Each queued response makes a *distinct, non-read* tool call
+        (``get_manual_toc`` with a unique manual_id) so neither the
+        read-count nor the repeat trigger of the no-progress backstop
+        (HARNESS-23 T2) fires — this exercises the genuine
+        iteration-cap exit, where the agent keeps navigating but
+        never finalizes.
         """
         deps, _ = _make_deps(
             responses=[
                 _tool_call_response([{
-                    "name": "read_manual_section",
-                    "arguments": {
-                        "manual_id": "M", "section": f"s-{i}",
-                    },
+                    "name": "get_manual_toc",
+                    "arguments": {"manual_id": f"M-{i}"},
                 }])
                 for i in range(10)
             ],
-            tool_outputs={"read_manual_section": "ok"},
+            tool_outputs={"get_manual_toc": "ok"},
             config=ManualAgentConfig(
                 max_iterations=3, timeout_seconds=30.0,
             ),
@@ -668,94 +668,168 @@ class TestRunManualAgentBudget:
         assert result.tool_trace[0].is_error is True
 
 
-class TestRunManualAgentDeclineBackstop:
-    """No-progress backstop → graceful "Not found" (HARNESS-23 T2)."""
+class TestRunManualAgentForcedSynthesis:
+    """No-progress backstop → forced synthesis turn (HARNESS-23 T2).
+
+    The server smoke showed the live model spins by reading *distinct*
+    sections while hunting absent info (the adversarial ``P9999``
+    golden read 6 sections and rode the 240 s wall to
+    ``answer_quality=0``).  Once it has read enough — or genuinely
+    repeats a call — the loop withholds the tools and forces one
+    synthesis turn so it must answer / decline from what it gathered.
+    """
 
     @staticmethod
-    def _repeat_call(n: int) -> List[LLMResponse]:
-        """n identical tool-call responses (re-reading same section)."""
-        return [
-            _tool_call_response([{
-                "name": "read_manual_section",
-                "arguments": {"manual_id": "M", "section": "s"},
-            }])
-            for _ in range(n)
-        ]
+    def _read(section: str) -> LLMResponse:
+        """A response that reads one distinct section."""
+        return _tool_call_response([{
+            "name": "read_manual_section",
+            "arguments": {"manual_id": "M", "section": section},
+        }])
 
     @pytest.mark.asyncio
-    async def test_repeated_calls_force_not_found_decline(
+    async def test_read_count_forces_tool_less_final_turn(
         self,
     ) -> None:
-        """Spinning on identical calls finalizes a clean decline.
+        """After N distinct reads, the next turn is forced tool-less.
 
-        The dominant first-round adversarial failure: the agent
-        re-reads the same evidence and never emits the final JSON,
-        so the run times out at answer_quality 0.  The backstop must
-        turn that into ``stopped_reason="complete"`` with the
-        documented "Not found" shape — well before the iteration cap.
+        This is the fix the smoke demanded: distinct-section spinning
+        (no byte-identical repeat) must still terminate in a clean
+        ``complete`` instead of a wall-clock timeout.
         """
+        reads = [
+            self._read(f"s-{i}")
+            for i in range(_MAX_SECTION_READS_BEFORE_FINAL)
+        ]
         deps, client = _make_deps(
-            responses=self._repeat_call(8),
+            responses=reads + [
+                _final_response(
+                    "Not found: P9999 is not in the table; the "
+                    "manual defines P0117 and P0335.",
+                ),
+            ],
             tool_outputs={"read_manual_section": "nothing relevant"},
             config=ManualAgentConfig(
                 max_iterations=12, timeout_seconds=30.0,
             ),
         )
-        result = await run_manual_agent("unanswerable?", None, deps)
+        result = await run_manual_agent("P9999?", None, deps)
         assert result.stopped_reason == "complete"
         assert result.summary.lower().startswith("not found")
-        assert result.citations == []
-        # Forced well before the iteration cap (novel → nudge →
-        # force = 3 LLM calls), not at max_iterations=12.
-        assert len(client.calls) == 3
+        # The forced (terminal) turn withheld the tools.
+        assert client.calls[-1]["tools"] == []
+        # Terminated right after the read budget, not at iter cap 12.
+        assert result.iterations == _MAX_SECTION_READS_BEFORE_FINAL + 1
 
     @pytest.mark.asyncio
-    async def test_nudge_injected_before_forcing(self) -> None:
-        """A one-time decline nudge precedes the forced finalize."""
-        deps, client = _make_deps(
-            responses=self._repeat_call(8),
-            tool_outputs={"read_manual_section": "nothing"},
+    async def test_forced_turn_can_synthesize_a_real_answer(
+        self,
+    ) -> None:
+        """The forced turn isn't hard-wired to decline.
+
+        Withholding tools lets the model give the substantive answer
+        the goldens expect, not a canned refusal.
+        """
+        reads = [
+            self._read(f"s-{i}")
+            for i in range(_MAX_SECTION_READS_BEFORE_FINAL)
+        ]
+        deps, _ = _make_deps(
+            responses=reads + [
+                _final_response("Torque spec is 23 N·m per §4.2."),
+            ],
+            tool_outputs={"read_manual_section": "section text"},
             config=ManualAgentConfig(
                 max_iterations=12, timeout_seconds=30.0,
             ),
         )
-        await run_manual_agent("q", None, deps)
-        # The nudge is appended to history, so it shows up in the
-        # messages passed to a later chat() call.
-        all_msgs = [m for call in client.calls for m in call["messages"]]
-        assert any(
-            m.get("content") == _DECLINE_NUDGE for m in all_msgs
-        )
+        result = await run_manual_agent("torque?", None, deps)
+        assert result.stopped_reason == "complete"
+        assert result.summary == "Torque spec is 23 N·m per §4.2."
 
     @pytest.mark.asyncio
-    async def test_progress_does_not_trigger_backstop(self) -> None:
-        """Distinct reads make progress → agent's own answer stands."""
-        deps, _ = _make_deps(
+    async def test_repeated_call_forces_final(self) -> None:
+        """A byte-identical repeat trips the backstop early."""
+        deps, client = _make_deps(
             responses=[
-                _tool_call_response([{
-                    "name": "read_manual_section",
-                    "arguments": {"manual_id": "M", "section": "a"},
-                }]),
-                _tool_call_response([{
-                    "name": "read_manual_section",
-                    "arguments": {"manual_id": "M", "section": "b"},
-                }]),
+                self._read("s"),  # novel
+                self._read("s"),  # identical repeat → force_final
+                _final_response("Not found: nothing here."),
+            ],
+            tool_outputs={"read_manual_section": "x"},
+            config=ManualAgentConfig(
+                max_iterations=12, timeout_seconds=30.0,
+            ),
+        )
+        result = await run_manual_agent("q", None, deps)
+        assert result.stopped_reason == "complete"
+        assert client.calls[-1]["tools"] == []
+
+    @pytest.mark.asyncio
+    async def test_forced_turn_empty_content_falls_back(self) -> None:
+        """Empty forced-turn content → canned decline, still complete."""
+        reads = [
+            self._read(f"s-{i}")
+            for i in range(_MAX_SECTION_READS_BEFORE_FINAL)
+        ]
+        empty = LLMResponse(
+            content="", tool_calls=[], finish_reason="stop",
+        )
+        deps, _ = _make_deps(
+            responses=reads + [empty],
+            tool_outputs={"read_manual_section": "x"},
+            config=ManualAgentConfig(
+                max_iterations=12, timeout_seconds=30.0,
+            ),
+        )
+        result = await run_manual_agent("q", None, deps)
+        assert result.stopped_reason == "complete"
+        assert result.summary == _FORCED_DECLINE_SUMMARY
+
+    @pytest.mark.asyncio
+    async def test_forced_turn_chat_error_falls_back(self) -> None:
+        """If the forced synthesis call errors, degrade to a decline.
+
+        A failure on the *forced* turn must still finalize cleanly
+        (not surface stopped_reason='error').
+        """
+        reads = [
+            self._read(f"s-{i}")
+            for i in range(_MAX_SECTION_READS_BEFORE_FINAL)
+        ]
+        deps, _ = _make_deps(
+            responses=reads + [RuntimeError("boom on forced turn")],
+            tool_outputs={"read_manual_section": "x"},
+            config=ManualAgentConfig(
+                max_iterations=12, timeout_seconds=30.0,
+            ),
+        )
+        result = await run_manual_agent("q", None, deps)
+        assert result.stopped_reason == "complete"
+        assert result.summary == _FORCED_DECLINE_SUMMARY
+
+    @pytest.mark.asyncio
+    async def test_under_budget_reads_do_not_force(self) -> None:
+        """Fewer than N reads + a self-final → agent's answer stands."""
+        deps, client = _make_deps(
+            responses=[
+                self._read("a"),
+                self._read("b"),
                 _final_response("Concrete answer from the manual."),
             ],
             tool_outputs={"read_manual_section": "section text"},
         )
+        # Guard: this test assumes the read budget is > 2.
+        assert _MAX_SECTION_READS_BEFORE_FINAL > 2
         result = await run_manual_agent("q", None, deps)
         assert result.stopped_reason == "complete"
         assert result.summary == "Concrete answer from the manual."
+        # No forced turn → every call saw the real tools.
+        assert all(c["tools"] != [] for c in client.calls)
 
     @pytest.mark.asyncio
-    async def test_agent_self_declines_before_backstop(self) -> None:
-        """An LLM that declines on its own is not overridden.
-
-        The prompt change asks the agent to decline early; when it
-        does (finish_reason='stop'), the loop must take that answer
-        verbatim rather than waiting for the backstop.
-        """
+    async def test_agent_self_declines_early(self) -> None:
+        """An LLM that declines on its own is taken verbatim."""
         deps, client = _make_deps(
             responses=[
                 _tool_call_response([{"name": "list_manuals"}]),

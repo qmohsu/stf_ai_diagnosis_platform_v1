@@ -95,38 +95,45 @@ _MAX_FINAL_SUMMARY_CHARS = 4000
 """Safety cap on the parsed ``summary`` length to keep the report
 artifact bounded."""
 
-_MAX_REDUNDANT_ITERATIONS = 2
-"""No-progress backstop (HARNESS-23 T2 / #144).  An iteration is
-"redundant" when every tool call it issued is byte-identical to a
-call already made earlier in the run — i.e. the agent is re-reading
-the same sections / re-listing the same manuals without surfacing
-anything new.  After the FIRST redundant iteration the loop injects a
-one-time nudge telling the agent to decline now; if it spins again
-and reaches this count, the loop force-finalizes a "Not found"
-decline with ``stopped_reason="complete"`` instead of grinding to the
-wall-clock timeout.  The dominant first-round adversarial failure was
-the agent declining in substance but never emitting the final JSON,
-so all 6 adversarial runs timed out at ``answer_quality=0``."""
+_MAX_SECTION_READS_BEFORE_FINAL = 3
+"""No-progress backstop (HARNESS-23 T2 / #144).  Once the agent has
+read this many manual sections without finalizing — OR re-issues a
+tool call byte-identical to one already made (a true loop) — the loop
+forces a single **tool-less synthesis turn**: it re-prompts the model
+with ``tools=[]`` so it MUST answer (or decline) from the evidence
+already gathered instead of reading more.
 
-_DECLINE_NUDGE = (
-    "You appear to be repeating tool calls you have already made, "
-    "which will not surface new information.  If the answer is "
-    "genuinely not present in the available manuals, or no manual "
-    "matches the vehicle in the question, STOP now and return the "
-    "\"Not found\" JSON shape — "
+Why a read-count (not just byte-identical repeats): the live model
+spins by reading *different* sections each iteration while searching
+for absent information, so a repeat-detector never fires.  The
+server smoke on the adversarial ``P9999`` golden confirmed this —
+the model read 6 distinct sections and rode the 240 s wall to
+``answer_quality=0``.  A read-count bound catches that pattern; a
+forced *synthesis* turn (rather than a canned refusal) lets the model
+give the substantive corrective answer the goldens expect ("P9999 is
+not in the table; the codes the manual DOES define are …")."""
+
+_FORCE_FINAL_INSTRUCTION = (
+    "You have now read several manual sections — enough to decide. "
+    "Do NOT call any more tools.  Using ONLY the sections you have "
+    "already read, return your final JSON answer now.  If the "
+    "requested information is present, answer it with citations.  If "
+    "it is genuinely absent from this vehicle's manual — or the "
+    "question's premise is wrong (e.g. the vehicle has no such "
+    "system or the DTC is not defined) — return the Not-found shape "
     '{"summary": "Not found: <short explanation>", "citations": []} '
-    "— with no further tool calls.  Otherwise read only a section "
-    "you have not read yet."
+    "and, where useful, state what the manual DOES cover instead of a "
+    "bare refusal."
 )
-"""One-time forcing message injected after the first no-progress
-iteration (see ``_MAX_REDUNDANT_ITERATIONS``)."""
+"""Injected once when the read-count / repeat backstop trips.  Paired
+with a ``tools=[]`` LLM call so the model cannot keep navigating."""
 
 _FORCED_DECLINE_SUMMARY = (
     "Not found: the available service manuals do not contain "
     "information answering this question."
 )
-"""Canned decline used when the loop force-finalizes and the agent's
-own last message did not already read as a decline."""
+"""Canned decline — used only as a last resort when the forced
+synthesis turn itself errors or returns no content."""
 
 
 # ── Configuration + deps ──────────────────────────────────────────
@@ -606,8 +613,8 @@ async def run_manual_agent(
     stopped_reason: str = "max_iterations"
     # No-progress backstop state (HARNESS-23 T2 / #144).
     seen_call_signatures: set = set()
-    redundant_iterations = 0
-    nudge_issued = False
+    section_reads = 0
+    force_final = False
 
     logger.info(
         "manual_agent_start",
@@ -620,10 +627,14 @@ async def run_manual_agent(
     try:
         async with asyncio.timeout(cfg.timeout_seconds):
             while iterations < cfg.max_iterations:
+                # When the backstop has tripped, withhold the tools so
+                # the model MUST synthesize a final answer / decline
+                # from the evidence it already gathered.
+                turn_tools = [] if force_final else tool_schemas
                 try:
                     response = await deps.llm_client.chat(
                         messages=messages,
-                        tools=tool_schemas,
+                        tools=turn_tools,
                         model=cfg.model,
                         temperature=cfg.temperature,
                         max_tokens=cfg.max_tokens,
@@ -635,12 +646,25 @@ async def run_manual_agent(
                         iteration=iterations,
                         exc_info=exc,
                     )
-                    stopped_reason = "error"
+                    if force_final:
+                        # The forced synthesis turn itself failed —
+                        # degrade to a clean decline rather than an
+                        # error so the run still finalizes.
+                        final_summary, final_citations = (
+                            _force_not_found_finalize(
+                                messages, raw_sections,
+                            )
+                        )
+                        stopped_reason = "complete"
+                    else:
+                        stopped_reason = "error"
                     break
 
                 # Terminal response — parse final JSON and stop.
+                # A forced (tool-less) turn is always terminal.
                 if (
-                    response.finish_reason == "stop"
+                    force_final
+                    or response.finish_reason == "stop"
                     or not response.tool_calls
                 ):
                     final_summary, final_citations = (
@@ -648,6 +672,16 @@ async def run_manual_agent(
                             response.content, raw_sections,
                         )
                     )
+                    if force_final and not (
+                        response.content or ""
+                    ).strip():
+                        # Forced turn produced nothing usable —
+                        # degrade to a clean canned decline.
+                        final_summary, final_citations = (
+                            _force_not_found_finalize(
+                                messages, raw_sections,
+                            )
+                        )
                     stopped_reason = "complete"
                     break
 
@@ -715,43 +749,42 @@ async def run_manual_agent(
                     )
 
                 # ── No-progress backstop (HARNESS-23 T2 / #144) ──
-                # An iteration is "redundant" when every tool call it
-                # issued is byte-identical to a call already made —
-                # the agent is re-reading the same evidence rather
-                # than declining.  Nudge once, then force a clean
-                # "Not found" so adversarial / unanswerable questions
-                # finalize with stopped_reason="complete" instead of
-                # spinning to the wall-clock timeout.
+                # Trip when the agent has read enough sections to
+                # decide, OR re-issues a byte-identical call (a true
+                # loop).  On the NEXT turn the tools are withheld
+                # (``force_final``) so the model must answer or decline
+                # from what it has — instead of riding the wall-clock
+                # to a timeout/answer_quality=0 (the adversarial
+                # failure mode confirmed on the server smoke).
+                section_reads += sum(
+                    1 for tc in response.tool_calls
+                    if tc.name == "read_manual_section"
+                )
                 signatures = {
                     f"{tc.name}:{tc.arguments}"
                     for tc in response.tool_calls
                 }
-                if signatures - seen_call_signatures:
-                    redundant_iterations = 0
-                else:
-                    redundant_iterations += 1
+                repeated_call = not (
+                    signatures - seen_call_signatures
+                )
                 seen_call_signatures |= signatures
 
-                if redundant_iterations >= _MAX_REDUNDANT_ITERATIONS:
-                    final_summary, final_citations = (
-                        _force_not_found_finalize(
-                            messages, raw_sections,
-                        )
-                    )
-                    stopped_reason = "complete"
-                    logger.info(
-                        "manual_agent_forced_decline",
-                        run_id=run_id,
-                        iteration=iterations,
-                        redundant_iterations=redundant_iterations,
-                    )
-                    break
-                if redundant_iterations >= 1 and not nudge_issued:
+                if (
+                    section_reads >= _MAX_SECTION_READS_BEFORE_FINAL
+                    or repeated_call
+                ):
+                    force_final = True
                     messages.append({
                         "role": "user",
-                        "content": _DECLINE_NUDGE,
+                        "content": _FORCE_FINAL_INSTRUCTION,
                     })
-                    nudge_issued = True
+                    logger.info(
+                        "manual_agent_force_final",
+                        run_id=run_id,
+                        iteration=iterations,
+                        section_reads=section_reads,
+                        repeated_call=repeated_call,
+                    )
 
                 iterations += 1
 
