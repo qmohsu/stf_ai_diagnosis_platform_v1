@@ -21,10 +21,13 @@ from app.harness.tool_registry import (
     ToolResult,
 )
 from app.harness_agents.manual_agent import (
+    _DECLINE_NUDGE,
+    _FORCED_DECLINE_SUMMARY,
     ManualAgentConfig,
     ManualAgentDeps,
     _extract_last_assistant_content,
     _extract_section_ref,
+    _force_not_found_finalize,
     _parse_final_json,
     _parse_tool_arguments,
     _sanitize_tool_input_for_trace,
@@ -591,15 +594,24 @@ class TestRunManualAgentBudget:
 
     @pytest.mark.asyncio
     async def test_max_iterations_exits_cleanly(self) -> None:
-        """Hitting max_iterations yields stopped_reason='max_iterations'."""
-        # Queue up more tool-call responses than max_iterations
-        # so the loop never sees a "stop" finish.
+        """Hitting max_iterations yields stopped_reason='max_iterations'.
+
+        Each queued response reads a *distinct* section so the
+        no-progress backstop (HARNESS-23 T2) does not fire — this
+        exercises the genuine iteration-cap exit, where the agent
+        keeps making progress but never finalizes.
+        """
         deps, _ = _make_deps(
             responses=[
-                _tool_call_response([{"name": "list_manuals"}])
-                for _ in range(10)
+                _tool_call_response([{
+                    "name": "read_manual_section",
+                    "arguments": {
+                        "manual_id": "M", "section": f"s-{i}",
+                    },
+                }])
+                for i in range(10)
             ],
-            tool_outputs={"list_manuals": "ok"},
+            tool_outputs={"read_manual_section": "ok"},
             config=ManualAgentConfig(
                 max_iterations=3, timeout_seconds=30.0,
             ),
@@ -654,3 +666,137 @@ class TestRunManualAgentBudget:
         # trace recorded the broken call as is_error.
         assert len(result.tool_trace) == 1
         assert result.tool_trace[0].is_error is True
+
+
+class TestRunManualAgentDeclineBackstop:
+    """No-progress backstop → graceful "Not found" (HARNESS-23 T2)."""
+
+    @staticmethod
+    def _repeat_call(n: int) -> List[LLMResponse]:
+        """n identical tool-call responses (re-reading same section)."""
+        return [
+            _tool_call_response([{
+                "name": "read_manual_section",
+                "arguments": {"manual_id": "M", "section": "s"},
+            }])
+            for _ in range(n)
+        ]
+
+    @pytest.mark.asyncio
+    async def test_repeated_calls_force_not_found_decline(
+        self,
+    ) -> None:
+        """Spinning on identical calls finalizes a clean decline.
+
+        The dominant first-round adversarial failure: the agent
+        re-reads the same evidence and never emits the final JSON,
+        so the run times out at answer_quality 0.  The backstop must
+        turn that into ``stopped_reason="complete"`` with the
+        documented "Not found" shape — well before the iteration cap.
+        """
+        deps, client = _make_deps(
+            responses=self._repeat_call(8),
+            tool_outputs={"read_manual_section": "nothing relevant"},
+            config=ManualAgentConfig(
+                max_iterations=12, timeout_seconds=30.0,
+            ),
+        )
+        result = await run_manual_agent("unanswerable?", None, deps)
+        assert result.stopped_reason == "complete"
+        assert result.summary.lower().startswith("not found")
+        assert result.citations == []
+        # Forced well before the iteration cap (novel → nudge →
+        # force = 3 LLM calls), not at max_iterations=12.
+        assert len(client.calls) == 3
+
+    @pytest.mark.asyncio
+    async def test_nudge_injected_before_forcing(self) -> None:
+        """A one-time decline nudge precedes the forced finalize."""
+        deps, client = _make_deps(
+            responses=self._repeat_call(8),
+            tool_outputs={"read_manual_section": "nothing"},
+            config=ManualAgentConfig(
+                max_iterations=12, timeout_seconds=30.0,
+            ),
+        )
+        await run_manual_agent("q", None, deps)
+        # The nudge is appended to history, so it shows up in the
+        # messages passed to a later chat() call.
+        all_msgs = [m for call in client.calls for m in call["messages"]]
+        assert any(
+            m.get("content") == _DECLINE_NUDGE for m in all_msgs
+        )
+
+    @pytest.mark.asyncio
+    async def test_progress_does_not_trigger_backstop(self) -> None:
+        """Distinct reads make progress → agent's own answer stands."""
+        deps, _ = _make_deps(
+            responses=[
+                _tool_call_response([{
+                    "name": "read_manual_section",
+                    "arguments": {"manual_id": "M", "section": "a"},
+                }]),
+                _tool_call_response([{
+                    "name": "read_manual_section",
+                    "arguments": {"manual_id": "M", "section": "b"},
+                }]),
+                _final_response("Concrete answer from the manual."),
+            ],
+            tool_outputs={"read_manual_section": "section text"},
+        )
+        result = await run_manual_agent("q", None, deps)
+        assert result.stopped_reason == "complete"
+        assert result.summary == "Concrete answer from the manual."
+
+    @pytest.mark.asyncio
+    async def test_agent_self_declines_before_backstop(self) -> None:
+        """An LLM that declines on its own is not overridden.
+
+        The prompt change asks the agent to decline early; when it
+        does (finish_reason='stop'), the loop must take that answer
+        verbatim rather than waiting for the backstop.
+        """
+        deps, client = _make_deps(
+            responses=[
+                _tool_call_response([{"name": "list_manuals"}]),
+                _final_response("Not found: no manual for this car."),
+            ],
+            tool_outputs={"list_manuals": "only an unrelated manual"},
+        )
+        result = await run_manual_agent("q", None, deps)
+        assert result.stopped_reason == "complete"
+        assert result.summary == "Not found: no manual for this car."
+        assert len(client.calls) == 2
+
+
+class TestForceNotFoundFinalize:
+    """Unit tests for ``_force_not_found_finalize``."""
+
+    def test_preserves_agent_decline(self) -> None:
+        """Agent's own "Not found" message + cites are kept."""
+        messages = [
+            {"role": "assistant", "content": json.dumps({
+                "summary": "Not found: code P9999 is not in the manual.",
+                "citations": [],
+            })},
+        ]
+        summary, citations = _force_not_found_finalize(messages, [])
+        assert summary == (
+            "Not found: code P9999 is not in the manual."
+        )
+        assert citations == []
+
+    def test_falls_back_to_canned_decline(self) -> None:
+        """Non-decline last message → canned "Not found" summary."""
+        messages = [
+            {"role": "assistant", "content": "let me read more"},
+        ]
+        summary, citations = _force_not_found_finalize(messages, [])
+        assert summary == _FORCED_DECLINE_SUMMARY
+        assert summary.lower().startswith("not found")
+        assert citations == []
+
+    def test_empty_history_falls_back(self) -> None:
+        """No assistant content → canned decline, never crashes."""
+        summary, _ = _force_not_found_finalize([], [])
+        assert summary == _FORCED_DECLINE_SUMMARY

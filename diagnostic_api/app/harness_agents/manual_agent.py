@@ -95,6 +95,39 @@ _MAX_FINAL_SUMMARY_CHARS = 4000
 """Safety cap on the parsed ``summary`` length to keep the report
 artifact bounded."""
 
+_MAX_REDUNDANT_ITERATIONS = 2
+"""No-progress backstop (HARNESS-23 T2 / #144).  An iteration is
+"redundant" when every tool call it issued is byte-identical to a
+call already made earlier in the run — i.e. the agent is re-reading
+the same sections / re-listing the same manuals without surfacing
+anything new.  After the FIRST redundant iteration the loop injects a
+one-time nudge telling the agent to decline now; if it spins again
+and reaches this count, the loop force-finalizes a "Not found"
+decline with ``stopped_reason="complete"`` instead of grinding to the
+wall-clock timeout.  The dominant first-round adversarial failure was
+the agent declining in substance but never emitting the final JSON,
+so all 6 adversarial runs timed out at ``answer_quality=0``."""
+
+_DECLINE_NUDGE = (
+    "You appear to be repeating tool calls you have already made, "
+    "which will not surface new information.  If the answer is "
+    "genuinely not present in the available manuals, or no manual "
+    "matches the vehicle in the question, STOP now and return the "
+    "\"Not found\" JSON shape — "
+    '{"summary": "Not found: <short explanation>", "citations": []} '
+    "— with no further tool calls.  Otherwise read only a section "
+    "you have not read yet."
+)
+"""One-time forcing message injected after the first no-progress
+iteration (see ``_MAX_REDUNDANT_ITERATIONS``)."""
+
+_FORCED_DECLINE_SUMMARY = (
+    "Not found: the available service manuals do not contain "
+    "information answering this question."
+)
+"""Canned decline used when the loop force-finalizes and the agent's
+own last message did not already read as a decline."""
+
 
 # ── Configuration + deps ──────────────────────────────────────────
 
@@ -571,6 +604,10 @@ async def run_manual_agent(
     final_summary = ""
     final_citations: List[Citation] = []
     stopped_reason: str = "max_iterations"
+    # No-progress backstop state (HARNESS-23 T2 / #144).
+    seen_call_signatures: set = set()
+    redundant_iterations = 0
+    nudge_issued = False
 
     logger.info(
         "manual_agent_start",
@@ -677,6 +714,45 @@ async def run_manual_agent(
                         ),
                     )
 
+                # ── No-progress backstop (HARNESS-23 T2 / #144) ──
+                # An iteration is "redundant" when every tool call it
+                # issued is byte-identical to a call already made —
+                # the agent is re-reading the same evidence rather
+                # than declining.  Nudge once, then force a clean
+                # "Not found" so adversarial / unanswerable questions
+                # finalize with stopped_reason="complete" instead of
+                # spinning to the wall-clock timeout.
+                signatures = {
+                    f"{tc.name}:{tc.arguments}"
+                    for tc in response.tool_calls
+                }
+                if signatures - seen_call_signatures:
+                    redundant_iterations = 0
+                else:
+                    redundant_iterations += 1
+                seen_call_signatures |= signatures
+
+                if redundant_iterations >= _MAX_REDUNDANT_ITERATIONS:
+                    final_summary, final_citations = (
+                        _force_not_found_finalize(
+                            messages, raw_sections,
+                        )
+                    )
+                    stopped_reason = "complete"
+                    logger.info(
+                        "manual_agent_forced_decline",
+                        run_id=run_id,
+                        iteration=iterations,
+                        redundant_iterations=redundant_iterations,
+                    )
+                    break
+                if redundant_iterations >= 1 and not nudge_issued:
+                    messages.append({
+                        "role": "user",
+                        "content": _DECLINE_NUDGE,
+                    })
+                    nudge_issued = True
+
                 iterations += 1
 
             else:
@@ -725,6 +801,38 @@ async def run_manual_agent(
         # does not surface usage in LLMResponse yet.
         stopped_reason=stopped_reason,  # type: ignore[arg-type]
     )
+
+
+def _force_not_found_finalize(
+    messages: List[Dict[str, Any]],
+    raw_sections: List[SectionRef],
+) -> Tuple[str, List[Citation]]:
+    """Synthesize a "Not found" decline for the no-progress backstop.
+
+    Invoked when the loop detects the agent is spinning on redundant
+    tool calls (see ``_MAX_REDUNDANT_ITERATIONS``).  Prefers the
+    agent's own last message when it already reads as a decline so
+    its specific explanation is preserved; otherwise falls back to a
+    canned decline.  Either way the returned summary is in the
+    documented "Not found" shape so the judge credits a correct
+    refusal (HARNESS-23 T2 / #144, pairs with T5 / #146).
+
+    Args:
+        messages: Full conversation history.
+        raw_sections: Sections retrieved so far (seed the citation
+            slug canonicalisation, though a decline normally cites
+            nothing).
+
+    Returns:
+        ``(summary, citations)`` — the summary always begins with
+        ``"Not found:"``.
+    """
+    last = _extract_last_assistant_content(messages)
+    if last and "not found" in last.lower():
+        summary, citations = _parse_final_json(last, raw_sections)
+        if summary.lower().startswith("not found"):
+            return (summary, citations)
+    return (_FORCED_DECLINE_SUMMARY, [])
 
 
 def _extract_last_assistant_content(
