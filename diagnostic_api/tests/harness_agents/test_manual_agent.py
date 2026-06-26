@@ -9,6 +9,7 @@ empty-final-content fallback.
 
 from __future__ import annotations
 
+import copy
 import json
 from typing import Any, Dict, List, Optional, Union
 
@@ -27,8 +28,10 @@ from app.harness_agents.manual_agent import (
     ManualAgentDeps,
     _extract_last_assistant_content,
     _extract_section_ref,
+    _NO_THINK_DIRECTIVE,
     _force_not_found_finalize,
     _parse_final_json,
+    _suppress_thinking_in_system,
     _parse_tool_arguments,
     _sanitize_tool_input_for_trace,
     _strip_markdown_fence,
@@ -57,7 +60,12 @@ class _ScriptedLLMClient:
         self.calls: List[Dict[str, Any]] = []
 
     async def chat(self, **kwargs: Any) -> LLMResponse:
-        self.calls.append(kwargs)
+        # Snapshot messages — the loop mutates the same list in place
+        # (e.g. appending the /no_think directive), so storing the
+        # reference would make every recorded call look identical.
+        recorded = dict(kwargs)
+        recorded["messages"] = copy.deepcopy(kwargs.get("messages"))
+        self.calls.append(recorded)
         if not self._responses:
             raise RuntimeError(
                 "ScriptedLLMClient exhausted — test queued "
@@ -722,6 +730,33 @@ class TestRunManualAgentForcedSynthesis:
         assert result.iterations == _MAX_SECTION_READS_BEFORE_FINAL + 1
 
     @pytest.mark.asyncio
+    async def test_forced_turn_suppresses_thinking(self) -> None:
+        """The forced turn appends /no_think to the system prompt.
+
+        In thinking mode a slow synthesis call can blow the wall
+        budget; disabling reasoning on this one turn keeps it fast.
+        """
+        reads = [
+            self._read(f"s-{i}")
+            for i in range(_MAX_SECTION_READS_BEFORE_FINAL)
+        ]
+        deps, client = _make_deps(
+            responses=reads + [_final_response("Not found: absent.")],
+            tool_outputs={"read_manual_section": "x"},
+            config=ManualAgentConfig(
+                max_iterations=12, timeout_seconds=30.0,
+            ),
+        )
+        await run_manual_agent("q", None, deps)
+        # The forced (final) turn's system message carries /no_think;
+        # the earlier tool-calling turns do not.
+        forced_system = client.calls[-1]["messages"][0]
+        assert forced_system["role"] == "system"
+        assert _NO_THINK_DIRECTIVE in forced_system["content"]
+        first_system = client.calls[0]["messages"][0]
+        assert _NO_THINK_DIRECTIVE not in first_system["content"]
+
+    @pytest.mark.asyncio
     async def test_forced_turn_can_synthesize_a_real_answer(
         self,
     ) -> None:
@@ -874,3 +909,30 @@ class TestForceNotFoundFinalize:
         """No assistant content → canned decline, never crashes."""
         summary, _ = _force_not_found_finalize([], [])
         assert summary == _FORCED_DECLINE_SUMMARY
+
+
+class TestSuppressThinkingInSystem:
+    """Unit tests for ``_suppress_thinking_in_system``."""
+
+    def test_appends_directive_to_system(self) -> None:
+        """Directive is appended to the system message content."""
+        messages = [
+            {"role": "system", "content": "base prompt"},
+            {"role": "user", "content": "q"},
+        ]
+        _suppress_thinking_in_system(messages)
+        assert messages[0]["content"].endswith(_NO_THINK_DIRECTIVE)
+        assert "base prompt" in messages[0]["content"]
+
+    def test_idempotent(self) -> None:
+        """A second call does not duplicate the directive."""
+        messages = [{"role": "system", "content": "base"}]
+        _suppress_thinking_in_system(messages)
+        _suppress_thinking_in_system(messages)
+        assert messages[0]["content"].count(_NO_THINK_DIRECTIVE) == 1
+
+    def test_no_system_message_is_noop(self) -> None:
+        """No system message → nothing fabricated, no crash."""
+        messages = [{"role": "user", "content": "q"}]
+        _suppress_thinking_in_system(messages)
+        assert messages == [{"role": "user", "content": "q"}]

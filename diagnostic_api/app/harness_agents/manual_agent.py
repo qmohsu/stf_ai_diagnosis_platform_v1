@@ -135,6 +135,21 @@ _FORCED_DECLINE_SUMMARY = (
 """Canned decline — used only as a last resort when the forced
 synthesis turn itself errors or returns no content."""
 
+_NO_THINK_DIRECTIVE = "/no_think"
+"""Qwen3 directive that suppresses the hidden reasoning channel.
+
+Appended to the *system* message for the forced synthesis turn only.
+The backstop turn is a "summarize the evidence you already gathered"
+step that needs no deep reasoning, and in thinking mode a single
+``qwen3.5:27b`` call costs ~30-90 s on the local GPU — enough to blow
+the remaining wall-clock budget *during* synthesis (observed on the
+adversarial ``P9999`` server smoke).  Disabling thinking for this one
+turn drops it to ~2.5 s so the run finalizes well inside the budget.
+Harmless on non-Qwen models (the token is ignored).  Mirrors the
+eval driver's ``_inject_no_think`` workaround, which must inject into
+the system message (a user-message directive does not reliably
+suppress reasoning)."""
+
 
 # ── Configuration + deps ──────────────────────────────────────────
 
@@ -629,8 +644,12 @@ async def run_manual_agent(
             while iterations < cfg.max_iterations:
                 # When the backstop has tripped, withhold the tools so
                 # the model MUST synthesize a final answer / decline
-                # from the evidence it already gathered.
+                # from the evidence it already gathered, and suppress
+                # the (slow) reasoning channel so the synthesis turn
+                # finalizes inside the remaining wall-clock budget.
                 turn_tools = [] if force_final else tool_schemas
+                if force_final:
+                    _suppress_thinking_in_system(messages)
                 try:
                     response = await deps.llm_client.chat(
                         messages=messages,
@@ -834,6 +853,32 @@ async def run_manual_agent(
         # does not surface usage in LLMResponse yet.
         stopped_reason=stopped_reason,  # type: ignore[arg-type]
     )
+
+
+def _suppress_thinking_in_system(
+    messages: List[Dict[str, Any]],
+) -> None:
+    """Append the ``/no_think`` directive to the system message once.
+
+    Mutates ``messages`` in place.  Used only for the forced
+    synthesis turn (see ``_NO_THINK_DIRECTIVE``).  Idempotent — a
+    second call is a no-op if the directive is already present.  If
+    there is no system message (shouldn't happen for the manual
+    agent) it does nothing rather than fabricate one.
+
+    Args:
+        messages: Conversation history; the first ``system`` message
+            is modified in place.
+    """
+    for msg in messages:
+        if msg.get("role") != "system":
+            continue
+        content = msg.get("content") or ""
+        if _NO_THINK_DIRECTIVE not in content:
+            msg["content"] = (
+                f"{content}\n\n{_NO_THINK_DIRECTIVE}".lstrip()
+            )
+        return
 
 
 def _force_not_found_finalize(
