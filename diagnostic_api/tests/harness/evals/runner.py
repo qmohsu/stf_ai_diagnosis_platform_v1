@@ -24,10 +24,9 @@ import time
 from typing import List, Optional
 
 import structlog
-from openai import AsyncOpenAI
 
 from app.config import settings
-from app.harness.deps import OpenAILLMClient
+from app.harness.deps import OllamaNativeLLMClient
 from app.harness_agents.manual_agent import (
     ManualAgentConfig,
     ManualAgentDeps,
@@ -55,18 +54,22 @@ def _build_default_deps() -> ManualAgentDeps:
     ``ManualAgentConfig.model`` to an OpenRouter identifier and
     pass their own deps.
 
+    Uses ``OllamaNativeLLMClient`` (Ollama's native ``/api/chat``
+    with ``think=False``) rather than the OpenAI-compatible ``/v1``
+    adapter: ``/v1`` cannot suppress qwen3's reasoning channel, so
+    the agent ran at ~36 s/call in thinking mode and timed out
+    adversarial goldens before it could navigate AND synthesise
+    (HARNESS-23 / #144).  Production delegation is unaffected — it
+    runs on the shared OpenRouter client.
+
     Returns:
         ``ManualAgentDeps`` ready to pass into
         ``run_manual_agent``.
     """
-    base_url = f"{settings.llm_endpoint}/v1"
-    client = AsyncOpenAI(
-        api_key="ollama",
-        base_url=base_url,
-        timeout=300.0,
-    )
     return ManualAgentDeps(
-        llm_client=OpenAILLMClient(client),
+        llm_client=OllamaNativeLLMClient(
+            settings.llm_endpoint, think=False, timeout_seconds=300.0,
+        ),
         tool_registry=create_manual_agent_registry(),
         config=ManualAgentConfig(),
     )
