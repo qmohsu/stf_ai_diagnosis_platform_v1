@@ -8,6 +8,7 @@ LLM that replays pre-recorded responses.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import (
     Any,
@@ -20,6 +21,7 @@ from typing import (
     Union,
 )
 
+import httpx
 import structlog
 from openai import AsyncOpenAI
 
@@ -397,6 +399,230 @@ def _extract_reasoning(delta: Any) -> Optional[str]:
         return direct
     extra = getattr(delta, "model_extra", None) or {}
     return extra.get("reasoning") or extra.get("reasoning_content")
+
+
+# ── Ollama native client (thinking-suppressed) ──────────────────────
+
+
+def _flatten_tool_content(content: Any) -> str:
+    """Reduce a tool-result message's content to plain text.
+
+    The manual tools return either a string or a list of OpenAI
+    content blocks (text + ``image_url`` for multimodal sections).
+    Ollama's native ``/api/chat`` does not take inline image blocks
+    in tool-result messages, and the eval model (``qwen3.5:27b``) is
+    text-only anyway — the manual markdown already embeds the
+    ``Vision description:`` text for every image — so we keep the
+    text parts and drop image blocks.
+
+    Args:
+        content: ``str``, ``None``, or a list of content-block dicts.
+
+    Returns:
+        The flattened text (empty string for ``None``).
+    """
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = [
+            block.get("text", "")
+            for block in content
+            if isinstance(block, dict) and block.get("type") == "text"
+        ]
+        return "\n".join(parts)
+    return str(content)
+
+
+def _to_ollama_messages(
+    messages: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Translate OpenAI-shaped messages to Ollama-native shape.
+
+    The agent loop builds messages in OpenAI format.  Two
+    differences matter for ``/api/chat``:
+
+    - Assistant ``tool_calls`` carry ``arguments`` as a JSON
+      *string* in OpenAI shape but a JSON *object* natively.
+    - Tool-result messages use ``tool_call_id`` in OpenAI shape;
+      natively they are matched positionally, so the id is dropped.
+
+    Args:
+        messages: Conversation history in OpenAI format.
+
+    Returns:
+        A new list of Ollama-native message dicts.
+    """
+    out: List[Dict[str, Any]] = []
+    for msg in messages:
+        role = msg.get("role")
+        if role == "assistant" and msg.get("tool_calls"):
+            native_calls: List[Dict[str, Any]] = []
+            for tc in msg["tool_calls"]:
+                fn = tc.get("function", {}) or {}
+                raw_args = fn.get("arguments", "{}")
+                if isinstance(raw_args, str):
+                    try:
+                        args: Any = json.loads(raw_args or "{}")
+                    except json.JSONDecodeError:
+                        args = {}
+                else:
+                    args = raw_args
+                native_calls.append({
+                    "function": {
+                        "name": fn.get("name", ""),
+                        "arguments": args,
+                    },
+                })
+            out.append({
+                "role": "assistant",
+                "content": msg.get("content") or "",
+                "tool_calls": native_calls,
+            })
+        else:
+            out.append({
+                "role": role,
+                "content": _flatten_tool_content(msg.get("content")),
+            })
+    return out
+
+
+def _from_ollama_response(data: Dict[str, Any]) -> LLMResponse:
+    """Normalise an Ollama ``/api/chat`` response to ``LLMResponse``.
+
+    Converts native tool calls (``arguments`` as an object, no id)
+    back into ``ToolCallInfo`` (``arguments`` as a JSON string, with
+    a synthesised id) so the agent loop's existing parsing is
+    unchanged.
+
+    Args:
+        data: Decoded JSON body from ``/api/chat`` (non-streaming).
+
+    Returns:
+        Normalised ``LLMResponse``.
+    """
+    msg = data.get("message", {}) or {}
+    tool_calls: List[ToolCallInfo] = []
+    for i, tc in enumerate(msg.get("tool_calls") or []):
+        fn = tc.get("function", {}) or {}
+        args = fn.get("arguments", {})
+        if not isinstance(args, str):
+            args = json.dumps(args, ensure_ascii=False)
+        tool_calls.append(ToolCallInfo(
+            id=f"call_{i}",
+            name=fn.get("name", ""),
+            arguments=args,
+        ))
+    finish = (
+        "tool_calls" if tool_calls
+        else (data.get("done_reason") or "stop")
+    )
+    return LLMResponse(
+        content=msg.get("content") or None,
+        tool_calls=tool_calls,
+        finish_reason=finish,
+    )
+
+
+class OllamaNativeLLMClient:
+    """``LLMClient`` backed by Ollama's NATIVE ``/api/chat`` endpoint.
+
+    Unlike ``OpenAILLMClient`` (the OpenAI-compatible ``/v1`` API),
+    this client can pass ``"think": false`` — the ONLY mechanism that
+    actually suppresses qwen3's hidden reasoning channel.  Both the
+    ``/v1`` endpoint and the ``/no_think`` prompt directive are
+    *ineffective* (measured ~36 s/call regardless; HARNESS-23 / #144),
+    which is what timed out adversarial goldens before the agent could
+    navigate AND synthesise inside the wall-clock budget.
+
+    **Scope:** wired only into the manual-agent *eval* deps
+    (``tests/harness/evals/runner.py`` + ``scripts/eval_one_golden``).
+    Production sub-agent delegation runs on the shared OpenRouter
+    client (``delegation_tools._resolve_llm_client``) and is
+    unaffected — there is no production latency bug, only an
+    eval-measurement artifact from running the local model in
+    thinking mode.
+
+    Tool calling and message history are translated to/from
+    Ollama-native shape (see ``_to_ollama_messages`` /
+    ``_from_ollama_response``).
+    """
+
+    def __init__(
+        self,
+        base_url: str,
+        *,
+        think: bool = False,
+        timeout_seconds: float = 300.0,
+    ) -> None:
+        """Build the client.
+
+        Args:
+            base_url: Ollama root URL (no ``/v1``), e.g.
+                ``"http://127.0.0.1:11434"``.
+            think: Whether to leave the reasoning channel on.
+                Defaults to ``False`` (suppressed) — the whole point
+                of this client.
+            timeout_seconds: Per-request HTTP timeout.
+        """
+        self._chat_url = base_url.rstrip("/") + "/api/chat"
+        self._think = think
+        self._timeout = timeout_seconds
+
+    async def chat(
+        self,
+        *,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        model: str,
+        temperature: float,
+        max_tokens: int,
+    ) -> LLMResponse:
+        """Call Ollama ``/api/chat`` (non-streaming) with thinking off.
+
+        Args:
+            messages: Conversation history in OpenAI format.
+            tools: Tool schemas in OpenAI function-calling format.
+            model: Model identifier.
+            temperature: Sampling temperature.
+            max_tokens: Output token budget (``num_predict``).
+
+        Returns:
+            Normalised ``LLMResponse``.
+        """
+        payload: Dict[str, Any] = {
+            "model": model,
+            "messages": _to_ollama_messages(messages),
+            "think": self._think,
+            "stream": False,
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+            },
+        }
+        if tools:
+            payload["tools"] = tools
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            resp = await client.post(self._chat_url, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+        return _from_ollama_response(data)
+
+    def chat_stream(
+        self,
+        *,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        model: str,
+        temperature: float,
+        max_tokens: int,
+    ) -> AsyncIterator[Union[LLMStreamChunk, LLMResponse]]:
+        """Not implemented — the manual sub-agent never streams."""
+        raise NotImplementedError(
+            "OllamaNativeLLMClient does not implement chat_stream; "
+            "the manual sub-agent loop uses chat() only.",
+        )
 
 
 # ── Dependency container ─────────────────────────────────────────────
