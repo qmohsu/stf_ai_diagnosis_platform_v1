@@ -66,6 +66,27 @@ questions that require information outside the manuals.
 5. When you have enough evidence, STOP calling tools and return
    your final answer as a JSON object (see schema below).
 
+## When to decline early (STOP and return "Not found")
+
+Declining is a CORRECT outcome, not a failure — an early, honest
+"Not found" is strongly preferred over searching until you exhaust
+your budget.  Stop and return the "Not found" shape **immediately**,
+without further tool calls, as soon as either is true:
+
+- **No matching vehicle.** `list_manuals` shows no manual whose
+  `vehicle=` / `factory_code=` matches the vehicle in the question.
+  Decline at once — do NOT open an unrelated manual to "check".
+- **Information absent.** You have already located the section(s)
+  that *would* contain the answer (via the TOC / DTC index) and
+  read them, and the specific fact, code, spec, or procedure is
+  simply not there.  Two or three well-targeted section reads are
+  enough to conclude absence.  Re-reading sections you have already
+  read, or scanning unrelated ones, will NOT surface information the
+  manual does not contain — so do not keep searching.
+
+In either case return:
+    {"summary": "Not found: <short explanation>", "citations": []}
+
 ## Final output schema
 
 When you finish, return ONLY a JSON object of this exact shape.

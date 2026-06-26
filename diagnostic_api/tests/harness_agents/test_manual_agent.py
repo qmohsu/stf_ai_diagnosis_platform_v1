@@ -9,6 +9,7 @@ empty-final-content fallback.
 
 from __future__ import annotations
 
+import copy
 import json
 from typing import Any, Dict, List, Optional, Union
 
@@ -21,11 +22,16 @@ from app.harness.tool_registry import (
     ToolResult,
 )
 from app.harness_agents.manual_agent import (
+    _FORCED_DECLINE_SUMMARY,
+    _MAX_SECTION_READS_BEFORE_FINAL,
     ManualAgentConfig,
     ManualAgentDeps,
     _extract_last_assistant_content,
     _extract_section_ref,
+    _NO_THINK_DIRECTIVE,
+    _force_not_found_finalize,
     _parse_final_json,
+    _suppress_thinking_in_system,
     _parse_tool_arguments,
     _sanitize_tool_input_for_trace,
     _strip_markdown_fence,
@@ -54,7 +60,12 @@ class _ScriptedLLMClient:
         self.calls: List[Dict[str, Any]] = []
 
     async def chat(self, **kwargs: Any) -> LLMResponse:
-        self.calls.append(kwargs)
+        # Snapshot messages — the loop mutates the same list in place
+        # (e.g. appending the /no_think directive), so storing the
+        # reference would make every recorded call look identical.
+        recorded = dict(kwargs)
+        recorded["messages"] = copy.deepcopy(kwargs.get("messages"))
+        self.calls.append(recorded)
         if not self._responses:
             raise RuntimeError(
                 "ScriptedLLMClient exhausted — test queued "
@@ -591,15 +602,24 @@ class TestRunManualAgentBudget:
 
     @pytest.mark.asyncio
     async def test_max_iterations_exits_cleanly(self) -> None:
-        """Hitting max_iterations yields stopped_reason='max_iterations'."""
-        # Queue up more tool-call responses than max_iterations
-        # so the loop never sees a "stop" finish.
+        """Hitting max_iterations yields stopped_reason='max_iterations'.
+
+        Each queued response makes a *distinct, non-read* tool call
+        (``get_manual_toc`` with a unique manual_id) so neither the
+        read-count nor the repeat trigger of the no-progress backstop
+        (HARNESS-23 T2) fires — this exercises the genuine
+        iteration-cap exit, where the agent keeps navigating but
+        never finalizes.
+        """
         deps, _ = _make_deps(
             responses=[
-                _tool_call_response([{"name": "list_manuals"}])
-                for _ in range(10)
+                _tool_call_response([{
+                    "name": "get_manual_toc",
+                    "arguments": {"manual_id": f"M-{i}"},
+                }])
+                for i in range(10)
             ],
-            tool_outputs={"list_manuals": "ok"},
+            tool_outputs={"get_manual_toc": "ok"},
             config=ManualAgentConfig(
                 max_iterations=3, timeout_seconds=30.0,
             ),
@@ -654,3 +674,265 @@ class TestRunManualAgentBudget:
         # trace recorded the broken call as is_error.
         assert len(result.tool_trace) == 1
         assert result.tool_trace[0].is_error is True
+
+
+class TestRunManualAgentForcedSynthesis:
+    """No-progress backstop → forced synthesis turn (HARNESS-23 T2).
+
+    The server smoke showed the live model spins by reading *distinct*
+    sections while hunting absent info (the adversarial ``P9999``
+    golden read 6 sections and rode the 240 s wall to
+    ``answer_quality=0``).  Once it has read enough — or genuinely
+    repeats a call — the loop withholds the tools and forces one
+    synthesis turn so it must answer / decline from what it gathered.
+    """
+
+    @staticmethod
+    def _read(section: str) -> LLMResponse:
+        """A response that reads one distinct section."""
+        return _tool_call_response([{
+            "name": "read_manual_section",
+            "arguments": {"manual_id": "M", "section": section},
+        }])
+
+    @pytest.mark.asyncio
+    async def test_read_count_forces_tool_less_final_turn(
+        self,
+    ) -> None:
+        """After N distinct reads, the next turn is forced tool-less.
+
+        This is the fix the smoke demanded: distinct-section spinning
+        (no byte-identical repeat) must still terminate in a clean
+        ``complete`` instead of a wall-clock timeout.
+        """
+        reads = [
+            self._read(f"s-{i}")
+            for i in range(_MAX_SECTION_READS_BEFORE_FINAL)
+        ]
+        deps, client = _make_deps(
+            responses=reads + [
+                _final_response(
+                    "Not found: P9999 is not in the table; the "
+                    "manual defines P0117 and P0335.",
+                ),
+            ],
+            tool_outputs={"read_manual_section": "nothing relevant"},
+            config=ManualAgentConfig(
+                max_iterations=12, timeout_seconds=30.0,
+            ),
+        )
+        result = await run_manual_agent("P9999?", None, deps)
+        assert result.stopped_reason == "complete"
+        assert result.summary.lower().startswith("not found")
+        # The forced (terminal) turn withheld the tools.
+        assert client.calls[-1]["tools"] == []
+        # Terminated right after the read budget, not at iter cap 12.
+        assert result.iterations == _MAX_SECTION_READS_BEFORE_FINAL + 1
+
+    @pytest.mark.asyncio
+    async def test_forced_turn_suppresses_thinking(self) -> None:
+        """The forced turn appends /no_think to the system prompt.
+
+        In thinking mode a slow synthesis call can blow the wall
+        budget; disabling reasoning on this one turn keeps it fast.
+        """
+        reads = [
+            self._read(f"s-{i}")
+            for i in range(_MAX_SECTION_READS_BEFORE_FINAL)
+        ]
+        deps, client = _make_deps(
+            responses=reads + [_final_response("Not found: absent.")],
+            tool_outputs={"read_manual_section": "x"},
+            config=ManualAgentConfig(
+                max_iterations=12, timeout_seconds=30.0,
+            ),
+        )
+        await run_manual_agent("q", None, deps)
+        # The forced (final) turn's system message carries /no_think;
+        # the earlier tool-calling turns do not.
+        forced_system = client.calls[-1]["messages"][0]
+        assert forced_system["role"] == "system"
+        assert _NO_THINK_DIRECTIVE in forced_system["content"]
+        first_system = client.calls[0]["messages"][0]
+        assert _NO_THINK_DIRECTIVE not in first_system["content"]
+
+    @pytest.mark.asyncio
+    async def test_forced_turn_can_synthesize_a_real_answer(
+        self,
+    ) -> None:
+        """The forced turn isn't hard-wired to decline.
+
+        Withholding tools lets the model give the substantive answer
+        the goldens expect, not a canned refusal.
+        """
+        reads = [
+            self._read(f"s-{i}")
+            for i in range(_MAX_SECTION_READS_BEFORE_FINAL)
+        ]
+        deps, _ = _make_deps(
+            responses=reads + [
+                _final_response("Torque spec is 23 N·m per §4.2."),
+            ],
+            tool_outputs={"read_manual_section": "section text"},
+            config=ManualAgentConfig(
+                max_iterations=12, timeout_seconds=30.0,
+            ),
+        )
+        result = await run_manual_agent("torque?", None, deps)
+        assert result.stopped_reason == "complete"
+        assert result.summary == "Torque spec is 23 N·m per §4.2."
+
+    @pytest.mark.asyncio
+    async def test_repeated_call_forces_final(self) -> None:
+        """A byte-identical repeat trips the backstop early."""
+        deps, client = _make_deps(
+            responses=[
+                self._read("s"),  # novel
+                self._read("s"),  # identical repeat → force_final
+                _final_response("Not found: nothing here."),
+            ],
+            tool_outputs={"read_manual_section": "x"},
+            config=ManualAgentConfig(
+                max_iterations=12, timeout_seconds=30.0,
+            ),
+        )
+        result = await run_manual_agent("q", None, deps)
+        assert result.stopped_reason == "complete"
+        assert client.calls[-1]["tools"] == []
+
+    @pytest.mark.asyncio
+    async def test_forced_turn_empty_content_falls_back(self) -> None:
+        """Empty forced-turn content → canned decline, still complete."""
+        reads = [
+            self._read(f"s-{i}")
+            for i in range(_MAX_SECTION_READS_BEFORE_FINAL)
+        ]
+        empty = LLMResponse(
+            content="", tool_calls=[], finish_reason="stop",
+        )
+        deps, _ = _make_deps(
+            responses=reads + [empty],
+            tool_outputs={"read_manual_section": "x"},
+            config=ManualAgentConfig(
+                max_iterations=12, timeout_seconds=30.0,
+            ),
+        )
+        result = await run_manual_agent("q", None, deps)
+        assert result.stopped_reason == "complete"
+        assert result.summary == _FORCED_DECLINE_SUMMARY
+
+    @pytest.mark.asyncio
+    async def test_forced_turn_chat_error_falls_back(self) -> None:
+        """If the forced synthesis call errors, degrade to a decline.
+
+        A failure on the *forced* turn must still finalize cleanly
+        (not surface stopped_reason='error').
+        """
+        reads = [
+            self._read(f"s-{i}")
+            for i in range(_MAX_SECTION_READS_BEFORE_FINAL)
+        ]
+        deps, _ = _make_deps(
+            responses=reads + [RuntimeError("boom on forced turn")],
+            tool_outputs={"read_manual_section": "x"},
+            config=ManualAgentConfig(
+                max_iterations=12, timeout_seconds=30.0,
+            ),
+        )
+        result = await run_manual_agent("q", None, deps)
+        assert result.stopped_reason == "complete"
+        assert result.summary == _FORCED_DECLINE_SUMMARY
+
+    @pytest.mark.asyncio
+    async def test_under_budget_reads_do_not_force(self) -> None:
+        """Fewer than N reads + a self-final → agent's answer stands."""
+        deps, client = _make_deps(
+            responses=[
+                self._read("a"),
+                self._read("b"),
+                _final_response("Concrete answer from the manual."),
+            ],
+            tool_outputs={"read_manual_section": "section text"},
+        )
+        # Guard: this test assumes the read budget is > 2.
+        assert _MAX_SECTION_READS_BEFORE_FINAL > 2
+        result = await run_manual_agent("q", None, deps)
+        assert result.stopped_reason == "complete"
+        assert result.summary == "Concrete answer from the manual."
+        # No forced turn → every call saw the real tools.
+        assert all(c["tools"] != [] for c in client.calls)
+
+    @pytest.mark.asyncio
+    async def test_agent_self_declines_early(self) -> None:
+        """An LLM that declines on its own is taken verbatim."""
+        deps, client = _make_deps(
+            responses=[
+                _tool_call_response([{"name": "list_manuals"}]),
+                _final_response("Not found: no manual for this car."),
+            ],
+            tool_outputs={"list_manuals": "only an unrelated manual"},
+        )
+        result = await run_manual_agent("q", None, deps)
+        assert result.stopped_reason == "complete"
+        assert result.summary == "Not found: no manual for this car."
+        assert len(client.calls) == 2
+
+
+class TestForceNotFoundFinalize:
+    """Unit tests for ``_force_not_found_finalize``."""
+
+    def test_preserves_agent_decline(self) -> None:
+        """Agent's own "Not found" message + cites are kept."""
+        messages = [
+            {"role": "assistant", "content": json.dumps({
+                "summary": "Not found: code P9999 is not in the manual.",
+                "citations": [],
+            })},
+        ]
+        summary, citations = _force_not_found_finalize(messages, [])
+        assert summary == (
+            "Not found: code P9999 is not in the manual."
+        )
+        assert citations == []
+
+    def test_falls_back_to_canned_decline(self) -> None:
+        """Non-decline last message → canned "Not found" summary."""
+        messages = [
+            {"role": "assistant", "content": "let me read more"},
+        ]
+        summary, citations = _force_not_found_finalize(messages, [])
+        assert summary == _FORCED_DECLINE_SUMMARY
+        assert summary.lower().startswith("not found")
+        assert citations == []
+
+    def test_empty_history_falls_back(self) -> None:
+        """No assistant content → canned decline, never crashes."""
+        summary, _ = _force_not_found_finalize([], [])
+        assert summary == _FORCED_DECLINE_SUMMARY
+
+
+class TestSuppressThinkingInSystem:
+    """Unit tests for ``_suppress_thinking_in_system``."""
+
+    def test_appends_directive_to_system(self) -> None:
+        """Directive is appended to the system message content."""
+        messages = [
+            {"role": "system", "content": "base prompt"},
+            {"role": "user", "content": "q"},
+        ]
+        _suppress_thinking_in_system(messages)
+        assert messages[0]["content"].endswith(_NO_THINK_DIRECTIVE)
+        assert "base prompt" in messages[0]["content"]
+
+    def test_idempotent(self) -> None:
+        """A second call does not duplicate the directive."""
+        messages = [{"role": "system", "content": "base"}]
+        _suppress_thinking_in_system(messages)
+        _suppress_thinking_in_system(messages)
+        assert messages[0]["content"].count(_NO_THINK_DIRECTIVE) == 1
+
+    def test_no_system_message_is_noop(self) -> None:
+        """No system message → nothing fabricated, no crash."""
+        messages = [{"role": "user", "content": "q"}]
+        _suppress_thinking_in_system(messages)
+        assert messages == [{"role": "user", "content": "q"}]
