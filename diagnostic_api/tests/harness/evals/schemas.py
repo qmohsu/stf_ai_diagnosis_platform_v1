@@ -453,10 +453,15 @@ class Grade(BaseModel):
     ``reasoning`` only.
 
     Attributes:
-        section_recall: ``|(claim_slugs ∪ read_slugs) ∩
-            expected_recall_slugs| / |expected_recall_slugs|``.
-            How much of the authoritative source the system
-            surfaced — anywhere, by any means.  Higher = better.
+        section_recall: Fraction of ``expected_recall_slugs`` the
+            system surfaced anywhere (``claim_slugs ∪ read_slugs``).
+            Slugs are matched slug-tolerantly (HARNESS-23 T4, #145),
+            not by exact string: an expected slug counts as surfaced
+            when its normalised form matches a surfaced slug OR a
+            golden citation's verbatim ``quote`` appears in the
+            surfaced text.  This stops correct answers scoring 0
+            when a Chinese-derived heading slugifies differently by
+            navigation path.  Higher = better.
         claim_precision: ``|claim_slugs ∩ expected_recall_slugs|
             / |claim_slugs|``.  Of the slugs the system
             **explicitly cited as answer sources**, what
@@ -488,11 +493,14 @@ class Grade(BaseModel):
             2 = 0.4, 3+ = 0.1.  Soft curve gives partial credit
             for "almost right" cases.  HIGHER = better.
         citation_quality: Tiered, computed against
-            ``claim_slugs``.
+            ``claim_slugs`` with the same slug-tolerant matching
+            as ``section_recall`` (#145).
             0.0 = no claim slugs (system cited nothing).
-            0.3 = claimed slugs, but none match
-                  ``expected_recall_slugs`` (cited but wrong).
-            1.0 = ≥1 claimed slug matches.
+            0.3 = claimed slugs, but none cover an
+                  ``expected_recall_slugs`` section (cited but
+                  wrong).
+            1.0 = ≥1 claimed section covers a golden slug (by
+                  normalised slug OR golden-quote containment).
         answer_quality: LLM-judged 0.0–1.0 rating of the
             answer's correctness, completeness, and clarity
             against ``golden_summary``.  RAGAs / G-Eval style.

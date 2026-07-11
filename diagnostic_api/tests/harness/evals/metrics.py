@@ -29,14 +29,16 @@ Author: Li-Ta Hsu
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from tests.harness.evals.metrics_obd import (
     compute_obd_deterministic_metrics,
 )
 from tests.harness.evals.schemas import (
     OBD_QUESTION_TYPES,
+    GoldenCitation,
     GoldenEntry,
     SystemRunResult,
 )
@@ -118,6 +120,135 @@ def _normalize_ws(text: str) -> str:
     return _WHITESPACE_RE.sub(" ", text).strip()
 
 
+# ── Slug-tolerant matching (HARNESS-23 T4, #145) ─────────────────
+#
+# The manual is bilingual and its section headings slugify from
+# Chinese text.  The SAME section can slugify DIFFERENTLY depending
+# on the navigation path it was reached by (separator style,
+# full/half-width forms, a parent-heading prefix, surrounding
+# whitespace).  Exact set-intersection on the raw slug string
+# therefore scores correct answers as 0 on ``section_recall`` /
+# ``citation_quality`` purely because the label is spelled
+# differently — even when the content is right (see ``lookup-002``
+# in the phase-6 baseline: fact_recall=1.0 but citation_quality=0.3,
+# section_recall=0.0).
+#
+# The fix is two-tier, deterministic (no LLM):
+#   1. Normalised slug equality — collapse the cosmetic drift.
+#   2. Golden-quote containment — if the system's surfaced text
+#      contains a golden citation's verbatim ``quote``, the section
+#      was genuinely surfaced regardless of how its slug rendered.
+
+
+_SLUG_SEP_RE = re.compile(r"[\W_]+", re.UNICODE)
+"""Separators/punctuation/whitespace/underscore.  Stripped for
+tolerant slug equality; CJK letters and alphanumerics (which are
+word characters under ``re.UNICODE``) are preserved, so genuine
+distinctions like a trailing ``-2`` disambiguator survive."""
+
+
+def _normalize_slug(slug: str) -> str:
+    """Canonicalise a section slug for tolerant equality.
+
+    Collapses the cosmetic differences that make the *same* manual
+    section slugify differently by navigation path: NFKC-folds
+    full/half-width forms, case-folds any Latin, and strips
+    separators/punctuation.  Deterministic — identical input always
+    yields identical output.
+
+    Args:
+        slug: Raw section slug from a golden or a system run.
+
+    Returns:
+        Normalised slug, or ``""`` for empty/None input.
+    """
+    if not slug:
+        return ""
+    norm = unicodedata.normalize("NFKC", slug).casefold()
+    return _SLUG_SEP_RE.sub("", norm)
+
+
+def _quote_in_text(quote: str, text: str) -> bool:
+    """True when ``quote`` appears in ``text`` (ws-normalised, ci).
+
+    Reuses ``_normalize_ws`` so a line-wrapped Chinese quote still
+    substring-matches its unwrapped counterpart — the same
+    convention ``_compute_fact_recall`` uses for ``must_contain``.
+
+    Args:
+        quote: Verbatim span from a ``GoldenCitation``.
+        text: Text the system surfaced (deliverable / previews).
+
+    Returns:
+        Whether the normalised quote is a substring of the
+        normalised text.  Empty quote or text returns ``False``.
+    """
+    if not quote or not text:
+        return False
+    norm_quote = _normalize_ws(quote).lower()
+    if not norm_quote:
+        return False
+    return norm_quote in _normalize_ws(text).lower()
+
+
+def _covered_expected_slugs(
+    expected: List[str],
+    golden_citations: List[GoldenCitation],
+    surfaced_slugs: List[str],
+    surfaced_text: str,
+) -> Set[str]:
+    """Expected slugs the system covered, matched slug-tolerantly.
+
+    An expected slug counts as covered when EITHER holds:
+
+    - **(a) Normalised slug match** — its ``_normalize_slug`` form
+      equals that of any slug the system surfaced.  Absorbs
+      navigation-path spelling drift.
+    - **(b) Golden-quote containment** — a golden citation *for that
+      slug* has its verbatim ``quote`` present in ``surfaced_text``.
+      The system quoted the right section even though its slug label
+      differs.
+
+    Golden citations are keyed by their own normalised slug, so a
+    quote only rescues the expected slug it actually documents;
+    expected slugs with no golden quote (e.g. extra cross-section
+    slugs) can still be covered via path (a).
+
+    Args:
+        expected: ``GoldenEntry.expected_recall_slugs``.
+        golden_citations: ``GoldenEntry.golden_citations`` (slug +
+            verbatim quote).
+        surfaced_slugs: Slugs the system surfaced in the relevant
+            channel (claim ∪ read for recall; claim for citation).
+        surfaced_text: Text the system surfaced in that channel.
+
+    Returns:
+        The subset of ``expected`` deemed covered.  Empty when
+        ``expected`` is empty (adversarial entries surface nothing
+        by design — their neutral scoring is handled by the callers).
+    """
+    norm_surfaced = {_normalize_slug(s) for s in surfaced_slugs if s}
+    quotes_by_slug: dict = {}
+    for cite in golden_citations:
+        quotes_by_slug.setdefault(
+            _normalize_slug(cite.slug), [],
+        ).append(cite.quote)
+    covered: Set[str] = set()
+    for slug in expected:
+        if not slug:
+            continue
+        norm = _normalize_slug(slug)
+        if norm in norm_surfaced:
+            covered.add(slug)
+            continue
+        if any(
+            _quote_in_text(q, surfaced_text)
+            for q in quotes_by_slug.get(norm, [])
+        ):
+            covered.add(slug)
+    return covered
+
+
 # ── Output container ─────────────────────────────────────────────
 
 
@@ -131,7 +262,10 @@ class DeterministicMetrics:
 
     Attributes:
         section_recall: Fraction of golden slugs the system
-            surfaced anywhere (claim ∪ read).
+            surfaced anywhere (claim ∪ read), matched
+            slug-tolerantly (normalised slug OR golden-quote
+            containment) so a correct section spelled with a
+            different slug still counts (#145).
         claim_precision: Fraction of CITED slugs that match
             golden.  Replaces the older ``section_precision``
             which conflated reads and citations.
@@ -141,7 +275,7 @@ class DeterministicMetrics:
         fact_recall: Fraction of must_contain present in output.
         fact_density: Fact hits × conciseness factor.
         citation_quality: Tiered (0.0 / 0.3 / 1.0), against
-            claim_slugs.
+            claim_slugs, matched slug-tolerantly (#145).
         trajectory_efficiency: Agent-only; 1.0 for RAG.
         fact_recall_hits: Concrete list of must_contain that hit
             (for reasoning / debugging).
@@ -180,27 +314,27 @@ class DeterministicMetrics:
 
 
 def _compute_section_recall(
-    expected: List[str], surfaced: List[str],
+    expected: List[str], covered: Set[str],
 ) -> float:
-    """``|surfaced ∩ expected| / |expected|``, 1 when expected empty.
+    """``|covered| / |expected|``, 1.0 when expected empty.
 
-    ``surfaced`` should be the union of ``claim_slugs`` and
-    ``read_slugs`` — recall asks "did the system make this
-    section available at all," regardless of whether it was
-    explicitly cited or merely read during navigation.
+    ``covered`` is the slug-tolerant subset of ``expected`` the
+    system surfaced, resolved by ``_covered_expected_slugs``
+    (normalised slug match OR golden-quote containment over the
+    union of ``claim_slugs`` and ``read_slugs``).  This replaces the
+    exact-string ``surfaced ∩ expected`` intersection, which
+    under-counted correct answers whose Chinese-derived slug
+    rendered differently from the golden (#145).
 
     Empty ``expected`` (typical for adversarial entries where
     no slug is the right answer) returns 1.0 — the system did
     not need to retrieve anything specific to be correct.
     """
-    if not expected:
-        return 1.0
     expected_set = {s for s in expected if s}
-    surfaced_set = {s for s in surfaced if s}
     if not expected_set:
         return 1.0
-    overlap = expected_set & surfaced_set
-    return len(overlap) / len(expected_set)
+    covered_set = {s for s in covered if s} & expected_set
+    return len(covered_set) / len(expected_set)
 
 
 def _compute_claim_precision(
@@ -433,7 +567,7 @@ def compute_hallucination_penalty(violation_count: int) -> float:
 
 
 def _compute_citation_quality(
-    expected: List[str], claim: List[str],
+    expected: List[str], claim: List[str], matched: bool,
 ) -> float:
     """Tiered citation quality, computed against ``claim_slugs``.
 
@@ -442,10 +576,17 @@ def _compute_citation_quality(
     this is checked against ``claim_slugs`` only, not the
     union of claim + read.
 
+    ``matched`` is True when the claim covered at least one expected
+    slug slug-tolerantly (normalised claim-slug match OR a golden
+    quote present in the claimed deliverable text), resolved by
+    ``_covered_expected_slugs`` in ``compute_deterministic_metrics``.
+    It replaces the exact-string ``expected ∩ claim`` test, which
+    demoted correct citations to 0.3 on a slug-spelling mismatch
+    (#145).
+
     - 0.0 — system claimed no slugs (empty citations).
-    - 0.3 — system claimed slugs but none match the golden
-      (cited but wrong).
-    - 1.0 — at least one claimed slug matches a golden slug.
+    - 0.3 — system claimed slugs but none cover a golden section.
+    - 1.0 — at least one claimed section covers a golden slug.
 
     Adversarial entries (empty ``expected``) are graded
     inversely: 1.0 if ``claim`` is empty (correctly silent),
@@ -457,11 +598,7 @@ def _compute_citation_quality(
         return 1.0 if not claim else 0.3
     if not claim:
         return 0.0
-    expected_set = {s for s in expected if s}
-    claim_set = {s for s in claim if s}
-    if expected_set & claim_set:
-        return 1.0
-    return 0.3
+    return 1.0 if matched else 0.3
 
 
 def _compute_trajectory_efficiency(
@@ -576,14 +713,29 @@ def compute_deterministic_metrics(
             fact_recall_misses=fact_misses,
         )
 
-    # Manual lane (original behaviour).
+    # Manual lane (original behaviour, with slug-tolerant matching).
     # Surfaced = claim ∪ read.  section_recall asks "did the
     # system make this section available anywhere," which
     # includes both the cited and the merely-read.
     surfaced = list({*run.claim_slugs, *run.read_slugs})
+    # Text the system surfaced, for the quote-containment fallback:
+    # the deliverable plus any RAG chunk previews.  Read-but-not-
+    # cited section text isn't carried on the run object, so recall's
+    # quote fallback works over what's available; the slug half still
+    # credits read-only sections.
+    surfaced_text = "\n".join(
+        [run.output_text or ""]
+        + [m.text_preview for m in run.retrieved_chunk_metadata]
+    )
 
+    covered_recall = _covered_expected_slugs(
+        entry.expected_recall_slugs,
+        entry.golden_citations,
+        surfaced,
+        surfaced_text,
+    )
     section_recall = _compute_section_recall(
-        entry.expected_recall_slugs, surfaced,
+        entry.expected_recall_slugs, covered_recall,
     )
     claim_precision = _compute_claim_precision(
         entry.expected_recall_slugs, run.claim_slugs,
@@ -592,8 +744,18 @@ def compute_deterministic_metrics(
         run.read_slugs, run.claim_slugs,
     )
 
+    # Citation quality: forgiving quote scan over the whole
+    # deliverable (``output_text``) plus normalised claim-slug match.
+    covered_claim = _covered_expected_slugs(
+        entry.expected_recall_slugs,
+        entry.golden_citations,
+        run.claim_slugs,
+        run.output_text or "",
+    )
     citation_quality = _compute_citation_quality(
-        entry.expected_recall_slugs, run.claim_slugs,
+        entry.expected_recall_slugs,
+        run.claim_slugs,
+        bool(covered_claim),
     )
 
     # Trajectory only meaningful for the agent.  RAG scores 1.0
