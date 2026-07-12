@@ -39,12 +39,15 @@ from tests.harness.evals.runner import run_manual_agent_unified
 from tests.harness.evals.schemas import GoldenEntry
 
 
-# Minimum overall score the agent must achieve.  Pinned from the
-# HARNESS-23 baseline (#107, run 2026-06-20): manual_agent mean
-# 0.590, stdev 0.163 over the 30 locked goldens → mean − 1·stdev
-# = 0.427, floored to 0.4.  This is a regression floor, not a
-# quality target — it catches the lane falling off a cliff without
-# flapping on per-entry judge noise.  See
+# Minimum overall score the agent must achieve.  Re-pinned from
+# the HARNESS-23 v2 re-baseline (#155, run 2026-07-12, after the
+# phase-1/2 fixes): manual_agent mean 0.670, stdev 0.176 over the
+# 30 locked goldens → mean − 1·stdev = 0.494, floored to 0.4
+# (numerically unchanged from the v1 pin — the mean rose but so
+# did the spread).  This is a regression floor, not a quality
+# target — it catches the lane falling off a cliff without
+# flapping on per-entry judge noise.  v1 and v2 numbers are NOT
+# comparable (rubric/weights changed in #148/#153).  See
 # docs/harness_14_phase6_baseline.md.
 _PASS_THRESHOLD = 0.4
 
