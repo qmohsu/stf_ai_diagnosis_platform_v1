@@ -243,8 +243,15 @@ class GoldenEntry(BaseModel):
             decides per directive whether the system violated it
             (semantic, context-aware — handles negation correctly:
             ``"this is NOT an O2 sensor issue"`` doesn't violate
-            an ``"don't involve O2 sensor"`` directive).  The
-            count of violations feeds ``hallucination_penalty``.
+            an ``"don't involve O2 sensor"`` directive).
+            Directives are classified by phrasing
+            (``judge_prompts.classify_pitfall_directive``, #147):
+            ASSERTION directives ("must not assert/invent X")
+            feed ``hallucination_penalty``; OMISSION directives
+            ("must not omit X" / "must reference X") are judged
+            and reported but excluded from the penalty — the
+            omitted fact's ``must_contain`` entry already
+            penalises it via ``fact_recall``.
         requires_image: Whether a complete answer requires the
             agent to surface actual image bytes (wiring diagram,
             exploded view, flowchart).  RAG fails ``image-required``
@@ -491,10 +498,15 @@ class Grade(BaseModel):
             entry's ``pitfall_directives`` plus the system output,
             and decides per-directive whether the output violates
             it (semantic, context-aware — distinguishes assertion
-            from negation).  Score = ``max(0.1, 1 - 0.3 *
-            violation_count)``: 0 violations = 1.0, 1 = 0.7,
-            2 = 0.4, 3+ = 0.1.  Soft curve gives partial credit
-            for "almost right" cases.  HIGHER = better.
+            from negation).  Only ASSERTION-type directives
+            ("must not say/assert/invent X") count toward the
+            penalty (#147); omission-type directives ("must not
+            omit X" / "must reference X") are judged and reported
+            but excluded — omission is a recall failure already
+            measured by ``fact_recall``.  Score = ``max(0.1,
+            1 - 0.3 * violation_count)``: 0 violations = 1.0,
+            1 = 0.7, 2 = 0.4, 3+ = 0.1.  Soft curve gives partial
+            credit for "almost right" cases.  HIGHER = better.
         citation_quality: Tiered, computed against
             ``claim_slugs`` with the same slug-tolerant matching
             as ``section_recall`` (#145).
