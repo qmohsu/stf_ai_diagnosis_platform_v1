@@ -14,6 +14,16 @@ production retrieval but normalises the output into the eval
 suite's ``SystemRunResult`` shape and captures latency / cost
 trade-off metrics that production callers don't need.
 
+Deliberately synthesis-free (T15 / GitHub issue #159, decided
+2026-07-12): this lane concatenates the raw top-k chunks with NO
+LLM synthesis step, BY DESIGN — it is the retrieval-floor
+comparison base for the agent-vs-RAG eval, and its low
+``answer_quality`` (~0.05) is the expected price of that role.
+Do not add synthesis here; a synthesised-RAG arm, if ever wanted,
+is a separate additive ``rag_synth`` lane. Full decision:
+``docs/harness_14_phase6_followups.md`` -> "T15 decision — RAG
+synthesis".
+
 Author: Li-Ta Hsu
 """
 
