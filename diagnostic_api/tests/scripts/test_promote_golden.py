@@ -15,6 +15,9 @@ Coverage:
 - ``--dry-run`` writes nothing
 - candidate id missing from JSONL → refuse with clear message
 - PROMOTIONS row formatting escapes pipes in free-text
+- stable manual-identity gate (HARNESS-23 T11, #151): prose
+  ``manual_id`` refused, ``--force`` does NOT bypass, entries
+  without citations pass vacuously
 
 Author: Li-Ta Hsu
 """
@@ -36,6 +39,7 @@ from scripts.promote_golden import (
     _format_promotions_row,
     _locked_ids,
     _sha256_hex,
+    _stable_manual_id_problems,
     promote_entry,
 )
 
@@ -43,7 +47,18 @@ from scripts.promote_golden import (
 # ── Fixtures ─────────────────────────────────────────────────
 
 
-def _make_candidate_line(entry_id: str, extra: str = "") -> str:
+# Stable manual identity used across fixtures.  HARNESS-23 T11
+# (#151): goldens cite the manuals.id UUID, never cover-code
+# prose like "MWS150A" — the promote gate refuses prose ids.
+_MANUAL_UUID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+
+
+def _make_candidate_line(
+    entry_id: str,
+    extra: str = "",
+    manual_id: str = _MANUAL_UUID,
+    citations: bool = True,
+) -> str:
     """Build one valid candidate JSONL line for a given id."""
     payload = {
         "id": entry_id,
@@ -54,11 +69,11 @@ def _make_candidate_line(entry_id: str, extra: str = "") -> str:
         "golden_summary": "P0117 is the ECT-low circuit code.",
         "golden_citations": [
             {
-                "manual_id": "MWS150A",
+                "manual_id": manual_id,
                 "slug": "dtc-p0117",
                 "quote": "ECT circuit low input",
             },
-        ],
+        ] if citations else [],
         "must_contain": ["P0117"],
         "pitfall_directives": [],
         "notes": extra,
@@ -538,6 +553,144 @@ def test_expert_review_id_override_wins_over_db_lookup(
     log_text = promotions_log.read_text(encoding="utf-8")
     assert override in log_text
     assert "rev-from-db" not in log_text
+
+
+# ── HARNESS-23 T11 (#151): stable manual-identity gate ───────
+
+
+def test_stable_manual_id_problems_accepts_uuid() -> None:
+    """A citation carrying the manuals.id UUID passes cleanly."""
+    parsed = json.loads(_make_candidate_line("entry-001"))
+    assert _stable_manual_id_problems(parsed) == []
+
+
+def test_stable_manual_id_problems_flags_prose() -> None:
+    """Cover-code prose (the MWS-150-A drift) is flagged with a
+    message naming the offending value and index."""
+    parsed = json.loads(
+        _make_candidate_line("entry-001", manual_id="MWS-150-A"),
+    )
+    problems = _stable_manual_id_problems(parsed)
+    assert len(problems) == 1
+    assert "MWS-150-A" in problems[0]
+    assert "golden_citations[0]" in problems[0]
+
+
+def test_stable_manual_id_problems_flags_filename_stem() -> None:
+    """Filename stems (the old schema-docstring convention) are
+    just as unstable as cover codes — also flagged."""
+    parsed = json.loads(
+        _make_candidate_line(
+            "entry-001", manual_id="MWS150A_Service_Manual",
+        ),
+    )
+    assert len(_stable_manual_id_problems(parsed)) == 1
+
+
+def test_stable_manual_id_problems_flags_missing_field() -> None:
+    """A citation without a manual_id string is flagged rather
+    than crashing the gate."""
+    parsed = json.loads(_make_candidate_line("entry-001"))
+    del parsed["golden_citations"][0]["manual_id"]
+    problems = _stable_manual_id_problems(parsed)
+    assert len(problems) == 1
+    assert "missing" in problems[0]
+
+
+def test_stable_manual_id_problems_empty_citations_pass() -> None:
+    """OBD-lane entries have no manual citations — the gate must
+    pass them vacuously."""
+    parsed = json.loads(
+        _make_candidate_line("entry-001", citations=False),
+    )
+    assert _stable_manual_id_problems(parsed) == []
+    # Also tolerate the field being absent entirely.
+    del parsed["golden_citations"]
+    assert _stable_manual_id_problems(parsed) == []
+
+
+def test_refuse_when_manual_id_is_prose(
+    tmp_path: Path,
+    locked_file: Path,
+    promotions_log: Path,
+) -> None:
+    """promote_entry refuses a prose manual_id and writes
+    nothing."""
+    candidate = tmp_path / "prose.jsonl"
+    candidate.write_text(
+        _make_candidate_line("entry-001", manual_id="MWS150A")
+        + "\n",
+        encoding="utf-8",
+    )
+    result = promote_entry(
+        db=_fake_db_returning(_review()),
+        entry_id="entry-001",
+        reviewer="talon",
+        reason="should fail the T11 gate",
+        candidate_file=candidate,
+        locked_file=locked_file,
+        promotions_log=promotions_log,
+    )
+    assert result.promoted is False
+    assert "MWS150A" in result.message
+    assert "manuals.id UUID" in result.message
+    assert locked_file.read_text(encoding="utf-8") == ""
+
+
+def test_force_does_not_bypass_manual_id_gate(
+    tmp_path: Path,
+    locked_file: Path,
+    promotions_log: Path,
+) -> None:
+    """--force bypasses the review gate only; the manual-identity
+    gate is a data-shape check and still refuses."""
+    candidate = tmp_path / "prose.jsonl"
+    candidate.write_text(
+        _make_candidate_line("entry-001", manual_id="MWS-150-A")
+        + "\n",
+        encoding="utf-8",
+    )
+    result = promote_entry(
+        db=None,
+        entry_id="entry-001",
+        reviewer="talon",
+        reason="force cannot bypass T11",
+        candidate_file=candidate,
+        locked_file=locked_file,
+        promotions_log=promotions_log,
+        force=True,
+    )
+    assert result.promoted is False
+    assert "not bypassed by --force" in result.message
+    assert locked_file.read_text(encoding="utf-8") == ""
+
+
+def test_entry_without_citations_promotes(
+    tmp_path: Path,
+    locked_file: Path,
+    promotions_log: Path,
+) -> None:
+    """An OBD-lane-style entry (no golden_citations) passes the
+    identity gate and promotes normally."""
+    candidate = tmp_path / "obd.jsonl"
+    candidate.write_text(
+        _make_candidate_line("entry-obd-001", citations=False)
+        + "\n",
+        encoding="utf-8",
+    )
+    result = promote_entry(
+        db=_fake_db_returning(_review()),
+        entry_id="entry-obd-001",
+        reviewer="talon",
+        reason="obd entry, no citations",
+        candidate_file=candidate,
+        locked_file=locked_file,
+        promotions_log=promotions_log,
+    )
+    assert result.promoted is True
+    assert "entry-obd-001" in locked_file.read_text(
+        encoding="utf-8",
+    )
 
 
 # ── HARNESS-21 [3/4]: --lane=obd defaults ────────────────────

@@ -55,8 +55,18 @@ class GoldenCitation(BaseModel):
     """Authoritative source anchor for a golden entry.
 
     Attributes:
-        manual_id: Manual filename stem (e.g.
-            ``MWS150A_Service_Manual``).
+        manual_id: The ingested manual's **stable UUID** — the
+            ``manuals.id`` primary key, e.g.
+            ``0a2ba199-665f-41aa-a106-1163cad68d16``.  Also the
+            ``<manual_uuid>-`` prefix of ``GoldenEntry.id``.
+            NEVER cover-code prose, filename stems, or marketing
+            names (HARNESS-23 T11, #151): free-text identities
+            drift — the first-round baseline broke because goldens
+            said ``MWS-150-A`` while the corpus stored
+            ``vehicle_model=TRICITY155``.  Prose aliases belong on
+            the manual row itself (``manuals.factory_code``,
+            APP-61), not in goldens.  Enforced at promotion time
+            by ``scripts/promote_golden.py``.
         slug: Section slug as produced by
             ``manual_fs.parse_heading_tree``.
         quote: Short verbatim span from the section.  Used by the
