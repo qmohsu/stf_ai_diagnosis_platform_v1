@@ -166,16 +166,38 @@ def _sync_exact_vector_query(
 async def _embed_query(text: str, attempts: int = 3) -> List[float]:
     """Embed ``text`` with a fresh per-call ``httpx.AsyncClient``.
 
-    The production ``embedding_service`` reuses a single module-level
-    ``httpx.AsyncClient``.  That is correct inside the app's
-    long-lived event loop, but breaks under pytest-asyncio, where each
-    test runs in its OWN event loop: the singleton client stays bound
-    to the loop that first created it, so every-other RAG test hit a
-    dead-loop connection and silently retrieved zero chunks
-    (HARNESS-23 baseline run 2026-06-20: 15/30 RAG entries came back
-    empty in an alternating pattern).  A short-lived client created in
-    the current loop sidesteps the cross-loop reuse entirely.  This is
-    an eval-harness concern only — production embedding is untouched.
+    EVAL-ONLY WORKAROUND — read before "fixing" (HARNESS-23 T17,
+    issue #160).
+
+    Why a fresh client per call: the production ``embedding_service``
+    (``app.rag.embedding.embedding_service``) reuses a single
+    module-level ``httpx.AsyncClient`` for connection pooling.  That
+    is correct inside the app's single long-lived event loop, but
+    breaks under pytest-asyncio, where each test runs in its OWN
+    event loop: the singleton's client (and its pooled connections)
+    stays bound to whichever loop first created it.  Once that loop
+    closes, calls from a later test's loop hit a dead-loop
+    connection, the request dies inside ``get_embedding()``'s broad
+    exception handler, and retrieval SILENTLY returns zero chunks.
+    A short-lived client created in the current loop sidesteps the
+    cross-loop reuse entirely.
+
+    Symptom signature (how this was found): the first combined
+    HARNESS-23 baseline run (2026-06-20) silently retrieved 0 chunks
+    on 15/30 RAG entries in an ALTERNATING pattern — the tell-tale
+    of loop-affinity breakage (whether a test's loop matched the
+    client's birth loop flip-flopped across the suite).  If an eval
+    report ever shows alternating zero-retrievals again, suspect a
+    shared async client before suspecting the corpus.
+
+    Do NOT:
+      * Do NOT swap this back to the production ``embedding_service``
+        singleton "for consistency" — that reintroduces the 15/30
+        silent-zero failure described above.
+      * Do NOT "fix forward" ``app/rag/embedding.py`` (e.g. per-call
+        clients or loop tracking in the service).  Production runs a
+        single long-lived loop; its pooled singleton is CORRECT and
+        faster there.  This is an eval-harness concern only.
 
     Args:
         text: Query string to embed.
