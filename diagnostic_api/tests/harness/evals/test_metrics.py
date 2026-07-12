@@ -370,6 +370,95 @@ class TestWeightRebalance:
         )
 
 
+# ── Structural-floor rebalance (HARNESS-23 T7, #153) ──────────────
+
+
+class TestStructuralFloorRebalance:
+    """Pins the 2026-07-12 structural-floor decision (#153).
+
+    The first-round baseline showed ``value_accuracy`` (neutral
+    1.0 on manual entries) and ``exploration_cost`` (always 0.0
+    for RAG) awarding ~0.15 of content-free credit, flooring a
+    zero-content answer at ~0.40.  The rebalance demotes
+    ``exploration_cost`` to reported-only and halves
+    ``value_accuracy``; these tests keep the decision from
+    silently regressing.
+    """
+
+    def test_exploration_cost_is_reported_only(self):
+        """``exploration_cost`` carries weight 0.0 — it's still
+        computed and reported, but no longer feeds ``overall``."""
+        assert DEFAULT_OVERALL_WEIGHTS["exploration_cost"] == 0.0
+
+    def test_value_accuracy_weight_halved_to_005(self):
+        """``value_accuracy`` weight is 0.05 — the minimum that
+        still makes fabricated OBD numbers cost, chosen because
+        the manual lane's neutral 1.0 is pure floor credit."""
+        assert DEFAULT_OVERALL_WEIGHTS["value_accuracy"] == (
+            pytest.approx(0.05)
+        )
+
+    def test_exploration_cost_no_longer_moves_overall(self):
+        """Two runs identical except ``exploration_cost`` (0.0 vs
+        1.0) score the same ``overall`` under default weights."""
+        kwargs = dict(
+            section_recall=1.0,
+            claim_precision=1.0,
+            fact_recall=1.0,
+            fact_density=1.0,
+            citation_quality=1.0,
+            trajectory_efficiency=1.0,
+            value_accuracy=1.0,
+        )
+        efficient = DeterministicMetrics(
+            exploration_cost=0.0, **kwargs,
+        )
+        wasteful = DeterministicMetrics(
+            exploration_cost=1.0, **kwargs,
+        )
+        assert compute_overall(
+            efficient, answer_quality=1.0, hallucination_penalty=1.0,
+        ) == pytest.approx(compute_overall(
+            wasteful, answer_quality=1.0, hallucination_penalty=1.0,
+        ))
+
+    def test_zero_content_floor_reduced_to_030(self):
+        """A zero-content manual-lane run (nothing retrieved,
+        nothing claimed, no facts, judge 0.0) floors at ~0.30 —
+        down from the first-round ~0.40.  The residual is the
+        documented out-of-scope floor: vacuous claim_precision
+        (0.10) + saturated hallucination_penalty (0.15) +
+        neutral value_accuracy (0.05)."""
+        entry = GoldenEntry(
+            id="floor-check-001",
+            category="dtc",
+            question_type="lookup",
+            difficulty="easy",
+            question="q",
+            golden_summary="s",
+            golden_citations=[
+                GoldenCitation(
+                    manual_id="m", slug="real-section", quote="...",
+                ),
+            ],
+            expected_recall_slugs=["real-section"],
+            must_contain=["a required fact"],
+        )
+        run = SystemRunResult(
+            system_label="rag",
+            question="q",
+            output_text="",
+            claim_slugs=[],
+            read_slugs=[],
+        )
+        metrics = compute_deterministic_metrics(entry, run)
+        overall = compute_overall(
+            metrics, answer_quality=0.0, hallucination_penalty=1.0,
+        )
+        assert overall == pytest.approx(0.30)
+        assert overall < 0.40
+
+
 # ── DeterministicMetrics dataclass ────────────────────────────────
 
 
