@@ -21,7 +21,9 @@ Output:
 Whitespace normalisation matches the conventions established in
 ``scripts.generate_golden_candidates`` (collapse CJK gaps so a
 line-wrapped Chinese phrase still substring-matches its
-unwrapped counterpart).
+unwrapped counterpart).  ``fact_recall`` additionally matches
+``must_contain`` terms bilingual-tolerantly — see the
+"Bilingual fact matching" section (HARNESS-23 T9, #149).
 
 Author: Li-Ta Hsu
 """
@@ -249,6 +251,206 @@ def _covered_expected_slugs(
     return covered
 
 
+# ── Bilingual fact matching (HARNESS-23 T9, #149) ────────────────
+#
+# The corpus is bilingual (Traditional Chinese + English) but most
+# golden ``must_contain`` items are exact CJK substrings.  A correct
+# answer phrased in English (or with cosmetic spacing drift like
+# ``4行程`` vs ``4 行程``) failed the literal substring scan and
+# zeroed ``fact_recall`` — e.g. ``cross-005`` scored
+# ``fact_recall=0`` despite the agent finding the right section,
+# because its ``must_contain`` is exact CJK tokens (``右前``,
+# ``左前``, ``後煞車卡鉗``).
+#
+# The fix is metrics-side (no golden re-promotion) and fully
+# deterministic — two ADDITIVE tiers on top of the original exact
+# substring scan (tier 1, unchanged, always checked first):
+#
+#   2. **Flexible-whitespace CJK match** — for terms containing a
+#      CJK character, whitespace runs in the term become optional
+#      (``4 行程`` matches ``4行程``; ``綠色 / 紅色`` matches
+#      ``綠色/紅色``).  A leading Latin/digit boundary guard stops
+#      mid-word joins (``V 皮帶`` must NOT match inside ``CVT皮帶``).
+#   3. **Translation-equivalent match** — a small curated map of
+#      the recurring bilingual spec terms in the locked goldens.
+#      A golden term whose normalised form has an entry also hits
+#      when any listed equivalent phrase appears in the output
+#      (``右前`` ⇒ ``front right``; ``TDC`` ⇐ ``上死點``).
+#      Equivalents are matched with the same flexible-whitespace
+#      pattern + leading boundary guard.  No trailing guard — a
+#      plural/suffix form (``cold tires``) still credits its
+#      singular equivalent; under-counting correct answers is the
+#      bug being fixed, so mild morphological looseness is the
+#      accepted trade-off.
+
+
+_CJK_CHAR_RE = re.compile(_CJK_CLASS)
+_LATIN_ALNUM_RE = re.compile(r"[a-z0-9]")
+
+
+# Curated for the recurring spec terms in
+# ``golden/v2/locked/mws150a.jsonl``.  Keys are golden
+# ``must_contain`` terms (any cosmetic spelling — they are keyed
+# through ``_normalize_slug`` at load time); values are accepted
+# equivalent phrases in the other language.  Keep entries
+# reviewable: one concept per key, only phrasings the manual /
+# a competent answer would actually use.
+_MUST_CONTAIN_EQUIVALENTS: dict = {
+    # Positions / brakes (cross-005, procedural-005, lookup-006).
+    "右前": ("front right", "right front"),
+    "左前": ("front left", "left front"),
+    "後煞車卡鉗": ("rear brake caliper",),
+    "煞車卡鉗": ("brake caliper",),
+    "冷胎": ("cold tire", "cold tyre", "tires are cold",
+             "tyres are cold"),
+    # Engine / valve train.
+    "汽門間隙": ("valve clearance",),
+    "汽門": ("valve",),
+    "冷機": ("cold engine", "engine cold", "engine is cold"),
+    "引擎冷機": ("cold engine", "engine cold", "engine is cold"),
+    "暖車": ("warm up", "warm-up", "warmed up"),
+    "進氣": ("intake",),
+    "活塞環": ("piston ring",),
+    "上死點": ("top dead center", "top dead centre"),
+    "凸輪軸鏈輪": ("camshaft sprocket",),
+    "曲軸箱": ("crankcase",),
+    "對準記號": ("alignment mark", "match mark", "matching mark"),
+    "平衡器": ("balancer",),
+    "4 行程": ("4-stroke", "four-stroke", "four stroke"),
+    "惰轉": ("idle", "idling"),
+    # Cooling system.
+    "恆溫器": ("thermostat",),
+    "水箱蓋": ("radiator cap",),
+    "空氣釋放螺栓": ("air bleed bolt", "air bleed screw"),
+    "冷卻液溫度感知器": ("coolant temperature sensor",),
+    # Sensors / electrical / DTC symptom text.
+    "曲軸位置感知器": ("crankshaft position sensor",),
+    "進氣壓力感知器": ("intake air pressure sensor",
+                        "intake pressure sensor"),
+    "搭鐵短路": ("short to ground", "short circuit to ground",
+                 "shorted to ground"),
+    "電氣式": ("electric", "electrical"),
+    "引擎無法起動": ("engine does not start",
+                     "engine will not start",
+                     "engine won't start",
+                     "engine cannot be started",
+                     "engine fails to start"),
+    "無法運轉": ("does not run", "cannot run", "will not run",
+                 "won't run", "fails to run"),
+    # Wire colours.
+    "綠色 / 紅色": ("green / red", "green-red"),
+    "粉紅色 / 綠色": ("pink / green", "pink-green"),
+    "藍色": ("blue",),
+    # Transmission (adversarial).
+    "V 皮帶": ("v-belt", "v belt"),
+    "自動": ("automatic",),
+    # Cables / marks / fluids.
+    "油門鋼索": ("throttle cable",),
+    "加速鋼索": ("accelerator cable",),
+    "減速鋼索": ("decelerator cable", "deceleration cable"),
+    "鋼索配置": ("cable routing",),
+    "最低油位記號": ("minimum level mark", "minimum oil level mark",
+                     "low level mark"),
+    "最高油位記號": ("maximum level mark", "maximum oil level mark",
+                     "high level mark"),
+    "量油尺": ("dipstick", "oil level gauge"),
+    "機油更換指示器": ("oil change indicator",),
+    "耐熱橡皮管": ("heat-resistant rubber hose",
+                   "heat resistant rubber hose"),
+    "橡皮套": ("rubber cover", "rubber boot", "rubber damper"),
+    "圖示位置": ("position shown", "as shown in the figure",
+                 "shown in the illustration"),
+    # Reverse direction (EN golden term ⇐ CJK answer) for the
+    # English items already in the locked goldens.
+    "TDC": ("上死點",),
+    "no chain": ("無鏈條", "沒有鏈條", "非鏈條"),
+    "no manual transmission": ("無手排", "沒有手排", "非手排"),
+    "no turbocharger": ("無渦輪", "沒有渦輪", "非渦輪"),
+    "no carburetor": ("無化油器", "沒有化油器", "非化油器"),
+    "no premix": ("無需預混", "不需預混", "無須預混"),
+    "not defined": ("未定義", "沒有定義", "無此故障碼"),
+    "naturally aspirated": ("自然進氣",),
+    "4-stroke": ("4 行程", "四行程"),
+}
+
+
+def _term_pattern(norm_term: str) -> "re.Pattern[str]":
+    """Compile a flexible-whitespace pattern for ``norm_term``.
+
+    ``norm_term`` must already be ``_normalize_ws``-ed and
+    lowercased.  Whitespace runs in the term become ``\\s*`` so
+    spacing drift on either side matches (``4 行程`` vs ``4行程``,
+    ``綠色 / 紅色`` vs ``綠色/紅色``).  When the term starts with a
+    Latin letter or digit, a negative lookbehind stops mid-word
+    joins (``v 皮帶`` must not match inside ``cvt皮帶``; ``4 行程``
+    must not match inside ``14行程``).  No trailing guard — see the
+    section comment for the rationale.
+
+    Args:
+        norm_term: Normalised, lowercased term or equivalent.
+
+    Returns:
+        Compiled pattern for ``re.Pattern.search`` over
+        ``_normalize_ws``-ed lowercased output text.
+    """
+    parts = [re.escape(p) for p in norm_term.split(" ") if p]
+    body = r"\s*".join(parts)
+    if _LATIN_ALNUM_RE.match(norm_term):
+        body = r"(?<![a-z0-9])" + body
+    return re.compile(body)
+
+
+def _normalize_equiv(text: str) -> str:
+    """Normalise a term/equivalent for pattern building."""
+    return _normalize_ws(text).lower()
+
+
+# Normalised-key lookup, built once at import.  Keyed through
+# ``_normalize_slug`` so a golden term matches its map entry
+# regardless of cosmetic spacing / width / case drift.
+_EQUIVALENT_PATTERNS: dict = {
+    _normalize_slug(term): tuple(
+        _term_pattern(_normalize_equiv(eq)) for eq in equivalents
+    )
+    for term, equivalents in _MUST_CONTAIN_EQUIVALENTS.items()
+}
+
+
+def _fact_term_in_text(term: str, norm_text: str) -> bool:
+    """Three-tier deterministic scan for one ``must_contain`` term.
+
+    Tiers (first hit wins):
+
+    1. Exact substring — ``_normalize_ws``-ed, case-insensitive
+       (original behaviour, unchanged).
+    2. Flexible-whitespace match — CJK-containing terms only.
+    3. Translation equivalents — via ``_MUST_CONTAIN_EQUIVALENTS``.
+
+    Args:
+        term: One golden ``must_contain`` item (verbatim).
+        norm_text: Output text, already ``_normalize_ws``-ed and
+            lowercased by the caller.
+
+    Returns:
+        Whether the term (or an accepted equivalent) is present.
+    """
+    norm_term = _normalize_equiv(term or "")
+    if not norm_term:
+        return False
+    if norm_term in norm_text:
+        return True
+    if _CJK_CHAR_RE.search(norm_term) and _term_pattern(
+        norm_term,
+    ).search(norm_text):
+        return True
+    return any(
+        pattern.search(norm_text)
+        for pattern in _EQUIVALENT_PATTERNS.get(
+            _normalize_slug(norm_term), (),
+        )
+    )
+
+
 # ── Output container ─────────────────────────────────────────────
 
 
@@ -272,7 +474,11 @@ class DeterministicMetrics:
         exploration_cost: Fraction of READ slugs that were
             NOT cited.  Higher = more navigation waste.  Always
             0.0 for RAG (no synthesis step).
-        fact_recall: Fraction of must_contain present in output.
+        fact_recall: Fraction of must_contain present in output,
+            matched bilingual-tolerantly (exact substring OR
+            flexible-whitespace CJK OR curated EN/CJK
+            translation equivalent) so a correct English answer
+            to a CJK-exact golden still counts (#149).
         fact_density: Fact hits × conciseness factor.
         citation_quality: Tiered (0.0 / 0.3 / 1.0), against
             claim_slugs, matched slug-tolerantly (#145).
@@ -407,15 +613,32 @@ def _compute_exploration_cost(
 def _compute_fact_recall(
     must_contain: List[str], output_text: str,
 ) -> tuple[float, List[str], List[str]]:
-    """Substring scan of ``must_contain`` over ``output_text``.
+    """Bilingual-tolerant scan of ``must_contain`` over output.
 
-    Both sides are whitespace-normalised, then a case-
-    insensitive substring match.  Empty ``must_contain``
-    returns ``1.0`` (no facts to recall, vacuously satisfied).
+    Each term hits via the three-tier deterministic match in
+    ``_fact_term_in_text`` (HARNESS-23 T9, #149):
+
+    1. Exact substring — both sides whitespace-normalised, then
+       case-insensitive (the original, pre-#149 behaviour).
+    2. Flexible-whitespace CJK match — for terms containing a CJK
+       character, whitespace in the term is optional (``4 行程``
+       matches ``4行程``), with a leading Latin/digit boundary
+       guard against mid-word joins.
+    3. Translation equivalents — the curated
+       ``_MUST_CONTAIN_EQUIVALENTS`` map credits an English answer
+       for a CJK spec term (``右前`` ⇒ ``front right``) and vice
+       versa for the English adversarial phrasings.
+
+    Tiers 2-3 are strictly additive: every pre-#149 hit still
+    hits, fixing the under-count where a correct English or
+    paraphrased answer scored ``fact_recall=0`` against
+    CJK-exact goldens (e.g. ``cross-005``).  Empty
+    ``must_contain`` returns ``1.0`` (no facts to recall,
+    vacuously satisfied).
 
     Returns:
         ``(score, hits, misses)`` — score in [0, 1] plus the
-        concrete strings that did and did not match.
+        concrete golden strings that did and did not match.
     """
     if not must_contain:
         return 1.0, [], []
@@ -423,8 +646,7 @@ def _compute_fact_recall(
     hits: List[str] = []
     misses: List[str] = []
     for term in must_contain:
-        norm_term = _normalize_ws(term or "").lower()
-        if norm_term and norm_term in norm_text:
+        if _fact_term_in_text(term, norm_text):
             hits.append(term)
         else:
             misses.append(term)

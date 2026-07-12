@@ -23,6 +23,7 @@ import pytest
 from tests.harness.evals.metrics import (
     DEFAULT_OVERALL_WEIGHTS,
     DeterministicMetrics,
+    _compute_fact_recall,
     _covered_expected_slugs,
     _is_obd_lane,
     _normalize_slug,
@@ -589,3 +590,118 @@ class TestSlugTolerantSectionRecall:
         )
         metrics = compute_deterministic_metrics(entry, run)
         assert metrics.citation_quality == pytest.approx(0.0)
+
+
+# ── Bilingual fact matching (HARNESS-23 T9, #149) ─────────────────
+
+
+class TestFactRecallBilingual:
+    """``_compute_fact_recall`` credits EN-equivalent answers to
+    CJK-exact ``must_contain`` terms (and tolerates cosmetic
+    whitespace drift), while staying deterministic and not
+    over-crediting absent facts."""
+
+    def test_exact_cjk_substring_still_matches(self):
+        """Pre-#149 behaviour preserved: an exact CJK substring
+        (with line-wrap whitespace) still hits."""
+        score, hits, misses = _compute_fact_recall(
+            ["汽門間隙"], "手冊指出汽門間\n隙應於冷機時測量。",
+        )
+        assert score == pytest.approx(1.0)
+        assert hits == ["汽門間隙"]
+        assert misses == []
+
+    def test_cross_005_english_answer_full_credit(self):
+        """The #149 regression case: cross-005's CJK-exact terms
+        scored fact_recall=0 against a correct English answer.
+        The EN-equivalent map must now credit all five terms."""
+        must_contain = [
+            "右前", "左前", "後煞車卡鉗", "1.0 mm", "DOT 4",
+        ]
+        output = (
+            "Check the front right and front left calipers, then "
+            "the rear brake caliper.  Replace pads below 1.0 mm "
+            "and use DOT 4 brake fluid."
+        )
+        score, hits, misses = _compute_fact_recall(
+            must_contain, output,
+        )
+        assert score == pytest.approx(1.0)
+        assert misses == []
+        # hits report the ORIGINAL golden strings, not the
+        # equivalents that matched.
+        assert hits == must_contain
+
+    def test_flexible_whitespace_cjk(self):
+        """Cosmetic spacing drift in CJK terms matches: golden
+        ``4 行程`` hits output ``4行程``; ``綠色 / 紅色`` hits
+        ``綠色/紅色``."""
+        score, hits, _ = _compute_fact_recall(
+            ["4 行程", "綠色 / 紅色"],
+            "本引擎為4行程設計，感知器導線為綠色/紅色。",
+        )
+        assert score == pytest.approx(1.0)
+        assert hits == ["4 行程", "綠色 / 紅色"]
+
+    def test_leading_boundary_guard_blocks_midword_join(self):
+        """Guardrail: ``V 皮帶`` must NOT be credited by the
+        unrelated mid-word join inside ``CVT皮帶`` — the leading
+        Latin/digit lookbehind blocks it."""
+        score, _, misses = _compute_fact_recall(
+            ["V 皮帶"], "本車傳動採用CVT皮帶結構。",
+        )
+        assert score == pytest.approx(0.0)
+        assert misses == ["V 皮帶"]
+        # But a genuine spacing variant DOES match.
+        score, _, _ = _compute_fact_recall(
+            ["V 皮帶"], "傳動使用V皮帶，非鏈條。",
+        )
+        assert score == pytest.approx(1.0)
+
+    def test_reverse_direction_cjk_answer_credits_en_term(self):
+        """An EN golden term (``TDC``) is credited by its CJK
+        equivalent (``上死點``) in a Chinese answer."""
+        score, hits, _ = _compute_fact_recall(
+            ["TDC"], "將活塞轉至壓縮上死點後對準記號。",
+        )
+        assert score == pytest.approx(1.0)
+        assert hits == ["TDC"]
+
+    def test_absent_fact_still_misses(self):
+        """Guardrail: a CJK term with no equivalent in the map and
+        no occurrence in the output stays a miss — the fix must
+        not manufacture credit."""
+        score, hits, misses = _compute_fact_recall(
+            ["曲軸位置感知器"],
+            "This answer is about tire pressure only.",
+        )
+        assert score == pytest.approx(0.0)
+        assert hits == []
+        assert misses == ["曲軸位置感知器"]
+
+    def test_partial_credit_mixed_hits(self):
+        """Mixed EN-equivalent hit + genuine miss → fractional
+        score, with hits/misses reporting golden strings."""
+        score, hits, misses = _compute_fact_recall(
+            ["恆溫器", "水箱蓋"],
+            "Inspect the thermostat for a stuck-open valve.",
+        )
+        assert score == pytest.approx(0.5)
+        assert hits == ["恆溫器"]
+        assert misses == ["水箱蓋"]
+
+    def test_empty_must_contain_vacuous(self):
+        """Empty ``must_contain`` stays vacuously satisfied."""
+        score, hits, misses = _compute_fact_recall([], "anything")
+        assert score == pytest.approx(1.0)
+        assert hits == []
+        assert misses == []
+
+    def test_equivalent_keying_tolerates_term_spacing(self):
+        """Map lookup keys through ``_normalize_slug``: a golden
+        term with spacing drift (``右 前``) still finds its map
+        entry and matches ``front right``."""
+        score, _, _ = _compute_fact_recall(
+            ["右 前"], "the front right caliper",
+        )
+        assert score == pytest.approx(1.0)
