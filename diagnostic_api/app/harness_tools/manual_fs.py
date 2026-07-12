@@ -41,6 +41,16 @@ _MAX_HEADING_CHARS = 150
 _PROCEDURE_STEP_RE = re.compile(
     r"^\s*\d+\.\s+\S{1,40}:?\s*$"
 )
+# Marker also renders the manual's 注意/警告 callout boxes as
+# headings (``### 注 意`` / ``## 警 告``).  They are banners, not
+# sections: as level-2/3 "headings" they arbitrarily slice real
+# sections' bodies (#186: the promoted bleed-procedure title had an
+# EMPTY body because a ``## 警 告`` banner two lines later
+# terminated it).  Filtering them lets sections span to the next
+# real heading — strictly more complete section text.
+_WARNING_BANNER_RE = re.compile(
+    r"^\s*(?:注\s*意|警\s*告)\s*$"
+)
 
 
 def _is_real_heading(title: str) -> bool:
@@ -65,6 +75,8 @@ def _is_real_heading(title: str) -> bool:
         return False
     if _PROCEDURE_STEP_RE.match(stripped):
         return False
+    if _WARNING_BANNER_RE.match(stripped):
+        return False
     return True
 
 # Defensive strip for any empty HTML elements that may linger in
@@ -87,6 +99,126 @@ def _clean_md(text: str) -> str:
     """
     cleaned = _EMPTY_HTML_TAG_RE.sub("", text)
     return _EMPTY_HTML_TAG_RE.sub("", cleaned)
+
+
+# ── Unheaded-title promotion (HARNESS-24 WP2, #186) ──────────────
+#
+# Marker-pdf occasionally fails to render a styled section title as
+# a markdown heading, emitting it as a bare line prefixed only by
+# page-anchor spans, e.g. (source line 2466 of the Yamaha manual):
+#
+#     <span id="page-91-4"></span><span id="page-91-2"></span>\
+#     液壓煞車系統空氣的釋放
+#
+# Such titles are invisible to ``parse_heading_tree`` (and thus to
+# the agent's TOC at ANY depth) and unciteable by slug — the golden
+# slug ``液壓煞車系統空氣的釋放`` had no navigable target.
+# HARNESS-17 (#101) fixed the same quirk frontend-side; this brings
+# the fix to the agent by rewriting qualifying lines into real
+# headings BEFORE the page-anchor spans are stripped by
+# ``_clean_md`` (order matters: the spans ARE the detection signal).
+
+_SPAN_ANCHORED_TITLE_RE = re.compile(
+    r'^(?:<span id="page-[^"]+"></span>\s*)+'
+    r"(?P<title>[^<>|]+?)\s*$",
+)
+"""One or more page-anchor spans followed ONLY by bare text.
+``[^<>|]`` excludes further markup and table rows — the manual's
+own index table lists the same titles as ``| <title> | 3-13 |``
+rows, which must NOT be promoted."""
+
+_MAX_PROMOTED_TITLE_CHARS = 40
+"""Real unheaded titles are short.  Longer span-prefixed lines are
+body prose that happens to start a page — never promote those."""
+
+_PROMOTED_HEADING_PREFIX = "### "
+"""Fixed level 3: visible at ``get_manual_toc``'s default
+``max_depth=3`` (a ``####`` promotion would stay hidden — the
+exact failure being fixed), while still nesting under the ``#`` /
+``##`` chapter headings.  Parent reads with
+``include_subsections=true`` keep covering promoted titles."""
+
+
+def _promotable_title(line: str) -> Optional[str]:
+    """Return the bare title when ``line`` is an unheaded section
+    title, else ``None``.
+
+    Guardrails (mirrors HARNESS-17's frontend heuristics):
+
+    * must be a span-anchored bare line (see
+      ``_SPAN_ANCHORED_TITLE_RE``); table rows and lines with any
+      further markup never match;
+    * short (``<= _MAX_PROMOTED_TITLE_CHARS``) and contains at
+      least one word character;
+    * not a numbered procedure step (``_PROCEDURE_STEP_RE``) and
+      not a list/image/link line.
+
+    Args:
+        line: One raw (pre-``_clean_md``) markdown line.
+
+    Returns:
+        The title text to promote, or ``None``.
+    """
+    if line.startswith("#"):
+        return None
+    match = _SPAN_ANCHORED_TITLE_RE.match(line)
+    if not match:
+        return None
+    title = match.group("title").strip()
+    if not title or len(title) > _MAX_PROMOTED_TITLE_CHARS:
+        return None
+    if not re.search(r"\w", title, re.UNICODE):
+        return None
+    if _PROCEDURE_STEP_RE.match(title):
+        return None
+    if _WARNING_BANNER_RE.match(title):
+        return None
+    if title[0] in "-*•![(":
+        return None
+    # Instruction sentences, not titles (live census, #186):
+    # lettered sub-steps ("a. 用數位三用電錶量測…"), tool-callout
+    # sentences with quoted part numbers (以轉向螺帽扳手 "3" 拆卸…),
+    # and imperative sentences ending with a CJK full stop.
+    if re.match(r"^[a-zA-Z][.、]", title):
+        return None
+    if '"' in title:
+        return None
+    if title.endswith("。"):
+        return None
+    return title
+
+
+def promote_unheaded_titles(md_text: str) -> str:
+    """Rewrite span-anchored bare-title lines into real headings.
+
+    Must run on RAW manual markdown, BEFORE ``_clean_md`` strips
+    the page-anchor spans that identify the pattern.  Idempotent —
+    promoted lines start with ``#`` and are skipped on re-runs.
+
+    Args:
+        md_text: Raw manual markdown.
+
+    Returns:
+        Markdown with qualifying titles promoted to ``####``
+        headings (anchors dropped; ``slugify`` then produces the
+        natural slug, e.g. ``液壓煞車系統空氣的釋放``).
+    """
+    out: List[str] = []
+    promoted = 0
+    for line in md_text.split("\n"):
+        title = _promotable_title(line)
+        if title is not None:
+            out.append(f"{_PROMOTED_HEADING_PREFIX}{title}")
+            promoted += 1
+        else:
+            out.append(line)
+    if promoted:
+        logger.debug(
+            "unheaded_titles_promoted", count=promoted,
+        )
+    return "\n".join(out)
+
+
 _IMAGE_REF_PATTERN = re.compile(
     r"!\[([^\]]*)\]\(([^)]+)\)",
 )
