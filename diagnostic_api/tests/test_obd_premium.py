@@ -826,3 +826,120 @@ class TestPremiumModelsAvailability:
         ]
         # Default falls back since original default is blocked
         assert body["default"] == "deepseek/deepseek-v3.2"
+
+
+class TestPremiumRetrievalVehicleFilter:
+    """APP-64 (#188): premium diagnose retrieval is vehicle-scoped.
+
+    Mirrors APP-63's tests for the standard path: the session's
+    vehicle_model must reach retrieve_context; historical sessions
+    without one fall back to unfiltered; an empty filtered result
+    degrades gracefully (generation proceeds, context empty)."""
+
+    def _run(
+        self,
+        mock_avail,
+        mock_store,
+        mock_client_fn,
+        mock_retrieve,
+        mock_get_data,
+        mock_settings,
+        client,
+        vehicle_model,
+    ):
+        """Drive one premium diagnose call; return the response."""
+        mock_settings.premium_llm_enabled = True
+        mock_settings.premium_llm_api_key = "sk-test"
+        mock_settings.premium_llm_model = (
+            "anthropic/claude-sonnet-4.6"
+        )
+        mock_settings.premium_llm_model_list = [
+            "anthropic/claude-sonnet-4.6",
+        ]
+        from app.api.v2.endpoints.obd_analysis import SessionData
+        mock_get_data.return_value = SessionData(
+            parsed_summary=FAKE_PARSED_SUMMARY,
+            diagnosis_text=None,
+            premium_diagnosis_text=None,
+            vehicle_model=vehicle_model,
+        )
+        mock_retrieve.return_value = []
+        mock_store.return_value = uuid.uuid4()
+        mock_avail.return_value = [
+            "anthropic/claude-sonnet-4.6",
+        ]
+
+        async def _fake_stream(
+            ps, ctx, model_override=None, locale="en",
+        ):
+            yield "OK"
+
+        mock_client = MagicMock()
+        mock_client.generate_obd_diagnosis_stream = _fake_stream
+        mock_client_fn.return_value = mock_client
+        return client.post(
+            f"/v2/obd/{uuid.uuid4()}/diagnose/premium",
+        )
+
+    @patch("app.api.v2.endpoints.obd_premium.settings")
+    @patch("app.api.v2.endpoints.obd_premium._get_session_data")
+    @patch("app.api.v2.endpoints.obd_premium.retrieve_context")
+    @patch("app.api.v2.endpoints.obd_premium._get_premium_client")
+    @patch("app.api.v2.endpoints.obd_premium._store_diagnosis")
+    @patch("app.api.v2.endpoints.obd_premium.get_available_models")
+    def test_session_vehicle_reaches_retrieval(
+        self, mock_avail, mock_store, mock_client_fn,
+        mock_retrieve, mock_get_data, mock_settings, client,
+    ):
+        """The session's vehicle_model is passed to
+        retrieve_context."""
+        resp = self._run(
+            mock_avail, mock_store, mock_client_fn,
+            mock_retrieve, mock_get_data, mock_settings,
+            client, vehicle_model="TRICITY155",
+        )
+        assert resp.status_code == 200
+        kwargs = mock_retrieve.call_args.kwargs
+        assert kwargs["vehicle_model"] == "TRICITY155"
+
+    @patch("app.api.v2.endpoints.obd_premium.settings")
+    @patch("app.api.v2.endpoints.obd_premium._get_session_data")
+    @patch("app.api.v2.endpoints.obd_premium.retrieve_context")
+    @patch("app.api.v2.endpoints.obd_premium._get_premium_client")
+    @patch("app.api.v2.endpoints.obd_premium._store_diagnosis")
+    @patch("app.api.v2.endpoints.obd_premium.get_available_models")
+    def test_no_vehicle_falls_back_unfiltered(
+        self, mock_avail, mock_store, mock_client_fn,
+        mock_retrieve, mock_get_data, mock_settings, client,
+    ):
+        """Historical sessions (no vehicle_model) stay
+        unfiltered."""
+        resp = self._run(
+            mock_avail, mock_store, mock_client_fn,
+            mock_retrieve, mock_get_data, mock_settings,
+            client, vehicle_model=None,
+        )
+        assert resp.status_code == 200
+        kwargs = mock_retrieve.call_args.kwargs
+        assert kwargs["vehicle_model"] is None
+
+    @patch("app.api.v2.endpoints.obd_premium.settings")
+    @patch("app.api.v2.endpoints.obd_premium._get_session_data")
+    @patch("app.api.v2.endpoints.obd_premium.retrieve_context")
+    @patch("app.api.v2.endpoints.obd_premium._get_premium_client")
+    @patch("app.api.v2.endpoints.obd_premium._store_diagnosis")
+    @patch("app.api.v2.endpoints.obd_premium.get_available_models")
+    def test_empty_filtered_result_degrades(
+        self, mock_avail, mock_store, mock_client_fn,
+        mock_retrieve, mock_get_data, mock_settings, client,
+    ):
+        """0 filtered rows -> generation still streams to done
+        (empty context), matching the no-context path."""
+        resp = self._run(
+            mock_avail, mock_store, mock_client_fn,
+            mock_retrieve, mock_get_data, mock_settings,
+            client, vehicle_model="TRICITY155",
+        )
+        assert resp.status_code == 200
+        events = _parse_sse_events(resp.text)
+        assert "done" in [e["event"] for e in events]
