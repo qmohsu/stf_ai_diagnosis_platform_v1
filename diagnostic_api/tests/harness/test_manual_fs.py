@@ -546,3 +546,117 @@ class TestBuildMultimodalSection:
             b for b in blocks if b["type"] == "image_url"
         ]
         assert len(image_blocks) == 0
+
+
+class TestPromoteUnheadedTitles:
+    """HARNESS-24 WP2 (#186): span-anchored bare-title promotion.
+
+    Marker-pdf sometimes emits a real section title as a bare line
+    prefixed only by page-anchor spans; those titles were invisible
+    to the TOC at any depth and unciteable by slug (the bleed-
+    procedure golden slug had no navigable target)."""
+
+    _REAL_CASE = (
+        '<span id="page-91-4"></span><span id="page-91-2">'
+        "</span>液壓煞車系統"
+        "空氣的釋放"
+    )
+    """Verbatim shape of the Yamaha manual's line 2466 (the
+    hydraulic-brake air-release title)."""
+
+    def test_real_case_is_promoted(self) -> None:
+        """The actual failing line becomes a #### heading."""
+        from app.harness_tools.manual_fs import (
+            promote_unheaded_titles,
+        )
+        out = promote_unheaded_titles(self._REAL_CASE)
+        assert out.startswith("#### ")
+        assert "液壓煞車" in out
+        assert "<span" not in out
+
+    def test_promoted_title_visible_in_heading_tree(self) -> None:
+        """End-to-end: promote -> clean -> parse surfaces the slug
+        the goldens cite."""
+        from app.harness_tools.manual_fs import (
+            _clean_md,
+            parse_heading_tree,
+            promote_unheaded_titles,
+            slugify,
+        )
+        md = (
+            "## 前煞車\n\nbody\n\n"
+            + self._REAL_CASE
+            + "\n\nsteps here\n"
+        )
+        tree = parse_heading_tree(
+            _clean_md(promote_unheaded_titles(md)),
+        )
+        slugs = []
+
+        def walk(nodes):
+            for n in nodes:
+                slugs.append(n.slug)
+                walk(n.children)
+
+        walk(tree)
+        assert slugify(
+            "液壓煞車系統"
+            "空氣的釋放"
+        ) in slugs
+        # Nested under the real parent (####  under ##).
+        assert slugs[0] == slugify("前煞車")
+
+    def test_table_row_not_promoted(self) -> None:
+        """The manual's own index-table row (same title, pipe
+        delimited) must NOT become a heading."""
+        from app.harness_tools.manual_fs import (
+            promote_unheaded_titles,
+        )
+        row = (
+            "| 液壓煞車系統"
+            "空氣的釋放 | 3-13 |"
+        )
+        assert promote_unheaded_titles(row) == row
+
+    def test_span_prefix_required(self) -> None:
+        """A bare short line WITHOUT page anchors is prose, not a
+        title — never promoted."""
+        from app.harness_tools.manual_fs import (
+            promote_unheaded_titles,
+        )
+        line = "液壓煞車系統"
+        assert promote_unheaded_titles(line) == line
+
+    def test_long_span_prefixed_prose_not_promoted(self) -> None:
+        """Span-prefixed lines longer than the title cap are body
+        text starting a new page."""
+        from app.harness_tools.manual_fs import (
+            promote_unheaded_titles,
+        )
+        line = (
+            '<span id="page-9-0"></span>'
+            + "字" * 60
+        )
+        assert promote_unheaded_titles(line) == line
+
+    def test_procedure_step_not_promoted(self) -> None:
+        """Numbered steps behind a page anchor stay steps."""
+        from app.harness_tools.manual_fs import (
+            promote_unheaded_titles,
+        )
+        line = '<span id="page-9-0"></span>2. 檢查:'
+        assert promote_unheaded_titles(line) == line
+
+    def test_existing_heading_untouched_and_idempotent(self) -> None:
+        """Heading lines pass through; double application is a
+        no-op."""
+        from app.harness_tools.manual_fs import (
+            promote_unheaded_titles,
+        )
+        md = (
+            '## <span id="page-76-0"></span>'
+            "定期檢查\n" + self._REAL_CASE
+        )
+        once = promote_unheaded_titles(md)
+        assert promote_unheaded_titles(once) == once
+        assert once.split("\n")[0] == md.split("\n")[0]

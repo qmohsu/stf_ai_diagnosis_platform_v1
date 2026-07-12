@@ -34,6 +34,7 @@ from app.harness_tools.manual_fs import (
     find_closest_slug,
     parse_frontmatter,
     parse_heading_tree,
+    promote_unheaded_titles,
     slugify,
 )
 
@@ -86,10 +87,16 @@ def _read_manual_file(manual_id: str) -> str | None:
     """
     for md_file in _scan_manual_files():
         if md_file.stem == manual_id:
-            # Defensive HTML-noise strip for older .md files on
-            # disk that pre-date the conversion-time cleaner.
+            # Promote span-anchored unheaded titles to real
+            # headings BEFORE the HTML-noise strip — the page-
+            # anchor spans are the detection signal and _clean_md
+            # removes them (#186).  Then the defensive strip for
+            # older .md files that pre-date the conversion-time
+            # cleaner.
             return _clean_md(
-                md_file.read_text(encoding="utf-8"),
+                promote_unheaded_titles(
+                    md_file.read_text(encoding="utf-8"),
+                ),
             )
     return None
 
