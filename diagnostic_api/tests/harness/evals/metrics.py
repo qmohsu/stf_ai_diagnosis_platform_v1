@@ -227,7 +227,8 @@ def _covered_expected_slugs(
     Returns:
         The subset of ``expected`` deemed covered.  Empty when
         ``expected`` is empty (adversarial entries surface nothing
-        by design — their neutral scoring is handled by the callers).
+        by design — recall becomes N/A (#148); precision/citation
+        polarity is handled by the callers).
     """
     norm_surfaced = {_normalize_slug(s) for s in surfaced_slugs if s}
     quotes_by_slug: dict = {}
@@ -467,7 +468,12 @@ class DeterministicMetrics:
             surfaced anywhere (claim ∪ read), matched
             slug-tolerantly (normalised slug OR golden-quote
             containment) so a correct section spelled with a
-            different slug still counts (#145).
+            different slug still counts (#145).  ``None`` = N/A:
+            the golden has no ``expected_recall_slugs`` (manual
+            adversarial — nothing SHOULD be retrieved), so the
+            dimension is excluded from ``compute_overall`` with
+            its weight renormalised over the remaining dims
+            instead of vacuously scoring 1.0 (#148).
         claim_precision: Fraction of CITED slugs that match
             golden.  Replaces the older ``section_precision``
             which conflated reads and citations.
@@ -497,7 +503,7 @@ class DeterministicMetrics:
         ``compute_hallucination_penalty`` below.
     """
 
-    section_recall: float
+    section_recall: Optional[float]
     claim_precision: float
     exploration_cost: float
     fact_recall: float
@@ -521,8 +527,8 @@ class DeterministicMetrics:
 
 def _compute_section_recall(
     expected: List[str], covered: Set[str],
-) -> float:
-    """``|covered| / |expected|``, 1.0 when expected empty.
+) -> Optional[float]:
+    """``|covered| / |expected|``, ``None`` (N/A) when expected empty.
 
     ``covered`` is the slug-tolerant subset of ``expected`` the
     system surfaced, resolved by ``_covered_expected_slugs``
@@ -532,13 +538,17 @@ def _compute_section_recall(
     under-counted correct answers whose Chinese-derived slug
     rendered differently from the golden (#145).
 
-    Empty ``expected`` (typical for adversarial entries where
-    no slug is the right answer) returns 1.0 — the system did
-    not need to retrieve anything specific to be correct.
+    Empty ``expected`` (manual adversarial entries — no slug is
+    the right answer, so there is nothing to recall) returns
+    ``None``, meaning N/A: the dimension is undefined for the
+    entry and ``compute_overall`` excludes it, renormalising its
+    weight over the remaining dims.  Previously this returned a
+    vacuous 1.0, which inflated adversarial overall by ~+0.20 of
+    free floor for both lanes (#148).
     """
     expected_set = {s for s in expected if s}
     if not expected_set:
-        return 1.0
+        return None
     covered_set = {s for s in covered if s} & expected_set
     return len(covered_set) / len(expected_set)
 
@@ -1083,6 +1093,15 @@ def compute_overall(
     it enters the formula as ``(1 - cost)`` so all terms
     contribute positively toward the overall score.
 
+    N/A handling (#148): when ``metrics.section_recall`` is
+    ``None`` (manual adversarial — empty
+    ``expected_recall_slugs``, nothing SHOULD be retrieved), the
+    ``section_recall`` term is excluded and the remaining terms
+    are rescaled by ``total / (total - w_sr)`` so the score stays
+    on the same [0, 1] scale.  This replaces the old vacuous-1.0
+    behaviour, which handed adversarial entries a free +0.20 of
+    floor in both lanes.
+
     Args:
         metrics: Output of ``compute_deterministic_metrics``.
         answer_quality: LLM-judge rating in [0, 1].
@@ -1090,16 +1109,15 @@ def compute_overall(
             ``compute_hallucination_penalty(violation_count)``.
         weights: Optional override (defaults to
             ``DEFAULT_OVERALL_WEIGHTS``).  Must contain all
-            eight rubric keys; sum is not enforced (caller can
+            nine rubric keys; sum is not enforced (caller can
             experiment with different weighting schemes).
 
     Returns:
         Weighted score in [0, 1].
     """
     w = weights if weights is not None else DEFAULT_OVERALL_WEIGHTS
-    return (
-        w["section_recall"]        * metrics.section_recall
-        + w["claim_precision"]     * metrics.claim_precision
+    score = (
+        w["claim_precision"]       * metrics.claim_precision
         + w["exploration_cost"]    * (1.0 - metrics.exploration_cost)
         + w["fact_recall"]         * metrics.fact_recall
         + w["fact_density"]        * metrics.fact_density
@@ -1108,3 +1126,13 @@ def compute_overall(
         + w["value_accuracy"]      * metrics.value_accuracy
         + w["answer_quality"]      * answer_quality
     )
+    if metrics.section_recall is None:
+        # N/A — exclude the dim and renormalise its weight over
+        # the remaining terms so an entry with no expected slugs
+        # is graded purely on the dims that apply to it.
+        total = sum(w.values())
+        applicable = total - w["section_recall"]
+        if applicable <= 0:
+            return score
+        return score * (total / applicable)
+    return score + w["section_recall"] * metrics.section_recall

@@ -481,7 +481,14 @@ class Grade(BaseModel):
             golden citation's verbatim ``quote`` appears in the
             surfaced text.  This stops correct answers scoring 0
             when a Chinese-derived heading slugifies differently by
-            navigation path.  Higher = better.
+            navigation path.  Higher = better.  ``None`` = N/A
+            (#148): the golden has empty ``expected_recall_slugs``
+            (manual adversarial — nothing SHOULD be retrieved), so
+            the dimension is undefined and excluded from
+            ``overall`` (its weight is renormalised over the
+            remaining dims in ``metrics.compute_overall``).
+            Previously scored as a vacuous 1.0, which inflated
+            adversarial ``overall`` by a free +0.20 in both lanes.
         claim_precision: ``|claim_slugs ∩ expected_recall_slugs|
             / |claim_slugs|``.  Of the slugs the system
             **explicitly cited as answer sources**, what
@@ -559,6 +566,9 @@ class Grade(BaseModel):
             + 0.10*value_accuracy
             + 0.15*answer_quality.
             Reported in eval reports as percentage (× 100).
+            When ``section_recall`` is ``None`` (N/A, #148) its
+            term is dropped and the remaining weights are
+            renormalised (× 1/0.80 under default weights).
             Weights still tunable — see
             ``DEFAULT_OVERALL_WEIGHTS`` in metrics.py.
         reasoning: 2–4 sentences from the judge citing specific
@@ -566,7 +576,11 @@ class Grade(BaseModel):
             don't need reasoning (they're deterministic).
     """
 
-    section_recall: float = Field(ge=0.0, le=1.0)
+    # ``None`` = N/A (empty ``expected_recall_slugs``; excluded
+    # from ``overall`` — see #148 and the attribute docstring).
+    section_recall: Optional[float] = Field(
+        default=None, ge=0.0, le=1.0,
+    )
     claim_precision: float = Field(ge=0.0, le=1.0)
     exploration_cost: float = Field(ge=0.0, le=1.0)
     fact_recall: float = Field(ge=0.0, le=1.0)
