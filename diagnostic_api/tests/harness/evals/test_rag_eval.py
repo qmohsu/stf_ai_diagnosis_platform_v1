@@ -41,15 +41,19 @@ from tests.harness.evals.rag_runner import run_rag
 from tests.harness.evals.schemas import GoldenEntry
 
 
-# Minimum overall score the RAG lane must achieve.  Pinned from the
-# HARNESS-23 baseline (#107, run 2026-06-20): rag mean 0.337, stdev
-# 0.133 over the 30 locked goldens → mean − 1·stdev = 0.204, floored
-# to 0.2.  Deliberately lower than the agent lane (0.4): single-shot
-# top-5 concatenation has no synthesis step, so it sits just above
-# the rubric's structural floor (answer_quality ~0.05).  Revisit if
-# the RAG lane ever grows a synthesis step.  See
+# Minimum overall score the RAG lane must achieve.  Re-pinned from
+# the HARNESS-23 v2 re-baseline (#155, run 2026-07-12, after the
+# phase-1/2 fixes): rag mean 0.239, stdev 0.122 over the 30 locked
+# goldens → mean − 1·stdev = 0.117, floored to 0.1.  Lower than the
+# v1 pin (0.2) because #153 removed RAG's free (1 − exploration_cost)
+# credit and #148 removed the vacuous adversarial section_recall
+# floor — the lane lost structural free credit, not capability.
+# Deliberately lower than the agent lane (0.4): single-shot top-5
+# concatenation has no synthesis step (answer_quality ~0.06).
+# Revisit if the RAG lane ever grows a synthesis step.  v1 and v2
+# numbers are NOT comparable.  See
 # docs/harness_14_phase6_baseline.md.
-_PASS_THRESHOLD = 0.2
+_PASS_THRESHOLD = 0.1
 
 
 # Load goldens at import time so pytest parametrization shows one
