@@ -960,6 +960,7 @@ class TestRAGFeedback:
         mock_session_row = MagicMock()
         mock_session_row.parsed_summary_payload = FAKE_PARSED_SUMMARY
         mock_session_row.diagnosis_text = None
+        mock_session_row.vehicle_model = "TRICITY155"
         get_data_chain = MagicMock()
         get_data_chain.filter.return_value.first.return_value = mock_session_row
         # _submit_feedback exists + count queries
@@ -988,6 +989,49 @@ class TestRAGFeedback:
         assert "Chunk 1 text" in extra["retrieved_text"]
         assert "Chunk 2 text" in extra["retrieved_text"]
         assert "Section A" in extra["retrieved_text"]
+        # APP-63: retrieval must be scoped to the session vehicle.
+        assert (
+            mock_retrieve.call_args.kwargs["vehicle_model"]
+            == "TRICITY155"
+        )
+
+    @patch("app.api.v2.endpoints.obd_analysis.retrieve_context")
+    @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
+    def test_feedback_retrieval_unfiltered_without_vehicle_model(
+        self, mock_insert, mock_retrieve, client, app_ref,
+    ):
+        """Sessions without a vehicle_model fall back to unfiltered."""
+        sid = uuid.uuid4()
+
+        mock_retrieve.return_value = []
+
+        mock_db = MagicMock()
+        mock_session_row = MagicMock()
+        mock_session_row.parsed_summary_payload = FAKE_PARSED_SUMMARY
+        mock_session_row.diagnosis_text = None
+        mock_session_row.vehicle_model = None
+        get_data_chain = MagicMock()
+        get_data_chain.filter.return_value.first.return_value = mock_session_row
+        exists_chain = MagicMock()
+        exists_chain.filter.return_value.first.return_value = (sid,)
+        count_chain = MagicMock()
+        count_chain.filter.return_value.count.return_value = 0
+        mock_db.query.side_effect = [get_data_chain, exists_chain, count_chain]
+
+        mock_insert.return_value = {
+            "status": "ok",
+            "feedback_id": str(uuid.uuid4()),
+        }
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: mock_db
+
+        resp = client.post(
+            f"/v2/obd/{sid}/feedback/rag",
+            json=VALID_FEEDBACK,
+        )
+        assert resp.status_code == 201
+        assert mock_retrieve.call_args.kwargs["vehicle_model"] is None
 
     @patch("app.api.v2.endpoints.obd_analysis.retrieve_context")
     @patch("app.api.v2.endpoints.obd_analysis._insert_feedback")
@@ -1027,6 +1071,138 @@ class TestRAGFeedback:
         extra = mock_insert.call_args[0][5]
         assert extra == {"retrieved_text": None}
         mock_retrieve.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# AI diagnosis retrieval — vehicle_model scoping (APP-63, issue #157)
+# ---------------------------------------------------------------------------
+
+
+def _diagnose_db(vehicle_model):
+    """Build a mock DB whose session row has the given vehicle_model.
+
+    The row has a parsed summary with a rag_query and no cached
+    diagnosis, so POST /diagnose reaches the RAG retrieval step.
+    """
+    mock_db = MagicMock()
+    mock_session_row = MagicMock()
+    mock_session_row.parsed_summary_payload = FAKE_PARSED_SUMMARY
+    mock_session_row.diagnosis_text = None
+    mock_session_row.premium_diagnosis_text = None
+    mock_session_row.vehicle_model = vehicle_model
+    mock_db.query.return_value.filter.return_value.first.return_value = (
+        mock_session_row
+    )
+    return mock_db
+
+
+async def _fake_token_stream(*args, **kwargs):
+    """Yield a minimal fake LLM token stream."""
+    yield "diagnosis "
+    yield "text"
+
+
+class TestDiagnoseRetrievalVehicleFilter:
+    """POST /diagnose must scope RAG retrieval to the session vehicle.
+
+    Regression tests for issue #157: production OBD diagnose used to
+    call retrieve_context with no vehicle_model filter, so a Yamaha
+    brake query pulled Toyota Corolla manual chunks into the LLM
+    context (cross-manual contamination).
+    """
+
+    @patch("app.api.v2.endpoints.obd_analysis._store_diagnosis")
+    @patch("app.api.v2.endpoints.obd_analysis._expert_client")
+    @patch("app.api.v2.endpoints.obd_analysis.retrieve_context")
+    def test_diagnose_passes_session_vehicle_model_to_retrieval(
+        self, mock_retrieve, mock_client, mock_store, client, app_ref,
+    ):
+        """retrieve_context receives the session's vehicle_model."""
+        from app.rag.retrieve import RetrievalResult as RR
+
+        sid = uuid.uuid4()
+        mock_retrieve.return_value = [
+            RR(text="Yamaha brake chunk", score=0.9, doc_id="yam1",
+               source_type="pdf", section_title="Brakes", chunk_index=0),
+        ]
+        mock_client.generate_obd_diagnosis_stream.side_effect = (
+            lambda *a, **k: _fake_token_stream()
+        )
+        mock_store.return_value = uuid.uuid4()
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = (
+            lambda: _diagnose_db("TRICITY155")
+        )
+
+        resp = client.post(f"/v2/obd/{sid}/diagnose")
+        assert resp.status_code == 200
+        assert "event: done" in resp.text
+        assert (
+            mock_retrieve.call_args.kwargs["vehicle_model"]
+            == "TRICITY155"
+        )
+        # Retrieved chunk made it into the LLM context.
+        context_arg = (
+            mock_client.generate_obd_diagnosis_stream.call_args[0][1]
+        )
+        assert "Yamaha brake chunk" in context_arg
+
+    @patch("app.api.v2.endpoints.obd_analysis._store_diagnosis")
+    @patch("app.api.v2.endpoints.obd_analysis._expert_client")
+    @patch("app.api.v2.endpoints.obd_analysis.retrieve_context")
+    def test_diagnose_unfiltered_when_session_lacks_vehicle_model(
+        self, mock_retrieve, mock_client, mock_store, client, app_ref,
+    ):
+        """Historical sessions without vehicle_model stay unfiltered."""
+        sid = uuid.uuid4()
+        mock_retrieve.return_value = []
+        mock_client.generate_obd_diagnosis_stream.side_effect = (
+            lambda *a, **k: _fake_token_stream()
+        )
+        mock_store.return_value = uuid.uuid4()
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = lambda: _diagnose_db(None)
+
+        resp = client.post(f"/v2/obd/{sid}/diagnose")
+        assert resp.status_code == 200
+        assert "event: done" in resp.text
+        assert mock_retrieve.call_args.kwargs["vehicle_model"] is None
+
+    @patch("app.api.v2.endpoints.obd_analysis._store_diagnosis")
+    @patch("app.api.v2.endpoints.obd_analysis._expert_client")
+    @patch("app.api.v2.endpoints.obd_analysis.retrieve_context")
+    def test_diagnose_degrades_gracefully_on_empty_filtered_retrieval(
+        self, mock_retrieve, mock_client, mock_store, client, app_ref,
+    ):
+        """Zero filtered chunks: diagnosis still streams, empty context.
+
+        With a small corpus the vehicle_model filter can return no
+        rows (see issue #156); the stream must degrade exactly like
+        the existing no-context path instead of failing.
+        """
+        sid = uuid.uuid4()
+        mock_retrieve.return_value = []
+        mock_client.generate_obd_diagnosis_stream.side_effect = (
+            lambda *a, **k: _fake_token_stream()
+        )
+        mock_store.return_value = uuid.uuid4()
+
+        from app.api.deps import get_db
+        app_ref.dependency_overrides[get_db] = (
+            lambda: _diagnose_db("TRICITY155")
+        )
+
+        resp = client.post(f"/v2/obd/{sid}/diagnose")
+        assert resp.status_code == 200
+        assert "event: done" in resp.text
+        # LLM was invoked with an empty context string, same as the
+        # pre-existing no-context degradation path.
+        context_arg = (
+            mock_client.generate_obd_diagnosis_stream.call_args[0][1]
+        )
+        assert context_arg == ""
 
 
 # -----------------------------------------------------------
