@@ -70,6 +70,18 @@ Runs on the PolyU GPU server (`ssh polyu-gpu`) against local Ollama + pgvector +
 - After a server `down`+`up`, the local LLM is evicted — warm it (`CLAUDE.md` deploy step 10) before timing anything.
 - **Restore the server to `main` when done** (`CLAUDE.md` step 5).
 
+#### Embedding-client / event-loop trap (T17, #160 — resolved, eval-side only)
+
+The first combined run silently retrieved **0 chunks on 15/30 RAG entries in an alternating pattern**. Root cause: the production `embedding_service` (`app/rag/embedding.py`) reuses one module-level `httpx.AsyncClient` for connection pooling. Under pytest-asyncio each test runs in its **own event loop**, so the pooled client stays bound to whichever loop first created it; once that loop closes, calls from later tests' loops die inside `get_embedding()`'s broad exception handler and retrieval silently returns `[]`. The alternating pattern is the tell-tale — whether a test's loop matched the client's birth loop flip-flopped across the suite.
+
+**Fix location: the eval adapter only.** `tests/harness/evals/rag_runner.py::_embed_query` embeds with a **fresh per-call `httpx.AsyncClient`** created in the current loop, sidestepping cross-loop reuse. Do-not list:
+
+- Do **not** swap the eval adapter back to the production singleton "for consistency" — that reintroduces the 15/30 silent zeroing.
+- Do **not** "fix forward" `app/rag/embedding.py` — production runs a single long-lived event loop, where the pooled singleton is correct and faster. There is nothing to fix in production.
+- If a future eval report shows alternating zero-retrievals again, suspect a shared async client (some new code path reusing a loop-bound client) before suspecting the corpus.
+
+Full details live in the docstring on `_embed_query` and the guard comment above the singleton in `app/rag/embedding.py`.
+
 ### One golden rule for this backlog
 Phase-1/2 tickets change how scores are computed or what the agent can do. **Do not re-run the full eval (or re-pin thresholds) per ticket.** Land the offline-verified change, then the **single** clean re-baseline at #155 produces the comparable number. The first-round `phase6_baseline_eval.json` stays the labelled "v1, confounded" reference.
 
@@ -150,4 +162,4 @@ After Phase 1–2, the re-baselined number (T18) **will not be comparable** to t
 - **T7** — structural-floor terms decision — **#153**: **rebalanced** (not just documented). `exploration_cost` demoted to reported-only (weight 0.05 → **0.00** — an agent-only efficiency dim that handed RAG a free 0.05 via `(1 - cost)` and, at agent mean cost 0.753, actually taxed the agent; same treatment as `trajectory_efficiency`), `value_accuracy` halved 0.10 → **0.05** (stays weighted so fabricated OBD numbers cost; the manual lane's neutral 1.0 was free credit in both lanes — first-round mean 1.000/1.000). The freed 0.10 went back to `section_recall` 0.20 → **0.25** and `fact_recall` 0.15 → **0.20** (reversing the 2026-05-17 trims that funded `value_accuracy`). Zero-content floor drops ~0.40 → ~0.30; the residual (vacuous `claim_precision` 0.10 + saturated `hallucination_penalty` 0.15 + neutral `value_accuracy` 0.05) is documented in the `metrics.py` weight-table comment and left for the #155 re-baseline. Both lanes' absolute scores shift down (projected on first-round data: agent 0.590 → ~0.577, RAG 0.337 → ~0.251) — expected; #155 re-pins thresholds. Pinned by `TestStructuralFloorRebalance` in `test_metrics.py`.
 - **T1** — raise the agent budget — **#143** (merged): `manual_agent.py` `_DEFAULT_MAX_ITERATIONS` 8 → 12 and `_DEFAULT_TIMEOUT` 120 → 240 s (`_DEFAULT_MAX_TOKENS` reviewed, left at 12288 — no run hit the per-call cap). Fixes the 19/30 budget-exhaustion failures (13 wall-timeouts at 5-7 iters + 6 iter-cap hits). Config-only; defaults pinned by `TestManualAgentConfigDefaults`. **Full-eval wall-time roughly doubles** as a result — manual-lane runs that were cut off now run to completion (already reflected in the "~2× after T1" note in the "Running the FULL eval" section above).
 - Identifier drift MWS-150-A ↔ TRICITY155 — **APP-61** (#141/#142, merged): the manual now carries a `factory_code` alias; the agent matches a question by either name (verified on the server).
-- Eval embedding-client zeroing 15/30 — fixed in the eval adapter (`rag_runner._embed_query`); see T17 for the doc-only note.
+- Eval embedding-client zeroing 15/30 — fixed in the eval adapter (`rag_runner._embed_query`). **T17 (#160) resolved**: the workaround is now documented in the "Embedding-client / event-loop trap" gotcha above plus code comments on `_embed_query` and the `app/rag/embedding.py` singleton (doc-only; production untouched by design).

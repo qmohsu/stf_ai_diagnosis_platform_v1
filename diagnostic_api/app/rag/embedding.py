@@ -87,5 +87,18 @@ class EmbeddingService:
             return []
 
 
-# Singleton
+# Singleton — one pooled ``httpx.AsyncClient`` for the app's single
+# long-lived event loop.  This lifecycle is CORRECT for production;
+# do not change it on behalf of test environments.
+#
+# Guard note (HARNESS-23 T17, issue #160): this singleton breaks
+# under pytest-asyncio, where each test runs in its own event loop —
+# the pooled client stays bound to the loop that first created it,
+# so calls from later loops fail inside ``get_embedding()``'s broad
+# exception handler and silently return ``[]`` (observed as
+# alternating 0-chunk retrievals on 15/30 RAG eval entries,
+# 2026-06-20).  The eval suite therefore embeds via its own
+# per-call client:
+# ``tests/harness/evals/rag_runner.py::_embed_query``.
+# Keep eval-side fixes there; do NOT "fix" this module for tests.
 embedding_service = EmbeddingService()
