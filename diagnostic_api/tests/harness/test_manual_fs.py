@@ -570,7 +570,7 @@ class TestPromoteUnheadedTitles:
             promote_unheaded_titles,
         )
         out = promote_unheaded_titles(self._REAL_CASE)
-        assert out.startswith("#### ")
+        assert out.startswith("### ")
         assert "液壓煞車" in out
         assert "<span" not in out
 
@@ -660,3 +660,79 @@ class TestPromoteUnheadedTitles:
         once = promote_unheaded_titles(md)
         assert promote_unheaded_titles(once) == once
         assert once.split("\n")[0] == md.split("\n")[0]
+
+    def test_instruction_sentences_not_promoted(self) -> None:
+        """Live-census false positives stay unpromoted: lettered
+        sub-steps, quoted tool callouts, imperative sentences."""
+        from app.harness_tools.manual_fs import (
+            promote_unheaded_titles,
+        )
+        for line in (
+            '<span id="page-9-0"></span>a. 用數位三用電錶量測電阻。',
+            '<span id="page-9-0"></span>以轉向螺帽扳手 "3" 拆卸環螺帽',
+            '<span id="page-9-0"></span>確認拉出器位於轉子中心上。',
+        ):
+            assert promote_unheaded_titles(line) == line
+
+    def test_promoted_level_visible_at_default_toc_depth(
+        self,
+    ) -> None:
+        """Promotion is level 3 — get_manual_toc default
+        max_depth=3 must show it (#### stayed hidden)."""
+        from app.harness_tools.manual_fs import (
+            _clean_md,
+            parse_heading_tree,
+            promote_unheaded_titles,
+        )
+        md = "## 前煞車\n\n" + self._REAL_CASE + "\n\nsteps\n"
+        tree = parse_heading_tree(
+            _clean_md(promote_unheaded_titles(md)),
+        )
+        child = tree[0].children[0]
+        assert child.level == 3
+
+
+class TestWarningBannerFilter:
+    """注意/警告 callout boxes are banners, not sections (#186):
+    as pseudo-headings they sliced real sections' bodies (the
+    promoted bleed title had an EMPTY body until filtered)."""
+
+    def test_banners_excluded_from_tree(self) -> None:
+        """### 注 意 / ## 警 告 produce no heading nodes."""
+        from app.harness_tools.manual_fs import parse_heading_tree
+        md = "## 前煞車\n\nbody\n\n### 注 意\n\n小心\n\n## 警 告\n\n危險\n"
+        tree = parse_heading_tree(md)
+        titles = [n.title for n in tree]
+        assert titles == ["前煞車"]
+        assert tree[0].children == []
+
+    def test_section_spans_through_banners(self) -> None:
+        """A promoted title's body now extends past banner lines
+        to the next real heading — the end-to-end #186 case."""
+        from app.harness_tools.manual_fs import (
+            _clean_md,
+            extract_section,
+            promote_unheaded_titles,
+        )
+        md = (
+            "## 前煞車\n\nintro\n\n"
+            '<span id="page-91-4"></span>液壓煞車系統空氣的釋放\n\n'
+            "## 警 告\n\n戴上護目鏡\n\n"
+            "a. 將透明塑膠軟管連接到空氣釋放螺絲。\n\n"
+            "## 後煞車\n\nother\n"
+        )
+        promoted = _clean_md(promote_unheaded_titles(md))
+        sec = extract_section(
+            promoted, "液壓煞車系統空氣的釋放", True,
+        )
+        assert sec is not None
+        assert "透明塑膠軟管" in sec
+        assert "戴上護目鏡" in sec
+
+    def test_banner_like_real_titles_survive(self) -> None:
+        """Titles merely CONTAINING 注意/警告 are kept — only the
+        bare banner words are filtered."""
+        from app.harness_tools.manual_fs import parse_heading_tree
+        md = "## 使用注意事項\n\nbody\n"
+        tree = parse_heading_tree(md)
+        assert [n.title for n in tree] == ["使用注意事項"]

@@ -41,6 +41,16 @@ _MAX_HEADING_CHARS = 150
 _PROCEDURE_STEP_RE = re.compile(
     r"^\s*\d+\.\s+\S{1,40}:?\s*$"
 )
+# Marker also renders the manual's 注意/警告 callout boxes as
+# headings (``### 注 意`` / ``## 警 告``).  They are banners, not
+# sections: as level-2/3 "headings" they arbitrarily slice real
+# sections' bodies (#186: the promoted bleed-procedure title had an
+# EMPTY body because a ``## 警 告`` banner two lines later
+# terminated it).  Filtering them lets sections span to the next
+# real heading — strictly more complete section text.
+_WARNING_BANNER_RE = re.compile(
+    r"^\s*(?:注\s*意|警\s*告)\s*$"
+)
 
 
 def _is_real_heading(title: str) -> bool:
@@ -64,6 +74,8 @@ def _is_real_heading(title: str) -> bool:
     if len(stripped) > _MAX_HEADING_CHARS:
         return False
     if _PROCEDURE_STEP_RE.match(stripped):
+        return False
+    if _WARNING_BANNER_RE.match(stripped):
         return False
     return True
 
@@ -119,10 +131,12 @@ _MAX_PROMOTED_TITLE_CHARS = 40
 """Real unheaded titles are short.  Longer span-prefixed lines are
 body prose that happens to start a page — never promote those."""
 
-_PROMOTED_HEADING_PREFIX = "#### "
-"""Fixed deep level: promoted titles nest under any real chapter
-heading (``#``-``###``) without restructuring the top of the tree.
-Parent reads with ``include_subsections=true`` keep covering them."""
+_PROMOTED_HEADING_PREFIX = "### "
+"""Fixed level 3: visible at ``get_manual_toc``'s default
+``max_depth=3`` (a ``####`` promotion would stay hidden — the
+exact failure being fixed), while still nesting under the ``#`` /
+``##`` chapter headings.  Parent reads with
+``include_subsections=true`` keep covering promoted titles."""
 
 
 def _promotable_title(line: str) -> Optional[str]:
@@ -157,7 +171,19 @@ def _promotable_title(line: str) -> Optional[str]:
         return None
     if _PROCEDURE_STEP_RE.match(title):
         return None
+    if _WARNING_BANNER_RE.match(title):
+        return None
     if title[0] in "-*•![(":
+        return None
+    # Instruction sentences, not titles (live census, #186):
+    # lettered sub-steps ("a. 用數位三用電錶量測…"), tool-callout
+    # sentences with quoted part numbers (以轉向螺帽扳手 "3" 拆卸…),
+    # and imperative sentences ending with a CJK full stop.
+    if re.match(r"^[a-zA-Z][.、]", title):
+        return None
+    if '"' in title:
+        return None
+    if title.endswith("。"):
         return None
     return title
 
