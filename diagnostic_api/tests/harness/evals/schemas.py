@@ -266,7 +266,10 @@ class GoldenEntry(BaseModel):
             healthy log) and ``dtc_decode`` entries where the agent
             should pivot to "no decoder available" rather than
             fabricate a translation.  Always ``False`` for manual
-            entries.
+            entries — the manual lane's no-evidence signal is
+            ``question_type == "adversarial"``.  Both signals are
+            consulted by ``judge_prompts._is_no_evidence_entry``
+            so the judge credits a correct decline (#146).
         notes: Free-form reviewer comments.
     """
 
@@ -504,7 +507,13 @@ class Grade(BaseModel):
         answer_quality: LLM-judged 0.0–1.0 rating of the
             answer's correctness, completeness, and clarity
             against ``golden_summary``.  RAGAs / G-Eval style.
-            The only non-deterministic metric.
+            The only non-deterministic metric.  On no-evidence /
+            false-premise entries (``question_type`` adversarial
+            in either lane, or ``expected_no_evidence=True``) the
+            judge is told the correct response is a decline and
+            rates the QUALITY OF THE DECLINE (#146): an explicit,
+            correct refusal that names the premise error scores
+            high; fabricating an answer scores ≤ 0.2.
         trajectory_efficiency: Agent-only.
             ``min(1.0, expected_calls / max(actual_calls,
             expected_calls))`` with brute-force-detection guard.

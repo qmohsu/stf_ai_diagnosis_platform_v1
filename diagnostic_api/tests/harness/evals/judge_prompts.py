@@ -130,10 +130,25 @@ isn't present in the output.
 
 ## Special cases
 
-- For ADVERSARIAL questions (where the golden indicates the
-  manual cannot answer), a correct refusal scores 1.0 on
-  answer_quality.  A fabricated answer scores ≤ 0.2 regardless
-  of how confident it sounds.
+- The user message contains an ANSWERABILITY section.  When it
+  marks the entry NO-EVIDENCE / FALSE-PREMISE (the golden
+  establishes the source CANNOT answer the question as asked —
+  the premise is wrong, or the evidence does not exist), the
+  correct response is an explicit decline, and answer_quality
+  rates the QUALITY OF THE DECLINE:
+    - 0.9–1.0 — explicit, correct decline: names the false
+      premise or missing evidence, matches the golden's
+      corrective substance (what the source actually documents
+      instead), and fabricates nothing.
+    - 0.5–0.8 — declines, but weakly: hedged, buries the
+      premise error, or omits the golden's corrective facts.
+    - ≤ 0.2 — answers anyway: fabricates a spec, procedure, or
+      diagnosis, or validates the false premise — regardless of
+      how confident it sounds.
+  Do NOT score a correct decline as "no usable content" — on a
+  NO-EVIDENCE entry the decline IS the usable content.
+- A refusal on a NORMAL entry (where the golden shows the
+  source can answer) still scores 0.0.
 - For RAG outputs (no synthesised summary, just retrieved
   chunks): grade as if a technician were reading the chunks
   directly.  If the right chunk is in the retrieval set, the
@@ -196,6 +211,45 @@ def _format_chunk_summary(
     return "\n".join(lines)
 
 
+def _is_no_evidence_entry(entry: GoldenEntry) -> bool:
+    """Whether the golden expects a decline rather than an answer.
+
+    True for adversarial entries in either lane (the manual /
+    OBD data cannot answer the question as asked) and for entries
+    explicitly flagged ``expected_no_evidence`` (OBD lane).  The
+    manual lane has no dedicated flag — ``question_type ==
+    "adversarial"`` is its authoring-time signal.
+
+    Args:
+        entry: Golden reference.
+
+    Returns:
+        True when the correct system response is an explicit,
+        reasoned decline.
+    """
+    return (
+        entry.question_type in ("adversarial", "adversarial_obd")
+        or entry.expected_no_evidence
+    )
+
+
+_ANSWERABILITY_NO_EVIDENCE = """\
+NO-EVIDENCE / FALSE-PREMISE entry: the golden establishes that the
+source material CANNOT answer this question as asked (the premise
+is wrong, or the evidence does not exist).  The CORRECT response
+is an explicit decline that names the premise error or missing
+evidence and states what the source actually documents.  Score
+answer_quality on the quality of the decline per the system
+prompt's Special cases — a correct decline is a HIGH score, and
+an answer that fabricates content or validates the premise is a
+LOW score."""
+
+
+_ANSWERABILITY_NORMAL = """\
+Normal entry: the source material can answer this question.  A
+refusal or "not found" response scores 0.0 on answer_quality."""
+
+
 def _format_pitfall_directives(directives: List[str]) -> str:
     """Numbered list of pitfall directives, or a "none" marker.
 
@@ -223,6 +277,13 @@ def build_user_prompt(
     (against ``golden_summary``) AND pitfall_violations (against
     the directives).
 
+    An ANSWERABILITY section tells the judge whether the golden
+    expects an answer or a decline (#146): adversarial /
+    ``expected_no_evidence`` entries are marked NO-EVIDENCE /
+    FALSE-PREMISE so a correct explicit decline earns a high
+    ``answer_quality`` instead of being scored as an empty
+    answer; fabricating an answer on such entries scores low.
+
     Args:
         entry: Golden reference.
         run: System output (agent or RAG, both unified into
@@ -245,9 +306,17 @@ def build_user_prompt(
         ', '.join(run.read_slugs) if run.read_slugs else '(none)'
     )
     pitfall_block = _format_pitfall_directives(entry.pitfall_directives)
+    answerability_block = (
+        _ANSWERABILITY_NO_EVIDENCE
+        if _is_no_evidence_entry(entry)
+        else _ANSWERABILITY_NORMAL
+    )
     return f"""\
 ## QUESTION
 {entry.question}
+
+## ANSWERABILITY
+{answerability_block}
 
 ## GOLDEN ANSWER
 {golden_summary}
