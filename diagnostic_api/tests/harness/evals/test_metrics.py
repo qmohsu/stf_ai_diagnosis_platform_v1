@@ -23,7 +23,10 @@ import pytest
 from tests.harness.evals.metrics import (
     DEFAULT_OVERALL_WEIGHTS,
     DeterministicMetrics,
+    _covered_expected_slugs,
     _is_obd_lane,
+    _normalize_slug,
+    _quote_in_text,
     compute_deterministic_metrics,
     compute_overall,
 )
@@ -383,3 +386,206 @@ def test_deterministic_metrics_default_value_accuracy():
         trajectory_efficiency=1.0,
     )
     assert m.value_accuracy == pytest.approx(1.0)
+
+
+# ── Slug-tolerant matching (HARNESS-23 T4, #145) ──────────────────
+
+
+class TestNormalizeSlug:
+    """``_normalize_slug`` collapses cosmetic slug drift."""
+
+    def test_separator_and_case_drift_normalize_equal(self):
+        """Same section, different separators/case → equal."""
+        assert _normalize_slug("Cooling_System-Coolant_Level") == (
+            _normalize_slug("cooling-system-coolant-level")
+        )
+
+    def test_fullwidth_folds_to_halfwidth(self):
+        """NFKC folds full-width forms so ``ＲＰＭ`` == ``rpm``."""
+        assert _normalize_slug("ＲＰＭ") == _normalize_slug("rpm")
+
+    def test_cjk_preserved(self):
+        """CJK letters survive normalisation (not stripped)."""
+        assert _normalize_slug("冷却系统-1") == "冷却系统1"
+
+    def test_trailing_disambiguator_kept_distinct(self):
+        """A ``-2`` disambiguator is a real distinction, not
+        cosmetic — normalisation must NOT merge it away."""
+        assert _normalize_slug("保养规范") != _normalize_slug(
+            "保养规范-2",
+        )
+
+    def test_empty_input(self):
+        """Empty/None slug normalises to empty string."""
+        assert _normalize_slug("") == ""
+
+
+class TestQuoteInText:
+    """``_quote_in_text`` does ws-normalised, case-insensitive
+    substring matching (mirrors ``fact_recall``)."""
+
+    def test_line_wrapped_cjk_quote_matches(self):
+        """A quote split by a source line break still matches its
+        unwrapped occurrence in the output."""
+        quote = "冷却液温度感知器的电阻"
+        text = "根据手册，冷却液温度感知\n器的电阻应为若干欧姆。"
+        assert _quote_in_text(quote, text) is True
+
+    def test_absent_quote_does_not_match(self):
+        assert _quote_in_text("扭矩为 15 Nm", "完全无关的内容") is False
+
+    def test_empty_quote_or_text(self):
+        assert _quote_in_text("", "anything") is False
+        assert _quote_in_text("something", "") is False
+
+
+class TestCoveredExpectedSlugs:
+    """``_covered_expected_slugs`` resolves the tolerant match."""
+
+    def test_normalized_slug_match(self):
+        """Path-variant slug (separator/case drift) is covered."""
+        covered = _covered_expected_slugs(
+            expected=["cooling-system-coolant-level"],
+            golden_citations=[],
+            surfaced_slugs=["Cooling_System-Coolant_Level"],
+            surfaced_text="",
+        )
+        assert covered == {"cooling-system-coolant-level"}
+
+    def test_quote_containment_rescues_unmatched_slug(self):
+        """Different slug, but the golden quote is in the surfaced
+        text → the section is covered."""
+        covered = _covered_expected_slugs(
+            expected=["冷却液温度感知器检查"],
+            golden_citations=[
+                GoldenCitation(
+                    manual_id="MWS150A_Service_Manual",
+                    slug="冷却液温度感知器检查",
+                    quote="冷却液温度感知器的电阻",
+                ),
+            ],
+            surfaced_slugs=["agent-rendered-something-else"],
+            surfaced_text="手册指出 冷却液温度感知器的电阻 约为若干。",
+        )
+        assert covered == {"冷却液温度感知器检查"}
+
+    def test_no_match_no_quote_not_covered(self):
+        """Genuinely absent section stays uncovered."""
+        covered = _covered_expected_slugs(
+            expected=["real-section"],
+            golden_citations=[
+                GoldenCitation(
+                    manual_id="m",
+                    slug="real-section",
+                    quote="the torque spec is 15 Nm",
+                ),
+            ],
+            surfaced_slugs=["unrelated-section"],
+            surfaced_text="I could not find relevant information.",
+        )
+        assert covered == set()
+
+    def test_quote_only_rescues_its_own_slug(self):
+        """A quote credits the expected slug it documents, not a
+        different expected slug that has no quote of its own."""
+        covered = _covered_expected_slugs(
+            expected=["slug-a", "slug-b"],
+            golden_citations=[
+                GoldenCitation(
+                    manual_id="m", slug="slug-a", quote="alpha fact",
+                ),
+            ],
+            surfaced_slugs=[],
+            surfaced_text="the alpha fact is stated here",
+        )
+        assert covered == {"slug-a"}
+
+
+class TestSlugTolerantSectionRecall:
+    """End-to-end: slug-tolerant matching in
+    ``compute_deterministic_metrics`` (manual lane)."""
+
+    def _entry(self, quote: str) -> GoldenEntry:
+        return GoldenEntry(
+            id="lookup-slug-tolerant",
+            category="component",
+            question_type="lookup",
+            difficulty="easy",
+            question="冷却液温度感知器的电阻是多少？",
+            golden_summary="约若干欧姆。",
+            golden_citations=[
+                GoldenCitation(
+                    manual_id="MWS150A_Service_Manual",
+                    slug="冷却液温度感知器检查",
+                    quote=quote,
+                ),
+            ],
+            expected_recall_slugs=["冷却液温度感知器检查"],
+        )
+
+    def test_pathvariant_slug_credited_not_zero(self):
+        """Correct answer whose claimed slug is a separator/case
+        variant of the golden slug: recall AND citation full
+        credit (the #145 regression — was 0.0 / 0.3)."""
+        entry = self._entry(quote="冷却液温度感知器的电阻")
+        run = SystemRunResult(
+            system_label="manual_agent",
+            question=entry.question,
+            output_text="冷却液温度感知器的电阻约为若干欧姆。",
+            # Whitespace/order drift vs the golden slug.
+            claim_slugs=["冷却液温度感知器 检查"],
+            read_slugs=["冷却液温度感知器 检查"],
+        )
+        metrics = compute_deterministic_metrics(entry, run)
+        assert metrics.section_recall == pytest.approx(1.0)
+        assert metrics.citation_quality == pytest.approx(1.0)
+
+    def test_quote_in_output_credits_when_slug_differs(self):
+        """Agent's own slug rendering differs entirely, but its
+        deliverable quotes the golden sentence → full credit."""
+        entry = self._entry(quote="冷却液温度感知器的电阻")
+        run = SystemRunResult(
+            system_label="manual_agent",
+            question=entry.question,
+            output_text=(
+                "根据手册，冷却液温度感知器的电阻应为若干欧姆。"
+            ),
+            claim_slugs=["agent-section-17"],
+            read_slugs=["agent-section-17"],
+        )
+        metrics = compute_deterministic_metrics(entry, run)
+        assert metrics.section_recall == pytest.approx(1.0)
+        assert metrics.citation_quality == pytest.approx(1.0)
+
+    def test_genuinely_wrong_section_still_penalised(self):
+        """Guardrail: a wrong section that neither slug-matches nor
+        quotes the golden must still score low — the fix must not
+        over-credit."""
+        entry = self._entry(quote="冷却液温度感知器的电阻")
+        run = SystemRunResult(
+            system_label="manual_agent",
+            question=entry.question,
+            output_text="这是完全无关的内容，未提及电阻。",
+            claim_slugs=["无关章节"],
+            read_slugs=["无关章节"],
+        )
+        metrics = compute_deterministic_metrics(entry, run)
+        assert metrics.section_recall == pytest.approx(0.0)
+        # Claimed a section, but it's wrong → 0.3, not 1.0.
+        assert metrics.citation_quality == pytest.approx(0.3)
+
+    def test_cited_nothing_stays_zero_even_if_quote_in_output(self):
+        """Guardrail: quote-in-text must not manufacture a citation
+        for a system that cited nothing.  ``citation_quality``
+        stays 0.0 (cited nothing) even though ``section_recall``
+        credits the surfaced content."""
+        entry = self._entry(quote="冷却液温度感知器的电阻")
+        run = SystemRunResult(
+            system_label="manual_agent",
+            question=entry.question,
+            output_text="冷却液温度感知器的电阻约为若干欧姆。",
+            claim_slugs=[],
+            read_slugs=[],
+        )
+        metrics = compute_deterministic_metrics(entry, run)
+        assert metrics.citation_quality == pytest.approx(0.0)
