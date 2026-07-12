@@ -37,9 +37,21 @@ python -m pytest tests/harness/test_manual_tools.py -q                          
 ```
 Add unit tests alongside your change. **Run the full eval only at the Phase-3 re-baseline gate (#155)** — not after each individual fix.
 
-### Running the FULL eval (server, ~73 min; ~2× after T1) — the correct invocation
-Runs on the PolyU GPU server (`ssh polyu-gpu`) against local Ollama + pgvector + the GLM judge. The originally-documented command was wrong three ways; use this:
-1. Deploy your branch to the server per the `CLAUDE.md` "Post-Implementation Verification" loop (checkout branch → rebuild `diagnostic-api` → `alembic upgrade head` if there's a migration).
+### Running the FULL eval (server, ~65 min at the v2 re-baseline) — use the script
+Runs on the PolyU GPU server (`ssh polyu-gpu`) against local Ollama + pgvector + the GLM judge. **T16 (#154) codified the whole invocation** in `diagnostic_api/scripts/run_eval.sh` — use it instead of hand-assembling the `podman` command:
+```
+ssh polyu-gpu
+cd ~/stf_ai_diagnosis_platform_v1
+./diagnostic_api/scripts/run_eval.sh                     # both lanes, full 30 goldens (~65 min — run detached)
+./diagnostic_api/scripts/run_eval.sh --smoke             # plumbing check: 1 entry per question_type per lane (10 tests)
+./diagnostic_api/scripts/run_eval.sh --lane manual       # one lane only (manual|rag|both)
+./diagnostic_api/scripts/run_eval.sh -k lookup-002       # raw pytest -k passthrough
+./diagnostic_api/scripts/run_eval.sh --dry-run           # print the commands instead of executing
+```
+The script fails fast if the `stf-diagnostic-api` container isn't running or the `localhost/stf-diagnostic-api:0.1.0` image is missing, treats a non-zero pytest exit as expected (below-threshold entries), and finishes by printing the newest report path + the `scp`/aggregate follow-up. `--smoke` runs the fixed subset `lookup-001, dtc-001 (procedural), cross-001, image-001, adversarial-001`.
+
+**What the script does** (the corrected manual procedure it encodes — the originally-documented command was wrong three ways):
+1. Deploy your branch to the server per the `CLAUDE.md` "Post-Implementation Verification" loop (checkout branch → rebuild `diagnostic-api` → `alembic upgrade head` if there's a migration). *(You do this; the script does steps 2–4.)*
 2. Generate the env from the **running container** (NOT `infra/.env` — the app reads `DB_*`/`LLM_*`, which compose maps from differently-named keys):
    ```
    ssh polyu-gpu "podman exec stf-diagnostic-api env | grep -E '^(DB_|LLM_|EMBEDDING_|VISION_|PREMIUM_LLM_|MANUAL_|JWT_|STRICT_MODE|LOG_|OBD_LOG_|AUDIO_|ALLOW_EXTERNAL)' > /tmp/eval.env"
