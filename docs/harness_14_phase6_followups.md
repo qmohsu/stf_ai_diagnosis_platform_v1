@@ -142,9 +142,46 @@ Legend — Effort: S/M/L. "Evidence" is the first-round datum that justifies the
 | T12 | [#156](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/156) | **Prod bug:** filtered-HNSW recall starves to 0 rows with ≥2 manuals | proven: 0 rows even at ef_search=1000 | M–L |
 | T13 | [#157](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/157) | **Prod bug:** OBD diagnose retrieves with no `vehicle_model` filter | Yamaha query returns Corolla content | S (after T12) |
 | T14 | [#158](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/158) | Weak RAG retrieval on translated-Chinese corpus | section_recall ≈ 0 on 24/30 | L |
-| T15 | [#159](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/159) | RAG lane has no synthesis step | answer_quality 0.05 | M |
+| T15 | [#159](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/159) | RAG lane has no synthesis step — **resolved: decision, no build (see "T15 decision" below)** | answer_quality 0.05 | M |
 | T17 | [#160](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/160) | Document the eval-only embedding-client workaround | 15/30 zeroed on first run | S |
 | T19 | [#161](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/161) | Decide eval CI / cadence | ~73 min, opt-in | S |
+
+### T15 decision — RAG synthesis (#159, resolved 2026-07-12: no synthesis step; lane stays the retrieval floor)
+
+**Decision.** The eval RAG lane (`tests/harness/evals/rag_runner.py`) stays
+**deliberately synthesis-free**, and no production RAG synthesis path is
+built. RAG-as-a-product is **not** a Phase 1 surface. T15 is closed as a
+documented decision with zero code change.
+
+**Rationale (three independent reasons, any one sufficient):**
+
+1. **Comparison semantics.** The lane exists as the *retrieval floor* for
+   the agent-vs-RAG comparison — "what does top-5 retrieval alone buy you?"
+   Its low `answer_quality` (0.045 first round, **0.057** at the v2
+   re-baseline #155) is the honest price of no synthesis, not a bug.
+   Adding an LLM over the chunks would turn the base of the comparison
+   into a second one-shot-LLM lane and silently redefine every
+   agent-vs-RAG delta, including the pinned thresholds (0.4 / 0.1) and the
+   v2 headline (agent 0.670 vs RAG 0.239). The ticket's own scope guard
+   says the same: the no-synthesis lane must stay the baseline.
+2. **No product surface behind it.** Nothing user-facing serves raw
+   retrieved chunks. The product surfaces — the one-shot diagnose
+   endpoints and the V2 agent (`/diagnose/agent`) — already synthesise
+   over retrieval. There is no user experiencing the 0.057; there is
+   nothing to fix in production.
+3. **Cost without a consumer.** A synthesis pass adds one LLM call per
+   eval entry (30 more calls per full run on an already ~73-min,
+   GPU-bound eval) plus a prompt to maintain and judge-calibrate — spent
+   on a lane no user sees.
+
+**Future path (recorded, NOT built): a third `rag_synth` lane.** If a
+synthesised-RAG comparison arm is ever wanted (e.g. as a paper baseline:
+"retrieval + one-shot LLM, no agency"), it is added as a **third, additive
+lane** — `rag_synth` — never by modifying the floor lane. Sketch: reuse the
+existing premium/OpenRouter client to run one synthesis call over the same
+top-5 chunks `run_rag` already retrieves, emit a normal `SystemRunResult`,
+and grade it with the identical judge + metrics so all three lanes stay
+directly comparable. That is a new ticket when (if) the paper needs it.
 
 ---
 
