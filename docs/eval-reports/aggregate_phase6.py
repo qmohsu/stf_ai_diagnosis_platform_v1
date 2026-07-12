@@ -138,7 +138,12 @@ def main(path: str) -> None:
         for lane in _LANES:
             recs = by_lane.get(lane, [])
             vals = [r["grade"].get(dim, float("nan")) for r in recs]
-            vals = [v for v in vals if not math.isnan(v)]
+            # ``None`` = N/A (#148: adversarial section_recall);
+            # excluded from the mean rather than counted as 1.0.
+            vals = [
+                v for v in vals
+                if v is not None and not math.isnan(v)
+            ]
             cells.append(f"{statistics.mean(vals):.3f}" if vals else "n/a")
         print(f"| {dim} | " + " | ".join(cells) + " |")
     print()
@@ -188,9 +193,13 @@ def main(path: str) -> None:
             ))
     rows.sort(key=lambda x: (x[0], x[1], x[2]))
     for qt, lane, overall, short_id, g, res in rows:
+        sec_rec = g["section_recall"]
+        sec_rec_cell = (
+            f"{sec_rec:.2f}" if sec_rec is not None else "n/a"
+        )
         print(
             f"| {short_id} | {qt} | {lane} | {overall:.3f} | "
-            f"{g['section_recall']:.2f} | {g['fact_recall']:.2f} | "
+            f"{sec_rec_cell} | {g['fact_recall']:.2f} | "
             f"{g['hallucination_penalty']:.2f} | "
             f"{g['citation_quality']:.2f} | {g['answer_quality']:.2f} | "
             f"{res.get('stopped_reason', '?')} | "

@@ -289,3 +289,24 @@ def test_grade_round_trip_unchanged():
     )
     decoded = Grade.model_validate_json(grade.model_dump_json())
     assert decoded == grade
+
+
+def test_grade_section_recall_accepts_none_na():
+    """``section_recall=None`` (N/A for adversarial entries with
+    empty ``expected_recall_slugs``, #148) validates and survives
+    a JSON round-trip as ``null``."""
+    grade = Grade(
+        section_recall=None,
+        claim_precision=1.0,
+        exploration_cost=0.0,
+        fact_recall=1.0,
+        fact_density=1.0,
+        hallucination_penalty=1.0,
+        citation_quality=1.0,
+        answer_quality=1.0,
+        overall=1.0,
+        reasoning="Correct decline on an unanswerable question.",
+    )
+    decoded = Grade.model_validate_json(grade.model_dump_json())
+    assert decoded.section_recall is None
+    assert decoded == grade

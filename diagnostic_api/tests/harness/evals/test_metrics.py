@@ -705,3 +705,132 @@ class TestFactRecallBilingual:
             ["右 前"], "the front right caliper",
         )
         assert score == pytest.approx(1.0)
+# ── Adversarial section_recall N/A (HARNESS-23 T8, #148) ──────────
+
+
+class TestAdversarialSectionRecallNa:
+    """Empty ``expected_recall_slugs`` → ``section_recall`` is N/A
+    (``None``), not a vacuous 1.0, and ``compute_overall`` excludes
+    the dimension with its weight renormalised."""
+
+    def _adversarial_entry(self) -> GoldenEntry:
+        return GoldenEntry(
+            id="adversarial-na",
+            category="adversarial",
+            question_type="adversarial",
+            difficulty="easy",
+            question="What is the coolant spec for the flux drive?",
+            golden_summary="The manual covers no such component.",
+            expected_recall_slugs=[],
+        )
+
+    def test_empty_expected_yields_none_not_one(self):
+        """The #148 fix itself: an adversarial entry (no expected
+        slugs) must NOT auto-score section_recall = 1.0."""
+        run = SystemRunResult(
+            system_label="manual_agent",
+            question="q",
+            output_text="Not found: the manual has no such section.",
+            claim_slugs=[],
+            read_slugs=["some-section-it-checked"],
+        )
+        metrics = compute_deterministic_metrics(
+            self._adversarial_entry(), run,
+        )
+        assert metrics.section_recall is None
+
+    def test_nonempty_expected_still_scored_as_float(self):
+        """Guardrail: entries WITH expected slugs keep the numeric
+        fraction — the N/A policy only applies to empty-expected."""
+        entry = GoldenEntry(
+            id="lookup-still-float",
+            category="dtc",
+            question_type="lookup",
+            difficulty="easy",
+            question="q",
+            golden_summary="s",
+            expected_recall_slugs=["dtc-p0117"],
+        )
+        run = SystemRunResult(
+            system_label="manual_agent",
+            question="q",
+            output_text="...",
+            claim_slugs=[],
+            read_slugs=[],
+        )
+        metrics = compute_deterministic_metrics(entry, run)
+        assert metrics.section_recall == pytest.approx(0.0)
+
+    def _metrics_with_na(self, **overrides) -> DeterministicMetrics:
+        base = dict(
+            section_recall=None,
+            claim_precision=1.0,
+            exploration_cost=0.0,
+            fact_recall=1.0,
+            fact_density=1.0,
+            citation_quality=1.0,
+            trajectory_efficiency=1.0,
+            value_accuracy=1.0,
+        )
+        base.update(overrides)
+        return DeterministicMetrics(**base)
+
+    def test_overall_with_na_perfect_decline_scores_one(self):
+        """A perfect adversarial decline still reaches 1.0 — the
+        excluded dim's weight is renormalised, not forfeited."""
+        overall = compute_overall(
+            self._metrics_with_na(),
+            answer_quality=1.0,
+            hallucination_penalty=1.0,
+        )
+        assert overall == pytest.approx(1.0)
+
+    def test_overall_with_na_removes_free_floor(self):
+        """A run that fails every applicable dim scores 0.0 —
+        previously the vacuous section_recall=1.0 handed it a free
+        +0.20 (the inflation #148 removes)."""
+        overall = compute_overall(
+            self._metrics_with_na(
+                claim_precision=0.0,
+                exploration_cost=1.0,  # Enters as (1 - cost).
+                fact_recall=0.0,
+                fact_density=0.0,
+                citation_quality=0.0,
+                value_accuracy=0.0,
+            ),
+            answer_quality=0.0,
+            hallucination_penalty=0.0,
+        )
+        assert overall == pytest.approx(0.0)
+
+    def test_overall_with_na_renormalises_uniform_score(self):
+        """All applicable dims at 0.5 → overall exactly 0.5; the
+        renormalisation preserves the scale of the remaining dims
+        rather than shrinking scores by the missing weight."""
+        overall = compute_overall(
+            self._metrics_with_na(
+                claim_precision=0.5,
+                exploration_cost=0.5,  # (1 - 0.5) = 0.5 term.
+                fact_recall=0.5,
+                fact_density=0.5,
+                citation_quality=0.5,
+                value_accuracy=0.5,
+            ),
+            answer_quality=0.5,
+            hallucination_penalty=0.5,
+        )
+        assert overall == pytest.approx(0.5)
+
+    def test_overall_unchanged_when_section_recall_present(self):
+        """Regression guard: numeric section_recall keeps the exact
+        pre-#148 weighted-sum behaviour."""
+        metrics = self._metrics_with_na(section_recall=0.5)
+        overall = compute_overall(
+            metrics,
+            answer_quality=1.0,
+            hallucination_penalty=1.0,
+        )
+        expected = 1.0 - (
+            DEFAULT_OVERALL_WEIGHTS["section_recall"] * 0.5
+        )
+        assert overall == pytest.approx(expected)
