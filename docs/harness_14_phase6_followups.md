@@ -144,7 +144,7 @@ Legend — Effort: S/M/L. "Evidence" is the first-round datum that justifies the
 | T14 | [#158](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/158) | Weak RAG retrieval on translated-Chinese corpus | section_recall ≈ 0 on 24/30 | L |
 | T15 | [#159](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/159) | RAG lane has no synthesis step — **resolved: decision, no build (see "T15 decision" below)** | answer_quality 0.05 | M |
 | T17 | [#160](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/160) | Document the eval-only embedding-client workaround | 15/30 zeroed on first run | S |
-| T19 | [#161](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/161) | Decide eval CI / cadence | ~73 min, opt-in | S |
+| T19 | [#161](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/161) | Decide eval CI / cadence — **resolved**, see "Eval cadence policy" below | ~65 min, opt-in | S |
 
 ### T15 decision — RAG synthesis (#159, resolved 2026-07-12: no synthesis step; lane stays the retrieval floor)
 
@@ -200,3 +200,43 @@ After Phase 1–2, the re-baselined number (T18) **will not be comparable** to t
 - **T1** — raise the agent budget — **#143** (merged): `manual_agent.py` `_DEFAULT_MAX_ITERATIONS` 8 → 12 and `_DEFAULT_TIMEOUT` 120 → 240 s (`_DEFAULT_MAX_TOKENS` reviewed, left at 12288 — no run hit the per-call cap). Fixes the 19/30 budget-exhaustion failures (13 wall-timeouts at 5-7 iters + 6 iter-cap hits). Config-only; defaults pinned by `TestManualAgentConfigDefaults`. **Full-eval wall-time roughly doubles** as a result — manual-lane runs that were cut off now run to completion (already reflected in the "~2× after T1" note in the "Running the FULL eval" section above).
 - Identifier drift MWS-150-A ↔ TRICITY155 — **APP-61** (#141/#142, merged): the manual now carries a `factory_code` alias; the agent matches a question by either name (verified on the server).
 - Eval embedding-client zeroing 15/30 — fixed in the eval adapter (`rag_runner._embed_query`). **T17 (#160) resolved**: the workaround is now documented in the "Embedding-client / event-loop trap" gotcha above plus code comments on `_embed_query` and the `app/rag/embedding.py` singleton (doc-only; production untouched by design).
+- **T19** — eval CI / cadence decision — **#161**: decided (option a + documented smoke subset, **no CI wiring**). Full policy in the "Eval cadence policy" section below.
+
+---
+
+## Eval cadence policy (T19, #161 — decided 2026-07-12)
+
+**Decision: the full eval stays manual and milestone-gated (option a), with a documented smoke-subset command for cheap pre-merge sanity on eval-touching changes. No GitHub Actions / CI wiring (options b/c rejected). Revisit only when a self-hosted runner exists on or next to the PolyU server.**
+
+### Why no CI (options b and c rejected)
+
+The repo has **no CI today** (no `.github/workflows/`), and wiring any eval lane into GitHub Actions fails on hard constraints, not preference:
+
+1. **Reachability.** Every eval lane — even a 1-entry smoke — needs the live server stack: Ollama on the PolyU GPU (`qwen3.5:27b`), pgvector with the ingested corpus, and the `infra_diagnostic_api_manuals` volume. GitHub-hosted runners cannot reach the PolyU server (local-only deployment, 127.0.0.1 binds, no public ingress to the API/DB). There is no self-hosted runner, and standing one up is its own infra ticket with security implications (a runner with repo-write inside the lab network).
+2. **Secrets + judge cost.** Grading calls `z-ai/glm-5.1` via OpenRouter using the premium key. CI wiring means putting that paid key in GitHub secrets and letting every PR (or cron tick) spend it unattended.
+3. **GPU tenancy.** The full run holds the shared GPU for ~65 min (v2 re-baseline, 2026-07-12: 64 min 42 s wall). A scheduled (cron) run would contend with other tenants at unpredictable times for no new information — the corpus, model, and code only change when a human deploys a change, so an unattended periodic run can only ever re-measure a known state.
+
+### What runs when
+
+| Tier | What | When | Cost |
+|---|---|---|---|
+| **Offline unit tests** (existing gate) | `pytest tests/harness/evals/test_metrics.py tests/harness/evals/test_judge.py tests/harness/test_manual_tools.py` | Every eval-touching change, locally, before commit | Free, seconds |
+| **Smoke subset** | `diagnostic_api/scripts/run_eval.sh --smoke` (script + flag added by #154/T16) — a small per-question-type slice of both lanes on the live server | Pre-merge sanity on changes that touch the eval *path* (runner, judge, metrics weights, golden schema, agent prompts/config) when you want an end-to-end signal without the full hour | Minutes of GPU + a handful of judge calls |
+| **Full eval (60 grades)** | `diagnostic_api/scripts/run_eval.sh` (#154), per the "Running the FULL eval" section above | **Milestones only** — see list below | ~65 min GPU tenancy + 60 judge calls |
+
+**Full-eval milestones** (the only occasions a full run is justified):
+- A re-baseline ticket (like #155) — re-pinning `_PASS_THRESHOLD` or publishing a new headline number.
+- Changes to harness/agent behaviour that plausibly move scores: agent budget (iterations/timeout), agent prompts, tool set, model swap (local LLM or judge model).
+- Golden re-promotion passes (locked-tier content changes).
+- Retrieval-stack changes on the eval path (embedding model, chunking, the exact-scan adapter).
+
+Metric-weight or judge-rubric changes alone do **not** need a fresh run: re-score the existing report offline (`docs/eval-reports/aggregate_phase6.py` + the recorded per-dimension grades), as done for #153.
+
+### Who pays what
+
+- **Judge $:** not instrumented — every `cost_usd` field in `docs/eval-reports/phase6_rebaseline_v2_eval.json` is 0.0 (the runner records local-LLM cost, which is zero; OpenRouter judge spend is billed to the premium key but not written into the report). A full run is exactly 60 GLM-5.1 judge calls; a smoke run is ~10. Per-run judge spend is small change relative to the GPU hour — if precise numbers are ever needed, instrument `judge.py` to record OpenRouter usage into the report rather than estimating.
+- **GPU time:** the real cost. ~65 min of exclusive-ish tenancy on the shared PolyU card per full run, plus the operator attention to deploy the branch, warm the model, and restore `main`.
+
+### Revisit trigger
+
+Reopen this decision **only** when a self-hosted runner exists on (or with network access to) the PolyU server. At that point the candidate upgrade is option (b): `run_eval.sh --smoke` on eval-touching PRs as a **non-blocking** signal — never the full run, and never blocking merge on a paid, GPU-bound job.
