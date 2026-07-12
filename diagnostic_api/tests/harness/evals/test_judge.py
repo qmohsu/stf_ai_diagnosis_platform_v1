@@ -33,6 +33,7 @@ from tests.harness.evals.judge_prompts import (
     JUDGE_SYSTEM_PROMPT,
     _is_no_evidence_entry,
     build_user_prompt,
+    classify_pitfall_directive,
 )
 from tests.harness.evals.schemas import (
     GoldenCitation,
@@ -580,6 +581,156 @@ class TestGradeRunAdversarialDecline:
             client=fab_client,  # type: ignore[arg-type]
         )
         assert decline_grade.overall > fab_grade.overall
+
+
+# ── Omission vs assertion directives (#147) ──────────────────────
+
+
+class TestClassifyPitfallDirective:
+    """Phrasing-based directive classification (#147)."""
+
+    def test_must_not_omit_is_omission(self) -> None:
+        """The dominant authoring pattern."""
+        assert classify_pitfall_directive(
+            "The output must not omit the thermostat-stuck-closed "
+            "cause — it's a common root cause of overheating."
+        ) == "omission"
+
+    def test_positive_requirement_is_omission(self) -> None:
+        """cross-001 style: 'must reference X' demands presence."""
+        assert classify_pitfall_directive(
+            "The output must reference the manual's 12,000 km "
+            "figure as the documented interval."
+        ) == "omission"
+
+    def test_must_not_assert_is_assertion(self) -> None:
+        """Forbidding a claim is assertion-type."""
+        assert classify_pitfall_directive(
+            "The output must not assert this is DTC P0300."
+        ) == "assertion"
+
+    def test_must_not_invent_is_assertion(self) -> None:
+        """Forbidding fabrication is assertion-type."""
+        assert classify_pitfall_directive(
+            "The output must not invent a chain-adjustment "
+            "specification."
+        ) == "assertion"
+
+    def test_keyword_mention_does_not_flip_type(self) -> None:
+        """'...the missing chain spec' inside an assertion
+        directive must NOT classify as omission — only the demand
+        phrasing counts (real adversarial-001 directive)."""
+        assert classify_pitfall_directive(
+            "The output must not return brake-system content as "
+            "a substitute for the missing chain spec."
+        ) == "assertion"
+
+    def test_empty_defaults_to_assertion(self) -> None:
+        """Conservative default: pre-#147 behaviour."""
+        assert classify_pitfall_directive("") == "assertion"
+
+
+def _mixed_directives_entry() -> GoldenEntry:
+    """Entry with one assertion + one omission directive."""
+    entry = _sample_entry()
+    entry.pitfall_directives = [
+        "The output must not assert this is DTC P0300 — that "
+        "is a misfire code, unrelated to lean-condition P0171.",
+        "The output must not omit the fuel-pressure check — it "
+        "is the manual's first-line lean-condition test.",
+    ]
+    return entry
+
+
+def _violations_payload(
+    assert_violated: bool, omit_violated: bool,
+) -> str:
+    """Judge payload marking the two mixed directives."""
+    return _judge_json(
+        0.5,
+        violations=[
+            {"directive": "must not assert P0300",
+             "violated": assert_violated,
+             "reasoning": "x"},
+            {"directive": "must not omit fuel-pressure check",
+             "violated": omit_violated,
+             "reasoning": "y"},
+        ],
+    )
+
+
+class TestOmissionDirectiveSplit:
+    """Omission violations no longer reduce hallucination_penalty
+    (#147); assertion violations still do."""
+
+    def test_prompt_tags_directive_types(self) -> None:
+        """The rendered directive list carries type tags."""
+        prompt = build_user_prompt(
+            _mixed_directives_entry(), _sample_run(),
+        )
+        assert "[assertion] The output must not assert" in prompt
+        assert "[omission] The output must not omit" in prompt
+
+    def test_system_prompt_defines_omission_rule(self) -> None:
+        """Judge instructions cover the omission verdict rule."""
+        assert "[omission]" in JUDGE_SYSTEM_PROMPT
+        assert "not mentioning IS the" in JUDGE_SYSTEM_PROMPT
+
+    @pytest.mark.asyncio
+    async def test_omission_only_violation_no_penalty(self) -> None:
+        """Violated omission directive → penalty stays 1.0."""
+        client = _FakeClient([_violations_payload(False, True)])
+        grade = await grade_run(
+            _mixed_directives_entry(), _sample_run(),
+            client=client,  # type: ignore[arg-type]
+        )
+        assert grade.hallucination_penalty == pytest.approx(1.0)
+        # ...but it is still surfaced in the report reasoning.
+        assert "Omission flags" in grade.reasoning
+        assert "Pitfall violations" not in grade.reasoning
+
+    @pytest.mark.asyncio
+    async def test_assertion_violation_still_penalised(self) -> None:
+        """Violated assertion directive → penalty 0.7."""
+        client = _FakeClient([_violations_payload(True, False)])
+        grade = await grade_run(
+            _mixed_directives_entry(), _sample_run(),
+            client=client,  # type: ignore[arg-type]
+        )
+        assert grade.hallucination_penalty == pytest.approx(0.7)
+
+    @pytest.mark.asyncio
+    async def test_mixed_violations_count_assertion_only(
+        self,
+    ) -> None:
+        """Both violated → one countable violation (0.7, not
+        0.4), and both surfaced in reasoning."""
+        client = _FakeClient([_violations_payload(True, True)])
+        grade = await grade_run(
+            _mixed_directives_entry(), _sample_run(),
+            client=client,  # type: ignore[arg-type]
+        )
+        assert grade.hallucination_penalty == pytest.approx(0.7)
+        assert "Pitfall violations (1" in grade.reasoning
+        assert "Omission flags (1" in grade.reasoning
+
+    @pytest.mark.asyncio
+    async def test_omission_still_hits_fact_recall(self) -> None:
+        """The omitted fact still costs recall: the entry's
+        must_contain term missing from output → fact_recall < 1
+        while the penalty stays clean."""
+        entry = _mixed_directives_entry()
+        entry.must_contain = ["P0171", "fuel pressure"]
+        run = _sample_run(
+            output_text="DTC P0171 indicates a lean condition.",
+        )
+        client = _FakeClient([_violations_payload(False, True)])
+        grade = await grade_run(
+            entry, run,
+            client=client,  # type: ignore[arg-type]
+        )
+        assert grade.fact_recall == pytest.approx(0.5)
+        assert grade.hallucination_penalty == pytest.approx(1.0)
 
 
 # ── Edge cases ────────────────────────────────────────────────────

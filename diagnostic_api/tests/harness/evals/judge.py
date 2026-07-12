@@ -43,6 +43,7 @@ from app.config import settings
 from tests.harness.evals.judge_prompts import (
     JUDGE_SYSTEM_PROMPT,
     build_user_prompt,
+    classify_pitfall_directive,
 )
 from tests.harness.evals.metrics import (
     DEFAULT_OVERALL_WEIGHTS,
@@ -157,13 +158,16 @@ class _JudgePayload:
         answer_quality: Float in [0, 1].
         reasoning: Free-text rationale for the answer_quality
             rating.
-        pitfall_violation_count: Number of pitfall directives the
-            judge marked as violated (0 if there were no
-            directives).
+        pitfall_violation_count: RAW number of pitfall directives
+            the judge marked as violated (0 if there were no
+            directives), regardless of directive type.  The
+            assertion-scoped count that actually drives
+            ``hallucination_penalty`` is derived downstream by
+            ``_assertion_violation_count`` (#147).
         pitfall_violation_details: Per-directive verdicts as
             ``[{"directive": str, "violated": bool, "reasoning":
             str}, ...]``.  Surfaced for the enriched-reasoning
-            block; not used in scoring.
+            block; annotated with a ``type`` key downstream.
     """
 
     def __init__(
@@ -268,6 +272,48 @@ def _parse_judge_payload(raw: str) -> _JudgePayload:
     )
 
 
+def _assertion_violation_count(
+    entry: GoldenEntry,
+    details: List[Dict[str, Any]],
+) -> int:
+    """Count violated ASSERTION-type directives; annotate details.
+
+    Omission-type directives ("must not omit X" / "must reference
+    X") demand content be PRESENT — violating one is a recall
+    failure already measured by ``fact_recall``, so it must not
+    also reduce ``hallucination_penalty`` (#147).  Each detail
+    dict gains a ``type`` key so reports can show both signals.
+
+    Directive types are resolved from ``entry.pitfall_directives``
+    by position (the judge returns one verdict per directive, in
+    order).  If the judge returned a mismatched list, falls back
+    to classifying the directive text it echoed.
+
+    Args:
+        entry: Golden reference whose ``pitfall_directives`` were
+            shown to the judge.
+        details: Parsed per-directive verdicts from the judge
+            (mutated in place: ``type`` key added).
+
+    Returns:
+        Number of violated assertion-type directives.
+    """
+    count = 0
+    for i, item in enumerate(details):
+        if i < len(entry.pitfall_directives):
+            dtype = classify_pitfall_directive(
+                entry.pitfall_directives[i],
+            )
+        else:
+            dtype = classify_pitfall_directive(
+                item.get("directive", ""),
+            )
+        item["type"] = dtype
+        if item.get("violated") and dtype == "assertion":
+            count += 1
+    return count
+
+
 # ── Judge call ────────────────────────────────────────────────────
 
 
@@ -318,6 +364,12 @@ async def rate_quality_and_pitfalls(
     client: Optional[AsyncOpenAI] = None,
 ) -> Tuple[float, str, int, List[Dict[str, Any]]]:
     """Get ``(answer_quality, reasoning, violation_count, details)``.
+
+    ``violation_count`` counts violated ASSERTION-type directives
+    only (#147) — omission-type violations are annotated in
+    ``details`` (``type`` key) but excluded from the count, so
+    they don't reduce ``hallucination_penalty`` on top of the
+    ``fact_recall`` hit they already cause.
 
     Single-retry policy: on first-try parse or API failure,
     re-prompt with a corrective nudge.  On second failure
@@ -380,7 +432,9 @@ async def rate_quality_and_pitfalls(
         return (
             payload.answer_quality,
             payload.reasoning,
-            payload.pitfall_violation_count,
+            _assertion_violation_count(
+                entry, payload.pitfall_violation_details,
+            ),
             payload.pitfall_violation_details,
         )
     except ValueError as parse_exc:
@@ -426,7 +480,9 @@ async def rate_quality_and_pitfalls(
         return (
             payload.answer_quality,
             payload.reasoning,
-            payload.pitfall_violation_count,
+            _assertion_violation_count(
+                entry, payload.pitfall_violation_details,
+            ),
             payload.pitfall_violation_details,
         )
     except ValueError as parse_exc2:
@@ -553,22 +609,39 @@ def _build_enriched_reasoning(
             f"Missing must_contain: {misses_preview}.",
         )
     # Surface only the violated directives — compliant ones are
-    # the silent default.  Caps at 3 to keep the line readable.
+    # the silent default.  Caps at 3 per class to keep the lines
+    # readable.  Assertion violations drive the penalty; omission
+    # flags are recall-side diagnostics only (#147).
+    def _preview(items: List[Dict[str, Any]]) -> str:
+        text = "; ".join(
+            f"'{(v.get('directive') or '').strip()[:60]}' "
+            f"({(v.get('reasoning') or '').strip()[:80]})"
+            for v in items[:3]
+        )
+        if len(items) > 3:
+            text += f"; +{len(items) - 3} more"
+        return text
+
     violated = [
         v for v in pitfall_violation_details
         if v.get("violated")
     ]
-    if violated:
-        preview = "; ".join(
-            f"'{(v.get('directive') or '').strip()[:60]}' "
-            f"({(v.get('reasoning') or '').strip()[:80]})"
-            for v in violated[:3]
-        )
-        if len(violated) > 3:
-            preview += f"; +{len(violated) - 3} more"
+    asserted = [
+        v for v in violated if v.get("type") != "omission"
+    ]
+    omitted = [
+        v for v in violated if v.get("type") == "omission"
+    ]
+    if asserted:
         lines.append(
-            f"Pitfall violations ({len(violated)}, "
-            f"penalty={hallucination_penalty:.2f}): {preview}.",
+            f"Pitfall violations ({len(asserted)}, "
+            f"penalty={hallucination_penalty:.2f}): "
+            f"{_preview(asserted)}.",
+        )
+    if omitted:
+        lines.append(
+            f"Omission flags ({len(omitted)}, recall-side, "
+            f"no penalty): {_preview(omitted)}.",
         )
     lines.append(
         f"Judge ({answer_quality:.2f}): {judge_reasoning}",

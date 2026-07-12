@@ -556,9 +556,14 @@ def compute_hallucination_penalty(violation_count: int) -> float:
     of system quality).
 
     Args:
-        violation_count: Number of pitfall directives the judge
-            marked as ``violated``.  Comes from
-            ``judge.rate_quality_and_pitfalls``.
+        violation_count: Number of ASSERTION-type pitfall
+            directives the judge marked as ``violated``.  Comes
+            from ``judge.rate_quality_and_pitfalls``, which
+            excludes omission-type directives ("must not omit X")
+            from the count (#147) — omission is a recall failure
+            already measured by ``fact_recall``, and counting it
+            here double-penalised it while mislabelling
+            *did-not-say-it* as *hallucinated*.
 
     Returns:
         Score in [0.1, 1.0].  Higher = fewer violations.

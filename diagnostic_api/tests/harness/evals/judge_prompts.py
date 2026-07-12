@@ -26,6 +26,7 @@ Author: Li-Ta Hsu
 
 from __future__ import annotations
 
+import re
 from typing import List
 
 from tests.harness.evals.schemas import (
@@ -110,7 +111,10 @@ empty list for `pitfall_violations`.
 
 ## Rules for pitfall_violations
 
-For each directive, "violated" should be:
+Each directive is tagged `[assertion]` or `[omission]`.  Return a
+verdict for every directive, in order, regardless of tag.
+
+For an `[assertion]` directive, "violated" should be:
 - **true** if the SYSTEM OUTPUT clearly ASSERTS, CLAIMS, IMPLIES, or
   RECOMMENDS the forbidden statement as part of its answer.
 - **false** if the SYSTEM OUTPUT does not mention the topic, OR
@@ -120,13 +124,22 @@ For each directive, "violated" should be:
       P0130–P0139")
     - cross-reference without endorsement ("see also: ...")
 
+For an `[omission]` directive (one demanding certain content be
+PRESENT), "violated" should be:
+- **true** if the required content is ABSENT from the SYSTEM
+  OUTPUT (the "does not mention the topic" rule above does NOT
+  apply — for omission directives, not mentioning IS the
+  violation).
+- **false** if the required content is present in substance,
+  even when phrased differently.
+
 Be context-aware.  A bare substring match is not enough — judge
 the SEMANTIC stance the output takes.
 
-If a directive references a domain ("don't present brake content
-as the answer") and the output's main thrust is in that wrong
-domain, mark violated=true even if the literal directive phrasing
-isn't present in the output.
+If an assertion directive references a domain ("don't present
+brake content as the answer") and the output's main thrust is in
+that wrong domain, mark violated=true even if the literal
+directive phrasing isn't present in the output.
 
 ## Special cases
 
@@ -211,6 +224,55 @@ def _format_chunk_summary(
     return "\n".join(lines)
 
 
+_OMISSION_DIRECTIVE_RE = re.compile(
+    r"must\s+not\s+(?:omit|leave\s+out|skip(?:\s+over)?|drop)\b"
+    r"|must\s+(?:also\s+)?(?:reference|include|mention|state|"
+    r"retain|preserve|cover)\b",
+    re.IGNORECASE,
+)
+"""Phrasing patterns that mark a directive as OMISSION-type.
+
+Two shapes, both demanding the PRESENCE of content:
+
+- negative-omission — ``"must not omit X"`` (also ``leave out`` /
+  ``skip`` / ``drop``), the dominant authoring pattern.
+- positive-requirement — ``"must reference X"`` (also ``include``
+  / ``mention`` / ``state`` / ...), e.g. cross-001's *"must
+  reference the manual's 12,000 km figure"*.
+
+Everything else is ASSERTION-type (the default).  Deliberately
+conservative: a mis-classified omission directive falls back to
+the pre-#147 behaviour (still penalised), whereas a loose pattern
+that swallowed assertion directives would silently weaken
+``hallucination_penalty``.  Keyword mentions like *"...the missing
+chain spec"* inside an assertion directive do NOT match — only
+the demand phrasing does."""
+
+
+def classify_pitfall_directive(directive: str) -> str:
+    """Classify a pitfall directive as ``assertion`` or ``omission``.
+
+    Assertion directives forbid the output from SAYING something
+    ("must not assert/invent/present X") — violating one means the
+    output fabricated or endorsed a wrong claim, which is what
+    ``hallucination_penalty`` measures.  Omission directives demand
+    the output CONTAIN something ("must not omit X" / "must
+    reference X") — violating one is a recall failure, already
+    measured by ``fact_recall``, and is excluded from
+    ``hallucination_penalty`` (#147).
+
+    Args:
+        directive: Directive sentence from
+            ``GoldenEntry.pitfall_directives``.
+
+    Returns:
+        ``"omission"`` or ``"assertion"``.
+    """
+    if directive and _OMISSION_DIRECTIVE_RE.search(directive):
+        return "omission"
+    return "assertion"
+
+
 def _is_no_evidence_entry(entry: GoldenEntry) -> bool:
     """Whether the golden expects a decline rather than an answer.
 
@@ -261,7 +323,8 @@ def _format_pitfall_directives(directives: List[str]) -> str:
     if not directives:
         return "  (none — return empty list for pitfall_violations)"
     return "\n".join(
-        f"  {i}. {d}" for i, d in enumerate(directives, 1)
+        f"  {i}. [{classify_pitfall_directive(d)}] {d}"
+        for i, d in enumerate(directives, 1)
     )
 
 
