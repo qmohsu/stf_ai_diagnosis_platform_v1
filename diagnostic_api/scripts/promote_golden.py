@@ -25,6 +25,18 @@ re-grading it cannot accidentally end up locked.  Pass
 ``reason`` column of ``locked/PROMOTIONS.md`` so the audit
 trail makes the situation visible.
 
+**Stable manual-identity gate (HARNESS-23 T11, GitHub Issue
+#151).**  Every ``golden_citations[].manual_id`` must be the
+ingested manual's UUID (the ``manuals.id`` primary key), never
+cover-code prose or a filename stem.  The first-round baseline
+broke because goldens named the vehicle by the cover code
+``MWS-150-A`` while the corpus stored
+``vehicle_model=TRICITY155`` — free-text identities drift;
+UUIDs don't.  This gate is a data-shape check, NOT a
+review-quality check, so ``--force`` does not bypass it: the
+candidate tier is mutable, so the correct response to a refusal
+is to fix the candidate's ``manual_id`` and re-promote.
+
 Usage::
 
     # Normal promotion — driven off an expert ≥4★ accept review
@@ -58,6 +70,7 @@ import argparse
 import hashlib
 import json
 import sys
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -259,6 +272,58 @@ def _locked_ids(locked_file: Path) -> List[str]:
     return out
 
 
+def _stable_manual_id_problems(
+    parsed: Dict[str, Any],
+) -> List[str]:
+    """Validate that citation manual ids are stable UUIDs.
+
+    HARNESS-23 T11 (GitHub Issue #151).  Goldens must reference
+    their vehicle via the ``manual_id``-linked identity — the
+    ingested manual's ``manuals.id`` UUID — not via cover-code
+    prose (``"MWS-150-A"``) or filename stems
+    (``"MWS150A_Service_Manual"``).  Free-text identities drift
+    between goldens, the DB, and manual filenames; the manual
+    UUID is the one identifier every layer shares.
+
+    Entries without ``golden_citations`` (e.g. OBD-lane entries)
+    pass vacuously — the gate only constrains citations that
+    exist.
+
+    Args:
+        parsed: The candidate entry as parsed from its JSONL
+            line.
+
+    Returns:
+        A list of human-readable problem strings; empty when the
+        entry passes the gate.
+    """
+    problems: List[str] = []
+    citations = parsed.get("golden_citations") or []
+    for idx, citation in enumerate(citations):
+        if not isinstance(citation, dict):
+            problems.append(
+                f"golden_citations[{idx}] is not an object",
+            )
+            continue
+        manual_id = citation.get("manual_id")
+        if not isinstance(manual_id, str):
+            problems.append(
+                f"golden_citations[{idx}].manual_id is missing "
+                "or not a string",
+            )
+            continue
+        try:
+            uuid.UUID(manual_id)
+        except ValueError:
+            problems.append(
+                f"golden_citations[{idx}].manual_id "
+                f"{manual_id!r} is not a manual UUID "
+                "(cover-code prose / filename stems drift; "
+                "use the manuals.id UUID)",
+            )
+    return problems
+
+
 def _format_promotions_row(
     promoted_at: str,
     entry_id: str,
@@ -337,7 +402,12 @@ def promote_entry(
     1. Candidate file must contain ``entry_id``.
     2. Locked file must NOT already contain ``entry_id`` — once
        locked, edits require cloning to a new id.
-    3. Most-recent graded review on the entry must be
+    3. Every ``golden_citations[].manual_id`` must be a stable
+       manual UUID (HARNESS-23 T11, #151) — never cover-code
+       prose or a filename stem.  NOT bypassed by ``force``:
+       the candidate tier is mutable, so fix the candidate and
+       re-promote.
+    4. Most-recent graded review on the entry must be
        ``status='accept'`` with ``star_rating >= 4`` — unless
        ``force=True``.
 
@@ -416,7 +486,28 @@ def promote_entry(
             dry_run=dry_run,
         )
 
-    # 3. Review-quality gate (unless forced).
+    # 3. Stable manual-identity gate (HARNESS-23 T11, #151).
+    #    A data-shape check, not a review-quality check — so
+    #    --force does NOT bypass it.  The candidate tier is
+    #    mutable; fix the candidate's manual_id and re-promote.
+    id_problems = _stable_manual_id_problems(parsed)
+    if id_problems:
+        return PromotionResult(
+            promoted=False,
+            entry_id=entry_id,
+            content_hash="",
+            expert_review_id=None,
+            message=(
+                "stable manual-identity gate failed "
+                "(HARNESS-23 T11, #151): "
+                + "; ".join(id_problems)
+                + ".  Fix the candidate entry to cite the "
+                "manuals.id UUID (not bypassed by --force)."
+            ),
+            dry_run=dry_run,
+        )
+
+    # 4. Review-quality gate (unless forced).
     review = None
     expert_review_id: Optional[str] = None
     if not force:
@@ -500,7 +591,7 @@ def promote_entry(
             dry_run=True,
         )
 
-    # 4. Append verbatim to the locked JSONL (keeping the
+    # 5. Append verbatim to the locked JSONL (keeping the
     #    original line bytes so future diffs against the
     #    candidate show only intentional changes).
     locked_file.parent.mkdir(parents=True, exist_ok=True)
@@ -509,7 +600,7 @@ def promote_entry(
         if not raw_line.endswith("\n"):
             f.write("\n")
 
-    # 5. Append the audit row.  Mark down style: just append
+    # 6. Append the audit row.  Mark down style: just append
     #    rows beneath the existing table.
     promotions_log.parent.mkdir(parents=True, exist_ok=True)
     with promotions_log.open(

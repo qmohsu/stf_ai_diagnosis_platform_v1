@@ -54,6 +54,37 @@ the content hash on the next consistency check and would silently
 re-score every historical eval report — exactly the drift the
 two-tier split exists to prevent.
 
+## Authoring convention: stable manual identity (HARNESS-23 T11, #151)
+
+The first-round agent-vs-RAG baseline broke because goldens named the
+vehicle by its **cover code** (`MWS-150-A`) while the corpus stored
+`vehicle_model=TRICITY155` — the agent refused 27/30 entries because
+no manual appeared to match the vehicle in the question.  APP-61
+(#141) aliased the symptom by adding `manuals.factory_code`; the
+durable fix is to never author a golden against prose identity in the
+first place.
+
+Rules when authoring or editing any golden entry:
+
+1. **`golden_citations[].manual_id` MUST be the manual's UUID** —
+   the `manuals.id` primary key (e.g.
+   `0a2ba199-665f-41aa-a106-1163cad68d16`), which is also the
+   `<manual_uuid>-` prefix of `GoldenEntry.id`.  Never a cover code
+   (`MWS-150-A`), filename stem (`MWS150A_Service_Manual`), or
+   marketing name (`TRICITY 155`).  Get the UUID from the ingested
+   manual row (`SELECT id, manufacturer, vehicle_model, factory_code
+   FROM manuals`) or the dashboard — not from the PDF cover.
+2. **Prose vehicle names in `question` / `obd_context` must resolve
+   against the corpus.**  Phrase them with an identifier the agent
+   can actually match: `manufacturer` + `vehicle_model`, or the
+   `factory_code` alias (APP-61).  Before promoting, check the
+   ingested manual row and confirm every prose identifier in the
+   entry appears on it.
+3. **Enforcement**: `scripts/promote_golden.py` refuses to promote
+   an entry whose citation `manual_id` is not a UUID.  This is a
+   data-shape gate, not a review-quality gate — `--force` does NOT
+   bypass it.  Fix the (mutable) candidate entry and re-promote.
+
 ## Lane routing
 
 Each `GoldenEntry.question_type` drives the rubric:
