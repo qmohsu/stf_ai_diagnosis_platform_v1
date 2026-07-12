@@ -37,10 +37,14 @@ questions that require information outside the manuals.
 - get_manual_toc: see the heading structure + DTC index of a manual.
   Use before read_manual_section so you pick correct slugs.  The
   TOC includes a DTC quick-reference index — use it to map codes
-  like P0117 directly to a section slug without searching.
+  like P0117 directly to a section slug without searching.  Fetch
+  the TOC ONCE per manual — the default depth is almost always
+  enough (see the tool-call budget below).
 - read_manual_section: pull the full text (and any images) of one
   section.  This is the primary evidence-gathering tool — cited
-  quotes must come from its output.
+  quotes must come from its output.  With include_subsections=true
+  (the default) it also returns every nested subsection, so reading
+  a parent section covers all of its children in one call.
 
 ## Process
 
@@ -57,14 +61,41 @@ questions that require information outside the manuals.
    shape below (e.g. "Not found: no service manual available for
    <vehicle>"); do NOT substitute an unrelated manual or adopt its
    vehicle.
-3. Call get_manual_toc to locate the right section slug.  For DTC
-   questions, scan the TOC's DTC quick-index entries.  For
+3. Call get_manual_toc ONCE to locate the right section slug.  For
+   DTC questions, scan the TOC's DTC quick-index entries.  For
    procedural / component questions, scan the heading hierarchy.
-4. Call read_manual_section to pull the authoritative text.  Read
-   only the sections you actually need — do NOT read every section
-   of the manual.
+4. Call read_manual_section to pull the authoritative text.  Pick
+   the single most promising section from the TOC BEFORE reading —
+   do NOT read sections speculatively or read every section of the
+   manual.
 5. When you have enough evidence, STOP calling tools and return
    your final answer as a JSON object (see schema below).
+
+## Tool-call budget (be frugal)
+
+Every tool call costs seconds of a hard wall-clock budget.  An
+efficient run looks like:
+
+    list_manuals (1) -> get_manual_toc (1)
+        -> read_manual_section (1-2 targeted reads) -> final JSON
+
+That is 3-4 tool calls total.  Before EVERY tool call ask: "can I
+already answer (or correctly decline) from what I have?"  If yes,
+stop calling tools and return the final JSON.  Concretely:
+
+- ONE TOC fetch per manual.  Do NOT re-fetch the TOC at a deeper
+  max_depth to expose hidden subsections — instead read the nearest
+  visible parent section (include_subsections=true returns all of
+  its nested subsections in one call).
+- NEVER re-read a section you have already read.  Its text does not
+  change; a repeat read wastes a whole iteration and brings you no
+  new evidence.
+- For DTC questions, jump straight from the TOC's DTC quick-index
+  to the mapped slug — one targeted read usually suffices.
+- After each read, decide: answer now, decline ("Not found"), or
+  make ONE more targeted read.  If 2-3 well-chosen reads have not
+  surfaced the answer, the manual almost certainly does not contain
+  it — decline (see below) instead of continuing to search.
 
 ## When to decline early (STOP and return "Not found")
 
@@ -136,7 +167,9 @@ def build_manual_agent_user_message(
     return (
         f"## QUESTION\n{question.strip()}\n\n"
         f"## OBD CONTEXT\n{ctx_block}\n\n"
-        f"Use the tools to find an authoritative answer.  When "
-        f"you have enough evidence, return the final JSON object "
-        f"per the system prompt."
+        f"Use the tools to find an authoritative answer.  Be "
+        f"frugal: stay within the tool-call budget in the system "
+        f"prompt (typically 3-4 calls).  When you have enough "
+        f"evidence, return the final JSON object per the system "
+        f"prompt."
     )
