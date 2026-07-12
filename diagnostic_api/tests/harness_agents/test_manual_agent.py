@@ -936,3 +936,64 @@ class TestSuppressThinkingInSystem:
         messages = [{"role": "user", "content": "q"}]
         _suppress_thinking_in_system(messages)
         assert messages == [{"role": "user", "content": "q"}]
+
+
+class TestSynthesisCompletenessPrompts:
+    """HARNESS-24 WP1 (#184): the synthesis-completeness and
+    honest-decline guidance is present in the prompts.
+
+    Pins the load-bearing phrases so a prompt refactor cannot
+    silently drop the fixes for the v2-baseline failure modes
+    (long-procedure step-dropping; near-miss reads becoming false
+    'the manual does not contain X' claims)."""
+
+    def test_system_prompt_has_procedure_completeness(self) -> None:
+        """The final-answer rules demand full procedure coverage."""
+        from app.harness_agents.manual_agent_prompts import (
+            MANUAL_AGENT_SYSTEM_PROMPT,
+        )
+        assert "Procedure completeness" in MANUAL_AGENT_SYSTEM_PROMPT
+        assert "every numbered step" in MANUAL_AGENT_SYSTEM_PROMPT
+        assert "torque value" in MANUAL_AGENT_SYSTEM_PROMPT
+
+    def test_system_prompt_allows_numbered_list_summary(self) -> None:
+        """The schema no longer forces procedures into 2-5
+        sentences — the root cause of dropped steps."""
+        from app.harness_agents.manual_agent_prompts import (
+            MANUAL_AGENT_SYSTEM_PROMPT,
+        )
+        assert "MULTI-STEP PROCEDURES" in MANUAL_AGENT_SYSTEM_PROMPT
+        assert "numbered list" in MANUAL_AGENT_SYSTEM_PROMPT
+
+    def test_system_prompt_has_honesty_rule(self) -> None:
+        """Absence claims are gated on the TOC, and near-miss
+        reads must not become whole-manual absence claims."""
+        from app.harness_agents.manual_agent_prompts import (
+            MANUAL_AGENT_SYSTEM_PROMPT,
+        )
+        assert "Honesty rule for absence claims" in (
+            MANUAL_AGENT_SYSTEM_PROMPT
+        )
+        assert "NEAR MISS" in MANUAL_AGENT_SYSTEM_PROMPT
+
+    def test_system_prompt_has_task_targeting(self) -> None:
+        """Section choice targets the TASK title, not adjacent
+        component sections (the near-miss navigation fix)."""
+        from app.harness_agents.manual_agent_prompts import (
+            MANUAL_AGENT_SYSTEM_PROMPT,
+        )
+        assert "names the exact TASK" in MANUAL_AGENT_SYSTEM_PROMPT
+
+    def test_forced_final_instruction_carries_both_rules(self) -> None:
+        """The T2 forced-synthesis turn (which finalized all four
+        v2 below-floor entries) gets the same completeness +
+        honesty guidance."""
+        from app.harness_agents.manual_agent import (
+            _FORCE_FINAL_INSTRUCTION,
+        )
+        assert "PROCEDURE" in _FORCE_FINAL_INSTRUCTION
+        assert "do not drop steps" in _FORCE_FINAL_INSTRUCTION
+        assert "HONESTY RULE" in _FORCE_FINAL_INSTRUCTION
+        assert "not found in the sections read" in (
+            _FORCE_FINAL_INSTRUCTION
+        )
