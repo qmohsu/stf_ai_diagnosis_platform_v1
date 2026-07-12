@@ -18,7 +18,14 @@ similarity score is meaningful.  Final ``score`` on the returned
 comparable across queries in hybrid mode (relative order within a
 single query is what matters).
 
-APP-56 / Issue #18.
+Filtered queries bypass the HNSW index (APP-62 / Issue #156): when a
+hard ``vehicle_model`` filter is set, the planner is forced to an
+exact sequential scan for the current transaction only — HNSW picks
+approximate nearest neighbours FIRST and filters AFTER, which starves
+a single-manual filter to zero rows once a second, larger manual
+shares the index.  See ``_force_exact_scan_for_filter``.
+
+APP-56 / Issue #18.  APP-62 / Issue #156.
 """
 
 import asyncio
@@ -30,6 +37,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel
 from sqlalchemy import text as sa_text
+from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.models_db import RagChunk
@@ -94,6 +102,46 @@ def _row_to_result(
     )
 
 
+def _force_exact_scan_for_filter(
+    db: Session,
+    vehicle_model: Optional[str],
+) -> str:
+    """Pick the scan path for this transaction; force exact if filtered.
+
+    HNSW on pgvector 0.7.4 (no iterative scan) selects the approximate
+    nearest neighbours FIRST and applies the ``WHERE`` clause AFTER.
+    With >=2 manuals sharing the index, a hard ``vehicle_model``
+    filter starves to 0 rows when the other manual dominates the
+    candidate pool — proven at the pgvector maximum
+    ``hnsw.ef_search=1000`` with TRICITY155 (1665 chunks) vs
+    Corolla E11 (3051 chunks) returning zero TRICITY155 rows
+    (HARNESS-23 / Issue #156).
+
+    ``SET LOCAL`` scopes the planner override to the current
+    transaction only, so unfiltered queries on other connections keep
+    the HNSW speedup.  The exact scan returns the same cosine scores
+    in true order (HNSW is only an approximate-NN speedup) and is
+    cheap at this corpus scale (~5k chunks total, <=3051 per manual,
+    sub-100 ms) — mirrors the eval adapter
+    ``tests/harness/evals/rag_runner._sync_exact_vector_query``,
+    which proved the exact path correct.
+
+    Args:
+        db: Open session; the override binds to its current
+            transaction.
+        vehicle_model: The hard vehicle-model filter, or ``None``.
+
+    Returns:
+        ``"exact"`` if index scans were disabled for the transaction,
+        ``"hnsw"`` otherwise.
+    """
+    if not vehicle_model:
+        return "hnsw"
+    db.execute(sa_text("SET LOCAL enable_indexscan = off"))
+    db.execute(sa_text("SET LOCAL enable_bitmapscan = off"))
+    return "exact"
+
+
 def _sync_vector_query(
     vector: list,
     top_k: int,
@@ -101,6 +149,10 @@ def _sync_vector_query(
     exclude_chunk_ids: Optional[List[int]] = None,
 ) -> List[RetrievalResult]:
     """Pure cosine-similarity query (legacy behaviour).
+
+    When ``vehicle_model`` is set, the query runs as an exact
+    sequential scan instead of HNSW (see
+    ``_force_exact_scan_for_filter`` for why).
 
     Args:
         vector: Query embedding (768-dim float list).
@@ -114,6 +166,13 @@ def _sync_vector_query(
     """
     db = SessionLocal()
     try:
+        scan_path = _force_exact_scan_for_filter(db, vehicle_model)
+        logger.info(
+            "rag_retrieval mode=vector scan_path=%s "
+            "vehicle_model=%s top_k=%d",
+            scan_path, vehicle_model, top_k,
+        )
+
         distance_col = RagChunk.embedding.cosine_distance(
             vector,
         ).label("distance")
@@ -311,6 +370,11 @@ def _sync_hybrid_query(
     ``alpha * vec + (1 - alpha) * kw``.  ``alpha=1`` collapses to
     pure vector; ``alpha=0`` collapses to pure keyword.
 
+    When ``vehicle_model`` is set, the statement runs as an exact
+    sequential scan — the semantic CTE otherwise hits the same
+    HNSW filter starvation as the pure-vector path (see
+    ``_force_exact_scan_for_filter``).
+
     Args:
         vector: Query embedding.
         query_str: User query text.
@@ -405,6 +469,13 @@ def _sync_hybrid_query(
 
     db = SessionLocal()
     try:
+        scan_path = _force_exact_scan_for_filter(db, vehicle_model)
+        logger.info(
+            "rag_retrieval mode=hybrid scan_path=%s "
+            "vehicle_model=%s top_k=%d",
+            scan_path, vehicle_model, top_k,
+        )
+
         rows = db.execute(sql, params).fetchall()
 
         if not rows:

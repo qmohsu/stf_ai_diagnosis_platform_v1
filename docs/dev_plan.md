@@ -2020,6 +2020,64 @@ Acceptance Criteria:
 - API startup schedules the pre-warm without blocking `/health` ✓
 - Deploy runbook includes a warm-up step after health checks ✓
 
+#### APP‑62 — Exact-scan fallback for vehicle_model-filtered retrieval
+
+Owner: AI Engineer
+Depends on: APP‑56
+GitHub Issue: #156 (blocks #157)
+
+PROMPT (task ticket):
+Title: APP‑62 Fix filtered-HNSW recall starving to 0 rows with >=2
+manuals (exact-scan fallback)
+
+Task:
+With both the Yamaha TRICITY155 (1665 chunks) and Toyota Corolla E11
+(3051 chunks) manuals ingested, `retrieve_context(vehicle_model=...)`
+returned **0 rows** — even at the pgvector 0.7.4 maximum
+`hnsw.ef_search=1000` — because HNSW selects approximate nearest
+neighbours FIRST and applies the `WHERE vehicle_model = ...` filter
+AFTER, and the larger English manual crowds the filtered manual out
+of the candidate pool entirely (proven during the HARNESS-23 first
+round; the eval worked around it with its own exact-scan adapter
+`tests/harness/evals/rag_runner._sync_exact_vector_query` while
+production retrieval kept the bug).  pgvector 0.7.4 has no
+`hnsw.iterative_scan`, so the smallest correct fix is option (a) of
+issue #156: force an exact sequential scan whenever a hard
+`vehicle_model` filter is present, and keep the HNSW path for
+unfiltered queries.
+
+Key changes:
+- New `_force_exact_scan_for_filter(db, vehicle_model)` in
+  `app/rag/retrieve.py`: when the filter is set, emits `SET LOCAL
+  enable_indexscan = off` + `SET LOCAL enable_bitmapscan = off` —
+  scoped to the current transaction only, so unfiltered queries on
+  other connections keep the HNSW speedup.  Returns
+  `"exact"`/`"hnsw"` for structured logging.  Mirrors the proven
+  eval adapter.  Exact scan is cheap at this corpus scale (~5k
+  chunks total, <=3051 per manual, sub-100 ms) and returns the same
+  cosine scores in true order (HNSW is only an approximate-NN
+  speedup).
+- `_sync_vector_query` and `_sync_hybrid_query` (whose semantic CTE
+  hits the same starvation) call the helper inside their transaction
+  and log `rag_retrieval mode=... scan_path=... vehicle_model=...`.
+- No signature changes; unfiltered callers see byte-identical
+  behaviour.  Keyword mode untouched (GIN index, not affected).
+
+Files changed:
+`diagnostic_api/app/rag/retrieve.py`
+`diagnostic_api/tests/rag/test_retrieve_exact_scan.py` (new — 11 tests)
+
+Acceptance Criteria:
+- Filtered vector + hybrid queries emit the `SET LOCAL` planner
+  overrides before the retrieval statement (unit-asserted) ✓
+- Unfiltered queries emit no overrides — HNSW path preserved ✓
+- Filtered rows map to `RetrievalResult` (regression shape) ✓
+- Structured log records which scan path served each query ✓
+- Live proof (TRICITY155 filter returns >0 rows with the Corolla E11
+  manual co-ingested) — server verification post-merge per the
+  deploy loop; the identical mechanism was already validated against
+  real Postgres by the eval adapter (HARNESS-23)
+
 ### 3.3 Integration and Finalization Tickets
 #### INT‑01 — End-to-end demo script (“one command demo”)
 
@@ -2151,6 +2209,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-07-12 | vNEXT | APP-62 (HARNESS-23 follow-up T12, GitHub issue #156, blocks #157) — **exact-scan fallback for `vehicle_model`-filtered retrieval**. PRODUCTION BUG: with >=2 manuals sharing the HNSW index (Yamaha TRICITY155, 1665 chunks + Toyota Corolla E11, 3051 chunks), `retrieve_context(vehicle_model=...)` returned **0 rows** even at the pgvector 0.7.4 maximum `hnsw.ef_search=1000` — HNSW selects approximate nearest neighbours FIRST and applies the filter AFTER, so the larger manual crowds the filtered one out of the candidate pool entirely (proven during the HARNESS-23 first round; the eval sidestepped it with its own exact-scan adapter `rag_runner._sync_exact_vector_query` while production kept the bug). pgvector 0.7.4 has no `hnsw.iterative_scan`, so the fix is issue #156 option (a): new `_force_exact_scan_for_filter` in `app/rag/retrieve.py` emits `SET LOCAL enable_indexscan = off` + `enable_bitmapscan = off` (transaction-scoped — unfiltered queries on other connections keep HNSW) whenever a hard `vehicle_model` filter is set; `_sync_vector_query` **and** `_sync_hybrid_query` (its semantic CTE has the same starvation) call it and log `rag_retrieval mode=... scan_path=exact\|hnsw vehicle_model=...`. Exact scan is cheap at this corpus scale (~5k chunks, <=3051 per manual, sub-100 ms) and returns identical cosine scores in true order. No signature changes; unfiltered callers byte-identical; keyword mode untouched (GIN, unaffected). **Tests**: new `tests/rag/test_retrieve_exact_scan.py` (11) — filtered vector/hybrid emit the overrides before the SELECT, unfiltered emit none, helper path labels, scan-path logging, filtered-rows regression shape (29 RAG unit tests green; evals suite 202 passed / 61 skipped). Live proof (TRICITY155 filter returns >0 rows alongside Corolla E11) is the post-merge server verification — no live Postgres in the dev worktree. |
 | 2026-06-21 | v5.15 | APP-61 (follow-up to the HARNESS-23 baseline #107) — **factory-code alias for service manuals**. A manual is referred to by its factory / service-manual code (printed on the cover) as well as its marketing model name: the Yamaha Tricity 155 manual is filed under `vehicle_model=TRICITY155`, but the locked goldens (and the cover) call it `MWS-150-A`. The HARNESS-25 honest agent therefore **refused 27/30** baseline questions ("no manual for MWS-150-A"). **Schema**: new **nullable** `manuals.factory_code VARCHAR(100)`; Alembic `0a1b2c3d4e5f` adds the column and backfills the Yamaha Tricity 155 row to `MWS150-A` (guarded UPDATE, no-op elsewhere). Single head verified. **Ingestion**: `write_frontmatter_identity` gains a `factory_code` param and stamps/clears `factory_code:` in the `.md` frontmatter (kept in sync with the DB row at re-ingestion). **Endpoint**: `POST /v2/manuals/upload` accepts an optional `factory_code` form field (blank → NULL); `ManualSummary` / `ManualDetail` / `ManualUploadResponse` expose it. **Web UI**: `ManualUploadForm` adds an optional **Factory Code** field (no required asterisk, with a one-line hint; i18n en/zh-CN/zh-TW) and passes it to `uploadManual()`; `ManualList` shows the code under the vehicle identity when present; `types.ts` `ManualSummary` / `ManualUploadResponse` gain `factory_code`. **Harness (V2, see v2_dev_plan)**: `list_manuals` renders `factory_code="…"`, matches a vehicle filter against it, and its honest-match footer + `manual_agent_prompts` treat a factory-code match as the SAME vehicle. **Not** denormalised onto `rag_chunks` (vector retrieval filters on canonical `vehicle_model`). **Tests**: 3 `list_manuals` cases (renders, filter-by-code, omitted-when-absent) + 3 `write_frontmatter_identity` cases (writes/omits/clears); updated 2 existing `_to_summary` mocks for the new field (offline, 79 manuals+manual_tools tests green). The §10.3.1 manuals schema + the manual-upload entry point are updated in `design_doc.md` (v5.15). |
 | 2026-06-20 | v5.14 | APP-60 (follow-up to the P00AF Hiace finding #135) — **required vehicle identity on OBD upload**. A vehicle model cannot be derived from an OBD log (verified: the OBDWiz sensor log has 0 mentions of VIN/model; the VIN lives only in the separate Mode-09 report; the pipeline never decodes a VIN to make/model), so the uploader must state it. Without this the agent reverse-reasoned the vehicle from the only same-make manual (called a Hiace a "Corolla"). **Schema**: new `obd_analysis_sessions.manufacturer` + `vehicle_model` (`VARCHAR(100)`) + `OBDAnalysisSession.canonical_name` property; existing `vehicle_id` (VIN/label) kept. Alembic `a7b8c9d0e1f2` adds the two **nullable** columns — required at the API layer (422), DB nullable so the many historical sessions stay valid (no backfill, no NOT NULL). **Endpoint**: `POST /v2/obd/analyze` now requires `manufacturer` + `vehicle_model` query params (422 on blank, whitespace-collapsed); both persisted on the session + stamped into `parsed_summary`; canonical name in `OBDAnalysisResponse`; make/model mismatch on dedup re-upload logs a warning (mirrors APP-54's vehicle_id handling). **Web UI**: `OBDInputForm` adds required Manufacturer + Model fields and gates the Analyze button (i18n en/zh-CN/zh-TW). **Edge agent**: `jetson_uploader` gains `--manufacturer` / `--model` (+ `STF_MANUFACTURER` / `STF_MODEL` env) sent as query params on every upload — the device is installed in one fixed vehicle, configured once; a missing value fails **locally** (rc 1) rather than 422-ing at the server. **Tests**: `test_obd_analysis.py` (missing/blank make/model 422, make/model persisted + in response + parsed_summary), `test_jetson_uploader.py` (query-param send, fail-loud on missing identity), plus updated existing analyze callers across `test_obd_analysis` / `test_auth` / `test_session_isolation`. The agent-context grounding (`Vehicle: <Make> <Model> (VIN …)`) is HARNESS-26 (V2 docs). |
 | 2026-06-19 | v5.13 | APP-59 (GitHub issue #136, follow-up to the P00AF Hiace finding #135) — **required vehicle identity on service manuals**. The first real agent run on a Toyota Hiace (DTC P00AF) mistook the vehicle for a Yamaha scooter because manuals were not reliably tied to a vehicle: `manuals.vehicle_model` was optional + freeform and there was **no manufacturer field**, so the agent's only service-manual content (the Yamaha MWS150-A manual) was treated as authoritative. **Schema**: new `manuals.manufacturer VARCHAR(100)` (required) + `manuals.vehicle_model` promoted to NOT NULL; new `rag_chunks.manufacturer VARCHAR(100)` (nullable, indexed) stamped from the parent manual at ingestion so retrieval can filter by make + model. Alembic `f6a7b8c9d0e1` (down_revision `e4f5a6b7c8d9`) adds the columns, backfills the two manuals in the vault (Yamaha TRICITY155, Toyota Corolla E11) + their chunks, sets a catch-all `'Unknown'` for stray rows, then enforces NOT NULL. **API**: `POST /v2/manuals/upload` now requires `manufacturer` + `vehicle_model` form fields (422 on blank, whitespace-collapsed); responses carry the canonical `"{manufacturer} {vehicle_model}"` name (`Manual.canonical_name` property). **Ingestion**: `embed_and_insert_chunks` stamps make/model from the authoritative `Manual` row; `manual_pipeline.write_frontmatter_identity` writes make/model into the `.md` frontmatter so the harness `list_manuals` tool shows the canonical identity. **Frontend**: `ManualUploadForm` adds a required Manufacturer field, makes Model required, and gates the Upload button (i18n EN / zh-CN / zh-TW); the manual list shows the canonical name. **Tests**: `tests/manuals/test_manuals_api.py` — required-field validation (422), canonical-name property, frontmatter-identity helper (existing + absent frontmatter). The harness honest-matching behaviour is HARNESS-25 (V2 docs). |
