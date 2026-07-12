@@ -479,7 +479,11 @@ class DeterministicMetrics:
             which conflated reads and citations.
         exploration_cost: Fraction of READ slugs that were
             NOT cited.  Higher = more navigation waste.  Always
-            0.0 for RAG (no synthesis step).
+            0.0 for RAG (no synthesis step).  Reported-only
+            since 2026-07-12 (#153): weight 0.0 in
+            ``DEFAULT_OVERALL_WEIGHTS`` — an agent-only
+            efficiency dim that handed RAG free credit under a
+            shared weight vector.
         fact_recall: Fraction of must_contain present in output,
             matched bilingual-tolerantly (exact substring OR
             flexible-whitespace CJK OR curated EN/CJK
@@ -604,6 +608,11 @@ def _compute_exploration_cost(
     so cost is always 0.0.  This is intentional — RAG doesn't
     pay an exploration cost because there's no separate
     "navigation vs grounding" distinction in its workflow.
+
+    Reported-only since 2026-07-12 (HARNESS-23 T7, #153): the
+    metric is still computed and surfaced on every ``Grade``,
+    but its ``DEFAULT_OVERALL_WEIGHTS`` entry is 0.0 — see the
+    weight-table comment for the structural-floor rationale.
 
     Args:
         read: Slugs the system accessed.
@@ -1060,15 +1069,54 @@ def compute_deterministic_metrics(
 # even though value_accuracy stays neutral — accepted per the
 # approved design (docs/plans/2026-05-17-harness-21-obd-eval-
 # design.md § 3); PR [3/3] re-baselines both lanes.
+#
+# Rebalanced 2026-07-12 for HARNESS-23 T7 (#153) — shrink the
+# structural-floor terms.  First-round evidence
+# (docs/eval-reports/phase6_baseline_eval.json): value_accuracy
+# mean is 1.000 in BOTH lanes (neither ran an OBD entry, so the
+# manual-lane neutral 1.0 was pure free credit at 0.10 weight),
+# and RAG's exploration_cost is 0.000 by construction (no
+# synthesis step → read==claim), handing RAG a free 0.05 via the
+# (1 - cost) term while the agent (mean cost 0.753) collected
+# only ~0.012 from it.  Together with the vacuous
+# claim_precision=1.0 and a saturated hallucination_penalty, a
+# ZERO-CONTENT answer still floored at ~0.40 overall.
+# - exploration_cost 0.05 → 0.00: demoted to REPORTED-ONLY,
+#   same treatment as trajectory_efficiency and for the same
+#   reason — it is an agent-only efficiency/trade-off dim, not a
+#   quality dim.  In a weight vector shared across lanes it can
+#   only award free credit to systems that structurally cannot
+#   pay the cost (RAG, OBD lane) and tax the agent for
+#   exploration we deliberately budget for (T1/#143 RAISED the
+#   navigation budget).  Still computed and reported per grade.
+# - value_accuracy 0.10 → 0.05: stays weighted — it is a real
+#   quality dim in the OBD lane (fabricated numbers must cost) —
+#   but halved so the manual lane's structural neutral-1.0
+#   contributes 0.05 of floor instead of 0.10.  Zeroing the
+#   floor entirely needs lane-specific weights, which is out of
+#   scope while the agent-vs-RAG comparison shares one vector.
+# - section_recall 0.20 → 0.25 and fact_recall 0.15 → 0.20:
+#   the freed 0.10 goes back to the two content dims that were
+#   trimmed on 2026-05-17 to fund value_accuracy.
+# Net effect: zero-content floor drops ~0.40 → ~0.30 (residual =
+# vacuous claim_precision 0.10 + saturated hallucination_penalty
+# 0.15 + neutral value_accuracy 0.05 — documented, revisit at
+# the #155 re-baseline).  Both lanes' ABSOLUTE scores shift down
+# (projected on first-round data: agent 0.590 → ~0.577, RAG
+# 0.337 → ~0.251); acceptable because #155 re-pins thresholds
+# after all phase 1-2 changes land.
 DEFAULT_OVERALL_WEIGHTS: dict = {
-    "section_recall":         0.20,
+    "section_recall":         0.25,
     "claim_precision":        0.10,
-    "exploration_cost":       0.05,  # applied as (1 - cost)
-    "fact_recall":            0.15,
+    # Reported-only since 2026-07-12 (#153): efficiency dim, not
+    # a quality dim.  Kept in the dict (and in the formula, as
+    # (1 - cost)) so callers can re-weight experimentally.
+    "exploration_cost":       0.00,
+    "fact_recall":            0.20,
     "fact_density":           0.05,
     "hallucination_penalty":  0.15,
     "citation_quality":       0.05,
-    "value_accuracy":         0.10,
+    "value_accuracy":         0.05,
     "answer_quality":         0.15,
 }
 
@@ -1091,7 +1139,10 @@ def compute_overall(
 
     Note: ``exploration_cost`` is a "lower is better" metric;
     it enters the formula as ``(1 - cost)`` so all terms
-    contribute positively toward the overall score.
+    contribute positively toward the overall score.  Its
+    default weight is 0.0 since the 2026-07-12 rebalance
+    (#153) — reported-only unless a caller overrides
+    ``weights``.
 
     N/A handling (#148): when ``metrics.section_recall`` is
     ``None`` (manual adversarial — empty
@@ -1113,7 +1164,12 @@ def compute_overall(
             experiment with different weighting schemes).
 
     Returns:
-        Weighted score in [0, 1].
+        Weighted score in [0, 1].  Clamped to that range: with
+        default weights (sum 1.0) and metrics in [0, 1] the true
+        value can't exceed 1.0, but float accumulation can land
+        an ulp above it (e.g. a perfect run under the 2026-07-12
+        weights sums to 1.0000000000000002), which would trip
+        ``Grade``'s ``le=1.0`` validator.
     """
     w = weights if weights is not None else DEFAULT_OVERALL_WEIGHTS
     score = (
@@ -1129,10 +1185,11 @@ def compute_overall(
     if metrics.section_recall is None:
         # N/A — exclude the dim and renormalise its weight over
         # the remaining terms so an entry with no expected slugs
-        # is graded purely on the dims that apply to it.
+        # is graded purely on the dims that apply to it (#148).
         total = sum(w.values())
         applicable = total - w["section_recall"]
-        if applicable <= 0:
-            return score
-        return score * (total / applicable)
-    return score + w["section_recall"] * metrics.section_recall
+        if applicable > 0:
+            score *= total / applicable
+    else:
+        score += w["section_recall"] * metrics.section_recall
+    return min(1.0, max(0.0, score))

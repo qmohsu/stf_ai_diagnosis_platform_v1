@@ -504,6 +504,12 @@ class Grade(BaseModel):
             "how much navigation overhead did the agent pay?"
             For RAG (no synthesis step) this is always 0.0
             — RAG's reads ARE its claims.  LOWER = better.
+            Reported but NOT in ``overall`` since the
+            2026-07-12 structural-floor rebalance (HARNESS-23
+            T7, #153): like ``trajectory_efficiency`` it's an
+            agent-only efficiency/trade-off dim, and weighting
+            it in a shared cross-lane formula only handed RAG
+            free credit via the ``(1 - cost)`` term.
         fact_recall: Fraction of ``must_contain`` items found
             in ``output_text`` (case-insensitive,
             whitespace-normalised substring).
@@ -553,24 +559,33 @@ class Grade(BaseModel):
             Neutral 1.0 for manual entries — they have no
             numerical-value semantics, so the dimension shouldn't
             penalise them.  Computed deterministically in
-            ``metrics_obd.compute_value_accuracy``.
+            ``metrics_obd.compute_value_accuracy``.  Weight
+            halved 0.10 → 0.05 in the 2026-07-12 structural-
+            floor rebalance (#153): the neutral 1.0 is pure
+            free credit on manual-lane entries, so its weight
+            is kept to the minimum that still makes fabricated
+            OBD numbers cost.
         overall: Weighted ``[0.0, 1.0]``.  Current formula (post
-            HARNESS-21 rebalance):
-            0.20*section_recall
+            HARNESS-23 T7 structural-floor rebalance, #153):
+            0.25*section_recall
             + 0.10*claim_precision
-            + 0.05*(1 - exploration_cost)
-            + 0.15*fact_recall
+            + 0.00*(1 - exploration_cost)  [reported-only]
+            + 0.20*fact_recall
             + 0.05*fact_density
             + 0.15*hallucination_penalty
             + 0.05*citation_quality
-            + 0.10*value_accuracy
+            + 0.05*value_accuracy
             + 0.15*answer_quality.
             Reported in eval reports as percentage (× 100).
             When ``section_recall`` is ``None`` (N/A, #148) its
             term is dropped and the remaining weights are
             renormalised (× 1/0.80 under default weights).
             Weights still tunable — see
-            ``DEFAULT_OVERALL_WEIGHTS`` in metrics.py.
+            ``DEFAULT_OVERALL_WEIGHTS`` in metrics.py (its
+            comment block carries the dated rebalance history,
+            including why a zero-content answer still floors at
+            ~0.30: vacuous claim_precision + saturated
+            hallucination_penalty + neutral value_accuracy).
         reasoning: 2–4 sentences from the judge citing specific
             evidence for ``answer_quality``.  Substring metrics
             don't need reasoning (they're deterministic).
