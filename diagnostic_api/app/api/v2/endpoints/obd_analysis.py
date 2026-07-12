@@ -227,6 +227,11 @@ class SessionData(NamedTuple):
     parsed_summary: Optional[dict]
     diagnosis_text: Optional[str]
     premium_diagnosis_text: Optional[str]
+    # APP-63: session vehicle model (APP-60 column) used to scope
+    # RAG retrieval to the session vehicle's manual.  ``None`` for
+    # historical sessions created before the column existed —
+    # retrieval then falls back to unfiltered search.
+    vehicle_model: Optional[str] = None
 
 logger = structlog.get_logger()
 
@@ -1417,7 +1422,20 @@ async def submit_rag_feedback(
         rag_query = session_data.parsed_summary.get("rag_query", "")
         if rag_query:
             try:
-                results = await retrieve_context(rag_query, top_k=5)
+                # APP-63 (issue #157): scope retrieval to the session
+                # vehicle's manual to avoid cross-manual contamination.
+                # None (historical sessions) falls back to unfiltered.
+                results = await retrieve_context(
+                    rag_query,
+                    top_k=5,
+                    vehicle_model=session_data.vehicle_model,
+                )
+                if not results and session_data.vehicle_model:
+                    logger.warning(
+                        "rag_feedback_retrieval_empty",
+                        session_id=str(session_id),
+                        vehicle_model=session_data.vehicle_model,
+                    )
                 retrieved_text = "\n\n".join(
                     f"[{r.source_type} - {r.doc_id} - {r.section_title}] "
                     f"(score: {r.score:.3f})\n{r.text}"
@@ -1547,7 +1565,7 @@ def _get_session_data(
 
     Returns:
         SessionData with parsed_summary, diagnosis_text,
-        and premium_diagnosis_text.
+        premium_diagnosis_text, and vehicle_model.
 
     Raises:
         HTTPException: 404 if session not found or not
@@ -1559,6 +1577,7 @@ def _get_session_data(
         db_session.parsed_summary_payload,
         db_session.diagnosis_text,
         db_session.premium_diagnosis_text,
+        db_session.vehicle_model,
     )
 
 
@@ -1701,7 +1720,24 @@ async def generate_diagnosis(
     context_str = ""
     if rag_query:
         try:
-            results = await retrieve_context(rag_query, top_k=3)
+            # APP-63 (issue #157): scope retrieval to the session
+            # vehicle's manual to avoid cross-manual contamination
+            # (a Yamaha brake query used to pull Toyota Corolla
+            # chunks).  None (historical sessions without the APP-60
+            # column populated) falls back to unfiltered retrieval.
+            results = await retrieve_context(
+                rag_query,
+                top_k=3,
+                vehicle_model=session_data.vehicle_model,
+            )
+            if not results and session_data.vehicle_model:
+                # Degrade exactly like the no-context path today:
+                # generation proceeds with an empty context string.
+                logger.warning(
+                    "diagnosis_rag_retrieval_empty",
+                    session_id=str(session_id),
+                    vehicle_model=session_data.vehicle_model,
+                )
             context_str = "\n\n".join(
                 f"{r.source_type} — {r.doc_id} — {r.section_title}\n{r.text}"
                 for r in results
