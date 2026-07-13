@@ -63,6 +63,7 @@ Author: Li-Ta Hsu
 
 from __future__ import annotations
 
+import os
 from typing import Any, Optional
 
 import pytest
@@ -79,7 +80,20 @@ from tests.harness.evals.schemas import GoldenEntry
 # ── Module-level config ──────────────────────────────────────────
 
 
-_LOCKED_ENTRIES = load_golden("v2/locked/yamaha_road_test.jsonl")
+_GOLDEN_FILE = os.getenv(
+    "OBD_EVAL_GOLDEN_FILE",
+    "v2/locked/yamaha_road_test.jsonl",
+)
+"""HARNESS-25 (#117) measurement switch.  The DEFAULT stays the
+locked tier (empty until the workshop expert accepts candidates
+at ``/goldens/obd`` — the HARNESS-20 safety net is intact).  An
+explicit ``OBD_EVAL_GOLDEN_FILE=v2/yamaha_road_test.jsonl``
+opts a run into the CANDIDATE tier so the baseline scorecard can
+be established while expert review is pending; any report from
+such a run must be labelled candidate-tier."""
+
+
+_LOCKED_ENTRIES = load_golden(_GOLDEN_FILE)
 """HARNESS-21 [3/4]: reader migrated from
 ``v1/yamaha_road_test.jsonl`` to
 ``v2/locked/yamaha_road_test.jsonl`` to align with the manual
@@ -127,12 +141,21 @@ _PARAM_ENTRIES = (
 )
 
 
-_PASS_THRESHOLD = 0.6
+_PASS_THRESHOLD = 0.7
 """Minimum ``Grade.overall`` for an entry to pass.
 
-Starts at 0.6 (lower than the manual lane's 0.7) because the OBD
-lane has no baseline yet.  PR [3/3] re-pins this based on the
-local-Qwen + GLM-5.1 baseline numbers.
+Re-pinned from the HARNESS-25 round-1 scorecard (#117, run
+2026-07-12, candidate-tier goldens, local qwen3.5:27b): mean
+0.952, σ 0.069, min 0.800, 15/15 pass.  The mean − 1·σ rule
+gives 0.883 → floored 0.8, but the weakest entry sits at exactly
+0.800 (dtc-decode-002) with per-entry judge noise around ±0.05,
+so a 0.8 gate would flap on a healthy prompt.  Pinned one notch
+down at 0.7 — still catches any real regression (the baseline
+failures scored 0.20-0.58) without gating on noise.  Re-derive
+when the goldens are expert-locked or the prompt changes
+(regression rule: any OBD prompt change re-runs the 15 goldens
+and reports the delta vs
+``docs/eval-reports/harness25_obd_round1.json``).
 """
 
 
