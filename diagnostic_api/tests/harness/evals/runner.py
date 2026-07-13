@@ -20,6 +20,7 @@ Author: Li-Ta Hsu
 
 from __future__ import annotations
 
+import re
 import time
 from typing import List, Optional
 
@@ -34,7 +35,7 @@ from app.harness_agents.manual_agent import (
     run_manual_agent as _run_agent_loop,
 )
 from app.harness_agents.types import ManualAgentResult
-from tests.harness.evals.schemas import SystemRunResult
+from tests.harness.evals.schemas import SurfacedImage, SystemRunResult
 
 logger = structlog.get_logger(__name__)
 
@@ -116,6 +117,84 @@ async def run_manual_agent(
     )
 
 
+_VISION_DESC_RE = re.compile(
+    r"\*Vision description:\s*(.*?)\*",
+    re.DOTALL,
+)
+"""``*Vision description: ...*`` paragraphs per the manual markdown
+schema (docs/manual_markdown_schema.md §5.2).  ``build_multimodal_
+section`` strips the ``![...](...)`` image ref when it loads the
+image bytes, but the italic vision paragraph that FOLLOWS each image
+stays in the text blocks — so it survives into
+``SectionRef.text`` and is the richest image evidence the eval
+adapter can recover without re-reading the manual from disk."""
+
+
+_MD_IMAGE_REF_RE = re.compile(r"!\[[^\]]*\]\([^)]+\)")
+"""Residual markdown image refs.  Present in ``SectionRef.text``
+only when the image bytes could NOT be loaded (missing file) —
+loaded images have their refs stripped by
+``build_multimodal_section``.  Still evidence that the section
+carries a figure."""
+
+
+def _extract_surfaced_images(
+    result: ManualAgentResult,
+    claim_slugs: List[str],
+) -> List[SurfacedImage]:
+    """Collect per-section image evidence for the judge (#193).
+
+    ``SystemRunResult.output_text`` is text-only, so without this
+    the judge is never told which figures the agent surfaced and
+    image-required entries are structurally capped on
+    ``answer_quality``.  For every read section that carried
+    image content — an ``image_url`` block in the tool output
+    (``SectionRef.had_images``), a vision-description paragraph,
+    or a residual markdown image ref — emit one
+    ``SurfacedImage`` with the section identity, whether it was
+    cited, a best-effort figure count, and the vision
+    descriptions found in the section text.
+
+    Args:
+        result: The agent loop's return value.
+        claim_slugs: Deduplicated cited slugs, used to flag
+            which image-bearing sections the agent cited as
+            answer sources (vs merely browsed).
+
+    Returns:
+        One ``SurfacedImage`` per image-bearing section, in
+        first-read order, deduplicated by slug.
+    """
+    cited = set(claim_slugs)
+    surfaced: List[SurfacedImage] = []
+    seen: set = set()
+    for sec in result.raw_sections or []:
+        if not sec.slug or sec.slug in seen:
+            continue
+        text = sec.text or ""
+        vision_descs = [
+            " ".join(m.split())
+            for m in _VISION_DESC_RE.findall(text)
+        ]
+        md_refs = len(_MD_IMAGE_REF_RE.findall(text))
+        image_count = max(
+            len(vision_descs),
+            md_refs,
+            1 if sec.had_images else 0,
+        )
+        if image_count == 0:
+            continue
+        seen.add(sec.slug)
+        surfaced.append(SurfacedImage(
+            slug=sec.slug,
+            manual_id=sec.manual_id,
+            cited=sec.slug in cited,
+            image_count=image_count,
+            vision_descriptions=vision_descs,
+        ))
+    return surfaced
+
+
 def _agent_result_to_system_run(
     question: str,
     result: ManualAgentResult,
@@ -157,6 +236,11 @@ def _agent_result_to_system_run(
       sections used for navigation, even when they didn't
       end up in the final answer.  Used by
       ``exploration_cost``.
+    - ``surfaced_images`` ← per-section image evidence from
+      ``_extract_surfaced_images`` (#193): slug, cited flag,
+      figure count, and vision descriptions for every read
+      section that carried image content.  Rendered in the
+      judge prompt so image-required entries aren't capped.
     - ``tool_trace``, ``stopped_reason``, ``iterations`` ←
       passed through.
     - ``latency_ms_llm`` ← sum of tool-call latencies as a
@@ -249,6 +333,9 @@ def _agent_result_to_system_run(
         tool_trace=list(result.tool_trace or []),
         stopped_reason=str(result.stopped_reason or "complete"),
         iterations=result.iterations or 0,
+        surfaced_images=_extract_surfaced_images(
+            result, claim_slugs,
+        ),
     )
 
 

@@ -31,14 +31,23 @@ from tests.harness.evals.judge import (
 )
 from tests.harness.evals.judge_prompts import (
     JUDGE_SYSTEM_PROMPT,
+    _is_image_required_entry,
     _is_no_evidence_entry,
     build_user_prompt,
     classify_pitfall_directive,
 )
+from tests.harness.evals.runner import (
+    _agent_result_to_system_run,
+    _extract_surfaced_images,
+)
 from tests.harness.evals.schemas import (
+    Citation,
     GoldenCitation,
     GoldenEntry,
     Grade,
+    ManualAgentResult,
+    SectionRef,
+    SurfacedImage,
     SystemRunResult,
 )
 
@@ -731,6 +740,243 @@ class TestOmissionDirectiveSplit:
         )
         assert grade.fact_recall == pytest.approx(0.5)
         assert grade.hallucination_penalty == pytest.approx(1.0)
+
+
+# ── Surfaced image evidence (#193) ────────────────────────────────
+
+
+def _image_entry() -> GoldenEntry:
+    """Image-required golden entry fixture (#193)."""
+    entry = _sample_entry()
+    return entry.model_copy(update={
+        "id": "mws150a-image-test",
+        "category": "image",
+        "question_type": "image-required",
+        "requires_image": True,
+        "question": (
+            "Where is the balancer weight positioned during "
+            "installation?"
+        ),
+        "golden_summary": (
+            "The balancer weight must sit as shown in the "
+            "installation figure: aligned with the crankshaft "
+            "punch mark."
+        ),
+    })
+
+
+def _image_agent_result() -> ManualAgentResult:
+    """Agent result with one cited image section and one plain
+    navigation section (#193 fixture).
+
+    The cited section mimics ``build_multimodal_section`` output
+    text: the ``![...](...)`` ref of the LOADED image is stripped
+    while its ``*Vision description: ...*`` paragraph survives,
+    plus one residual markdown ref for an image that failed to
+    load."""
+    cited_text = (
+        "Install the balancer as shown.\n\n"
+        "*Vision description: Balancer weight aligned with the\n"
+        "crankshaft punch mark, timing marks facing outward.*\n\n"
+        "![unloaded figure](images/manual/p099-9.png)\n\n"
+        "Torque the retaining bolt to 12 N-m."
+    )
+    return ManualAgentResult(
+        summary=(
+            "Align the balancer weight with the crankshaft "
+            "punch mark as shown in the installation figure."
+        ),
+        citations=[Citation(
+            manual_id="MWS150A_Service_Manual",
+            slug="5-3-balancer-installation",
+            quote="Install the balancer as shown.",
+        )],
+        raw_sections=[
+            SectionRef(
+                manual_id="MWS150A_Service_Manual",
+                slug="1-2-table-of-contents",
+                text="TOC text, no images.",
+                had_images=False,
+            ),
+            SectionRef(
+                manual_id="MWS150A_Service_Manual",
+                slug="5-3-balancer-installation",
+                text=cited_text,
+                had_images=True,
+            ),
+        ],
+        iterations=3,
+    )
+
+
+class TestExtractSurfacedImages:
+    """Adapter-side image-evidence extraction (#193)."""
+
+    def test_image_section_is_surfaced(self) -> None:
+        """A section with image blocks + vision text yields one
+        SurfacedImage with the vision description captured."""
+        result = _image_agent_result()
+        surfaced = _extract_surfaced_images(
+            result, ["5-3-balancer-installation"],
+        )
+        assert len(surfaced) == 1
+        img = surfaced[0]
+        assert img.slug == "5-3-balancer-installation"
+        assert img.manual_id == "MWS150A_Service_Manual"
+        assert img.cited is True
+        # Lower-bound count: max(vision descs, residual refs,
+        # had_images floor) — here max(1, 1, 1) = 1.
+        assert img.image_count == 1
+        assert len(img.vision_descriptions) == 1
+        assert "crankshaft punch mark" in (
+            img.vision_descriptions[0]
+        )
+
+    def test_vision_description_whitespace_normalised(self) -> None:
+        """Multi-line vision paragraphs collapse to one line."""
+        surfaced = _extract_surfaced_images(
+            _image_agent_result(),
+            ["5-3-balancer-installation"],
+        )
+        assert "\n" not in surfaced[0].vision_descriptions[0]
+
+    def test_plain_section_is_not_surfaced(self) -> None:
+        """Text-only sections contribute no image evidence."""
+        surfaced = _extract_surfaced_images(
+            _image_agent_result(), [],
+        )
+        slugs = [s.slug for s in surfaced]
+        assert "1-2-table-of-contents" not in slugs
+
+    def test_uncited_image_section_flagged_read_only(self) -> None:
+        """cited=False when the slug is not in claim_slugs."""
+        surfaced = _extract_surfaced_images(
+            _image_agent_result(), [],
+        )
+        assert surfaced[0].cited is False
+
+    def test_had_images_without_markers_floors_at_one(self) -> None:
+        """had_images=True with no vision text or refs still
+        counts as one figure."""
+        result = ManualAgentResult(
+            summary="s",
+            raw_sections=[SectionRef(
+                manual_id="m",
+                slug="wiring",
+                text="Diagram text only.",
+                had_images=True,
+            )],
+        )
+        surfaced = _extract_surfaced_images(result, [])
+        assert surfaced[0].image_count == 1
+        assert surfaced[0].vision_descriptions == []
+
+    def test_adapter_populates_surfaced_images(self) -> None:
+        """The full adapter carries image evidence into
+        SystemRunResult.surfaced_images."""
+        run = _agent_result_to_system_run(
+            "Where is the balancer weight positioned?",
+            _image_agent_result(),
+            latency_ms_wall=100.0,
+        )
+        assert len(run.surfaced_images) == 1
+        assert run.surfaced_images[0].cited is True
+
+
+class TestSurfacedFiguresPrompt:
+    """Judge prompt rendering of image evidence (#193)."""
+
+    def _image_run(self) -> SystemRunResult:
+        run = _sample_run()
+        run.surfaced_images = [SurfacedImage(
+            slug="5-3-balancer-installation",
+            manual_id="MWS150A_Service_Manual",
+            cited=True,
+            image_count=2,
+            vision_descriptions=[
+                "Balancer weight aligned with the crankshaft "
+                "punch mark.",
+            ],
+        )]
+        return run
+
+    def test_image_required_entry_detected(self) -> None:
+        """question_type OR requires_image marks the entry."""
+        assert _is_image_required_entry(_image_entry()) is True
+        assert _is_image_required_entry(_sample_entry()) is False
+        flagged = _sample_entry().model_copy(
+            update={"requires_image": True},
+        )
+        assert _is_image_required_entry(flagged) is True
+
+    def test_prompt_renders_surfaced_figures_block(self) -> None:
+        """Figure slug, count, cited flag, and vision text all
+        reach the judge."""
+        prompt = build_user_prompt(
+            _image_entry(), self._image_run(),
+        )
+        assert "SURFACED FIGURES" in prompt
+        assert "slug=5-3-balancer-installation" in prompt
+        assert "figures=2" in prompt
+        assert "[CITED]" in prompt
+        assert "crankshaft punch mark" in prompt
+
+    def test_image_required_entry_gets_marker(self) -> None:
+        """IMAGE REQUIREMENT block flags image-required entries."""
+        prompt = build_user_prompt(
+            _image_entry(), self._image_run(),
+        )
+        assert "## IMAGE REQUIREMENT" in prompt
+        assert "IMAGE-REQUIRED entry" in prompt
+
+    def test_normal_entry_gets_no_image_marker(self) -> None:
+        """Normal entries are marked text-sufficient."""
+        prompt = build_user_prompt(_sample_entry(), _sample_run())
+        assert "## IMAGE REQUIREMENT" in prompt
+        assert "IMAGE-REQUIRED entry" not in prompt
+
+    def test_empty_evidence_renders_explicit_marker(self) -> None:
+        """No surfaced images → explicit '(none captured)' so the
+        judge knows the figure was not delivered."""
+        prompt = build_user_prompt(_image_entry(), _sample_run())
+        assert "none captured" in prompt
+
+    def test_system_prompt_defines_figure_credit_rule(self) -> None:
+        """The rubric covers full credit for surfaced figures and
+        low scores for fabricated figure content."""
+        assert "SURFACED FIGURES" in JUDGE_SYSTEM_PROMPT
+        assert "IMAGE-REQUIRED" in JUDGE_SYSTEM_PROMPT
+        assert "pixel-level" in JUDGE_SYSTEM_PROMPT
+        assert "Fabricated figure content" in JUDGE_SYSTEM_PROMPT
+
+
+class TestOldReportCompatibility:
+    """Pre-#193 report JSON must keep loading (#193)."""
+
+    def test_result_without_surfaced_images_loads(self) -> None:
+        """A WP1-era result dict (no surfaced_images key) parses
+        with the field defaulting to empty."""
+        old_record = {
+            "system_label": "manual_agent",
+            "question": "Where is the balancer weight?",
+            "output_text": "As shown in the figure.",
+            "claim_slugs": ["5-3-balancer-installation"],
+            "read_slugs": ["5-3-balancer-installation"],
+            "retrieved_chunk_metadata": [],
+            "latency_ms_wall": 1.0,
+            "latency_ms_llm": 1.0,
+            "cost_usd": 0.0,
+            "tool_trace": [],
+            "stopped_reason": "complete",
+            "iterations": 2,
+            "obd_signal_citations": [],
+            "obd_dtc_citations": [],
+        }
+        run = SystemRunResult.model_validate(old_record)
+        assert run.surfaced_images == []
+        # And the old shape still renders a judge prompt.
+        prompt = build_user_prompt(_sample_entry(), run)
+        assert "none captured" in prompt
 
 
 # ── Edge cases ────────────────────────────────────────────────────
