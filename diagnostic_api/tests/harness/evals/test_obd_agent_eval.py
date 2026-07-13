@@ -63,6 +63,7 @@ Author: Li-Ta Hsu
 
 from __future__ import annotations
 
+import os
 from typing import Any, Optional
 
 import pytest
@@ -79,7 +80,20 @@ from tests.harness.evals.schemas import GoldenEntry
 # ── Module-level config ──────────────────────────────────────────
 
 
-_LOCKED_ENTRIES = load_golden("v2/locked/yamaha_road_test.jsonl")
+_GOLDEN_FILE = os.getenv(
+    "OBD_EVAL_GOLDEN_FILE",
+    "v2/locked/yamaha_road_test.jsonl",
+)
+"""HARNESS-25 (#117) measurement switch.  The DEFAULT stays the
+locked tier (empty until the workshop expert accepts candidates
+at ``/goldens/obd`` — the HARNESS-20 safety net is intact).  An
+explicit ``OBD_EVAL_GOLDEN_FILE=v2/yamaha_road_test.jsonl``
+opts a run into the CANDIDATE tier so the baseline scorecard can
+be established while expert review is pending; any report from
+such a run must be labelled candidate-tier."""
+
+
+_LOCKED_ENTRIES = load_golden(_GOLDEN_FILE)
 """HARNESS-21 [3/4]: reader migrated from
 ``v1/yamaha_road_test.jsonl`` to
 ``v2/locked/yamaha_road_test.jsonl`` to align with the manual
