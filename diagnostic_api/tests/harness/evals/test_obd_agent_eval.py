@@ -141,12 +141,21 @@ _PARAM_ENTRIES = (
 )
 
 
-_PASS_THRESHOLD = 0.6
+_PASS_THRESHOLD = 0.7
 """Minimum ``Grade.overall`` for an entry to pass.
 
-Starts at 0.6 (lower than the manual lane's 0.7) because the OBD
-lane has no baseline yet.  PR [3/3] re-pins this based on the
-local-Qwen + GLM-5.1 baseline numbers.
+Re-pinned from the HARNESS-25 round-1 scorecard (#117, run
+2026-07-12, candidate-tier goldens, local qwen3.5:27b): mean
+0.952, σ 0.069, min 0.800, 15/15 pass.  The mean − 1·σ rule
+gives 0.883 → floored 0.8, but the weakest entry sits at exactly
+0.800 (dtc-decode-002) with per-entry judge noise around ±0.05,
+so a 0.8 gate would flap on a healthy prompt.  Pinned one notch
+down at 0.7 — still catches any real regression (the baseline
+failures scored 0.20-0.58) without gating on noise.  Re-derive
+when the goldens are expert-locked or the prompt changes
+(regression rule: any OBD prompt change re-runs the 15 goldens
+and reports the delta vs
+``docs/eval-reports/harness25_obd_round1.json``).
 """
 
 
