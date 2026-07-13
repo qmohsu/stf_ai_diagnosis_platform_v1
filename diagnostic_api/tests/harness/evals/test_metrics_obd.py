@@ -351,12 +351,13 @@ class TestSignalPrecision:
         """No expectations + no flip → vacuously precise.
 
         Deliberate divergence from manual lane: manual's
-        ``_compute_claim_precision`` returns 0.0 in this case
-        (adversarial inferred from empty expected).  OBD lane has
-        an explicit ``expected_no_evidence`` flag, so empty
-        expected without the flag means "this entry isn't grading
-        signal precision" (e.g. a ``dtc_enumeration`` golden)
-        rather than "agent shouldn't cite anything."
+        ``_compute_claim_precision`` returns ``None`` (N/A, #192;
+        pre-#192 it returned 0.0) in this case (adversarial
+        inferred from empty expected).  OBD lane has an explicit
+        ``expected_no_evidence`` flag, so empty expected without
+        the flag means "this entry isn't grading signal
+        precision" (e.g. a ``dtc_enumeration`` golden) rather
+        than "agent shouldn't cite anything."
         """
         cited = [_cited_sig("RPM")]
         assert compute_signal_precision([], cited) == pytest.approx(1.0)

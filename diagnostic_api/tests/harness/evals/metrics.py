@@ -133,7 +133,8 @@ def _normalize_ws(text: str) -> str:
 # ``citation_quality`` purely because the label is spelled
 # differently — even when the content is right (see ``lookup-002``
 # in the phase-6 baseline: fact_recall=1.0 but citation_quality=0.3,
-# section_recall=0.0).
+# section_recall=0.0).  ``claim_precision`` joined the tolerant
+# scheme in HARNESS-24 (#192) — see ``_compute_claim_precision``.
 #
 # The fix is two-tier, deterministic (no LLM):
 #   1. Normalised slug equality — collapse the cosmetic drift.
@@ -475,8 +476,19 @@ class DeterministicMetrics:
             its weight renormalised over the remaining dims
             instead of vacuously scoring 1.0 (#148).
         claim_precision: Fraction of CITED slugs that match
-            golden.  Replaces the older ``section_precision``
-            which conflated reads and citations.
+            golden, matched slug-tolerantly (normalised slug OR
+            golden-quote containment in the claimed deliverable)
+            so a legitimate alternate-section citation still
+            counts (#192).  Replaces the older
+            ``section_precision`` which conflated reads and
+            citations.  ``None`` = N/A: the golden has no
+            ``expected_recall_slugs`` (manual adversarial —
+            there is no positive class, so precision is
+            undefined), excluded from ``compute_overall`` with
+            weight renormalisation, mirroring
+            ``section_recall``'s #148 treatment.  Adversarial
+            citation polarity stays graded by
+            ``citation_quality`` and the judge's decline rubric.
         exploration_cost: Fraction of READ slugs that were
             NOT cited.  Higher = more navigation waste.  Always
             0.0 for RAG (no synthesis step).  Reported-only
@@ -508,7 +520,7 @@ class DeterministicMetrics:
     """
 
     section_recall: Optional[float]
-    claim_precision: float
+    claim_precision: Optional[float]
     exploration_cost: float
     fact_recall: float
     fact_density: float
@@ -558,38 +570,96 @@ def _compute_section_recall(
 
 
 def _compute_claim_precision(
-    expected: List[str], claim: List[str],
-) -> float:
-    """``|claim ∩ expected| / |claim|``, 1 when claim empty.
+    expected: List[str],
+    claim: List[str],
+    covered_claim: Set[str],
+) -> Optional[float]:
+    """Slug-tolerant claimed-slug precision; ``None`` when N/A.
 
-    Replaces the older ``_compute_section_precision`` which
-    operated over the union of claim + read.  This version
-    only counts what the system **explicitly cited as an
-    answer source** — for the agent, slugs from
+    Counts what the system **explicitly cited as an answer
+    source** — for the agent, slugs from
     ``result.citations[].slug``; for RAG, slugs from each
     retrieved chunk (RAG has no separate synthesis step).
+
+    The pre-#192 version used an exact set intersection, which
+    scored 0 on legitimate alternate-section citations: the
+    manual states many facts in MULTIPLE sections (spec tables
+    AND procedures), and a correct answer citing the sibling
+    section the golden didn't happen to pick was graded as
+    fabrication (14/30 WP1 entries had ``claim_precision <=
+    0.5`` with ``answer_quality >= 0.7``).  A claimed slug now
+    counts as correct via either tolerant path (HARNESS-23
+    T4's scheme, extended to the precision numerator):
+
+    - **(a) Normalised slug match** — its ``_normalize_slug``
+      form equals an expected slug's (absorbs navigation-path
+      spelling drift).
+    - **(b) Golden-quote containment** — an expected slug is
+      covered because a golden quote for it appears in the
+      claimed deliverable text (``covered_claim``, resolved by
+      ``_covered_expected_slugs`` over ``claim_slugs`` +
+      ``output_text``).  The deliverable text is composed of
+      the cited sections, so a contained quote proves the
+      claim set genuinely surfaced that golden content even
+      though every slug label differs.  Each quote-covered
+      expected slug (not already credited via (a)) rescues ONE
+      claimed slug — the credit is capped at ``|claim|`` and
+      cannot exceed what was actually cited, so an answer that
+      cites one right section plus junk still pays for the
+      junk.
 
     Empty ``claim`` returns 1.0 (vacuously precise).  But a
     system that claimed nothing also scores 0 on
     ``section_recall``, so it can't ride this freebie to a
     high overall score.
 
-    Adversarial entries (empty ``expected``) are a special
-    case: if the system claimed anything, it's all "wrong"
-    — precision = 0.  If the system correctly stayed silent,
-    precision = 1.
+    Adversarial entries (empty ``expected``) return ``None``
+    (N/A, #192): with no positive class, precision is
+    undefined — the pre-#192 polarity (silent → 1.0, any
+    citation → 0.0) punished CORRECTIVE citations (declines
+    citing the section that refutes the premise, e.g.
+    ``引擎規格`` proving no turbo) as fabrication.  Citation
+    polarity on adversarial entries stays graded by
+    ``citation_quality`` (1.0 silent / 0.3 cited) and the
+    judge's decline rubric (#146); ``compute_overall``
+    excludes the dim and renormalises its weight, mirroring
+    ``section_recall``'s #148 treatment.
+
+    Args:
+        expected: ``GoldenEntry.expected_recall_slugs``.
+        claim: Slugs the system explicitly cited.
+        covered_claim: Expected slugs covered by the claim
+            channel, from ``_covered_expected_slugs`` over
+            ``claim_slugs`` and ``output_text``.
+
+    Returns:
+        Precision in [0, 1], or ``None`` when ``expected`` is
+        empty (manual adversarial — dimension undefined).
     """
-    if not claim:
-        return 1.0
-    if not expected:
-        # Adversarial: anything claimed is incorrect.
-        return 0.0
     expected_set = {s for s in expected if s}
+    if not expected_set:
+        # Adversarial: no positive class — precision is N/A.
+        return None
     claim_set = {s for s in claim if s}
     if not claim_set:
         return 1.0
-    overlap = expected_set & claim_set
-    return len(overlap) / len(claim_set)
+    norm_expected = {_normalize_slug(s) for s in expected_set}
+    slug_matched = {
+        c for c in claim_set
+        if _normalize_slug(c) in norm_expected
+    }
+    # Expected slugs the claim covered ONLY via golden-quote
+    # containment (path (a) coverage is already represented by
+    # ``slug_matched`` on the claim side — don't double-count).
+    norm_matched = {_normalize_slug(c) for c in slug_matched}
+    quote_only = {
+        s for s in covered_claim
+        if _normalize_slug(s) not in norm_matched
+    }
+    correct = min(
+        len(claim_set), len(slug_matched) + len(quote_only),
+    )
+    return correct / len(claim_set)
 
 
 def _compute_exploration_cost(
@@ -983,20 +1053,24 @@ def compute_deterministic_metrics(
     section_recall = _compute_section_recall(
         entry.expected_recall_slugs, covered_recall,
     )
-    claim_precision = _compute_claim_precision(
-        entry.expected_recall_slugs, run.claim_slugs,
-    )
-    exploration_cost = _compute_exploration_cost(
-        run.read_slugs, run.claim_slugs,
-    )
 
-    # Citation quality: forgiving quote scan over the whole
-    # deliverable (``output_text``) plus normalised claim-slug match.
+    # Claim-channel coverage: expected slugs covered by what the
+    # system CITED (normalised claim-slug match OR a golden quote
+    # present in the claimed deliverable).  Shared by
+    # ``claim_precision`` (#192) and ``citation_quality`` (#145).
     covered_claim = _covered_expected_slugs(
         entry.expected_recall_slugs,
         entry.golden_citations,
         run.claim_slugs,
         run.output_text or "",
+    )
+    claim_precision = _compute_claim_precision(
+        entry.expected_recall_slugs,
+        run.claim_slugs,
+        covered_claim,
+    )
+    exploration_cost = _compute_exploration_cost(
+        run.read_slugs, run.claim_slugs,
     )
     citation_quality = _compute_citation_quality(
         entry.expected_recall_slugs,
@@ -1144,14 +1218,19 @@ def compute_overall(
     (#153) — reported-only unless a caller overrides
     ``weights``.
 
-    N/A handling (#148): when ``metrics.section_recall`` is
-    ``None`` (manual adversarial — empty
-    ``expected_recall_slugs``, nothing SHOULD be retrieved), the
-    ``section_recall`` term is excluded and the remaining terms
-    are rescaled by ``total / (total - w_sr)`` so the score stays
-    on the same [0, 1] scale.  This replaces the old vacuous-1.0
-    behaviour, which handed adversarial entries a free +0.20 of
-    floor in both lanes.
+    N/A handling (#148, #192): when ``metrics.section_recall``
+    or ``metrics.claim_precision`` is ``None`` (manual
+    adversarial — empty ``expected_recall_slugs``, so neither
+    "what should be retrieved" nor "what fraction of citations
+    is correct" is defined), the N/A terms are excluded and the
+    remaining terms are rescaled by ``total / (total -
+    na_weight)`` so the score stays on the same [0, 1] scale.
+    Under default weights that's ×1/0.75 for section_recall
+    alone and ×1/0.65 when both dims are N/A (they co-occur on
+    manual adversarial entries).  This replaces the old
+    vacuous-1.0 section_recall (free +0.20 of adversarial
+    floor) and the old 0/1 claim_precision polarity (which
+    scored corrective citations as fabrication).
 
     Args:
         metrics: Output of ``compute_deterministic_metrics``.
@@ -1173,8 +1252,7 @@ def compute_overall(
     """
     w = weights if weights is not None else DEFAULT_OVERALL_WEIGHTS
     score = (
-        w["claim_precision"]       * metrics.claim_precision
-        + w["exploration_cost"]    * (1.0 - metrics.exploration_cost)
+        w["exploration_cost"]      * (1.0 - metrics.exploration_cost)
         + w["fact_recall"]         * metrics.fact_recall
         + w["fact_density"]        * metrics.fact_density
         + w["hallucination_penalty"] * hallucination_penalty
@@ -1182,14 +1260,22 @@ def compute_overall(
         + w["value_accuracy"]      * metrics.value_accuracy
         + w["answer_quality"]      * answer_quality
     )
+    # N/A handling (#148, #192) — exclude undefined dims and
+    # renormalise their weight over the remaining terms so an
+    # entry with no expected slugs is graded purely on the dims
+    # that apply to it.
+    na_weight = 0.0
     if metrics.section_recall is None:
-        # N/A — exclude the dim and renormalise its weight over
-        # the remaining terms so an entry with no expected slugs
-        # is graded purely on the dims that apply to it (#148).
-        total = sum(w.values())
-        applicable = total - w["section_recall"]
-        if applicable > 0:
-            score *= total / applicable
+        na_weight += w["section_recall"]
     else:
         score += w["section_recall"] * metrics.section_recall
+    if metrics.claim_precision is None:
+        na_weight += w["claim_precision"]
+    else:
+        score += w["claim_precision"] * metrics.claim_precision
+    if na_weight > 0.0:
+        total = sum(w.values())
+        applicable = total - na_weight
+        if applicable > 0:
+            score *= total / applicable
     return min(1.0, max(0.0, score))

@@ -555,9 +555,12 @@ class TestGradeRunAdversarialDecline:
         )
         assert grade.answer_quality == 0.1
         assert grade.hallucination_penalty == pytest.approx(0.7)
-        # Fabricated citation on an adversarial entry is also
-        # punished deterministically (claim_precision = 0).
-        assert grade.claim_precision == 0.0
+        # claim_precision is N/A on adversarial entries (#192);
+        # the fabricated citation is punished by citation_quality
+        # (0.3) plus the judge's low answer_quality and the
+        # pitfall violation, not by a 0/1 precision polarity.
+        assert grade.claim_precision is None
+        assert grade.citation_quality == pytest.approx(0.3)
         assert grade.overall < grade.answer_quality + 0.65
 
     @pytest.mark.asyncio

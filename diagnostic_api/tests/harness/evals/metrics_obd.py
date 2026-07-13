@@ -237,7 +237,8 @@ def compute_signal_precision(
     ``expected`` (when ``expected_no_evidence`` is False) also
     returns 1.0 — this is a deliberate divergence from the manual
     lane's ``_compute_claim_precision``, which treats empty-expected
-    as an adversarial signal and scores 0.0.  In the OBD lane,
+    as an adversarial signal and returns ``None`` (N/A, #192;
+    pre-#192 it scored 0.0).  In the OBD lane,
     adversarial cases are flagged explicitly via
     ``expected_no_evidence``; an entry with empty
     ``expected_signal_citations`` and no flag (e.g. a
