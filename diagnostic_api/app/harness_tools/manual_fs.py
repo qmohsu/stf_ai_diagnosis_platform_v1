@@ -226,6 +226,82 @@ _HEADING_PATTERN = re.compile(
     r"^(#{1,6})\s+(.+)$", re.MULTILINE,
 )
 
+# ── Caption-stub demotion (HARNESS-24, #195) ──────────────────────
+#
+# Marker-pdf sometimes renders a figure CAPTION as a heading (e.g.
+# ``### 前煞車`` directly over the front-brake photo on page 142).
+# The stub grabs the canonical slug; the REAL chapter one page
+# later is deduped to ``前煞車-2``, so any agent or golden citing
+# the natural title lands on a ~136-char stub.  A heading whose
+# body — measured to the next raw heading of ANY level — contains
+# no prose beyond image references, optional ``*Vision
+# description:`` paragraphs, page-break markers, and whitespace is
+# a caption, not a section: it is dropped from the heading tree so
+# the real chapter keeps the canonical slug.  The caption's lines
+# (heading text and image included) remain in the markdown, so the
+# preceding surviving section's span extends over them — the image
+# stays readable via the parent.
+
+_PAGE_BREAK_MARKER_RE = re.compile(
+    r"^(?:<!--\s*page:\s*\d+\s*-->|\{\d+\}-{4,})$"
+)
+"""Page-boundary furniture: schema-style ``<!-- page:42 -->``
+comments and marker-pdf ``paginate_output`` separators
+(``{142}------``)."""
+
+_VISION_DESC_START_RE = re.compile(
+    r"^\*Vision description:"
+)
+"""Start of a vision-generated figure description.  The italic
+paragraph may wrap across lines until one ending with ``*``."""
+
+
+def _is_caption_stub(body_lines: List[str]) -> bool:
+    """Return True when a heading's body is only figure furniture.
+
+    A caption stub must contain at least one image reference and
+    nothing else except blank lines, page-break markers,
+    ``*Vision description: ...*`` paragraphs, and page-anchor
+    spans (stripped per line via ``_clean_md``).  Any other
+    non-empty line is prose and disqualifies the heading from
+    demotion.  A body with no image at all is never a caption
+    (e.g. a chapter heading directly followed by its first
+    subsection).
+
+    Args:
+        body_lines: Raw markdown lines strictly between the
+            heading line and the next raw heading of any level.
+
+    Returns:
+        True when the body is image-only caption furniture.
+    """
+    has_image = False
+    in_vision_desc = False
+    for raw_line in body_lines:
+        line = _clean_md(raw_line).strip()
+        if not line:
+            continue
+        if in_vision_desc:
+            if line.endswith("*"):
+                in_vision_desc = False
+            continue
+        if _PAGE_BREAK_MARKER_RE.match(line):
+            continue
+        if _VISION_DESC_START_RE.match(line):
+            if not line.endswith("*"):
+                in_vision_desc = True
+            continue
+        if _IMAGE_REF_PATTERN.search(line):
+            residue = _IMAGE_REF_PATTERN.sub(
+                "", line,
+            ).strip()
+            if residue:
+                return False
+            has_image = True
+            continue
+        return False
+    return has_image
+
 
 # ── Data models ───────────────────────────────────────────────────
 
@@ -351,9 +427,10 @@ def parse_heading_tree(
 ) -> List[HeadingNode]:
     """Build a hierarchical heading tree from markdown text.
 
-    Walks all headings (``#`` through ``######``), assigns slugs
-    with duplicate suffixes (``-2``, ``-3``), and computes line
-    ranges for each section.
+    Walks all headings (``#`` through ``######``), demotes
+    caption-stub headings (#195), assigns slugs with duplicate
+    suffixes (``-2``, ``-3``), and computes line ranges for each
+    section.
 
     Args:
         md_text: Full markdown file content.
@@ -378,11 +455,45 @@ def parse_heading_tree(
     if not raw_headings:
         return []
 
+    # Second pass (HARNESS-24, #195): demote caption-stub
+    # headings.  Needs the section BODY (to the next raw heading
+    # of ANY level), so it runs after collection but BEFORE slug
+    # assignment — otherwise the real chapter would still get the
+    # ``-2`` suffix.  A heading directly followed by a DEEPER
+    # heading is a structural parent whose own body is legally
+    # empty or figure-only; demoting it would re-parent its
+    # children, so it is always kept.
+    kept: List[Tuple[int, int, str]] = []
+    demoted = 0
+    for i, (line_idx, level, title) in enumerate(
+        raw_headings,
+    ):
+        if i + 1 < len(raw_headings):
+            next_line, next_level, _ = raw_headings[i + 1]
+        else:
+            next_line, next_level = len(lines), 0
+        is_parent = next_level > level
+        if not is_parent and _is_caption_stub(
+            lines[line_idx + 1:next_line],
+        ):
+            demoted += 1
+            logger.debug(
+                "caption_stub_demoted", title=title,
+            )
+            continue
+        kept.append((line_idx, level, title))
+    if demoted:
+        logger.debug(
+            "caption_stubs_demoted", count=demoted,
+        )
+    if not kept:
+        return []
+
     # Assign slugs with deduplication.
     slug_counts: Dict[str, int] = {}
     nodes: List[HeadingNode] = []
     for i, (line_idx, level, title) in enumerate(
-        raw_headings,
+        kept,
     ):
         base_slug = slugify(title)
         count = slug_counts.get(base_slug, 0)
@@ -392,9 +503,11 @@ def parse_heading_tree(
             slug = f"{base_slug}-{count + 1}"
         slug_counts[base_slug] = count + 1
 
-        # line_end: up to the next heading or EOF.
-        if i + 1 < len(raw_headings):
-            line_end = raw_headings[i + 1][0]
+        # line_end: up to the next surviving heading or EOF, so
+        # a demoted caption's lines (image included) stay inside
+        # the preceding section's span.
+        if i + 1 < len(kept):
+            line_end = kept[i + 1][0]
         else:
             line_end = len(lines)
 
