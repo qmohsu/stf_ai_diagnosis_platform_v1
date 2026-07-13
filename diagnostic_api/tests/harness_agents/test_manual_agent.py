@@ -23,14 +23,18 @@ from app.harness.tool_registry import (
 )
 from app.harness_agents.manual_agent import (
     _FORCED_DECLINE_SUMMARY,
+    _MAX_FOREIGN_MANUAL_BLOCKS,
     _MAX_SECTION_READS_BEFORE_FINAL,
     ManualAgentConfig,
     ManualAgentDeps,
     _extract_last_assistant_content,
     _extract_section_ref,
+    _ManualInventoryEntry,
     _NO_THINK_DIRECTIVE,
     _force_not_found_finalize,
     _parse_final_json,
+    _parse_manual_inventory,
+    _pin_manual_for_inquiry,
     _suppress_thinking_in_system,
     _parse_tool_arguments,
     _sanitize_tool_input_for_trace,
@@ -997,3 +1001,424 @@ class TestSynthesisCompletenessPrompts:
         assert "not found in the sections read" in (
             _FORCE_FINAL_INSTRUCTION
         )
+
+
+class TestSubQuestionCoveragePrompts:
+    """HARNESS-24 WP3 (#194): the sub-question coverage gate for
+    multi-part inquiries is present in the prompts.
+
+    Pins the load-bearing phrases so a prompt refactor cannot
+    silently drop the fixes for the WP1 cross-section failure mode
+    (cross-001/003/005 finalized with one sub-question unanswered
+    — frugality treated "one part answered" as "enough evidence")."""
+
+    def test_system_prompt_enumerates_question_parts(self) -> None:
+        """Process step 1 decomposes multi-part questions and a
+        dedicated section requires every part answered-or-declined."""
+        from app.harness_agents.manual_agent_prompts import (
+            MANUAL_AGENT_SYSTEM_PROMPT,
+        )
+        assert "enumerate the distinct parts" in (
+            MANUAL_AGENT_SYSTEM_PROMPT
+        )
+        assert "Multi-part questions" in MANUAL_AGENT_SYSTEM_PROMPT
+
+    def test_system_prompt_frugality_covers_every_part(self) -> None:
+        """The frugality self-check asks "can I answer EVERY part",
+        not "can I answer now" — the WP1 framing that let one
+        answered part terminate cross-005 half-done."""
+        from app.harness_agents.manual_agent_prompts import (
+            MANUAL_AGENT_SYSTEM_PROMPT,
+        )
+        assert "EVERY part of the question" in (
+            MANUAL_AGENT_SYSTEM_PROMPT
+        )
+        assert "frugality never justifies dropping a part" in (
+            MANUAL_AGENT_SYSTEM_PROMPT
+        )
+
+    def test_system_prompt_permits_read_for_uncovered_part(
+        self,
+    ) -> None:
+        """An uncovered part explicitly licenses one more targeted
+        read while reads remain (cross-003 declined at 2 of 3 reads
+        naming the very section it should have read)."""
+        from app.harness_agents.manual_agent_prompts import (
+            MANUAL_AGENT_SYSTEM_PROMPT,
+        )
+        assert "one more targeted read" in MANUAL_AGENT_SYSTEM_PROMPT
+        assert "UNCOVERED" in MANUAL_AGENT_SYSTEM_PROMPT
+
+    def test_system_prompt_has_final_coverage_rule(self) -> None:
+        """The final-answer rules carry a sub-question coverage
+        check alongside WP1's procedure-completeness check."""
+        from app.harness_agents.manual_agent_prompts import (
+            MANUAL_AGENT_SYSTEM_PROMPT,
+        )
+        assert "Sub-question coverage" in MANUAL_AGENT_SYSTEM_PROMPT
+
+    def test_user_message_requires_every_part(self) -> None:
+        """The per-run user message repeats the coverage gate."""
+        from app.harness_agents.manual_agent_prompts import (
+            build_manual_agent_user_message,
+        )
+        msg = build_manual_agent_user_message("q", None)
+        assert "cover every part" in msg
+        assert "every part is answered or explicitly declined" in msg
+
+    def test_forced_final_instruction_covers_every_part(self) -> None:
+        """The T2 forced-synthesis turn (which finalized cross-001
+        and cross-005 half-answered) demands per-part coverage."""
+        from app.harness_agents.manual_agent import (
+            _FORCE_FINAL_INSTRUCTION,
+        )
+        assert "SUB-QUESTION COVERAGE" in _FORCE_FINAL_INSTRUCTION
+        assert "EVERY part" in _FORCE_FINAL_INSTRUCTION
+
+    def test_read_cap_raised_to_four_for_multipart_slack(
+        self,
+    ) -> None:
+        """WP3 raises the T2 read cap 3 -> 4: a two-part question
+        needs one read per part, so a single near-miss read left
+        zero slack (cross-001/005 hit the forced turn with a part
+        uncovered).  The byte-identical-repeat trip is unchanged.
+        Deliberate pin — a change here needs an eval re-run."""
+        assert _MAX_SECTION_READS_BEFORE_FINAL == 4
+
+
+class TestSingleManualConstraintPrompts:
+    """HARNESS-24 WP3 round 2 (#194 / PR #196): hard single-manual
+    constraint on mid-run reads.
+
+    The round-1 branch smoke exposed a new failure mode on
+    cross-004: the agent read Toyota Corolla sections for a Yamaha
+    question and quoted the Corolla radiator-cap spec (no stored v2
+    or WP1 run ever read a foreign manual).  The prior vehicle rules
+    covered manual SELECTION and declining, but not mid-run reads —
+    these pins keep the read-level constraint in place."""
+
+    def test_system_prompt_has_hard_single_manual_rule(self) -> None:
+        """A dedicated HARD-constraint section forbids TOC/read
+        calls against any manual but the matching one, and Process
+        step 2 locks onto the matched manual."""
+        from app.harness_agents.manual_agent_prompts import (
+            MANUAL_AGENT_SYSTEM_PROMPT,
+        )
+        assert "Single-manual rule (HARD constraint)" in (
+            MANUAL_AGENT_SYSTEM_PROMPT
+        )
+        assert "ALL subsequent get_manual_toc" in (
+            MANUAL_AGENT_SYSTEM_PROMPT
+        )
+        assert "NEVER evidence" in MANUAL_AGENT_SYSTEM_PROMPT
+        assert "Once you have identified the matching manual, LOCK" in (
+            MANUAL_AGENT_SYSTEM_PROMPT
+        )
+
+    def test_uncovered_part_stays_in_matching_manual(self) -> None:
+        """The WP3 multi-part section explicitly denies foreign-
+        manual reads as a way to fill an uncovered part — the part
+        is declined per the honesty rule instead (the cross-004
+        foraging path)."""
+        from app.harness_agents.manual_agent_prompts import (
+            MANUAL_AGENT_SYSTEM_PROMPT,
+        )
+        assert (
+            "An uncovered part NEVER justifies reading a different"
+        ) in MANUAL_AGENT_SYSTEM_PROMPT
+
+    def test_forced_final_discards_foreign_manual_sections(
+        self,
+    ) -> None:
+        """The forced-synthesis turn tells the model to discard any
+        foreign-manual section it already read, so cross-manual
+        content cannot reach the answer or citations."""
+        from app.harness_agents.manual_agent import (
+            _FORCE_FINAL_INSTRUCTION,
+        )
+        assert "SINGLE-MANUAL RULE" in _FORCE_FINAL_INSTRUCTION
+        assert "different vehicle's manual, discard it" in (
+            _FORCE_FINAL_INSTRUCTION
+        )
+
+
+# ── Deterministic manual pinning (WP3 round 3 / #194) ─────────────
+
+
+_TWO_MANUAL_LISTING = (
+    "Available manuals (2):\n"
+    "- MWS150A_Service_Manual  vehicle=\"Yamaha TRICITY155\"  "
+    "factory_code=\"MWS150-A\"  pages=100  sections=50\n"
+    "- Corolla_Service_Manual  vehicle=\"Toyota Corolla\"  "
+    "pages=200  sections=80\n"
+    "\nIMPORTANT: only treat a manual as authoritative for this "
+    "diagnosis if its `vehicle=` make/model matches."
+)
+"""Realistic two-manual ``list_manuals`` output (same shape the
+live tool produces) used by the pinning tests."""
+
+
+class TestManualPinningHelpers:
+    """Unit tests for inventory parsing + inquiry matching."""
+
+    def test_parse_inventory_reads_both_entries(self) -> None:
+        """Both manual lines parse; factory_code optional."""
+        entries = _parse_manual_inventory(_TWO_MANUAL_LISTING)
+        assert entries == [
+            _ManualInventoryEntry(
+                manual_id="MWS150A_Service_Manual",
+                vehicle="Yamaha TRICITY155",
+                factory_code="MWS150-A",
+            ),
+            _ManualInventoryEntry(
+                manual_id="Corolla_Service_Manual",
+                vehicle="Toyota Corolla",
+                factory_code="",
+            ),
+        ]
+
+    def test_parse_inventory_skips_non_entry_lines(self) -> None:
+        """Header/footer prose produces no phantom entries."""
+        entries = _parse_manual_inventory(
+            "No manuals found in storage.",
+        )
+        assert entries == []
+
+    def test_pin_matches_factory_code_with_separators(self) -> None:
+        """A question saying 'MWS-150-A' matches factory_code
+        'MWS150-A' after separator stripping (the cross-004
+        question shape)."""
+        entries = _parse_manual_inventory(_TWO_MANUAL_LISTING)
+        pin = _pin_manual_for_inquiry(
+            "On the MWS-150-A, what is the coolant capacity AND "
+            "the radiator cap opening pressure?",
+            entries,
+        )
+        assert pin == ("MWS150A_Service_Manual", "factory_code")
+
+    def test_pin_matches_spaced_model_token(self) -> None:
+        """A question saying 'Tricity 155' matches the TRICITY155
+        model token of the vehicle string."""
+        entries = _parse_manual_inventory(_TWO_MANUAL_LISTING)
+        pin = _pin_manual_for_inquiry(
+            "What oil does the Tricity 155 take?", entries,
+        )
+        assert pin == ("MWS150A_Service_Manual", "vehicle")
+
+    def test_no_pin_when_no_manual_matches(self) -> None:
+        """An unrelated vehicle pins nothing (model judgment
+        governs, and the prompt decline rules apply)."""
+        entries = _parse_manual_inventory(_TWO_MANUAL_LISTING)
+        pin = _pin_manual_for_inquiry(
+            "What is the oil capacity of the Honda PCX?", entries,
+        )
+        assert pin is None
+
+    def test_no_pin_when_multiple_manuals_match(self) -> None:
+        """A question naming both vehicles pins nothing."""
+        entries = _parse_manual_inventory(_TWO_MANUAL_LISTING)
+        pin = _pin_manual_for_inquiry(
+            "Compare the Yamaha Tricity 155 and Toyota Corolla "
+            "cooling systems.",
+            entries,
+        )
+        assert pin is None
+
+
+class TestManualPinningLoop:
+    """Loop-level interception of foreign-manual TOC/read calls.
+
+    The round-2 smoke showed qwen3.5:27b deterministically SELECTING
+    the Corolla manual for a Yamaha question at step 2 (trace:
+    list_manuals -> get_manual_toc(Corolla) -> 3 Corolla reads) —
+    prompt-level rules did not move it, so the loop now pins the
+    matching manual and blocks foreign reads before execution."""
+
+    _QUESTION = (
+        "On the MWS-150-A, what is the coolant capacity AND the "
+        "radiator cap opening pressure?"
+    )
+
+    @staticmethod
+    def _list_call() -> LLMResponse:
+        """A response calling list_manuals."""
+        return _tool_call_response([{"name": "list_manuals"}])
+
+    @staticmethod
+    def _toc_call(manual_id: str) -> LLMResponse:
+        """A response calling get_manual_toc on one manual."""
+        return _tool_call_response([{
+            "name": "get_manual_toc",
+            "arguments": {"manual_id": manual_id},
+        }])
+
+    @staticmethod
+    def _read_call(manual_id: str, section: str) -> LLMResponse:
+        """A response reading one section of one manual."""
+        return _tool_call_response([{
+            "name": "read_manual_section",
+            "arguments": {
+                "manual_id": manual_id, "section": section,
+            },
+        }])
+
+    @staticmethod
+    def _tool_message_contents(client: Any) -> List[str]:
+        """All tool-role message contents seen by the final call."""
+        return [
+            str(m.get("content", ""))
+            for m in client.calls[-1]["messages"]
+            if m.get("role") == "tool"
+        ]
+
+    @pytest.mark.asyncio
+    async def test_foreign_toc_call_is_blocked(self) -> None:
+        """A TOC call on the foreign manual returns a corrective
+        BLOCKED error naming the pinned manual, without executing
+        the tool; a follow-up call on the pinned manual proceeds."""
+        deps, client = _make_deps(
+            responses=[
+                self._list_call(),
+                self._toc_call("Corolla_Service_Manual"),
+                self._toc_call("MWS150A_Service_Manual"),
+                _final_response("answer"),
+            ],
+            tool_outputs={
+                "list_manuals": _TWO_MANUAL_LISTING,
+                "get_manual_toc": "TOC-SENTINEL",
+            },
+        )
+        result = await run_manual_agent(
+            self._QUESTION, None, deps,
+        )
+        assert result.stopped_reason == "complete"
+        contents = self._tool_message_contents(client)
+        blocked = [c for c in contents if c.startswith("BLOCKED:")]
+        assert len(blocked) == 1
+        assert "MWS150A_Service_Manual" in blocked[0]
+        assert "Toyota Corolla" in blocked[0]
+        # The foreign call never executed (exactly ONE real TOC
+        # output — the pinned manual call), and the blocked call
+        # is an error in the trace.
+        assert contents.count("TOC-SENTINEL") == 1
+        toc_traces = [
+            t for t in result.tool_trace
+            if t.name == "get_manual_toc"
+        ]
+        assert [t.is_error for t in toc_traces] == [True, False]
+
+    @pytest.mark.asyncio
+    async def test_pinned_manual_calls_proceed(self) -> None:
+        """Calls targeting the pinned manual are untouched."""
+        deps, client = _make_deps(
+            responses=[
+                self._list_call(),
+                self._read_call(
+                    "MWS150A_Service_Manual", "cooling",
+                ),
+                _final_response("answer"),
+            ],
+            tool_outputs={
+                "list_manuals": _TWO_MANUAL_LISTING,
+                "read_manual_section": "SECTION-SENTINEL",
+            },
+        )
+        result = await run_manual_agent(
+            self._QUESTION, None, deps,
+        )
+        assert result.stopped_reason == "complete"
+        contents = self._tool_message_contents(client)
+        assert not any(c.startswith("BLOCKED:") for c in contents)
+        assert "SECTION-SENTINEL" in contents
+
+    @pytest.mark.asyncio
+    async def test_no_interception_without_a_match(self) -> None:
+        """A question matching no manual pins nothing — reads on
+        any manual execute normally (previous behaviour)."""
+        deps, client = _make_deps(
+            responses=[
+                self._list_call(),
+                self._toc_call("Corolla_Service_Manual"),
+                _final_response("Not found: no manual matches."),
+            ],
+            tool_outputs={
+                "list_manuals": _TWO_MANUAL_LISTING,
+                "get_manual_toc": "TOC-SENTINEL",
+            },
+        )
+        result = await run_manual_agent(
+            "What is the oil capacity of the Honda PCX?",
+            None,
+            deps,
+        )
+        assert result.stopped_reason == "complete"
+        contents = self._tool_message_contents(client)
+        assert not any(c.startswith("BLOCKED:") for c in contents)
+        assert "TOC-SENTINEL" in contents
+
+    @pytest.mark.asyncio
+    async def test_no_interception_when_both_match(self) -> None:
+        """A question naming both vehicles pins nothing —
+        ambiguous inquiries stay under the model judgment."""
+        deps, client = _make_deps(
+            responses=[
+                self._list_call(),
+                self._toc_call("Corolla_Service_Manual"),
+                _final_response("answer"),
+            ],
+            tool_outputs={
+                "list_manuals": _TWO_MANUAL_LISTING,
+                "get_manual_toc": "TOC-SENTINEL",
+            },
+        )
+        result = await run_manual_agent(
+            "Compare the Yamaha Tricity 155 and Toyota Corolla "
+            "cooling systems.",
+            None,
+            deps,
+        )
+        assert result.stopped_reason == "complete"
+        contents = self._tool_message_contents(client)
+        assert not any(c.startswith("BLOCKED:") for c in contents)
+
+    @pytest.mark.asyncio
+    async def test_two_blocks_on_same_manual_force_final(
+        self,
+    ) -> None:
+        """Two blocked attempts on the same foreign manual trip
+        the T2-style forced synthesis (tool-less terminal turn)
+        instead of burning the wall-clock."""
+        assert _MAX_FOREIGN_MANUAL_BLOCKS == 2
+        deps, client = _make_deps(
+            responses=[
+                self._list_call(),
+                self._read_call(
+                    "Corolla_Service_Manual", "cooling-system-2",
+                ),
+                self._read_call(
+                    "Corolla_Service_Manual", "specifications-3",
+                ),
+                _final_response(
+                    "Not found in the sections read.",
+                ),
+            ],
+            tool_outputs={
+                "list_manuals": _TWO_MANUAL_LISTING,
+                "read_manual_section": "SECTION-SENTINEL",
+            },
+            config=ManualAgentConfig(
+                max_iterations=12, timeout_seconds=30.0,
+            ),
+        )
+        result = await run_manual_agent(
+            self._QUESTION, None, deps,
+        )
+        assert result.stopped_reason == "complete"
+        # The terminal turn was forced tool-less.
+        assert client.calls[-1]["tools"] == []
+        # Neither foreign read executed.
+        contents = self._tool_message_contents(client)
+        assert "SECTION-SENTINEL" not in contents
+        assert sum(
+            1 for c in contents if c.startswith("BLOCKED:")
+        ) == 2
