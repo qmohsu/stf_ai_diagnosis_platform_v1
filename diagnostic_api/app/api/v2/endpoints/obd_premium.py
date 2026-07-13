@@ -324,12 +324,28 @@ async def generate_premium_diagnosis(
                    "generate diagnosis.",
         )
 
-    # RAG retrieval
+    # RAG retrieval — vehicle-scoped (APP-64, #188): mirror
+    # APP-63's fix for the standard diagnose path.  Without the
+    # filter, a Yamaha query can pull Toyota Corolla chunks into
+    # the premium LLM's context (cross-manual contamination).
+    # None (historical sessions) falls back to unfiltered.
     rag_query = parsed_summary.get("rag_query", "")
     context_str = ""
     if rag_query:
         try:
-            results = await retrieve_context(rag_query, top_k=3)
+            results = await retrieve_context(
+                rag_query,
+                top_k=3,
+                vehicle_model=session_data.vehicle_model,
+            )
+            if not results and session_data.vehicle_model:
+                # Degrade exactly like the no-context path today:
+                # generation proceeds with an empty context.
+                logger.warning(
+                    "premium_diagnosis_rag_retrieval_empty",
+                    session_id=str(session_id),
+                    vehicle_model=session_data.vehicle_model,
+                )
             context_str = "\n\n".join(
                 f"{r.source_type} — {r.doc_id} — "
                 f"{r.section_title}\n{r.text}"
