@@ -923,3 +923,284 @@ class TestAdversarialSectionRecallNa:
             DEFAULT_OVERALL_WEIGHTS["section_recall"] * 0.5
         )
         assert overall == pytest.approx(expected)
+
+
+# ── Slug-tolerant claim_precision (HARNESS-24, #192) ──────────────
+
+
+class TestSlugTolerantClaimPrecision:
+    """``claim_precision`` credits alternate-section citations
+    slug-tolerantly (normalised slug OR golden-quote containment
+    in the claimed deliverable), while still penalising genuinely
+    wrong citations."""
+
+    def _entry(self) -> GoldenEntry:
+        return GoldenEntry(
+            id="lookup-claim-precision",
+            category="component",
+            question_type="procedural",
+            difficulty="medium",
+            question="如何測量壓縮壓力？",
+            golden_summary="依手冊步驟測量。",
+            golden_citations=[
+                GoldenCitation(
+                    manual_id="MWS150A_Service_Manual",
+                    slug="壓縮壓力的測量",
+                    quote="標準壓縮壓力為 1200 kPa",
+                ),
+            ],
+            expected_recall_slugs=["壓縮壓力的測量"],
+        )
+
+    def test_pathvariant_claimed_slug_full_credit(self):
+        """A separator/case variant of the golden slug counts as
+        a correct citation (path (a): normalised slug match)."""
+        run = SystemRunResult(
+            system_label="manual_agent",
+            question="q",
+            output_text="測量步驟如手冊所述。",
+            claim_slugs=["壓縮壓力的 測量"],
+            read_slugs=["壓縮壓力的 測量"],
+        )
+        metrics = compute_deterministic_metrics(self._entry(), run)
+        assert metrics.claim_precision == pytest.approx(1.0)
+
+    def test_alternate_section_with_golden_quote_full_credit(self):
+        """The #192 regression case (procedural-006 shape): the
+        agent cites a content-equivalent sibling section whose
+        text carries the golden quote → full credit, not 0."""
+        run = SystemRunResult(
+            system_label="manual_agent",
+            question="q",
+            output_text=(
+                "依下列步驟測量。標準壓縮壓力為 1200 kPa，"
+                "低於此值時檢查汽門間隙。"
+            ),
+            claim_slugs=["壓縮壓力"],  # Sibling, not the golden slug.
+            read_slugs=["壓縮壓力"],
+        )
+        metrics = compute_deterministic_metrics(self._entry(), run)
+        assert metrics.claim_precision == pytest.approx(1.0)
+
+    def test_quote_rescues_one_claim_not_all(self):
+        """The lookup-002 shape: two alternate sections cited, one
+        golden quote contained → 0.5, not 1.0 — quote containment
+        rescues one claimed slug per covered expected slug, so
+        extra citations are not blanket-credited."""
+        run = SystemRunResult(
+            system_label="manual_agent",
+            question="q",
+            output_text="標準壓縮壓力為 1200 kPa。",
+            claim_slugs=["引擎機油容量", "服務資料"],
+            read_slugs=["引擎機油容量", "服務資料"],
+        )
+        metrics = compute_deterministic_metrics(self._entry(), run)
+        assert metrics.claim_precision == pytest.approx(0.5)
+
+    def test_genuinely_wrong_citation_still_penalised(self):
+        """Guardrail: a citation that neither slug-matches nor
+        carries any golden quote stays at 0.0 — the fix must not
+        over-credit fabricated citations."""
+        run = SystemRunResult(
+            system_label="manual_agent",
+            question="q",
+            output_text="這是完全無關的內容。",
+            claim_slugs=["無關章節"],
+            read_slugs=["無關章節"],
+        )
+        metrics = compute_deterministic_metrics(self._entry(), run)
+        assert metrics.claim_precision == pytest.approx(0.0)
+
+    def test_right_plus_junk_citation_fractional(self):
+        """A correct (slug-matched) citation alongside a junk one
+        scores 0.5 — junk citations still cost."""
+        run = SystemRunResult(
+            system_label="manual_agent",
+            question="q",
+            output_text="測量步驟如手冊所述。",
+            claim_slugs=["壓縮壓力的測量", "無關章節"],
+            read_slugs=["壓縮壓力的測量", "無關章節"],
+        )
+        metrics = compute_deterministic_metrics(self._entry(), run)
+        assert metrics.claim_precision == pytest.approx(0.5)
+
+    def test_empty_claim_stays_vacuously_precise(self):
+        """Unchanged: citing nothing on a non-adversarial entry is
+        vacuously precise (recall punishes the omission)."""
+        run = SystemRunResult(
+            system_label="manual_agent",
+            question="q",
+            output_text="找不到相關內容。",
+            claim_slugs=[],
+            read_slugs=[],
+        )
+        metrics = compute_deterministic_metrics(self._entry(), run)
+        assert metrics.claim_precision == pytest.approx(1.0)
+
+
+# ── Adversarial claim_precision N/A (HARNESS-24, #192) ────────────
+
+
+class TestAdversarialClaimPrecisionNa:
+    """Empty ``expected_recall_slugs`` → ``claim_precision`` is N/A
+    (``None``), mirroring #148's section_recall treatment: with no
+    positive class, precision is undefined, and the old 0/1
+    polarity scored corrective citations as fabrication."""
+
+    def _adversarial_entry(self) -> GoldenEntry:
+        return GoldenEntry(
+            id="adversarial-cp-na",
+            category="adversarial",
+            question_type="adversarial",
+            difficulty="hard",
+            question="What is the turbocharger boost spec?",
+            golden_summary="No turbo — naturally aspirated engine.",
+            expected_recall_slugs=[],
+        )
+
+    def test_corrective_citation_is_na_not_zero(self):
+        """A decline that cites the section REFUTING the premise
+        (e.g. the engine-spec table proving no turbo) is no longer
+        scored as fabrication — the dim is N/A."""
+        run = SystemRunResult(
+            system_label="manual_agent",
+            question="q",
+            output_text=(
+                "Not found: the engine is naturally aspirated; "
+                "the spec table lists no turbocharger."
+            ),
+            claim_slugs=["引擎規格"],
+            read_slugs=["引擎規格"],
+        )
+        metrics = compute_deterministic_metrics(
+            self._adversarial_entry(), run,
+        )
+        assert metrics.claim_precision is None
+        # Polarity remains graded by citation_quality (0.3).
+        assert metrics.citation_quality == pytest.approx(0.3)
+
+    def test_silent_decline_is_na_too(self):
+        """Symmetry: the dim is undefined for the whole entry, not
+        just for the cited case — a silent decline is N/A as well
+        (its correct silence is credited by citation_quality)."""
+        run = SystemRunResult(
+            system_label="manual_agent",
+            question="q",
+            output_text="Not found: no such component.",
+            claim_slugs=[],
+            read_slugs=[],
+        )
+        metrics = compute_deterministic_metrics(
+            self._adversarial_entry(), run,
+        )
+        assert metrics.claim_precision is None
+        assert metrics.citation_quality == pytest.approx(1.0)
+
+    def test_nonempty_expected_still_scored_as_float(self):
+        """Guardrail: entries WITH expected slugs keep the numeric
+        fraction — the N/A policy only applies to empty-expected."""
+        entry = GoldenEntry(
+            id="lookup-cp-float",
+            category="dtc",
+            question_type="lookup",
+            difficulty="easy",
+            question="q",
+            golden_summary="s",
+            expected_recall_slugs=["dtc-p0117"],
+        )
+        run = SystemRunResult(
+            system_label="manual_agent",
+            question="q",
+            output_text="...",
+            claim_slugs=["dtc-p0117"],
+            read_slugs=["dtc-p0117"],
+        )
+        metrics = compute_deterministic_metrics(entry, run)
+        assert metrics.claim_precision == pytest.approx(1.0)
+
+    def test_overall_renormalises_both_na_dims(self):
+        """section_recall AND claim_precision N/A (they co-occur
+        on manual adversarial entries): all applicable dims at 0.5
+        → overall exactly 0.5 — the renormalisation preserves the
+        scale over the remaining 0.65 of weight."""
+        metrics = DeterministicMetrics(
+            section_recall=None,
+            claim_precision=None,
+            exploration_cost=0.5,  # (1 - 0.5) = 0.5 term.
+            fact_recall=0.5,
+            fact_density=0.5,
+            citation_quality=0.5,
+            trajectory_efficiency=1.0,
+            value_accuracy=0.5,
+        )
+        overall = compute_overall(
+            metrics, answer_quality=0.5, hallucination_penalty=0.5,
+        )
+        assert overall == pytest.approx(0.5)
+
+    def test_overall_perfect_decline_still_scores_one(self):
+        """A perfect adversarial decline reaches 1.0 with both N/A
+        dims excluded — no credit is forfeited."""
+        metrics = DeterministicMetrics(
+            section_recall=None,
+            claim_precision=None,
+            exploration_cost=0.0,
+            fact_recall=1.0,
+            fact_density=1.0,
+            citation_quality=1.0,
+            trajectory_efficiency=1.0,
+            value_accuracy=1.0,
+        )
+        overall = compute_overall(
+            metrics, answer_quality=1.0, hallucination_penalty=1.0,
+        )
+        assert overall == pytest.approx(1.0)
+
+    def test_overall_all_fail_still_zero(self):
+        """No free floor returns: an adversarial run failing every
+        applicable dim scores 0.0."""
+        metrics = DeterministicMetrics(
+            section_recall=None,
+            claim_precision=None,
+            exploration_cost=1.0,
+            fact_recall=0.0,
+            fact_density=0.0,
+            citation_quality=0.0,
+            trajectory_efficiency=1.0,
+            value_accuracy=0.0,
+        )
+        overall = compute_overall(
+            metrics, answer_quality=0.0, hallucination_penalty=0.0,
+        )
+        assert overall == pytest.approx(0.0)
+
+    def test_obd_adversarial_lane_unchanged(self):
+        """OBD lane untouched: ``adversarial_obd`` keeps the 0/1
+        ``expected_no_evidence`` polarity in the claim_precision
+        slot (signal_precision) — a float, never N/A."""
+        entry = GoldenEntry(
+            id="obd-adv-cp",
+            category="symptom",
+            question_type="adversarial_obd",
+            difficulty="hard",
+            question="Is it misfiring?",
+            golden_summary="No misfire evidence.",
+            expected_no_evidence=True,
+        )
+        cited = SystemRunResult(
+            system_label="obd_agent",
+            question="q",
+            output_text="Possible misfire.",
+            obd_signal_citations=[SignalCitation(signal="RPM")],
+        )
+        silent = SystemRunResult(
+            system_label="obd_agent",
+            question="q",
+            output_text="No evidence of misfire.",
+        )
+        assert compute_deterministic_metrics(
+            entry, cited,
+        ).claim_precision == pytest.approx(0.0)
+        assert compute_deterministic_metrics(
+            entry, silent,
+        ).claim_precision == pytest.approx(1.0)

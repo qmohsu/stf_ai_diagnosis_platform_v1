@@ -736,3 +736,151 @@ class TestWarningBannerFilter:
         md = "## 使用注意事項\n\nbody\n"
         tree = parse_heading_tree(md)
         assert [n.title for n in tree] == ["使用注意事項"]
+
+
+def _walk_slugs(nodes: List[HeadingNode]) -> List[str]:
+    """Flatten a heading tree into a list of slugs (test util)."""
+    out: List[str] = []
+    for node in nodes:
+        out.append(node.slug)
+        out.extend(_walk_slugs(node.children))
+    return out
+
+
+class TestCaptionStubDemotion:
+    """HARNESS-24 (#195): caption-stub headings are demoted.
+
+    Marker-pdf renders some figure captions as headings (e.g.
+    ``### 前煞車`` directly over the front-brake photo).  The stub
+    grabbed the canonical slug and the real chapter was deduped to
+    ``前煞車-2`` — agents and goldens citing the natural title got
+    a ~136-char stub."""
+
+    _CAPTION_MD = (
+        "## 底盤\n\nchassis intro\n\n"
+        "### 前煞車\n\n"
+        "![](images/0a2ba199/_page_142_Picture_1.jpeg)\n\n"
+        "{142}------------------------------------------------\n\n"
+        "### 前煞車\n\n"
+        "拆卸煞車卡鉗並檢查來令片的磨損極限。\n\n"
+        "### 後煞車\n\nrear brake body\n"
+    )
+    """Shape of the live case: a caption stub over an image on
+    page 142, then the real front-brake chapter on page 143."""
+
+    def test_caption_stub_demoted(self) -> None:
+        """The image-only pseudo-heading produces no tree node."""
+        tree = parse_heading_tree(self._CAPTION_MD)
+        slugs = _walk_slugs(tree)
+        assert slugs.count("前煞車") == 1
+        assert "前煞車-2" not in slugs
+
+    def test_real_chapter_takes_canonical_slug(self) -> None:
+        """The chapter's prose is served at the natural slug —
+        no ``-2`` suffix needed anymore."""
+        sec = extract_section(self._CAPTION_MD, "前煞車")
+        assert sec is not None
+        assert "來令片的磨損極限" in sec
+
+    def test_caption_image_preserved_in_parent(self) -> None:
+        """Dropping the heading must not lose the image: the
+        preceding section's span now covers the caption lines."""
+        sec = extract_section(
+            self._CAPTION_MD, "底盤", include_subsections=False,
+        )
+        assert sec is not None
+        assert "_page_142_Picture_1.jpeg" in sec
+
+    def test_prose_bearing_short_section_not_demoted(self) -> None:
+        """A short section with an image AND a prose line is a
+        real section — never demoted."""
+        md = (
+            "### 前煞車\n\n"
+            "![](images/x/_page_1_Picture_1.jpeg)\n\n"
+            "檢查煞車油管。\n\n"
+            "### 後煞車\n\nbody\n"
+        )
+        tree = parse_heading_tree(md)
+        slugs = _walk_slugs(tree)
+        assert "前煞車" in slugs
+        assert "後煞車" in slugs
+
+    def test_parent_with_figure_only_intro_kept(self) -> None:
+        """A heading followed by a DEEPER heading is a structural
+        parent (its own body may be figure-only) — kept so its
+        children are not re-parented."""
+        md = (
+            "### 3.2 Fuel System Troubleshooting\n\n"
+            "![Injector](images/m/p045-1.png)\n\n"
+            "*Vision description: Exploded view.*\n\n"
+            "#### DTC: P0171\n\nLean condition body.\n"
+        )
+        tree = parse_heading_tree(md)
+        slugs = _walk_slugs(tree)
+        assert "3-2-fuel-system-troubleshooting" in slugs
+        assert "dtc-p0171" in slugs
+
+    def test_vision_desc_and_page_markers_ignored(self) -> None:
+        """Multi-line vision descriptions, page comments, and
+        marker page separators are caption furniture — a body of
+        only these plus an image is still a stub."""
+        md = (
+            "### 前煞車\n\n"
+            "<!-- page:142 -->\n\n"
+            "![](images/x/_page_142_Picture_1.jpeg)\n\n"
+            "*Vision description: Front brake caliper\n"
+            "with pads and bleed screw visible.*\n\n"
+            "{142}------------------------------------------------\n\n"
+            "### 前煞車\n\nreal chapter prose\n"
+        )
+        tree = parse_heading_tree(md)
+        slugs = _walk_slugs(tree)
+        assert slugs == ["前煞車"]
+        sec = extract_section(md, "前煞車")
+        assert sec is not None
+        assert "real chapter prose" in sec
+
+    def test_empty_body_section_not_demoted(self) -> None:
+        """A heading with an empty body but NO image is not a
+        caption — kept (fail-safe: only image stubs demote)."""
+        md = "## A\n\n## B\n\nbody\n"
+        tree = parse_heading_tree(md)
+        assert [n.slug for n in tree] == ["a", "b"]
+
+    def test_caption_stub_at_eof_demoted(self) -> None:
+        """A trailing image-only pseudo-heading is also a stub."""
+        md = (
+            "## 底盤\n\nbody\n\n"
+            "### 前煞車\n\n"
+            "![](images/x/_page_142_Picture_1.jpeg)\n"
+        )
+        tree = parse_heading_tree(md)
+        assert _walk_slugs(tree) == ["底盤"]
+
+    def test_composes_with_wp2_promotion(self) -> None:
+        """WP2 promotion + banner filter + caption demotion work
+        together on one document."""
+        from app.harness_tools.manual_fs import (
+            _clean_md,
+            promote_unheaded_titles,
+        )
+        md = (
+            "## 前煞車\n\n"
+            "![](images/x/_page_142_Picture_1.jpeg)\n\n"
+            "## 前煞車\n\nintro prose\n\n"
+            '<span id="page-91-4"></span>液壓煞車系統空氣的釋放\n\n'
+            "## 警 告\n\n戴上護目鏡\n\n"
+            "a. 將軟管連接到空氣釋放螺絲。\n"
+        )
+        cleaned = _clean_md(promote_unheaded_titles(md))
+        tree = parse_heading_tree(cleaned)
+        slugs = _walk_slugs(tree)
+        # Caption stub demoted: the real chapter is canonical.
+        assert slugs[0] == "前煞車"
+        assert "前煞車-2" not in slugs
+        # WP2 promotion still lands, nested under the chapter.
+        assert "液壓煞車系統空氣的釋放" in slugs
+        # Banner filtered; promoted section spans past it.
+        sec = extract_section(cleaned, "液壓煞車系統空氣的釋放")
+        assert sec is not None
+        assert "戴上護目鏡" in sec

@@ -95,11 +95,12 @@ _MAX_FINAL_SUMMARY_CHARS = 4000
 """Safety cap on the parsed ``summary`` length to keep the report
 artifact bounded."""
 
-_MAX_SECTION_READS_BEFORE_FINAL = 3
-"""No-progress backstop (HARNESS-23 T2 / #144).  Once the agent has
-read this many manual sections without finalizing — OR re-issues a
-tool call byte-identical to one already made (a true loop) — the loop
-forces a single **tool-less synthesis turn**: it re-prompts the model
+_MAX_SECTION_READS_BEFORE_FINAL = 4
+"""No-progress backstop (HARNESS-23 T2 / #144; raised 3 → 4 in
+HARNESS-24 WP3 / #194).  Once the agent has read this many manual
+sections without finalizing — OR re-issues a tool call
+byte-identical to one already made (a true loop) — the loop forces
+a single **tool-less synthesis turn**: it re-prompts the model
 with ``tools=[]`` so it MUST answer (or decline) from the evidence
 already gathered instead of reading more.
 
@@ -111,17 +112,49 @@ the model read 6 distinct sections and rode the 240 s wall to
 ``answer_quality=0``.  A read-count bound catches that pattern; a
 forced *synthesis* turn (rather than a canned refusal) lets the model
 give the substantive corrective answer the goldens expect ("P9999 is
-not in the table; the codes the manual DOES define are …")."""
+not in the table; the codes the manual DOES define are …").
+
+Why 4 (HARNESS-24 WP3 / #194): the WP1 eval showed the 3-read
+bound binding exactly on multi-part ``cross-section`` questions —
+``cross-001`` and ``cross-005`` both hit the forced turn with one
+sub-question still uncovered while the agent itself named the
+unread TOC title covering it.  A two-part question needs at least
+one read per part, so a single near-miss (or empty-content) read
+left zero slack.  One extra read restores that slack at ~10-24 s
+marginal cost against the 240 s wall (WP1 mean wall: 65 s).  The
+byte-identical-repeat trip is deliberately unchanged."""
+
+_MAX_FOREIGN_MANUAL_BLOCKS = 2
+"""Foreign-manual spin bound (HARNESS-24 WP3 round 3 / #194).
+
+When the loop has pinned the manual matching the inquiry's vehicle
+(see ``_pin_manual_for_inquiry``), TOC/read calls against any OTHER
+manual are intercepted with a corrective tool error instead of
+being executed.  The model gets to correct course — but after this
+many blocked attempts on the SAME foreign manual, the run is
+treated like the T2 no-progress backstop (forced tool-less
+synthesis) to avoid burning the wall-clock on a manual that will
+never be evidence."""
 
 _FORCE_FINAL_INSTRUCTION = (
     "You have now read several manual sections — enough to decide. "
     "Do NOT call any more tools.  Using ONLY the sections you have "
-    "already read, return your final JSON answer now.  If the "
+    "already read, return your final JSON answer now.  "
+    "SINGLE-MANUAL RULE: use only sections from the manual matching "
+    "the vehicle in the question — if any section you read came "
+    "from a different vehicle's manual, discard it; another "
+    "vehicle's specs or procedures are never evidence and must not "
+    "appear in your answer or citations.  If the "
     "requested information is present, answer it with citations — "
     "and if it is a PROCEDURE, include every step, prerequisite, "
     "warning, torque/spec value, and post-completion step the read "
     "sections state (a numbered list is fine); do not drop steps to "
-    "shorten the summary.  If it is genuinely absent — the "
+    "shorten the summary.  SUB-QUESTION COVERAGE: if the question "
+    "has multiple parts, your answer must address EVERY part — "
+    "answer each part the read sections support, and apply the "
+    "honesty rule below per part for the rest; never let one "
+    "answered part justify silently dropping another.  If it is "
+    "genuinely absent — the "
     "question's premise is wrong (e.g. the vehicle has no such "
     "system or the DTC is not defined) — return the Not-found shape "
     '{"summary": "Not found: <short explanation>", "citations": []} '
@@ -311,6 +344,175 @@ def _make_tool_message(
         "tool_call_id": tool_call_id,
         "content": output,
     }
+
+
+# ── Deterministic manual pinning (HARNESS-24 WP3 round 3 / #194) ──
+#
+# The round-2 smoke on cross-004 showed qwen3.5:27b selecting the
+# WRONG manual at Process step 2 (its first get_manual_toc call
+# targeted the Toyota Corolla for a Yamaha question and every read
+# stayed there — deterministic at temperature 0.2).  Two rounds of
+# prompt guidance did not move it, so the loop now enforces the
+# selection deterministically: after the list_manuals output is
+# observed, the inquiry text is matched against each manual's
+# ``vehicle=`` / ``factory_code=`` identifiers; when EXACTLY ONE
+# manual matches, it is pinned and TOC/read calls against any other
+# manual are intercepted with a corrective tool error (the run
+# continues — the model can correct course).  Zero or multiple
+# matches leave today's behaviour untouched (model's judgment
+# governs).
+
+
+@dataclass(frozen=True)
+class _ManualInventoryEntry:
+    """One manual as reported by the ``list_manuals`` tool output.
+
+    Attributes:
+        manual_id: The ``.md`` filename stem (the id the TOC/read
+            tools take as ``manual_id``).
+        vehicle: The canonical ``vehicle="..."`` string (e.g.
+            ``"Yamaha TRICITY155"``).
+        factory_code: Optional ``factory_code="..."`` alias (e.g.
+            ``"MWS150-A"``); empty string when absent.
+    """
+
+    manual_id: str
+    vehicle: str
+    factory_code: str
+
+
+_INVENTORY_LINE_RE = re.compile(
+    r"^-\s+(?P<manual_id>\S+)\s+"
+    r"vehicle=\"(?P<vehicle>[^\"]*)\""
+    r"(?:\s+factory_code=\"(?P<code>[^\"]*)\")?",
+)
+"""Matches one manual entry line of the ``list_manuals`` output
+(format produced by ``app.harness_tools.manual_tools.list_manuals``:
+``- <stem>  vehicle="<canonical>"  [factory_code="<code>"  ] ...``)."""
+
+_MATCH_SEPARATOR_RE = re.compile(r"[-_\s]+")
+"""Separators stripped before identifier matching — the question may
+say ``MWS-150-A`` while the frontmatter says ``MWS150-A``, or
+``Tricity 155`` vs ``TRICITY155``."""
+
+_MIN_MATCH_TOKEN_CHARS = 4
+"""Minimum normalised identifier length eligible for matching, so
+short make/model fragments (e.g. ``"GT"``) cannot create spurious
+pins via accidental substrings."""
+
+
+def _parse_manual_inventory(
+    output: str,
+) -> List[_ManualInventoryEntry]:
+    """Parse ``list_manuals`` tool output into inventory entries.
+
+    Args:
+        output: The raw tool-result string the model also saw.
+
+    Returns:
+        One entry per parsed manual line; unparseable lines are
+        skipped (fail-safe: no entry means no pin from it).
+    """
+    entries: List[_ManualInventoryEntry] = []
+    for line in output.splitlines():
+        match = _INVENTORY_LINE_RE.match(line.strip())
+        if match is None:
+            continue
+        entries.append(_ManualInventoryEntry(
+            manual_id=match.group("manual_id"),
+            vehicle=match.group("vehicle") or "",
+            factory_code=match.group("code") or "",
+        ))
+    return entries
+
+
+def _normalise_for_match(text: str) -> str:
+    """Lowercase and strip ``[-_ ]`` separators for identifier
+    matching (``"MWS-150-A"`` -> ``"mws150a"``)."""
+    return _MATCH_SEPARATOR_RE.sub("", text.lower())
+
+
+def _pin_manual_for_inquiry(
+    inquiry_text: str,
+    inventory: List[_ManualInventoryEntry],
+) -> Optional[Tuple[str, str]]:
+    """Deterministically pick the single manual matching the inquiry.
+
+    Matches the inquiry text case-insensitively (separators
+    stripped) against each manual's ``factory_code`` and its
+    ``vehicle`` string plus individual make/model tokens, so
+    ``"MWS-150-A"`` matches ``factory_code="MWS150-A"`` and
+    ``"Tricity 155"`` matches the ``TRICITY155`` model token.
+
+    Args:
+        inquiry_text: Question text (plus OBD context if present).
+        inventory: Parsed ``list_manuals`` entries.
+
+    Returns:
+        ``(manual_id, match_source)`` with ``match_source`` being
+        ``"factory_code"`` or ``"vehicle"`` when EXACTLY ONE manual
+        matches; ``None`` when zero or multiple match (no pinning —
+        the model's judgment governs, today's behaviour).
+    """
+    haystack = _normalise_for_match(inquiry_text)
+    matches: List[Tuple[str, str]] = []
+    for entry in inventory:
+        source: Optional[str] = None
+        code = _normalise_for_match(entry.factory_code)
+        if len(code) >= _MIN_MATCH_TOKEN_CHARS and code in haystack:
+            source = "factory_code"
+        else:
+            candidates = [entry.vehicle] + entry.vehicle.split()
+            for candidate in candidates:
+                token = _normalise_for_match(candidate)
+                if (
+                    len(token) >= _MIN_MATCH_TOKEN_CHARS
+                    and token in haystack
+                ):
+                    source = "vehicle"
+                    break
+        if source is not None:
+            matches.append((entry.manual_id, source))
+    if len(matches) == 1:
+        return matches[0]
+    return None
+
+
+def _blocked_foreign_manual_message(
+    requested_id: str,
+    pinned: _ManualInventoryEntry,
+    inventory: List[_ManualInventoryEntry],
+) -> str:
+    """Build the corrective tool-error for a foreign-manual call.
+
+    Args:
+        requested_id: The ``manual_id`` the model tried to access.
+        pinned: The manual pinned to this inquiry's vehicle.
+        inventory: Parsed entries (to name the foreign vehicle).
+
+    Returns:
+        A corrective message steering the model to the pinned
+        manual (returned in place of the tool's real output).
+    """
+    requested_vehicle = next(
+        (
+            e.vehicle for e in inventory
+            if e.manual_id == requested_id
+        ),
+        "a different vehicle",
+    )
+    code_part = (
+        f", factory_code=\"{pinned.factory_code}\""
+        if pinned.factory_code else ""
+    )
+    return (
+        f"BLOCKED: manual '{requested_id}' is for "
+        f"\"{requested_vehicle}\", but this inquiry's vehicle "
+        f"matches manual '{pinned.manual_id}' "
+        f"(vehicle=\"{pinned.vehicle}\"{code_part}).  Another "
+        f"vehicle's manual is never evidence for this inquiry.  "
+        f"Use manual '{pinned.manual_id}'."
+    )
 
 
 def _canonicalise_slug(
@@ -637,6 +839,12 @@ async def run_manual_agent(
     seen_call_signatures: set = set()
     section_reads = 0
     force_final = False
+    # Deterministic manual pinning state (WP3 round 3 / #194).
+    manual_inventory: List[_ManualInventoryEntry] = []
+    pinned_manual: Optional[_ManualInventoryEntry] = None
+    pin_attempted = False
+    foreign_block_counts: Dict[str, int] = {}
+    foreign_manual_spin = False
 
     logger.info(
         "manual_agent_start",
@@ -741,11 +949,117 @@ async def run_manual_agent(
                         )
                         continue
 
+                    # ── Manual-pin guard (WP3 round 3 / #194) ──
+                    # Intercept TOC/read calls against any manual
+                    # other than the pinned one BEFORE execution;
+                    # a corrective tool error goes back so the
+                    # model can correct course.
+                    if (
+                        pinned_manual is not None
+                        and tc.name in (
+                            "get_manual_toc",
+                            "read_manual_section",
+                        )
+                    ):
+                        requested = str(
+                            args.get("manual_id", ""),
+                        )
+                        if (
+                            requested
+                            and requested
+                            != pinned_manual.manual_id
+                        ):
+                            blocked = (
+                                _blocked_foreign_manual_message(
+                                    requested,
+                                    pinned_manual,
+                                    manual_inventory,
+                                )
+                            )
+                            count = foreign_block_counts.get(
+                                requested, 0,
+                            ) + 1
+                            foreign_block_counts[requested] = (
+                                count
+                            )
+                            if (
+                                count
+                                >= _MAX_FOREIGN_MANUAL_BLOCKS
+                            ):
+                                foreign_manual_spin = True
+                            tool_trace.append(ToolCallTrace(
+                                name=tc.name,
+                                input=(
+                                    _sanitize_tool_input_for_trace(
+                                        args,
+                                    )
+                                ),
+                                latency_ms=0.0,
+                                is_error=True,
+                            ))
+                            messages.append(
+                                _make_tool_message(
+                                    tc.id, blocked,
+                                ),
+                            )
+                            logger.info(
+                                "manual_agent_foreign_read_blocked",
+                                run_id=run_id,
+                                iteration=iterations,
+                                tool=tc.name,
+                                manual_id=requested,
+                                pinned_manual=(
+                                    pinned_manual.manual_id
+                                ),
+                                blocked_count=count,
+                            )
+                            continue
+
                     result = await (
                         deps.tool_registry.execute(
                             tc.name, args,
                         )
                     )
+
+                    # Compute the pinned manual from the FIRST
+                    # successful list_manuals output — the same
+                    # text the model saw (WP3 round 3 / #194).
+                    if (
+                        tc.name == "list_manuals"
+                        and not result.is_error
+                        and not pin_attempted
+                        and isinstance(result.output, str)
+                    ):
+                        pin_attempted = True
+                        manual_inventory = (
+                            _parse_manual_inventory(
+                                result.output,
+                            )
+                        )
+                        pin = _pin_manual_for_inquiry(
+                            f"{question}\n{obd_context or ''}",
+                            manual_inventory,
+                        )
+                        if pin is not None:
+                            pinned_id, match_source = pin
+                            pinned_manual = next(
+                                e for e in manual_inventory
+                                if e.manual_id == pinned_id
+                            )
+                        else:
+                            match_source = None
+                        logger.info(
+                            "manual_agent_pin_decision",
+                            run_id=run_id,
+                            pinned_manual=(
+                                pinned_manual.manual_id
+                                if pinned_manual else None
+                            ),
+                            match_source=match_source,
+                            inventory_size=len(
+                                manual_inventory,
+                            ),
+                        )
 
                     tool_trace.append(ToolCallTrace(
                         name=tc.name,
@@ -798,6 +1112,7 @@ async def run_manual_agent(
                 if (
                     section_reads >= _MAX_SECTION_READS_BEFORE_FINAL
                     or repeated_call
+                    or foreign_manual_spin
                 ):
                     force_final = True
                     messages.append({
@@ -810,6 +1125,10 @@ async def run_manual_agent(
                         iteration=iterations,
                         section_reads=section_reads,
                         repeated_call=repeated_call,
+                        foreign_manual_spin=foreign_manual_spin,
+                        blocked_count=sum(
+                            foreign_block_counts.values(),
+                        ),
                     )
 
                 iterations += 1

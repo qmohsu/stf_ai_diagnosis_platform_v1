@@ -541,15 +541,31 @@ class Grade(BaseModel):
             remaining dims in ``metrics.compute_overall``).
             Previously scored as a vacuous 1.0, which inflated
             adversarial ``overall`` by a free +0.20 in both lanes.
-        claim_precision: ``|claim_slugs ∩ expected_recall_slugs|
-            / |claim_slugs|``.  Of the slugs the system
-            **explicitly cited as answer sources**, what
-            fraction were correct.  Replaces the older
-            ``section_precision`` which conflated reads with
-            citations and unfairly penalised the agent for
-            legitimate index-flipping navigation.  RAG: same
-            as the old metric (claim == retrieval).  Higher
-            = better.
+        claim_precision: Of the slugs the system **explicitly
+            cited as answer sources**, what fraction were
+            correct — matched slug-tolerantly (HARNESS-24,
+            #192), not by exact intersection: a claimed slug
+            counts when its normalised form matches an expected
+            slug OR a golden citation quote appears in the
+            claimed deliverable text (the manual states many
+            facts in multiple sections; citing the sibling
+            section the golden didn't pick is not fabrication).
+            Quote-containment credit is capped at ``|claim|``,
+            so junk citations alongside a right one still cost.
+            Replaces the older ``section_precision`` which
+            conflated reads with citations and unfairly
+            penalised the agent for legitimate index-flipping
+            navigation.  RAG: same semantics (claim ==
+            retrieval).  Higher = better.  ``None`` = N/A
+            (#192): empty ``expected_recall_slugs`` (manual
+            adversarial) leaves precision with no positive
+            class, so the dim is undefined and excluded from
+            ``overall`` with weight renormalisation — the old
+            polarity (silent 1.0 / any citation 0.0) scored
+            corrective citations (declines citing the section
+            that refutes the premise) as fabrication.
+            Adversarial citation polarity remains graded by
+            ``citation_quality``.
         exploration_cost: ``1 - |claim_slugs ∩ read_slugs| /
             max(|read_slugs|, 1)``.  Fraction of read sections
             that were NOT cited in the final answer.  Captures
@@ -629,9 +645,12 @@ class Grade(BaseModel):
             + 0.05*value_accuracy
             + 0.15*answer_quality.
             Reported in eval reports as percentage (× 100).
-            When ``section_recall`` is ``None`` (N/A, #148) its
-            term is dropped and the remaining weights are
-            renormalised (× 1/0.80 under default weights).
+            When ``section_recall`` or ``claim_precision`` is
+            ``None`` (N/A — #148, #192) the term is dropped and
+            the remaining weights are renormalised (× 1/0.75
+            for section_recall alone, × 1/0.65 when both are
+            N/A, under default weights; the two co-occur on
+            manual adversarial entries).
             Weights still tunable — see
             ``DEFAULT_OVERALL_WEIGHTS`` in metrics.py (its
             comment block carries the dated rebalance history,
@@ -648,7 +667,11 @@ class Grade(BaseModel):
     section_recall: Optional[float] = Field(
         default=None, ge=0.0, le=1.0,
     )
-    claim_precision: float = Field(ge=0.0, le=1.0)
+    # ``None`` = N/A (empty ``expected_recall_slugs``; excluded
+    # from ``overall`` — see #192 and the attribute docstring).
+    claim_precision: Optional[float] = Field(
+        default=None, ge=0.0, le=1.0,
+    )
     exploration_cost: float = Field(ge=0.0, le=1.0)
     fact_recall: float = Field(ge=0.0, le=1.0)
     fact_density: float = Field(ge=0.0, le=1.0)

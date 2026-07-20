@@ -310,3 +310,24 @@ def test_grade_section_recall_accepts_none_na():
     decoded = Grade.model_validate_json(grade.model_dump_json())
     assert decoded.section_recall is None
     assert decoded == grade
+
+
+def test_grade_claim_precision_accepts_none_na():
+    """``claim_precision=None`` (N/A for adversarial entries with
+    empty ``expected_recall_slugs``, #192) validates and survives
+    a JSON round-trip as ``null``."""
+    grade = Grade(
+        section_recall=None,
+        claim_precision=None,
+        exploration_cost=0.0,
+        fact_recall=1.0,
+        fact_density=1.0,
+        hallucination_penalty=1.0,
+        citation_quality=1.0,
+        answer_quality=1.0,
+        overall=1.0,
+        reasoning="Corrective decline citing the refuting section.",
+    )
+    decoded = Grade.model_validate_json(grade.model_dump_json())
+    assert decoded.claim_precision is None
+    assert decoded == grade
