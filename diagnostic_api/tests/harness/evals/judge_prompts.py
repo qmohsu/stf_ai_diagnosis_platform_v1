@@ -32,6 +32,7 @@ from typing import List
 from tests.harness.evals.schemas import (
     GoldenEntry,
     RetrievedChunkMetadata,
+    SurfacedImage,
     SystemRunResult,
 )
 
@@ -50,6 +51,19 @@ _MAX_GOLDEN_CHARS = 1500
 """Cap on the golden_summary length included in the prompt.
 Golden summaries are 3–8 sentences (under 1 KB typically), so
 this is a soft ceiling."""
+
+
+_MAX_VISION_DESC_CHARS = 400
+"""Per-description cap in the SURFACED FIGURES block (#193).
+Marker vision descriptions are usually 1–3 sentences; the cap
+guards against pathological multi-paragraph captions bloating
+the judge prompt."""
+
+
+_MAX_SURFACED_FIGURES = 12
+"""Cap on the number of figure entries rendered in the SURFACED
+FIGURES block.  An agent run rarely reads more than a handful of
+image-bearing sections; the cap bounds the prompt if it does."""
 
 
 # ── System prompt ────────────────────────────────────────────────
@@ -171,6 +185,25 @@ directive phrasing isn't present in the output.
   for a coolant question) DO violate a "don't present brake
   content as answer" directive — they're the system's answer
   by construction.
+- The user message contains an IMAGE REQUIREMENT section and a
+  SURFACED FIGURES list — image evidence (figure sections the
+  system read or cited, with any vision-generated descriptions).
+  The product UI displays surfaced figures to the technician
+  alongside the text answer, so a surfaced figure IS part of the
+  delivered answer.  On an IMAGE-REQUIRED entry:
+    - Award FULL answer_quality when the output surfaces the
+      correct figure (a SURFACED FIGURES entry covers the
+      golden's section, ideally cited) and the text correctly
+      states the figure's role — what it shows and how the
+      technician uses it.  Do NOT deduct merely because
+      pixel-level visual detail is not transcribed into text;
+      the figure itself carries that detail.
+    - Fabricated figure content — visual details that contradict
+      the golden or are unsupported by the surfaced evidence —
+      still scores low, exactly as fabricated text would.
+    - If NO surfaced figure covers the golden's section, the
+      figure was not delivered: grade the text answer on its own
+      merits against the golden.
 - Phrasing differences from the golden are NOT a penalty.
   English vs Chinese, terse vs verbose, narrative vs
   bullet-list — all fine if the substance matches.
@@ -222,6 +255,87 @@ def _format_chunk_summary(
             f"  [{i}] score={c.score:.3f}  slug={c.slug}{flag_str}"
         )
     return "\n".join(lines)
+
+
+def _format_surfaced_images(
+    images: List[SurfacedImage],
+) -> str:
+    """Render the SURFACED FIGURES block for the judge (#193).
+
+    One line per image-bearing section (slug, figure count,
+    CITED/read-only flag) with any vision descriptions indented
+    below it, truncated to ``_MAX_VISION_DESC_CHARS`` each.
+    Returns a "(none captured)" marker when the run surfaced no
+    image evidence — the judge is told absence means the figure
+    was not delivered, so the marker must be explicit rather
+    than an empty string.
+
+    Args:
+        images: ``SystemRunResult.surfaced_images``.
+
+    Returns:
+        Rendered block body (no heading).
+    """
+    if not images:
+        return (
+            "  (none captured — the system surfaced no image "
+            "evidence)"
+        )
+    lines: List[str] = []
+    for i, img in enumerate(
+        images[:_MAX_SURFACED_FIGURES], 1,
+    ):
+        status = "CITED" if img.cited else "read, not cited"
+        lines.append(
+            f"  [{i}] slug={img.slug}  "
+            f"figures={img.image_count}  [{status}]"
+        )
+        for desc in img.vision_descriptions:
+            lines.append(
+                "      vision: "
+                + _truncate(desc, _MAX_VISION_DESC_CHARS)
+            )
+    clipped = len(images) - _MAX_SURFACED_FIGURES
+    if clipped > 0:
+        lines.append(
+            f"  ... and {clipped} more image-bearing sections"
+        )
+    return "\n".join(lines)
+
+
+def _is_image_required_entry(entry: GoldenEntry) -> bool:
+    """Whether a complete answer depends on figure content.
+
+    ``question_type == "image-required"`` is the primary axis;
+    ``requires_image`` is the authoring-time sanity flag — either
+    marks the entry so the judge applies the figure-credit rule
+    (#193).
+
+    Args:
+        entry: Golden reference.
+
+    Returns:
+        True when the golden's answer needs a figure.
+    """
+    return (
+        entry.question_type == "image-required"
+        or entry.requires_image
+    )
+
+
+_IMAGE_REQUIREMENT_REQUIRED = """\
+IMAGE-REQUIRED entry: a complete answer depends on a figure's
+visual content.  Grade answer_quality using the SURFACED FIGURES
+evidence per the system prompt's Special cases: surfacing the
+correct figure and correctly stating its role earns FULL credit
+even when pixel-level detail is not transcribed into text;
+fabricated figure detail still scores low; a missing figure means
+the visual content was not delivered."""
+
+
+_IMAGE_REQUIREMENT_NONE = """\
+No figure requirement: text evidence suffices for full
+answer_quality."""
 
 
 _OMISSION_DIRECTIVE_RE = re.compile(
@@ -347,6 +461,14 @@ def build_user_prompt(
     ``answer_quality`` instead of being scored as an empty
     answer; fabricating an answer on such entries scores low.
 
+    An IMAGE REQUIREMENT section plus a SURFACED FIGURES block
+    (#193) tell the judge which figures the system read/cited —
+    with vision descriptions where available — so image-required
+    entries earn full ``answer_quality`` for surfacing the
+    correct figure and stating its role, instead of being
+    structurally capped because ``output_text`` cannot carry
+    pixels.
+
     Args:
         entry: Golden reference.
         run: System output (agent or RAG, both unified into
@@ -374,12 +496,21 @@ def build_user_prompt(
         if _is_no_evidence_entry(entry)
         else _ANSWERABILITY_NORMAL
     )
+    image_requirement_block = (
+        _IMAGE_REQUIREMENT_REQUIRED
+        if _is_image_required_entry(entry)
+        else _IMAGE_REQUIREMENT_NONE
+    )
+    figures_block = _format_surfaced_images(run.surfaced_images)
     return f"""\
 ## QUESTION
 {entry.question}
 
 ## ANSWERABILITY
 {answerability_block}
+
+## IMAGE REQUIREMENT
+{image_requirement_block}
 
 ## GOLDEN ANSWER
 {golden_summary}
@@ -398,6 +529,10 @@ def build_user_prompt(
 
 ### Retrieved chunks (RAG only)
 {chunk_block}
+
+### SURFACED FIGURES (image evidence the system read/cited — the
+### product UI shows these figures to the technician)
+{figures_block}
 
 ### Output text
 {output_text}

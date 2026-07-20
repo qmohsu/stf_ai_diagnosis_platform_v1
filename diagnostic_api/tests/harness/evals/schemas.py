@@ -368,6 +368,46 @@ class RetrievedChunkMetadata(BaseModel):
     text_preview: str = ""
 
 
+class SurfacedImage(BaseModel):
+    """Image evidence one section contributed to a system run.
+
+    HARNESS-24 (#193).  ``SystemRunResult.output_text`` is
+    text-only, so before this model existed the judge was never
+    told which figures the agent actually surfaced — 4/6
+    ``image-required`` entries were structurally capped at
+    ``answer_quality <= 0.3`` even with perfect navigation and
+    citations.  The runner adapter now records, per section that
+    carried image content, what the judge needs to credit "the
+    system delivered the correct figure": the section identity,
+    whether it was cited, how many figures it carried, and any
+    Marker vision descriptions found in the section markdown.
+
+    Attributes:
+        slug: Parser-canonical section slug (matches
+            ``SystemRunResult.read_slugs`` entries).
+        manual_id: Manual filename stem the section belongs to.
+        cited: Whether the section also appears in
+            ``claim_slugs`` — i.e. the system explicitly cited
+            it as an answer source, not just browsed it.
+        image_count: Best-effort figure count for the section.
+            Derived from vision-description paragraphs and
+            residual markdown image refs in the section text,
+            floored at 1 when the tool output carried at least
+            one image block (``SectionRef.had_images``) — a
+            lower bound, not an exact census.
+        vision_descriptions: ``*Vision description: ...*``
+            paragraph bodies extracted from the section
+            markdown.  Empty when the manual was converted
+            without a vision model.
+    """
+
+    slug: str
+    manual_id: str = ""
+    cited: bool = False
+    image_count: int = 0
+    vision_descriptions: List[str] = Field(default_factory=list)
+
+
 class SystemRunResult(BaseModel):
     """Unified system-under-test output.
 
@@ -428,6 +468,15 @@ class SystemRunResult(BaseModel):
         obd_dtc_citations: OBD lane.  DTC references the OBD
             sub-agent emitted.  Drives ``dtc_accuracy``.  Empty for
             non-OBD systems.
+        surfaced_images: Image evidence per read/cited section
+            (HARNESS-24, #193).  Populated by the manual-agent
+            adapter in ``runner.py``; rendered in the judge
+            prompt as the SURFACED FIGURES block so
+            image-required entries are no longer structurally
+            capped on ``answer_quality``.  Defaults empty so
+            pre-#193 report JSON still loads, and stays empty
+            for RAG / OBD runs.  Not consumed by any
+            deterministic metric.
     """
 
     system_label: SystemLabel
@@ -449,6 +498,9 @@ class SystemRunResult(BaseModel):
         default_factory=list,
     )
     obd_dtc_citations: List[DTCCitation] = Field(default_factory=list)
+    # HARNESS-24 (#193) addition.  Default empty so pre-#193
+    # report JSON still loads cleanly.
+    surfaced_images: List[SurfacedImage] = Field(default_factory=list)
 
 
 # ── Judge output ──────────────────────────────────────────────────
