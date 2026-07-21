@@ -1,0 +1,664 @@
+{
+  "started_at": 1784669796.7980087,
+  "ended_at": 1784670234.549166,
+  "count": 4,
+  "records": [
+    {
+      "entry": {
+        "id": "0a2ba199-665f-41aa-a106-1163cad68d16-cross-004",
+        "category": "symptom",
+        "question_type": "cross-section",
+        "difficulty": "medium",
+        "question": "Bike is overheating per the customer. According to the troubleshooting guide for \u904e\u71b1 (overheating), what cooling-system causes should I check first? And once I'm into the radiator cap diagnosis, what is the radiator cap valve-opening pressure spec I should confirm with a cap tester?",
+        "obd_context": null,
+        "vehicle": null,
+        "golden_summary": "Two sections combine to drive overheating diagnosis. (1) \u904e\u71b1 (overheating) troubleshooting lists cooling-system causes in order: low coolant level; radiator damage or leak, faulty radiator cap, bent/damaged radiator fins; water pump damage or failure; thermostat stuck closed; hose damage / improper connection; steel pipe damage / improper connection. Engine-side causes (carbon build-up, incorrect oil level / viscosity / quality) and ignition-side causes (incorrect spark-plug gap / heat range, ECU failure) are also listed but the cooling-system items are first-pass. (2) The radiator-cap valve-opening-pressure spec is found in the engine-specs cooling section (\u5f15\u64ce\u898f\u683c \u2192 \u51b7\u537b\u7cfb\u7d71): \u6c34\u7bb1\u84cb\u95a5\u958b\u555f\u58d3\u529b 108.0\u2013137.4 kPa (1.08\u20131.37 kgf/cm\u00b2, 15.7\u201319.9 psi). A cap that opens significantly below this range will release coolant prematurely (boil-over) \u2014 replace it. The thermostat valve-opening temperature in the same spec table is 74.0\u201378.0 \u00b0C, with full-open at 90.0 \u00b0C and a lift of 7.0 mm.",
+        "golden_citations": [
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u904e\u71b1",
+            "quote": "\u51b7\u537b\u6db2\u91cf\u904e\u4f4e"
+          },
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u904e\u71b1",
+            "quote": "\u6c34\u7bb1\u84cb\u6545\u969c"
+          },
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u904e\u71b1",
+            "quote": "\u6046\u6eab\u5668\u4e00\u76f4\u95dc\u9589"
+          },
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u51b7\u537b\u7cfb\u7d71",
+            "quote": "\u6c34\u7bb1\u84cb\u95a5\u958b\u555f\u58d3\u529b                    | 108.0\u2013137.4 kPa (1.08\u20131.37 kgf/cm\u00b2, 15.7\u201319.9 psi)"
+          },
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u51b7\u537b\u7cfb\u7d71",
+            "quote": "\u95a5\u9580\u958b\u53e3\u6eab\u5ea6                      | 74.0\u201378.0 \u00b0C (165.20\u2013172.40 \u00b0F)"
+          }
+        ],
+        "expected_recall_slugs": [
+          "\u904e\u71b1",
+          "\u51b7\u537b\u7cfb\u7d71"
+        ],
+        "expected_tool_trace": [
+          "list_manuals",
+          "get_manual_toc",
+          "read_manual_section",
+          "read_manual_section",
+          "read_manual_section",
+          "read_manual_section"
+        ],
+        "must_contain": [
+          "108.0\u2013137.4 kPa",
+          "\u6046\u6eab\u5668",
+          "\u6c34\u7bb1\u84cb",
+          "74.0\u201378.0 \u00b0C"
+        ],
+        "pitfall_directives": [
+          "The output must not present just the radiator-cap spec without the troubleshooting causes \u2014 a 'customer reports overheating' question needs the cause checklist before the numerical spec.",
+          "The output must not invent a radiator-cap pressure outside the 108.0\u2013137.4 kPa window \u2014 the cap pressure is narrow enough that wrong values either condemn a good cap or pass a failing one.",
+          "The output must not omit the thermostat-stuck-closed cause \u2014 it's a common root cause of overheating and is in the manual's first-line cooling-system list.",
+          "The output must not present brake-system, fuel-system, or DTC-specific (P0117 wire colours) content as the answer \u2014 overheating is a thermal/fluid diagnostic, not an electrical-fault DTC walk."
+        ],
+        "requires_image": false,
+        "expected_signal_citations": [],
+        "expected_dtcs": [],
+        "expected_no_evidence": false,
+        "notes": "human-authored 2026-05-16 for HARNESS-18 batch. Two distinct slugs: \u904e\u71b1 (troubleshooting cause list) + \u51b7\u537b\u7cfb\u7d71 (engine-spec subsection containing the radiator cap and thermostat numbers). Quotes verified verbatim against MWS-150-A.md lines 14502-14511 (overheating causes) and 813, 815 (cooling specs)."
+      },
+      "result": {
+        "system_label": "manual_agent",
+        "question": "Bike is overheating per the customer. According to the troubleshooting guide for \u904e\u71b1 (overheating), what cooling-system causes should I check first? And once I'm into the radiator cap diagnosis, what is the radiator cap valve-opening pressure spec I should confirm with a cap tester?",
+        "output_text": "According to the overheating troubleshooting guide, the cooling-system causes to check first are: 1) Low coolant level, 2) Radiator issues (damage/leaks, faulty radiator cap, bent/damaged fins), 3) Water pump damage or failure, 4) Thermostat stuck closed, and 5) Hose and pipe issues (damaged or improperly connected). For the radiator cap diagnosis, the valve-opening pressure specification to confirm with a cap tester is 108.0\u2013137.4 kPa (1.08\u20131.37 kgf/cm\u00b2, 15.7\u201319.9 psi).\n\n--- Cited sections (2) ---\n\n[\u51b7\u537b\u7cfb\u7d71-3]\n### \u51b7\u537b\u7cfb\u7d71\n\n- 1. \u51b7\u537b\u6db2\n- \u51b7\u537b\u6db2\u91cf\u904e\u4f4e\n- 2. \u6c34\u7bb1\n  - \u6c34\u7bb1\u640d\u58de\u6216\u6d29\u6f0f\n  - \u6c34\u7bb1\u84cb\u6545\u969c\n- \u6c34\u7bb1\u6563\u71b1\u7247\u5f4e\u66f2\u6216\u640d\u58de\n- 3. \u6c34\u6cf5\u6d66\n- \u6c34\u6cf5\u6d66\u640d\u58de\u6216\u6545\u969c\n- 4. \u6046\u6eab\u5668\n  - \u6046\u6eab\u5668\u4e00\u76f4\u95dc\u9589\n- 5. \u8edf\u7ba1\u548c\u92fc\u7ba1\n- \u8edf\u7ba1\u640d\u58de\n- \u8edf\u7ba1\u9023\u63a5\u4e0d\u7576\n- \u92fc\u7ba1\u640d\u58de\n- \u92fc\u7ba1\u9023\u63a5\u4e0d\u7576\n\n{419}------------------------------------------------\n\n#### \u6c7d\u6cb9\u7cfb\u7d71\n\n- 1. \u7bc0\u6d41\u95a5\u672c\u9ad4\n  - \u7bc0\u6d41\u95a5\u672c\u9ad4\u63a5\u982d\u640d\u58de\u6216\u9b06\u812b\n- 2. \u7a7a\u6c23\u6ffe\u6e05\u5668\n  - \u7a7a\u6c23\u6ffe\u6e05\u5668\u6ffe\u854a\u963b\u585e\n\n#### \u8eca\u9ad4\n\n- 1. \u715e\u8eca\n- \u715e\u8eca\u62d6\u66f3\n\n[\u6c34\u7bb1\u7684\u6aa2\u67e5]\n### \u6c34\u7bb1\u7684\u6aa2\u67e5\n\n- 1. \u6aa2\u67e5:\n- \u6c34\u7bb1\u6563\u71b1\u7247 \u963b\u585e \u2192 \u6e05\u9664\u3002 \u5f9e\u6c34\u7bb1\u5f8c\u7aef\u65bd\u52a0\u58d3\u7e2e\u7a7a\u6c23\u3002 \u640d\u50b7 \u2192 \u7dad\u4fee\u6216\u66f4\u63db\u3002\n\n#### \u8a3b\n\n\u4ee5\u8584\u7684\u5e73\u982d\u87ba\u7d72\u8d77\u5b50\u5c07\u88ab\u58d3\u5e73\u7684\u6563\u71b1\u7247\u6273\u76f4\u3002\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_279_Picture_6.jpeg)\n\n- 2. \u6aa2\u67e5:\n- \u6c34\u7bb1\u8edf\u7ba1\n- \u526f\u6c34\u7bb1\u8edf\u7ba1 \u9f9c\u88c2 / \u640d\u50b7 \u2192 \u66f4\u63db\u3002\n- 3. \u6e2c\u91cf:\n- \u6c34\u7bb1\u84cb\u95a5\u958b\u555f\u58d3\u529b \u4f4e\u65bc\u6307\u5b9a\u58d3\u529b \u2192 \u66f4\u63db\u6c34\u7bb1\u84cb\u3002\n\nYU-33984\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_279_Picture_12.jpeg)\n\n\u6c34\u7bb1\u84cb\u95a5\u958b\u555f\u58d3\u529b 108.0\u2013137.4 kPa (1.08\u20131.37 kgf/cm\u00b2,15.7\u201319.9 psi)\n\n\u25bc \u25bc \u25bc\u25bc\u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc\u25bc\u25bc a. \u5c07\u6c34\u7bb1\u84cb\u6e2c\u8a66\u5668 \"1\" \u548c\u6c34\u7bb1\u84cb\u6e2c\u8a66\u8f49\u63a5\u5668 \"2\" \u5b89\u88dd\u65bc\u6c34\u7bb1\u84cb \"3\"\u3002\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_279_Picture_15.jpeg)\n\n\u6c34\u7bb1\u84cb\u6e2c\u8a66\u5668 90890-01325 Mityvac \u51b7\u537b\u7cfb\u7d71\u6e2c\u8a66\u5668\u5957\u4ef6 YU-24460-A \u6c34\u7bb1\u84cb\u6e2c\u8a66\u8f49\u63a5\u5668 90890-01352 \u58d3\u529b\u6e2c\u8a66\u5668\u8f49\u63a5\u5668\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_279_Picture_17.jpeg)\n\nb. \u65bd\u52a0\u6307\u5b9a\u58d3\u529b\u5341\u79d2\u9418,\u78ba\u8a8d\u58d3\u529b\u6c92\u6709\u964d\u4f4e\u3002\n\n#### \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2\u25b2\u25b2\n\n- 4. \u6aa2\u67e5:\n- \u6c34\u7bb1\u98a8\u6247 \u640d\u50b7 \u2192 \u66f4\u63db\u3002",
+        "claim_slugs": [
+          "\u51b7\u537b\u7cfb\u7d71-3",
+          "\u6c34\u7bb1\u7684\u6aa2\u67e5"
+        ],
+        "read_slugs": [
+          "\u51b7\u537b\u7cfb\u7d71-3",
+          "\u6c34\u7bb1\u7684\u6aa2\u67e5",
+          "\u51b7\u537b\u7cfb\u7d71-2"
+        ],
+        "retrieved_chunk_metadata": [],
+        "latency_ms_wall": 56033.14512968063,
+        "latency_ms_llm": 302.627258002758,
+        "cost_usd": 0.0,
+        "tool_trace": [
+          {
+            "name": "list_manuals",
+            "input": {
+              "vehicle_model": "MWS-150-A"
+            },
+            "latency_ms": 32.448844984173775,
+            "is_error": false
+          },
+          {
+            "name": "list_manuals",
+            "input": {},
+            "latency_ms": 26.400582864880562,
+            "is_error": false
+          },
+          {
+            "name": "get_manual_toc",
+            "input": {
+              "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+            },
+            "latency_ms": 71.39796018600464,
+            "is_error": false
+          },
+          {
+            "name": "read_manual_section",
+            "input": {
+              "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+              "section": "\u51b7\u537b\u7cfb\u7d71-3"
+            },
+            "latency_ms": 56.540751829743385,
+            "is_error": false
+          },
+          {
+            "name": "read_manual_section",
+            "input": {
+              "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+              "section": "\u6c34\u7bb1\u7684\u6aa2\u67e5"
+            },
+            "latency_ms": 58.23342502117157,
+            "is_error": false
+          },
+          {
+            "name": "read_manual_section",
+            "input": {
+              "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+              "section": "\u51b7\u537b\u7cfb\u7d71-2"
+            },
+            "latency_ms": 57.605693116784096,
+            "is_error": false
+          }
+        ],
+        "stopped_reason": "complete",
+        "iterations": 7,
+        "obd_signal_citations": [],
+        "obd_dtc_citations": [],
+        "surfaced_images": [
+          {
+            "slug": "\u6c34\u7bb1\u7684\u6aa2\u67e5",
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "cited": true,
+            "image_count": 4,
+            "vision_descriptions": []
+          },
+          {
+            "slug": "\u51b7\u537b\u7cfb\u7d71-2",
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "cited": false,
+            "image_count": 27,
+            "vision_descriptions": []
+          }
+        ]
+      },
+      "grade": {
+        "section_recall": 0.5,
+        "claim_precision": 0.5,
+        "exploration_cost": 0.33333333333333337,
+        "fact_recall": 0.75,
+        "fact_density": 0.75,
+        "hallucination_penalty": 1.0,
+        "citation_quality": 1.0,
+        "answer_quality": 1.0,
+        "trajectory_efficiency": 1.0,
+        "value_accuracy": 1.0,
+        "overall": 0.7625000000000001,
+        "reasoning": "Missing must_contain: '74.0\u201378.0 \u00b0C'. Judge (1.00): The system output correctly lists all cooling-system causes in order (low coolant level, radiator damage/leak/faulty cap/bent fins, water pump damage/failure, thermostat stuck closed, hose and pipe issues) and provides the exact radiator cap valve-opening pressure spec of 108.0\u2013137.4 kPa (1.08\u20131.37 kgf/cm\u00b2, 15.7\u201319.9 psi). A technician could act on this answer without consulting another source, and it matches the golden answer's substance completely."
+      }
+    },
+    {
+      "entry": {
+        "id": "0a2ba199-665f-41aa-a106-1163cad68d16-cross-005",
+        "category": "symptom",
+        "question_type": "cross-section",
+        "difficulty": "medium",
+        "question": "Customer reports the front brake lever feels spongy after I changed the brake fluid. What is the manual's prescribed air-bleed sequence to clear the spongy feel, AND what front-pad wear-limit thickness should I confirm before signing the job off so I'm not handing the bike back with under-limit pads?",
+        "obd_context": null,
+        "vehicle": null,
+        "golden_summary": "Two sections combine for a complete answer. (1) The \u6db2\u58d3\u715e\u8eca\u7cfb\u7d71\u7a7a\u6c23\u7684\u91cb\u653e (hydraulic brake system air-bleed) procedure prescribes a strict order: \u7b2c 1 \u6b65 right front caliper \u2192 \u7b2c 2 \u6b65 left front caliper \u2192 \u7b2c 3 \u6b65 rear caliper. Per caliper, top up the reservoir with DOT 4 fluid, hook a clear hose to the bleed screw, apply the lever, loosen the screw, retighten, release the lever, repeat until no bubbles. After the front bleed, secure the front lever with a strap and confirm the balancer position before bleeding the rear. After cycling the hydraulic unit (ABS check), repeat the bleed. Bleed-screw torques: front 5 N\u00b7m, rear 6 N\u00b7m. (2) The \u8eca\u9ad4\u898f\u683c (body specifications) table gives the front-brake pad spec: \u715e\u8eca\u4f86\u4ee4\u7247\u539a\u5ea6 5.8 mm new, \u9650\u5236 (wear limit) 1.0 mm \u2014 at or below the limit, the entire pad set must be replaced. Verifying both fixes the spongy feel AND ensures the customer isn't getting their bike back with marginal pads.",
+        "golden_citations": [
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u6db2\u58d3\u715e\u8eca\u7cfb\u7d71\u7a7a\u6c23\u7684\u91cb\u653e",
+            "quote": "\u7b2c 1 \u6b65:\u53f3\u524d\u715e\u8eca\u5361\u9257 \u2022 \u7b2c 2 \u6b65:\u5de6\u524d\u715e\u8eca\u5361\u9257 \u2022 \u7b2c 3 \u6b65:\u5f8c\u715e\u8eca\u5361\u9257"
+          },
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u6db2\u58d3\u715e\u8eca\u7cfb\u7d71\u7a7a\u6c23\u7684\u91cb\u653e",
+            "quote": "\u524d\u715e\u8eca\u5361\u9257\u7a7a\u6c23\u91cb\u653e\u87ba\u7d72 5 N\u00b7m (0.5 kgf\u00b7m,3.6 lb\u00b7ft)"
+          },
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u8eca\u9ad4\u898f\u683c",
+            "quote": "\u715e\u8eca\u4f86\u4ee4\u7247\u539a\u5ea6 5.8 mm (0.23 in) \u9650\u5236 1.0 mm (0.04 in)"
+          },
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u8eca\u9ad4\u898f\u683c",
+            "quote": "\u6307\u5b9a\u715e\u8eca\u6db2 DOT 4"
+          }
+        ],
+        "expected_recall_slugs": [
+          "\u6db2\u58d3\u715e\u8eca\u7cfb\u7d71\u7a7a\u6c23\u7684\u91cb\u653e",
+          "\u8eca\u9ad4\u898f\u683c"
+        ],
+        "expected_tool_trace": [
+          "list_manuals",
+          "get_manual_toc",
+          "read_manual_section",
+          "read_manual_section",
+          "read_manual_section",
+          "read_manual_section"
+        ],
+        "must_contain": [
+          "\u53f3\u524d",
+          "\u5de6\u524d",
+          "\u5f8c\u715e\u8eca\u5361\u9257",
+          "1.0 mm",
+          "DOT 4"
+        ],
+        "pitfall_directives": [
+          "The output must not give only the bleed procedure without the pad-wear limit \u2014 the customer-presentation specifically calls for both 'fix spongy' AND 'sign off on pads', so a half-answer would let the technician miss a safety check.",
+          "The output must not reverse the bleed order \u2014 right-front \u2192 left-front \u2192 rear is the manual's order; rear-first leaves air trapped in the ABS modulator.",
+          "The output must not give DOT 3 or DOT 5 as the fluid \u2014 it must be DOT 4 per the body-spec table.",
+          "The output must not present unrelated content (engine-oil, valve-clearance) as the answer \u2014 the question is brake-specific."
+        ],
+        "requires_image": false,
+        "expected_signal_citations": [],
+        "expected_dtcs": [],
+        "expected_no_evidence": false,
+        "notes": "human-authored 2026-05-16 for HARNESS-18 batch. Realistic workshop diagnosis crossing a procedure section with a spec table. Quotes verified verbatim against MWS-150-A.md lines 2482, 2557 (bleed) and 965, 967 (pad spec, fluid grade)."
+      },
+      "result": {
+        "system_label": "manual_agent",
+        "question": "Customer reports the front brake lever feels spongy after I changed the brake fluid. What is the manual's prescribed air-bleed sequence to clear the spongy feel, AND what front-pad wear-limit thickness should I confirm before signing the job off so I'm not handing the bike back with under-limit pads?",
+        "output_text": "1. Air-bleed sequence: Follow the prescribed order: Step 1: Right front brake caliper, Step 2: Left front brake caliper, Step 3: Rear brake caliper. 2. Bleeding procedure: Fill the master cylinder reservoir with specified DOT 4 brake fluid. Connect a clear plastic tube to the bleed screw and place the other end in a container. Pump the brake lever several times, then hold it fully applied. Open the bleed screw to release fluid and air, then close it while the lever is held. Release the lever. Repeat until no bubbles appear in the tube. For ABS systems, after bleeding, operate the ABS and repeat the bleeding steps for both front and rear. Torque the front brake caliper bleed screw to 5 N\u00b7m (0.5 kgf\u00b7m, 3.6 lb\u00b7ft) and the rear to 6 N\u00b7m (0.6 kgf\u00b7m, 4.3 lb\u00b7ft). Finally, top off the reservoir and check brake lever operation. 3. Front pad wear limit: The front brake pad lining thickness limit is 1.0 mm (0.04 in). If the wear indicator groove is nearly gone or thickness is at or below this limit, replace the pads.\n\n--- Cited sections (2) ---\n\n[\u6db2\u58d3\u715e\u8eca\u7cfb\u7d71\u7a7a\u6c23\u7684\u91cb\u653e]\n### \u6db2\u58d3\u715e\u8eca\u7cfb\u7d71\u7a7a\u6c23\u7684\u91cb\u653e\n\n## \u8b66 \u544a\n\n\u62c6\u5378\u715e\u8eca\u76f8\u95dc\u96f6\u4ef6\u6642,\u52d9\u5fc5\u5c07\u715e\u8eca\u7cfb\u7d71\u7a7a\u6c23\u91cb\u653e\u3002\n\n### \u6ce8 \u610f\n\n- \u6309\u7167\u4e0b\u5217\u9806\u5e8f,\u91cb\u653e\u715e\u8eca\u7cfb\u7d71\u7a7a\u6c23\u3002\n- \u7b2c 1 \u6b65:\u53f3\u524d\u715e\u8eca\u5361\u9257 \u2022 \u7b2c 2 \u6b65:\u5de6\u524d\u715e\u8eca\u5361\u9257 \u2022 \u7b2c 3 \u6b65:\u5f8c\u715e\u8eca\u5361\u9257\n\n#### \u8b66 \u544a EWA16530\n\n\u91cb\u653e ABS \u7a7a\u6c23\u7684\u6642\u6a5f:\n\n- \u7cfb\u7d71\u5df2\u5206\u89e3\u3002\n- \u715e\u8eca\u8edf\u7ba1\u9b06\u958b\u3001\u62c6\u96e2\u6216\u66f4\u63db\u3002\n- \u715e\u8eca\u6db2\u91cf\u6975\u4f4e\u3002\n- \u715e\u8eca\u64cd\u4f5c\u6709\u6545\u969c\u3002\n\n#### \u8a3b\n\n- \u6ce8\u610f\u4e0d\u8981\u8b93\u715e\u8eca\u6db2\u6ffa\u51fa\u6216\u662f\u8b93\u715e\u8eca\u4e3b\u7f38\u5132\u6db2\u69fd\u6ea2 \u51fa\u3002\n- \u91cb\u653e ABS \u7a7a\u6c23\u6642,\u52d9\u5fc5\u78ba\u5b9a\u715e\u8eca\u6db2\u5145\u8db3\u518d\u64cd\u4f5c\u3002 \u5ffd\u8996\u9019\u500b\u9810\u9632\u63aa\u65bd,\u6703\u4f7f\u7a7a\u6c23\u9032\u5165\u6db2\u58d3\u715e\u8eca\u7cfb \u7d71,\u5c0e\u81f4\u91cb\u653e\u7a7a\u6c23\u7a0b\u5e8f\u8b8a\u9577\u3002\n\n{92}------------------------------------------------\n\n- \u82e5\u7a7a\u6c23\u91cb\u653e\u56f0\u96e3,\u5247\u53ef\u80fd\u9700\u8981\u5148\u8b93\u715e\u8eca\u6db2\u6c89\u6fb1\u6578 \u5c0f\u6642\u3002\n- \u5f85\u8edf\u7ba1\u4e2d\u7684\u5c0f\u6c23\u6ce1\u6d88\u5931,\u518d\u91cd\u8907\u7a7a\u6c23\u91cb\u653e\u7a0b\u5e8f\u3002\n- 1. \u7a7a\u6c23\u91cb\u653e:\n- ABS\n\n#### \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc\u25bc\u25bc a. \u4f7f\u7528\u6307\u5b9a\u7684\u715e\u8eca\u6db2,\u5c07\u715e\u8eca\u4e3b\u7f38\u5132\u6db2\u69fd\u586b\u5145\u5230\n\n- \u6b63\u78ba\u7684\u6db2\u91cf\u3002\n- b. \u5b89\u88dd\u819c\u7247 (\u715e\u8eca\u4e3b\u7f38\u5132\u6db2\u69fd)\u3002\n- c. \u5c07\u900f\u660e\u5851\u81a0\u8edf\u7ba1 \"1\" \u7dca\u7dca\u9023\u63a5\u5230\u7a7a\u6c23\u91cb\u653e\u87ba \u7d72 \"2\"\u3002\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_92_Picture_9.jpeg)\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_92_Picture_10.jpeg)\n\n- A. \u524d\u715e\u8eca\u5361\u9257\n- B. \u5f8c\u715e\u8eca\u5361\u9257\n- d. \u5c07\u8edf\u7ba1\u53e6\u4e00\u7aef\u653e\u5728\u5bb9\u5668\u4e2d\u3002\n- e. \u6162\u6162\u65bd\u52a0\u524d\u715e\u8eca\u628a\u624b\u6578\u6b21\u3002\n- f. \u5b8c\u5168\u62c9\u8d77\u524d\u715e\u8eca\u628a\u624b,\u4e26\u56fa\u5b9a\u4e0d\u52d5\u3002\n- g. \u9b06\u958b\u7a7a\u6c23\u91cb\u653e\u87ba\u7d72\u3002\n\n#### \u8a3b\n\n\u9b06\u958b\u7a7a\u6c23\u91cb\u653e\u87ba\u7d72\u6703\u91cb\u653e\u58d3\u529b,\u4e26\u4f7f\u5f97\u715e\u8eca\u628a\u624b \u5b8c\u5168\u63a5\u89f8\u5230\u6cb9\u9580\u63e1\u628a\u3002\n\n- h. \u9396\u7dca\u7a7a\u6c23\u91cb\u653e\u87ba\u7d72,\u518d\u653e\u958b\u524d\u715e\u8eca\u628a\u624b\u3002\n- i. \u91cd\u8907\u6b65\u9a5f (e)\u5230 (h),\u76f4\u5230\u5851\u81a0\u8edf\u7ba1\u4e2d\u7684\u715e \u8eca\u6db2\u6c92\u6709\u4efb\u4f55\u6c23\u6ce1\u70ba\u6b62\u3002\n- j. \u5b8c\u5168\u58d3\u7dca\u524d\u715e\u8eca\u628a\u624b,\u4e26\u4f7f\u7528\u675f\u5e36\u6216\u985e\u4f3c\u7269\u54c1 \"1\" \u5c07\u5176\u56fa\u5b9a\u3002\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_92_Picture_22.jpeg)\n\nk. \u5c07\u6a61\u76ae\u5957 \"1\" \u5f80\u5de6\u6ed1,\u7136\u5f8c\u6aa2\u67e5\u5e73\u8861\u5668 \"2\" \u4f4d\u65bc\u5716\u793a\u4f4d\u7f6e\u3002\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_92_Picture_24.jpeg)\n\n- l. \u6162\u6162\u65bd\u52a0\u5f8c\u715e\u8eca\u628a\u624b\u6578\u6b21\u3002\n- m. \u5b8c\u5168\u62c9\u8d77\u5f8c\u715e\u8eca\u628a\u624b,\u4e26\u56fa\u5b9a\u4e0d\u52d5\u3002\n- n. \u9b06\u958b\u7a7a\u6c23\u91cb\u653e\u87ba\u7d72\u3002\n\n#### \u8a3b\n\n\u9b06\u958b\u7a7a\u6c23\u91cb\u653e\u87ba\u7d72\u6703\u91cb\u653e\u58d3\u529b,\u4e26\u4f7f\u5f97\u715e\u8eca\u628a\u624b \u5b8c\u5168\u63a5\u89f8\u5230\u65b9\u5411\u628a\u624b\u63e1\u628a\u3002\n\n- o. \u9396\u7dca\u7a7a\u6c23\u91cb\u653e\u87ba\u7d72,\u518d\u653e\u958b\u5f8c\u715e\u8eca\u628a\u624b\u3002\n- p. \u91cd\u8907\u6b65\u9a5f (l)\u5230 (o),\u76f4\u5230\u5851\u81a0\u8edf\u7ba1\u4e2d\u7684\u715e \u8eca\u6db2\u6c92\u6709\u4efb\u4f55\u6c23\u6ce1\u70ba\u6b62\u3002\n- q. \u6aa2\u67e5\u6db2\u58d3\u55ae\u5143\u7684\u904b\u4f5c\u3002 \u53c3\u95b1\u7b2c 4-[63 \u9801\u7684 \" \u6db2\u58d3\u55ae\u5143\u7684\u64cd\u4f5c\u8207\u6e2c\u8a66](#page-171-0) [\"](#page-171-0)\u3002\n\n### \u6ce8 \u610f\n\n#### \u6aa2\u67e5\u6db2\u58d3\u55ae\u5143\u7684\u904b\u4f5c\u524d,\u8acb\u78ba\u8a8d\u4e3b\u958b\u95dc\u5207\u63db\u70ba \"OFF\"\u3002\n\n- r. \u64cd\u4f5c ABS \u5f8c,\u91cd\u8907\u6b65\u9a5f (e)\u81f3 (h)\u53ca (l) \u81f3 (o),\u7136\u5f8c\u4f7f\u7528\u6307\u5b9a\u7684\u715e\u8eca\u6db2,\u5c07\u715e\u8eca\u4e3b \u7f38\u5132\u6db2\u69fd\u6216\u715e\u8eca\u6db2\u5132\u69fd\u586b\u5145\u5230\u6b63\u78ba\u7684\u6db2\u91cf\u3002\n- s. \u5c07\u7a7a\u6c23\u91cb\u653e\u87ba\u7d72\u4f9d\u898f\u5b9a\u9396\u7dca\u3002\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_92_Picture_37.jpeg)\n\n\u524d\u715e\u8eca\u5361\u9257\u7a7a\u6c23\u91cb\u653e\u87ba\u7d72 5 N\u00b7m (0.5 kgf\u00b7m,3.6 lb\u00b7ft) \u5f8c\u715e\u8eca\u5361\u9257\u7a7a\u6c23\u91cb\u653e\u87ba\u7d72 6 N\u00b7m (0.6 kgf\u00b7m,4.3 lb\u00b7ft)\n\n- t. \u4f7f\u7528\u6307\u5b9a\u7684\u715e\u8eca\u6db2,\u5c07\u715e\u8eca\u4e3b\u7f38\u5132\u6db2\u69fd\u586b\u5145\u5230 \u6b63\u78ba\u7684\u6db2\u91cf\u3002\n  - \u53c3\u95b1\u7b2c 3-[13 \u9801\u7684 \" \u715e\u8eca\u6db2\u91cf\u7684\u6aa2\u67e5 \"](#page-91-3)\u3002\n- u. \u5c07\u6a61\u76ae\u5957\u63a8\u56de\u539f\u672c\u7684\u4f4d\u7f6e\u3002\n- v. \u79fb\u9664\u56fa\u5b9a\u524d\u715e\u8eca\u628a\u624b\u7684\u675f\u5e36\u3002\n\n{93}------------------------------------------------\n\n#### \u8b66 \u544a EWA13110\n\n\u6db2\u58d3\u715e\u8eca\u7cfb\u7d71\u7a7a\u6c23\u91cb\u653e\u5f8c,\u9808\u6aa2\u67e5\u715e\u8eca\u7684\u64cd\u4f5c\u72c0 \u6cc1\u3002\n\n#### \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2\u25b2\u25b2\n\n#### \u99d0\u8eca\u715e\u8eca\u628a\u624b\u7684\u6aa2\u67e5\n\n- 1. \u6aa2\u67e5:\n- \u99d0\u8eca\u715e\u8eca\u628a\u624b\u904b\u4f5c \u6309\u4e0b\u99d0\u8eca\u715e\u8eca\u628a\u624b,\u7136\u5f8c\u5c07\u6a5f\u8eca\u5f80\u524d\u63a8,\u78ba\u8a8d\n\n\u99d0\u8eca\u715e\u8eca\u6b63\u5e38\u9396\u4f4f\u3002 \u99d0\u8eca\u715e\u8eca\u628a\u624b\u672a\u6b63\u5e38\u904b\u4f5c \u2192 \u6aa2\u67e5\u99d0\u8eca\u715e\u8eca\u92fc \u7d22\u548c\u99d0\u8eca\u715e\u8eca\u584a\u3002\n\n\u53c3\u95b1\u7b2c 3-[15 \u9801\u7684\"\u99d0\u8eca\u715e\u8eca\u628a\u624b\u7684\u8abf\u6574\"](#page-93-4) \u53ca \u7b2c 4-[46 \u9801\u7684 \" \u5f8c\u715e\u8eca \"\u3002](#page-154-0)\n\n- 2. \u6aa2\u67e5:\n- \u99d0\u8eca\u715e\u8eca\u92fc\u7d22\u9577\u5ea6 \u4e0d\u7b26\u898f\u683c \u2192 \u8abf\u6574\u3002 \u53c3\u95b1\u7b2c 3-[15 \u9801\u7684 \" \u99d0\u8eca\u715e\u8eca\u628a\u624b\u7684\u8abf\u6574 \"](#page-93-4)\u3002\n- 3. \u6aa2\u67e5:\n  - \u99d0\u8eca\u715e\u8eca\u92fc\u7d22\u896f\u5957 \u9f9c\u88c2 / \u640d\u50b7 \u2192 \u66f4\u63db\u3002\n\n#### \u99d0\u8eca\u715e\u8eca\u628a\u624b\u7684\u8abf\u6574\n\n### \u8b66 \u544a\n\n\u9a0e\u4e58\u6642\u8acb\u52ff\u4f7f\u7528\u99d0\u8eca\u715e\u8eca\u628a\u624b\u3002\n\n\u8a3b\n\nEWA18560\n\n\u4ee5\u4e3b\u652f\u67b6\u7acb\u8d77\u6a5f\u8eca\u3002\n\n- 1. \u6e2c\u91cf:\n- \u99d0\u8eca\u715e\u8eca\u92fc\u7d22\u9577\u5ea6 \"a\" \u4e0d\u7b26\u898f\u683c \u2192 \u8abf\u6574\u3002\n\n\u8a3b\n\n\u8acb\u5728\u653e\u958b\u99d0\u8eca\u715e\u8eca\u628a\u624b\u6642\u6e2c\u91cf\u3002\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_93_Picture_22.jpeg)\n\n\u99d0\u8eca\u715e\u8eca\u92fc\u7d22\u9577\u5ea6 95\u201397 mm (3.74\u20133.82 in)\n\n- 2. \u8abf\u6574:\n- \u99d0\u8eca\u715e\u8eca\u92fc\u7d22\u9577\u5ea6\n\n\u25bc \u25bc \u25bc\u25bc\u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc\u25bc\u25bc a. \u671d\u65b9\u5411 \"b\" \u6216 \"c\" \u8f49\u52d5\u99d0\u8eca\u715e\u8eca\u92fc\u7d22\u8abf\u6574 \u87ba\u5e3d \"1\",\u76f4\u5230\u9054\u5230\u6307\u5b9a\u7684\u99d0\u8eca\u715e\u8eca\u92fc\u7d22\u9577 \u5ea6\u70ba\u6b62\u3002\n\n\u65b9\u5411 \"b\" \u99d0\u8eca\u715e\u8eca\u92fc\u7d22\u9577\u5ea6\u589e\u52a0\u3002 \u65b9\u5411 \"c\" \u99d0\u8eca\u715e\u8eca\u92fc\u7d22\u9577\u5ea6\u6e1b\u5c11\u3002\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_93_Picture_28.jpeg)\n\nb. \u5c07\u99d0\u8eca\u715e\u8eca\u628a\u624b\u5de6\u53f3\u63a8\u52d5\u6578\u6b21,\u7136\u5f8c\u78ba\u8a8d\u99d0\u8eca \u715e\u8eca\u628a\u624b\u4f4d\u65bc\u91cb\u653e\u4f4d\u7f6e \"d\" \u6642,\u5f8c\u8f2a\u53ef\u4ee5\u7528 \u624b\u8f49\u52d5\u3002\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_93_Picture_30.jpeg)\n\n\u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2\u25b2\u25b2\n\n[\u524d\u715e\u8eca\u7247\u7684\u66f4\u63db]\n### \u524d\u715e\u8eca\u7247\u7684\u66f4\u63db\n\n\u4ee5\u4e0b\u7a0b\u5e8f\u9069\u7528\u65bc\u6240\u6709\u715e\u8eca\u5361\u9257\u3002\n\n#### \u8a3b\n\n\u66f4\u63db\u715e\u8eca\u7247\u6642,\u4e0d\u9700\u62c6\u96e2\u715e\u8eca\u8edf\u7ba1\u6216\u5206\u89e3\u715e\u8eca\u5361 \u9257\u3002\n\n- 1. \u6e2c\u91cf:\n- \u715e\u8eca\u7247\u78e8\u8017\u9650\u5236 \"a\" \u4e0d\u7b26\u898f\u683c \u2192 \u66f4\u63db\u6574\u7d44\u715e\u8eca\u7247\u3002\n\n{149}------------------------------------------------\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_149_Picture_1.jpeg)\n\n\u715e\u8eca\u4f86\u4ee4\u7247\u539a\u5ea6 5.8 mm (0.23 in)\n\n\u9650\u5236\n\n1.0 mm (0.04 in)\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_149_Picture_5.jpeg)\n\n#### 2. \u5b89\u88dd:\n\n- \u715e\u8eca\u7247\u5f48\u7c27 New\n- \u715e\u8eca\u7247 New\n\n\u8a3b\n\n\u66f4\u63db\u65b0\u715e\u8eca\u7247\u548c\u65b0\u715e\u8eca\u7247\u5f48\u7c27\u6642,\u8acb\u4ee5\u6574\u7d44\u70ba\u55ae \u4f4d\u66f4\u63db\u3002\n\n#### \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc \u25bc\u25bc\u25bc \u25bc \u25bc\u25bc\u25bc a. \u5c07\u900f\u660e\u5851\u81a0\u8edf\u7ba1 \"1\" \u7dca\u7dca\u9023\u63a5\u5230\u7a7a\u6c23\u91cb\u653e\u87ba \u7d72 \"2\"\u3002\u5c07\u8edf\u7ba1\u53e6\u4e00\u7aef\u653e\u5728\u6253\u958b\u7684\u5bb9\u5668\u4e2d\u3002\n\nb. \u9b06\u958b\u7a7a\u6c23\u91cb\u653e\u87ba\u7d72,\u4ee5\u624b\u6307\u5c07\u715e\u8eca\u5361\u9257\u6d3b\u585e\u63a8 \u5165\u715e\u8eca\u5361\u9257\u3002\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_149_Picture_13.jpeg)\n\nc. \u9396\u7dca\u7a7a\u6c23\u91cb\u653e\u87ba\u7d72\u3002\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_149_Picture_15.jpeg)\n\n\u524d\u715e\u8eca\u5361\u9257\u7a7a\u6c23\u91cb\u653e\u87ba\u7d72\n\n\u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2 \u25b2\u25b2\u25b2 \u25b2 \u25b2\u25b2\u25b2\n\n5 N\u00b7m (0.5 kgf\u00b7m,3.6 lb\u00b7ft)\n\nd. \u5b89\u88dd\u65b0\u7684\u715e\u8eca\u7247\u5f48\u7c27\u53ca\u65b0\u7684\u715e\u8eca\u7247\u3002\n\n### 3. \u5b89\u88dd:\n\n- \u715e\u8eca\u7247\u63d2\u92b7\n- \u524d\u715e\u8eca\u5361\u9257\n- \u524d\u8f2a\u611f\u77e5\u5668\u5c0e\u7dda\u5c0e\u4ef6\n- \u524d\u715e\u8eca\u5361\u9257\u87ba\u6813\n\n![](images/0a2ba199-665f-41aa-a106-1163cad68d16/_page_149_Picture_24.jpeg)",
+        "claim_slugs": [
+          "\u6db2\u58d3\u715e\u8eca\u7cfb\u7d71\u7a7a\u6c23\u7684\u91cb\u653e",
+          "\u524d\u715e\u8eca\u7247\u7684\u66f4\u63db"
+        ],
+        "read_slugs": [
+          "\u6db2\u58d3\u715e\u8eca\u7cfb\u7d71\u7a7a\u6c23\u7684\u91cb\u653e",
+          "\u524d\u715e\u8eca\u7247\u7684\u6aa2\u67e5",
+          "\u524d\u715e\u8eca",
+          "\u524d\u715e\u8eca\u7247\u7684\u66f4\u63db"
+        ],
+        "retrieved_chunk_metadata": [],
+        "latency_ms_wall": 107962.14575506747,
+        "latency_ms_llm": 399.5927441865206,
+        "cost_usd": 0.0,
+        "tool_trace": [
+          {
+            "name": "list_manuals",
+            "input": {
+              "vehicle_model": "MWS-150-A"
+            },
+            "latency_ms": 32.04599767923355,
+            "is_error": false
+          },
+          {
+            "name": "list_manuals",
+            "input": {},
+            "latency_ms": 22.627195343375206,
+            "is_error": false
+          },
+          {
+            "name": "get_manual_toc",
+            "input": {
+              "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+            },
+            "latency_ms": 73.95275868475437,
+            "is_error": false
+          },
+          {
+            "name": "read_manual_section",
+            "input": {
+              "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+              "section": "\u6db2\u58d3\u715e\u8eca\u7cfb\u7d71\u7a7a\u6c23\u7684\u91cb\u653e",
+              "include_subsections": true
+            },
+            "latency_ms": 87.15556375682354,
+            "is_error": false
+          },
+          {
+            "name": "read_manual_section",
+            "input": {
+              "include_subsections": true,
+              "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+              "section": "\u524d\u715e\u8eca\u7247\u7684\u6aa2\u67e5"
+            },
+            "latency_ms": 56.2773123383522,
+            "is_error": false
+          },
+          {
+            "name": "read_manual_section",
+            "input": {
+              "include_subsections": true,
+              "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+              "section": "\u524d\u715e\u8eca"
+            },
+            "latency_ms": 69.58683580160141,
+            "is_error": false
+          },
+          {
+            "name": "read_manual_section",
+            "input": {
+              "include_subsections": true,
+              "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+              "section": "\u524d\u715e\u8eca\u7247\u7684\u66f4\u63db"
+            },
+            "latency_ms": 57.947080582380295,
+            "is_error": false
+          }
+        ],
+        "stopped_reason": "complete",
+        "iterations": 8,
+        "obd_signal_citations": [],
+        "obd_dtc_citations": [],
+        "surfaced_images": [
+          {
+            "slug": "\u6db2\u58d3\u715e\u8eca\u7cfb\u7d71\u7a7a\u6c23\u7684\u91cb\u653e",
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "cited": true,
+            "image_count": 8,
+            "vision_descriptions": []
+          },
+          {
+            "slug": "\u524d\u715e\u8eca\u7247\u7684\u6aa2\u67e5",
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "cited": false,
+            "image_count": 1,
+            "vision_descriptions": []
+          },
+          {
+            "slug": "\u524d\u715e\u8eca",
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "cited": false,
+            "image_count": 110,
+            "vision_descriptions": []
+          },
+          {
+            "slug": "\u524d\u715e\u8eca\u7247\u7684\u66f4\u63db",
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "cited": true,
+            "image_count": 5,
+            "vision_descriptions": []
+          }
+        ]
+      },
+      "grade": {
+        "section_recall": 1.0,
+        "claim_precision": 1.0,
+        "exploration_cost": 0.5,
+        "fact_recall": 1.0,
+        "fact_density": 1.0,
+        "hallucination_penalty": 1.0,
+        "citation_quality": 1.0,
+        "answer_quality": 0.85,
+        "trajectory_efficiency": 0.8571428571428571,
+        "value_accuracy": 1.0,
+        "overall": 0.9774999999999999,
+        "reasoning": "Judge (0.85): The output correctly provides both the air-bleed sequence (right front \u2192 left front \u2192 rear) and the front-pad wear limit (1.0 mm), satisfying both halves of the question. It also specifies DOT 4 fluid and the correct bleed-screw torques (5 N\u00b7m front, 6 N\u00b7m rear). However, it omits the intermediate step of strapping the front lever and checking the balancer position before bleeding the rear caliper, which the golden answer includes as a critical procedural detail for ABS-equipped systems."
+      }
+    },
+    {
+      "entry": {
+        "id": "0a2ba199-665f-41aa-a106-1163cad68d16-dtc-001",
+        "category": "dtc",
+        "question_type": "procedural",
+        "difficulty": "medium",
+        "question": "I'm getting DTC P0117 on the MWS-150-A. What does this code mean, and what is the step-by-step diagnostic procedure?",
+        "obd_context": null,
+        "vehicle": null,
+        "golden_summary": "DTC P0117 on the MWS-150-A indicates the \u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668 (coolant temperature sensor) reported a \u642d\u9435\u77ed\u8def (ground short). Its sibling code P0118 covers open-circuit and power-short variants of the same sensor. The associated diagnostic code is 06, and all checks must be performed in \u5f15\u64ce\u51b7\u6a5f (engine cold) state \u2014 the procedure relies on comparing the tool's displayed temperature against ambient. The 7-step diagnosis is: (1) inspect the coolant temperature sensor connector for proper seating, bent or broken pins; secure or replace the wire harness if a connection fault is found. (2) inspect the ECU connector the same way. (3) test the wire harness for opens and shorts with both connectors disconnected \u2014 for P0117 specifically, check continuity between the coolant temperature sensor connector and ground on the \u7da0\u8272 / \u7d05\u8272 (green/red) wire; any continuity indicates a ground short and the harness must be replaced. (4) check the sensor's installation \u2014 confirm it is neither loose nor over-tightened, reinstalling or replacing as needed. (5) execute diagnostic mode 06 with the engine cold and confirm the displayed temperature is close to ambient air temperature; if it is not, replace the coolant temperature sensor. (6) if all earlier steps come back clean, the ECU itself is at fault \u2014 replace per page 8-101. (7) erase the DTC using the \u5c71\u8449\u8a3a\u65b7\u5de5\u5177 (Yamaha diagnostic tool) and verify the engine warning lamp extinguishes.",
+        "golden_citations": [
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0117\u3001p0118",
+            "quote": "[P0117] \u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u642d\u9435\u77ed\u8def\u3002"
+          },
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0117\u3001p0118",
+            "quote": "\u5728\u5f15\u64ce\u51b7\u6a5f\u72c0\u614b\u9032\u884c\u6b64\u7a0b\u5e8f\u3002"
+          },
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0117\u3001p0118",
+            "quote": "[P0117] \u642d\u9435\u77ed\u8def"
+          },
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0117\u3001p0118",
+            "quote": "\u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\u63a5\u982d\u8207\u642d\u9435\u4e4b\u9593:\u7da0\u8272/\u7d05\u8272\uff0d\u642d\u9435"
+          },
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0117\u3001p0118",
+            "quote": "\u66f4\u63db ECU\u3002"
+          }
+        ],
+        "expected_recall_slugs": [
+          "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0117\u3001p0118"
+        ],
+        "expected_tool_trace": [
+          "list_manuals",
+          "get_manual_toc",
+          "read_manual_section",
+          "read_manual_section",
+          "read_manual_section"
+        ],
+        "must_contain": [
+          "P0117",
+          "\u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668",
+          "\u642d\u9435\u77ed\u8def",
+          "\u7da0\u8272 / \u7d05\u8272",
+          "\u5f15\u64ce\u51b7\u6a5f"
+        ],
+        "pitfall_directives": [
+          "The output must not assert that DTC P0117 involves the oxygen sensor (\u6c27\u6c23\u611f\u77e5\u5668) \u2014 that is a different family of DTCs (P0130\u2013P0139).",
+          "The output must not assert that P0117 is an air-fuel-ratio (\u7a7a\u71c3\u6bd4) issue \u2014 P0117 is an electrical short-to-ground on the coolant temperature sensor, not a mixture-tuning problem.",
+          "The output must not present brake-system or tire-pressure content as the primary answer to this question \u2014 P0117 is an engine-management DTC, unrelated to those domains.",
+          "The output must not specify a wire colour other than \u7da0\u8272 / \u7d05\u8272 (Green/Red) for the P0117 short-to-ground continuity test \u2014 using a different colour code (e.g. Black/Blue) would mislead the technician into testing the wrong wire."
+        ],
+        "requires_image": false,
+        "expected_signal_citations": [],
+        "expected_dtcs": [],
+        "expected_no_evidence": false,
+        "notes": "human-authored 2026-05-03 from direct read of lines 12047-12086 of the re-ingested manual (post-APP-52 slug format). Question targets the procedural axis: tests whether the system can reconstruct a multi-step diagnostic flow. Citations include both the section's framing facts (P0117 fault definition, engine-cold precondition) and the procedure-internal P0117-specific wire-color test (step 3-3). expected_tool_trace pending Step-5 calibration. Migrated must_not_contain \u2192 pitfall_directives 2026-05-04 (v2.12) \u2014 directives are now LLM-judged for context-aware violation detection."
+      },
+      "result": {
+        "system_label": "manual_agent",
+        "question": "I'm getting DTC P0117 on the MWS-150-A. What does this code mean, and what is the step-by-step diagnostic procedure?",
+        "output_text": "DTC P0117 means the coolant temperature sensor has detected a ground short circuit. The step-by-step diagnostic procedure is:\n\n1. **Check coolant temperature sensor connector:** Verify connection security and inspect terminals for bending or damage. If improperly connected, secure the connector or replace the wiring harness. Test with Yamaha diagnostic tool; if 'Recover', proceed to step 7. If 'Malfunction', go to step 2.\n\n2. **Check ECU connector:** Verify connection security and inspect terminals. If improperly connected, secure the connector or replace the wiring harness. Test; if 'Recover', proceed to step 7. If 'Malfunction', go to step 3.\n\n3. **Check wiring harness continuity:**\n   - Disconnect ECU and coolant temperature sensor connectors.\n   - For P0117 (ground short): Check continuity between Green/Red wire at sensor connector and ground. If continuous, replace wiring harness.\n   - For P0118 (open circuit): Check continuity between Green/Red wires (sensor to ECU) and Black/Blue wires (sensor to ECU). If no continuity, replace wiring harness.\n   - Check for shorts between ECU coolant sensor output terminal (Green/Red) and other ECU terminals. If continuous, replace wiring harness.\n   - Test; if 'Recover', proceed to step 7. If 'Malfunction', go to step 4.\n\n4. **Check coolant temperature sensor installation:** Verify sensor is not loose or over-tightened. If improperly installed, reinstall or replace sensor. Test; if 'Recover', proceed to step 7. If 'Malfunction', go to step 5.\n\n5. **Check coolant temperature sensor:** Run diagnostic mode (code 06) with engine cold. If displayed temperature does not match ambient temperature, replace the coolant temperature sensor. Test; if 'Recover', proceed to step 7. If 'Malfunction', go to step 6.\n\n6. **Check ECU:** Replace the ECU if all previous steps indicate malfunction.\n\n7. **Clear DTC:** Use Yamaha diagnostic tool to confirm 'Recover' status and delete the fault code. Verify the engine malfunction warning light is off.\n\n--- Cited sections (1) ---\n\n[\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0117\u3001p0118]\n#### \u6545\u969c\u4ee3\u78bc\u7de8\u865f P0117\u3001P0118\n\n\u8a3b\n\n\u5728\u5f15\u64ce\u51b7\u6a5f\u72c0\u614b\u9032\u884c\u6b64\u7a0b\u5e8f\u3002\n\n| \u6545\u969c\u4ee3\u78bc\u7de8\u865f | P0117\u3001P0118                                                                                                                                                                                             |                                                                               |                                                                                                                                   |\n|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|\n| \u9805\u76ee     | [P0117] \u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u642d\u9435\u77ed\u8def\u3002<br>[P0118] \u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u65b7\u8def\u6216\u96fb\u6e90\u77ed\u8def\u3002                                                                                                                                               |                                                                               |                                                                                                                                   |\n| \u6545\u969c\u9632\u8b77\u7cfb\u7d71 | \u53ef\u4ee5\u8d77\u52d5\u5f15\u64ce                                                                                                                                                                                                  |                                                                               |                                                                                                                                   |\n|        | \u53ef\u4ee5\u9a0e\u4e58\u6a5f\u8eca                                                                                                                                                                                                  |                                                                               |                                                                                                                                   |\n| \u8a3a\u65b7\u4ee3\u78bc\u7de8\u865f | 06                                                                                                                                                                                                      |                                                                               |                                                                                                                                   |\n| \u5de5\u5177\u986f\u793a   | \u5f15\u64ce\u51b7\u6a5f\u72c0\u614b\uff1a\u986f\u793a\u7684\u6eab\u5ea6\u63a5\u8fd1\u6c23\u6eab\u3002<br>\u5f15\u64ce\u71b1\u6a5f\u72c0\u614b\uff1a\u986f\u793a\u76ee\u524d\u51b7\u537b\u6db2\u6eab\u5ea6\u3002                                                                                                                                                                  |                                                                               |                                                                                                                                   |\n| \u7a0b\u5e8f     | \u6bd4\u8f03\u5be6\u969b\u6e2c\u5f97\u7684\u51b7\u537b\u6db2\u6eab\u5ea6\u8207\u5de5\u5177\u986f\u793a\u503c\u3002                                                                                                                                                                                     |                                                                               |                                                                                                                                   |\n| \u9805\u76ee     | \u6545\u969c\u7684\u53ef\u80fd\u539f\u56e0\u53ca\u6aa2\u67e5                                                                                                                                                                                              | \u7dad\u4fee\u5de5\u4f5c                                                                          | \u7dad\u4fee\u5b8c\u6210\u78ba\u8a8d                                                                                                                            |\n| 1      | \u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\u63a5\u982d\u7684\u9023\u63a5\u3002<br>\u6aa2\u67e5\u63a5\u982d\u7684\u56fa\u5b9a\u72c0\u6cc1\u3002<br>\u62c6\u96e2\u63a5\u982d\u4e26\u6aa2\u67e5\u63a5\u982d\u5167\u5404\u63d2\u92b7<br>(\u5404\u7aef\u5b50\u6709\u7121\u5f4e\u66f2\u6216\u7834\u640d, \u53ca\u5404<br>\u63d2\u92b7\u7684\u56fa\u5b9a\u72c0\u6cc1)\u3002                                                                                                                           | \u9023\u63a5\u4e0d\u7576 \u2192 \u7262\u56fa\u7684\u9023\u63a5\u63a5\u982d\u6216<br>\u66f4\u63db\u96fb\u7dda\u7e3d\u6210\u3002                                                    | \u5c07\u4e3b\u958b\u95dc\u5207\u63db\u5230 \"ON\", \u7136\u5f8c<br>\u4f7f\u7528\u5c71\u8449\u8a3a\u65b7\u5de5\u5177\u7684\u6545\u969c\u6a21\u5f0f\u6aa2<br>\u67e5\u6545\u969c\u4ee3\u78bc\u72c0\u6cc1\u3002<br>\u72c0\u6cc1\u986f\u793a \"Recover\" (\u5fa9\u539f)<br>\u2192 \u79fb\u81f3\u9805\u76ee 7 \u4e26\u5b8c\u6210\u7dad\u4fee\u3002<br>\u72c0\u6cc1\u986f\u793a \"Malfunction\" (\u6545<br>\u969c) \u2192 \u79fb\u81f3\u9805\u76ee 2\u3002 |\n| 2      | ECU \u63a5\u982d\u7684\u9023\u63a5\u3002<br>\u6aa2\u67e5\u63a5\u982d\u7684\u56fa\u5b9a\u72c0\u6cc1\u3002<br>\u62c6\u96e2\u63a5\u982d\u4e26\u6aa2\u67e5\u63a5\u982d\u5167\u5404\u63d2\u92b7<br>(\u5404\u7aef\u5b50\u6709\u7121\u5f4e\u66f2\u6216\u7834\u640d, \u53ca\u5404<br>\u63d2\u92b7\u7684\u56fa\u5b9a\u72c0\u6cc1)\u3002                                                                                                                               | \u9023\u63a5\u4e0d\u7576 \u2192 \u7262\u56fa\u7684\u9023\u63a5\u63a5\u982d\u6216<br>\u66f4\u63db\u96fb\u7dda\u7e3d\u6210\u3002                                                    | \u5c07\u4e3b\u958b\u95dc\u5207\u63db\u5230 \"ON\", \u7136\u5f8c<br>\u4f7f\u7528\u5c71\u8449\u8a3a\u65b7\u5de5\u5177\u7684\u6545\u969c\u6a21\u5f0f\u6aa2<br>\u67e5\u6545\u969c\u4ee3\u78bc\u72c0\u6cc1\u3002<br>\u72c0\u6cc1\u986f\u793a \"Recover\" (\u5fa9\u539f)<br>\u2192 \u79fb\u81f3\u9805\u76ee 7 \u4e26\u5b8c\u6210\u7dad\u4fee\u3002<br>\u72c0\u6cc1\u986f\u793a \"Malfunction\" (\u6545<br>\u969c) \u2192 \u79fb\u81f3\u9805\u76ee 3\u3002 |\n| \u6545\u969c\u4ee3\u78bc\u7de8\u865f | P0117\u3001P0118                                                                                                                                                                                             |                                                                               |                                                                                                                                   |\n| \u9805\u76ee     | [P0117] \u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u642d\u9435\u77ed\u8def\u3002<br>[P0118] \u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u65b7\u8def\u6216\u96fb\u6e90\u77ed\u8def\u3002                                                                                                                                               |                                                                               |                                                                                                                                   |\n| 3      | \u96fb\u7dda\u7e3d\u6210\u7684\u5c0e\u901a\u3002                                                                                                                                                                                                | \u65b7\u8def\u6216\u77ed\u8def \u2192 \u66f4\u63db\u96fb\u7dda\u7e3d\u6210\u3002                                                               | \u5c07\u4e3b\u958b\u95dc\u5207\u63db\u5230\u201cON\u201d,\u7136\u5f8c<br>\u4f7f\u7528\u5c71\u8449\u8a3a\u65b7\u5de5\u5177\u7684\u6545\u969c\u6a21\u5f0f\u6aa2<br>\u67e5\u6545\u969c\u4ee3\u78bc\u72c0\u6cc1\u3002<br>\u72c0\u6cc1\u986f\u793a\u201cRecover\u201d(\u5fa9\u539f)<br>\u2192 \u79fb\u81f3\u9805\u76ee 7 \u4e26\u5b8c\u6210\u7dad\u4fee\u3002<br>\u72c0\u6cc1\u986f\u793a\u201cMalfunction\u201d(\u6545<br>\u969c) \u2192 \u79fb\u81f3\u9805\u76ee 4\u3002       |\n| 3-1    | Image: Circuit diagram showing components 1 (Sensor), 2 (ECU), and wires 3, 4 with color codes Green/Red and Black/Blue. 1. \u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668<br>2. ECU<br>3. \u611f\u77e5\u5668\u8f38\u51fa\u5c0e\u7dda<br>4. \u611f\u77e5\u5668\u642d\u9435\u5c0e\u7dda                              |                                                                               |                                                                                                                                   |\n| 3-2    | \u5c07 ECU \u63a5\u982d\u5f9e ECU \u62c6\u96e2\u3002<br>\u5c07\u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\u63a5\u982d\u5f9e\u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\u62c6\u96e2\u3002                                                                                                                                                            |                                                                               |                                                                                                                                   |\n| 3-3    | [P0117] \u642d\u9435\u77ed\u8def<br>\u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\u63a5\u982d\u8207\u642d\u9435\u4e4b\u9593:\u7da0\u8272/\u7d05\u8272\uff0d\u642d\u9435<br>\u5982\u679c\u5c0e\u901a,\u8acb\u66f4\u63db\u96fb\u7dda\u7e3d\u6210\u3002<br>Image: Connector diagram with labels Green/Red, Black/Blue and an Ohm meter symbol \u03a9.                                                      |                                                                               |                                                                                                                                   |\n| 3-4    | [P0118] \u65b7\u8def<br>\u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\u63a5\u982d\u8207 ECU \u63a5\u982d\u4e4b\u9593:\u7da0\u8272/\u7d05\u8272\uff0d\u7da0\u8272/\u7d05\u8272<br>\u5982\u679c\u6c92\u6709\u5c0e\u901a,\u8acb\u66f4\u63db\u96fb\u7dda\u7e3d\u6210\u3002<br>Image: ECU connector pinout diagram with a long list of color codes for pins.                                                      |                                                                               |                                                                                                                                   |\n| \u6545\u969c\u4ee3\u78bc\u7de8\u865f | P0117\u3001P0118                                                                                                                                                                                             |                                                                               |                                                                                                                                   |\n| \u9805\u76ee     | [P0117] \u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u642d\u9435\u77ed\u8def\u3002<br>[P0118] \u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u65b7\u8def\u6216\u96fb\u6e90\u77ed\u8def\u3002                                                                                                                                               |                                                                               |                                                                                                                                   |\n| 3-5    | [P0118] \u65b7\u8def<br>\u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\u63a5\u982d\u8207 ECU \u63a5\u982d\u4e4b\u9593\uff1a\u9ed1\u8272 / \u85cd\u8272 \u2013 \u9ed1\u8272 / \u85cd\u8272<br>\u5982\u679c\u6c92\u6709\u5c0e\u901a\uff0c\u8acb\u66f4\u63db\u96fb\u7dda\u7e3d\u6210\u3002<br><br>Image: Diagram showing a connector with pinout and wire colors, connected to an ECU connector, with a resistance symbol. |                                                                               |                                                                                                                                   |\n| 3-6    | \u5c07\u9023\u63a5\u5230 ECU \u5404\u96f6\u4ef6\u7684\u63a5\u982d\u62c6\u96e2\u3002<br>\u53c3\u95b1\u7b2c 8-28 \u9801\u7684 \"\u9023\u63a5\u81f3 ECU \u7684\u96f6\u4ef6\"\u3002                                                                                                                                                        |                                                                               |                                                                                                                                   |\n| 3-7    | [P0117\u3001P0118] \u77ed\u8def<br>ECU \u63a5\u982d\u7684\u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\u8f38\u51fa\u7aef\u5b50\uff08\u7da0\u8272 / \u7d05\u8272\uff09 \u201ca\u201d\u548c\u4efb\u4f55\u5176\u4ed6\u7684 ECU \u63a5\u982d\u7aef\u5b50 \"b\" \u4e4b\u9593\u3002<br>\u5982\u679c\u5c0e\u901a\uff0c\u8acb\u66f4\u63db\u96fb\u7dda\u7e3d\u6210\u3002<br><br>Image: Diagram showing a connector diagram showing terminals labeled 'a' and 'b'.                   |                                                                               |                                                                                                                                   |\n| 4      | \u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\u7684\u5b89\u88dd\u72c0\u6cc1\u3002                                                                                                                                                                                          | \u6aa2\u67e5\u662f\u5426\u9b06\u52d5\u6216\u904e\u7dca\u3002<br>\u611f\u77e5\u5668\u5b89\u88dd\u4e0d\u5f53 \u2192 \u91cd\u65b0\u5b89\u88dd\u6216\u66f4\u63db\u611f\u77e5\u5668\u3002                                           | \u5c07\u4e3b\u958b\u95dc\u5207\u63db\u5230\u201cON\u201d\uff0c\u7136\u5f8c\u4f7f\u7528\u5c71\u8449\u8a3a\u65b7\u5de5\u5177\u7684\u6545\u969c\u6a21\u5f0f\u6aa2\u67e5\u6545\u969c\u4ee3\u78bc\u72c0\u6cc1\u3002<br>\u72c0\u6cc1\u986f\u793a\u201cRecover\u201d(\u5fa9\u539f) \u2192 \u79fb\u81f3\u9805\u76ee 7 \u4e26\u5b8c\u6210\u7dad\u4fee\u3002<br>\u72c0\u6cc1\u986f\u793a\u201cMalfunction\u201d(\u6545\u969c) \u2192 \u79fb\u81f3\u9805\u76ee 5\u3002                      |\n| 5      | \u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\u6709\u7455\u75b5\u3002                                                                                                                                                                                            | \u57f7\u884c\u8a3a\u65b7\u6a21\u5f0f\u3002(\u4ee3\u78bc\u7de8\u865f 06)<br>\u5f15\u64ce\u51b7\u6a5f\u72c0\u614b\uff1a<br>\u986f\u793a\u7684\u6eab\u5ea6\u63a5\u8fd1\u74b0\u5883\u6eab\u5ea6\u3002<br>\u986f\u793a\u7684\u6eab\u5ea6\u4e0d\u63a5\u8fd1\u74b0\u5883\u6eab\u5ea6\u3002<br>\u2192 \u66f4\u63db\u51b7\u537b\u6db2\u6eab\u5ea6\u611f\u77e5\u5668\u3002 | \u5c07\u4e3b\u958b\u95dc\u5207\u63db\u5230\u201cON\u201d\uff0c\u7136\u5f8c\u4f7f\u7528\u5c71\u8449\u8a3a\u65b7\u5de5\u5177\u7684\u6545\u969c\u6a21\u5f0f\u6aa2\u67e5\u6545\u969c\u4ee3\u78bc\u72c0\u6cc1\u3002<br>\u72c0\u6cc1\u986f\u793a\u201cRecover\u201d(\u5fa9\u539f) \u2192 \u79fb\u81f3\u9805\u76ee 7 \u4e26\u5b8c\u6210\u7dad\u4fee\u3002<br>\u72c0\u6cc1\u986f\u793a\u201cMalfunction\u201d(\u6545\u969c) \u2192 \u79fb\u81f3\u9805\u76ee 6\u3002                      |\n| 6      | ECU \u6545\u969c\u3002                                                                                                                                                                                                 | \u66f4\u63db ECU\u3002<br>\u53c3\u95b1\u7b2c 8-101 \u9801\u7684\u201cECU(\u5f15\u64ce\u63a7\u5236\u5143\u4ef6)\u7684\u66f4\u63db\u201d\u3002                                      | \u5b8c\u6210\u7dad\u4fee\u3002                                                                                                                             |\n| 7      | \u522a\u9664\u6545\u969c\u4ee3\u78bc\uff0c\u7136\u5f8c\u6aa2\u67e5\u5f15\u64ce\u6545\u969c\u8b66\u544a\u71c8\u662f\u5426\u7184\u6ec5\u3002                                                                                                                                                                                 | \u4f7f\u7528\u5c71\u8449\u8a3a\u65b7\u5de5\u5177\u78ba\u8a8d\u6545\u969c\u4ee3\u78bc\u7684\u72c0\u6cc1\u70ba\u201cRecover\u201d(\u5fa9\u539f)\uff0c\u7136\u5f8c\u522a\u9664\u6545\u969c\u4ee3\u78bc\u3002                                     |                                                                                                                                   |\n\n{343}------------------------------------------------\n\n{344}------------------------------------------------\n\n{345}------------------------------------------------",
+        "claim_slugs": [
+          "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0117\u3001p0118"
+        ],
+        "read_slugs": [
+          "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0117\u3001p0118",
+          "\u6545\u969c\u4ee3\u78bc\u8868"
+        ],
+        "retrieved_chunk_metadata": [],
+        "latency_ms_wall": 89627.85340473056,
+        "latency_ms_llm": 230.93318194150925,
+        "cost_usd": 0.0,
+        "tool_trace": [
+          {
+            "name": "list_manuals",
+            "input": {
+              "vehicle_model": "MWS-150-A"
+            },
+            "latency_ms": 23.45411852002144,
+            "is_error": false
+          },
+          {
+            "name": "list_manuals",
+            "input": {},
+            "latency_ms": 20.790647715330124,
+            "is_error": false
+          },
+          {
+            "name": "get_manual_toc",
+            "input": {
+              "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+            },
+            "latency_ms": 72.4947527050972,
+            "is_error": false
+          },
+          {
+            "name": "read_manual_section",
+            "input": {
+              "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+              "section": "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0117\u3001p0118",
+              "include_subsections": true
+            },
+            "latency_ms": 58.08313190937042,
+            "is_error": false
+          },
+          {
+            "name": "read_manual_section",
+            "input": {
+              "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+              "section": "\u6545\u969c\u4ee3\u78bc\u8868",
+              "include_subsections": true
+            },
+            "latency_ms": 56.11053109169006,
+            "is_error": false
+          }
+        ],
+        "stopped_reason": "complete",
+        "iterations": 6,
+        "obd_signal_citations": [],
+        "obd_dtc_citations": [],
+        "surfaced_images": []
+      },
+      "grade": {
+        "section_recall": 1.0,
+        "claim_precision": 1.0,
+        "exploration_cost": 0.5,
+        "fact_recall": 1.0,
+        "fact_density": 1.0,
+        "hallucination_penalty": 1.0,
+        "citation_quality": 1.0,
+        "answer_quality": 0.92,
+        "trajectory_efficiency": 1.0,
+        "value_accuracy": 1.0,
+        "overall": 0.988,
+        "reasoning": "Judge (0.92): The system output correctly identifies P0117 as a coolant temperature sensor ground short and provides all 7 diagnostic steps with accurate detail, including the correct Green/Red wire specification for the P0117 continuity test and diagnostic mode 06 with engine cold. The only minor omission is that the 'engine cold' prerequisite is stated only within step 5 rather than as a general note for the entire procedure as the golden specifies, but a technician would still arrive at the correct outcome. The output also adds useful decision-branch detail (Recover/Malfunction paths) from the source material."
+      }
+    },
+    {
+      "entry": {
+        "id": "0a2ba199-665f-41aa-a106-1163cad68d16-procedural-002",
+        "category": "dtc",
+        "question_type": "procedural",
+        "difficulty": "medium",
+        "question": "I'm getting DTC P0107 on the MWS-150-A. What does this code mean, and what is the step-by-step diagnostic procedure including the specific wire-color checks?",
+        "obd_context": null,
+        "vehicle": null,
+        "golden_summary": "DTC P0107 on the MWS-150-A indicates the \u9032\u6c23\u58d3\u529b\u611f\u77e5\u5668 (intake-pressure sensor) reported an open-circuit or \u642d\u9435\u77ed\u8def (ground short) \u2014 the ECU saw the sensor's circuit voltage at 0.2 V or below. P0108 (its sibling code) covers the open-circuit-or-power-short case. The 7-step procedure: (1) inspect the throttle-body sensor assembly connector for proper seating, bent or broken pins; secure or replace the harness if a connection fault is found. (2) inspect the ECU connector the same way. (3) test the wire harness \u2014 for P0107 short-to-ground, check continuity between the throttle-body sensor connector and ground on the \u7c89\u7d05\u8272 / \u7da0\u8272 (pink/green) wire; any continuity means a ground-short and the harness must be replaced. For P0107 open-circuit, check continuity throttle-body-sensor-to-ECU connector on the \u85cd\u8272 \u2013 \u85cd\u8272 (blue \u2013 blue) wire and \u7c89\u7d05\u8272 / \u7da0\u8272 \u2013 \u7c89\u7d05\u8272 / \u7da0\u8272 lines. (4) check the throttle-body sensor's installation (loose / over-tight \u2192 reinstall). (5) execute \u8a3a\u65b7\u6a21\u5f0f (code 03) and crank the engine; if the displayed value does not change, replace the throttle body. (6) if all earlier steps pass, replace the ECU per page 8-101. (7) erase the DTC with the Yamaha diagnostic tool and verify the engine warning lamp extinguishes.",
+        "golden_citations": [
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0107\u3001p0108",
+            "quote": "[P0107] \u9032\u6c23\u58d3\u529b\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u65b7\u8def\u6216\u642d\u9435\u77ed\u8def\u3002"
+          },
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0107\u3001p0108",
+            "quote": "[P0107] \u642d\u9435\u77ed\u8def"
+          },
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0107\u3001p0108",
+            "quote": "\u7bc0\u6d41\u95a5\u672c\u9ad4\u611f\u77e5\u5668\u7e3d\u6210\u63a5\u982d\u548c\u642d\u9435\u4e4b\u9593\uff1a\u7c89\u7d05\u8272 / \u7da0\u8272 \u2013 \u642d\u9435"
+          },
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0107\u3001p0108",
+            "quote": "\u7bc0\u6d41\u95a5\u672c\u9ad4\u611f\u77e5\u5668\u7e3d\u6210\u63a5\u982d\u8207 ECU \u63a5\u982d\u4e4b\u9593\uff1a\u85cd\u8272 \u2013 \u85cd\u8272"
+          },
+          {
+            "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+            "slug": "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0107\u3001p0108",
+            "quote": "\u66f4\u63db\u7bc0\u6d41\u95a5\u672c\u9ad4\u3002"
+          }
+        ],
+        "expected_recall_slugs": [
+          "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0107\u3001p0108"
+        ],
+        "expected_tool_trace": [
+          "list_manuals",
+          "get_manual_toc",
+          "read_manual_section",
+          "read_manual_section",
+          "read_manual_section"
+        ],
+        "must_contain": [
+          "P0107",
+          "\u9032\u6c23\u58d3\u529b\u611f\u77e5\u5668",
+          "\u7c89\u7d05\u8272 / \u7da0\u8272",
+          "\u85cd\u8272"
+        ],
+        "pitfall_directives": [
+          "The output must not assert that DTC P0107 involves the coolant-temperature sensor or oxygen sensor \u2014 those are different families (P0117/P0118 and P0130/P0132/P2195 respectively).",
+          "The output must not specify a wire colour other than \u7c89\u7d05\u8272 / \u7da0\u8272 (Pink/Green) for the P0107 ground-short test \u2014 testing the wrong wire would either miss the fault or condemn the wrong harness.",
+          "The output must not state that DTC P0107 can be cleared by simply restarting the bike \u2014 the manual requires the Yamaha diagnostic tool to erase the DTC and confirm the warning lamp extinguishes.",
+          "The output must not skip the connector-inspection steps (items 1 and 2) and jump directly to ECU replacement \u2014 the manual deliberately puts connector / harness checks first because intermittent connection faults are the most common root cause."
+        ],
+        "requires_image": false,
+        "expected_signal_citations": [],
+        "expected_dtcs": [],
+        "expected_no_evidence": false,
+        "notes": "human-authored 2026-05-16 for HARNESS-18 batch. Parallels dtc-001 (P0117) but on a different sensor family (intake-pressure). Quotes verified verbatim against MWS-150-A.md lines 11966, 11984, 11985, 12000. The wire-colour and step-ordering pitfalls are specific to this sensor and protect against template-style answers that mix up wire colours across DTC families."
+      },
+      "result": {
+        "system_label": "manual_agent",
+        "question": "I'm getting DTC P0107 on the MWS-150-A. What does this code mean, and what is the step-by-step diagnostic procedure including the specific wire-color checks?",
+        "output_text": "DTC P0107 means the Intake Pressure Sensor has detected an open circuit or a short to ground. The diagnostic procedure is as follows:\n\n1. **Check Throttle Body Sensor Assembly Connector:** Inspect connection security and pin condition (bent/damaged). If loose or damaged, reconnect firmly or replace the wiring harness. Verify with diagnostic tool; if fault persists, proceed to step 2.\n2. **Check ECU Connector:** Inspect connection security and pin condition. If loose or damaged, reconnect firmly or replace the wiring harness. Verify; if fault persists, proceed to step 3.\n3. **Check Wiring Harness Continuity and Shorts:**\n   - Disconnect ECU and Throttle Body Sensor connectors.\n   - **Ground Short Check (P0107):** Check continuity between Pink/Green wire at sensor connector and ground. If continuous, replace wiring harness.\n   - **Open Circuit Check (P0107):** Check continuity between Blue-Blue and Pink/Green-Pink/Green wires between sensor and ECU connectors. If no continuity, replace wiring harness.\n   - **Short Circuit Check (P0107/P0108):** Check for continuity between the Intake Pressure Sensor output terminal (Pink/Green) \"a\" and any other ECU terminal \"b\". If continuous, replace wiring harness.\n4. **Check Throttle Body Sensor Assembly Installation:** Ensure it is not loose or overtightened. If improperly installed, reinstall the throttle body.\n5. **Check Intake Pressure Sensor Function:** Enter diagnostic mode (Code 03). At engine stop, verify displayed atmospheric pressure matches altitude (e.g., ~101 kPa at sea level). Crank the engine; the value must change. If it does not change, replace the throttle body.\n6. **Check ECU:** If all previous steps pass, replace the ECU.\n7. **Clear DTC:** Use the diagnostic tool to clear the code and confirm the malfunction indicator light is off.\n\n--- Cited sections (1) ---\n\n[\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0107\u3001p0108]\n#### \u6545\u969c\u4ee3\u78bc\u7de8\u865f P0107\u3001P0108\n\n#### \u6ce8 \u610f\n\n\u5207\u52ff\u62c6\u5378\u7bc0\u6d41\u95a5\u672c\u9ad4\u4e0a\u7684\u7bc0\u6d41\u95a5\u672c\u9ad4\u611f\u77e5\u5668\u7e3d\u6210\u3002\n\n{336}------------------------------------------------\n\n### \u8a3b\n\n\u82e5\u6545\u969c\u4ee3\u78bc\u7de8\u865f \"P0106\" \u53ca \"P0107/P0108\" \u540c\u6642\u986f\u793a,\u8acb\u5148\u57f7\u884c\u6545\u969c\u4ee3\u78bc\u7de8\u865f \"P0107/P0108\" \u6307 \u5b9a\u7684\u52d5\u4f5c\u3002\n\n| \u6545\u969c\u4ee3\u78bc\u7de8\u865f |                                                                                                                                                                                                                                                           | P0107\u3001P0108                                                |                                                                                                                                  |\n|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|\n| \u9805\u76ee     |                                                                                                                                                                                                                                                           | [P0107] \u9032\u6c23\u58d3\u529b\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u65b7\u8def\u6216\u642d\u9435\u77ed\u8def\u3002<br>[P0108] \u9032\u6c23\u58d3\u529b\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u65b7\u8def\u6216\u642d\u9435\u77ed\u8def\u3002 |                                                                                                                                  |\n| \u6545\u969c\u9632\u8b77\u7cfb\u7d71 |                                                                                                                                                                                                                                                           | \u53ef\u4ee5\u8d77\u52d5\u5f15\u64ce                                                     |                                                                                                                                  |\n|        |                                                                                                                                                                                                                                                           | \u53ef\u4ee5\u9a0e\u4e58\u6a5f\u8eca                                                     |                                                                                                                                  |\n| \u8a3a\u65b7\u4ee3\u78bc\u7de8\u865f |                                                                                                                                                                                                                                                           | 03                                                         |                                                                                                                                  |\n| \u5de5\u5177\u986f\u793a   |                                                                                                                                                                                                                                                           | \u986f\u793a\u9032\u6c23\u58d3\u529b\u3002                                                    |                                                                                                                                  |\n| \u7a0b\u5e8f     |                                                                                                                                                                                                                                                           | \u6309\u4e0b\u8d77\u52d5\u958b\u95dc \u2022 \u2022 \u2022 (\u2299) \u6642\u64cd\u4f5c\u6cb9\u9580\u63e1\u628a\u3002(\u986f\u793a\u503c\u82e5\u6539\u8b8a,\u8868\u793a\u6027\u80fd\u6c92\u554f\u984c\u3002)                 |                                                                                                                                  |\n| \u9805\u76ee     | \u6545\u969c\u7684\u53ef\u80fd\u539f\u56e0\u53ca\u6aa2\u67e5                                                                                                                                                                                                                                                | \u7dad\u4fee\u5de5\u4f5c                                                       | \u7dad\u4fee\u5b8c\u6210\u78ba\u8a8d                                                                                                                           |\n| 1      | \u7bc0\u6d41\u95a5\u672c\u9ad4\u611f\u77e5\u5668\u7e3d\u6210\u63a5\u982d\u7684\u9023\u63a5\u3002<br>\u6aa2\u67e5\u63a5\u982d\u7684\u56fa\u5b9a\u72c0\u6cc1\u3002<br>\u62c6\u96e2\u63a5\u982d\u4e26\u6aa2\u67e5\u63a5\u982d\u5167\u5404\u63d2\u92b7<br>(\u5404\u7aef\u5b50\u6709\u7121\u5f4e\u66f2\u6216\u7834\u640d,\u53ca\u5404<br>\u63d2\u92b7\u7684\u56fa\u5b9a\u72c0\u6cc1)\u3002                                                                                                                                                                            | \u9023\u63a5\u4e0d\u7576 \u2192 \u7262\u56fa\u7684\u9023\u63a5\u63a5\u982d\u6216<br>\u66f4\u63db\u96fb\u7dda\u7e3d\u6210\u3002                                 | \u5c07\u4e3b\u958b\u95dc\u5207\u63db\u5230 \u201cON\u201d,\u7136\u5f8c<br>\u4f7f\u7528\u5c71\u8449\u8a3a\u65b7\u5de5\u5177\u7684\u6545\u969c\u6a21\u5f0f\u6aa2<br>\u67e5\u6545\u969c\u4ee3\u78bc\u72c0\u6cc1\u3002<br>\u72c0\u6cc1\u986f\u793a \u201cRecover\u201d (\u5fa9\u539f)<br>\u2192 \u79fb\u81f3\u9805\u76ee 7 \u4e26\u5b8c\u6210\u7dad\u4fee\u3002<br>\u72c0\u6cc1\u986f\u793a \u201cMalfunction\u201d (\u6545<br>\u969c) \u2192 \u79fb\u81f3\u9805\u76ee 2\u3002 |\n| 2      | ECU \u63a5\u982d\u7684\u9023\u63a5\u3002<br>\u6aa2\u67e5\u63a5\u982d\u7684\u56fa\u5b9a\u72c0\u6cc1\u3002<br>\u62c6\u96e2\u63a5\u982d\u4e26\u6aa2\u67e5\u63a5\u982d\u5167\u5404\u63d2\u92b7<br>(\u5404\u7aef\u5b50\u6709\u7121\u5f4e\u66f2\u6216\u7834\u640d,\u53ca\u5404<br>\u63d2\u92b7\u7684\u56fa\u5b9a\u72c0\u6cc1)\u3002                                                                                                                                                                                  | \u9023\u63a5\u4e0d\u7576 \u2192 \u7262\u56fa\u7684\u9023\u63a5\u63a5\u982d\u6216<br>\u66f4\u63db\u96fb\u7dda\u7e3d\u6210\u3002                                 | \u5c07\u4e3b\u958b\u95dc\u5207\u63db\u5230 \u201cON\u201d,\u7136\u5f8c<br>\u4f7f\u7528\u5c71\u8449\u8a3a\u65b7\u5de5\u5177\u7684\u6545\u969c\u6a21\u5f0f\u6aa2<br>\u67e5\u6545\u969c\u4ee3\u78bc\u72c0\u6cc1\u3002<br>\u72c0\u6cc1\u986f\u793a \u201cRecover\u201d (\u5fa9\u539f)<br>\u2192 \u79fb\u81f3\u9805\u76ee 7 \u4e26\u5b8c\u6210\u7dad\u4fee\u3002<br>\u72c0\u6cc1\u986f\u793a \u201cMalfunction\u201d (\u6545<br>\u969c) \u2192 \u79fb\u81f3\u9805\u76ee 3\u3002 |\n| 3      | \u96fb\u7dda\u7e3d\u6210\u7684\u5c0e\u901a\u3002                                                                                                                                                                                                                                                  | \u65b7\u8def\u6216\u77ed\u8def \u2192 \u66f4\u63db\u96fb\u7dda\u7e3d\u6210\u3002                                            | \u5c07\u4e3b\u958b\u95dc\u5207\u63db\u5230 \u201cON\u201d,\u7136\u5f8c<br>\u4f7f\u7528\u5c71\u8449\u8a3a\u65b7\u5de5\u5177\u7684\u6545\u969c\u6a21\u5f0f\u6aa2<br>\u67e5\u6545\u969c\u4ee3\u78bc\u72c0\u6cc1\u3002<br>\u72c0\u6cc1\u986f\u793a \u201cRecover\u201d (\u5fa9\u539f)<br>\u2192 \u79fb\u81f3\u9805\u76ee 7 \u4e26\u5b8c\u6210\u7dad\u4fee\u3002<br>\u72c0\u6cc1\u986f\u793a \u201cMalfunction\u201d (\u6545<br>\u969c) \u2192 \u79fb\u81f3\u9805\u76ee 4\u3002 |\n| 3-1    | Image: Wiring diagram showing connections between components 1-6 with wire colors (Blue, Yellow, Pink/Green, Brown/White, Black/Blue) and 5V source.                      1. \u7bc0\u6d41\u95a5\u672c\u9ad4\u611f\u77e5\u5668\u7e3d\u6210<br>2. \u9032\u6c23\u58d3\u529b\u611f\u77e5\u5668<br>3. ECU<br>4. \u611f\u77e5\u5668\u8f38\u5165\u5c0e\u7dda<br>5. \u611f\u77e5\u5668\u8f38\u51fa\u5c0e\u7dda<br>6. \u611f\u77e5\u5668\u642d\u9435\u5c0e\u7dda |                                                            |                                                                                                                                  |\n\n{337}------------------------------------------------\n\n| \u6545\u969c\u4ee3\u78bc\u7de8\u865f | P0107\u3001P0108                                                                     |\n|--------|---------------------------------------------------------------------------------|\n| \u9805\u76ee     | [P0107] \u9032\u6c23\u58d3\u529b\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u65b7\u8def\u6216\u642d\u9435\u77ed\u8def\u3002<br>[P0108] \u9032\u6c23\u58d3\u529b\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u65b7\u8def\u6216\u96fb\u6e90\u77ed\u8def\u3002                      |\n| 3-2    | \u5c07 ECU \u63a5\u982d\u5f9e ECU \u62c6\u96e2\u3002<br>\u5c07\u7bc0\u6d41\u95a5\u672c\u9ad4\u611f\u77e5\u5668\u7e3d\u6210\u63a5\u982d\u5f9e\u7bc0\u6d41\u95a5\u672c\u9ad4\u62c6\u96e2\u3002                                     |\n| 3-3    | [P0107] \u642d\u9435\u77ed\u8def<br>\u7bc0\u6d41\u95a5\u672c\u9ad4\u611f\u77e5\u5668\u7e3d\u6210\u63a5\u982d\u548c\u642d\u9435\u4e4b\u9593\uff1a\u7c89\u7d05\u8272 / \u7da0\u8272 \u2013 \u642d\u9435<br>\u5982\u679c\u5c0e\u901a\uff0c\u8acb\u66f4\u63db\u96fb\u7dda\u7e3d\u6210\u3002<br>            |\n| 3-4    | [P0107] \u65b7\u8def<br>\u7bc0\u6d41\u95a5\u672c\u9ad4\u611f\u77e5\u5668\u7e3d\u6210\u63a5\u982d\u8207 ECU \u63a5\u982d\u4e4b\u9593\uff1a\u85cd\u8272 \u2013 \u85cd\u8272<br>\u5982\u679c\u6c92\u6709\u5c0e\u901a\uff0c\u8acb\u66f4\u63db\u96fb\u7dda\u7e3d\u6210\u3002<br>             |\n| 3-5    | [P0107] \u65b7\u8def<br>\u7bc0\u6d41\u95a5\u672c\u9ad4\u611f\u77e5\u5668\u7e3d\u6210\u63a5\u982d\u8207 ECU \u63a5\u982d\u4e4b\u9593\uff1a\u7c89\u7d05\u8272 / \u7da0\u8272 \u2013 \u7c89\u7d05\u8272 / \u7da0\u8272<br>\u5982\u679c\u6c92\u6709\u5c0e\u901a\uff0c\u8acb\u66f4\u63db\u96fb\u7dda\u7e3d\u6210\u3002<br> |\n\n{338}------------------------------------------------\n\n| \u6545\u969c\u4ee3\u78bc\u7de8\u865f | P0107\u3001P0108                                                                                                                                                                                         |                                                                                                                                                                                                                                                                                                                                                                       |                                                                                                                             |\n|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|\n| \u9805\u76ee     | [P0107] \u9032\u6c23\u58d3\u529b\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u65b7\u8def\u6216\u642d\u9435\u77ed\u8def\u3002<br>[P0108] \u9032\u6c23\u58d3\u529b\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u65b7\u8def\u6216\u96fb\u6e90\u77ed\u8def\u3002                                                                                                                                          |                                                                                                                                                                                                                                                                                                                                                                       |                                                                                                                             |\n| 3-6    | [P0108] \u65b7\u8def<br>\u7bc0\u6d41\u95a5\u672c\u9ad4\u611f\u77e5\u5668\u7e3d\u6210\u63a5\u982d\u8207 ECU \u63a5\u982d\u4e4b\u9593\uff1a\u9ed1\u8272 / \u85cd\u8272 \u2013 \u9ed1\u8272 / \u85cd\u8272<br>\u5982\u679c\u6c92\u6709\u5c0e\u901a\uff0c\u8acb\u66f4\u63db\u96fb\u7dda\u7e3d\u6210\u3002<br><br>Image: Connector diagram showing wiring between throttle valve sensor connector and ECU connector with Ohm symbol. |                                                                                                                                                                                                                                                                                                                                                                       |                                                                                                                             |\n| 3-7    | \u5c07\u9023\u63a5\u5230 ECU \u5404\u96f6\u4ef6\u7684\u63a5\u982d\u62c6\u96e2\u3002<br>\u53c3\u95b1\u7b2c 8-28 \u9801\u7684\u201c\u9023\u63a5\u81f3 ECU \u7684\u96f6\u4ef6\u201d\u3002                                                                                                                                                     |                                                                                                                                                                                                                                                                                                                                                                       |                                                                                                                             |\n| 3-8    | [P0107\u3001P0108] \u77ed\u8def<br>ECU \u63a5\u982d\u7684\u9032\u6c23\u58d3\u529b\u611f\u77e5\u5668\u8f38\u51fa\u7aef\u5b50\uff08\u7c89\u7d05\u8272 / \u7da0\u8272\uff09\u201ca\u201d \u548c\u4efb\u4f55\u5176\u4ed6\u7684 ECU \u63a5\u982d\u7aef\u5b50\u201cb\u201d\u4e4b\u9593\u3002<br>\u5982\u679c\u5c0e\u901a\uff0c\u8acb\u66f4\u63db\u96fb\u7dda\u7e3d\u6210\u3002<br><br>Image: Connector diagram showing terminals a and b connected to Ohm symbol.                       |                                                                                                                                                                                                                                                                                                                                                                       |                                                                                                                             |\n| 4      | \u7bc0\u6d41\u95a5\u672c\u9ad4\u611f\u77e5\u5668\u7e3d\u6210\u7684\u5b89\u88dd\u72c0\u6cc1\u3002                                                                                                                                                                                    | \u6aa2\u67e5\u662f\u5426\u9b06\u52d5\u6216\u904e\u7dca\u3002<br>\u611f\u77e5\u5668\u672a\u6b63\u78ba\u5730\u5b89\u88dd \u2192 \u91cd\u65b0\u5b89\u88dd\u7bc0\u6d41\u95a5\u672c\u9ad4\u3002                                                                                                                                                                                                                                                                                                                                  | \u5c07\u4e3b\u958b\u95dc\u5207\u63db\u5230\u201cON\u201d\uff0c\u7136\u5f8c\u4f7f\u7528\u5c71\u8449\u8a3a\u65b7\u5de5\u5177\u7684\u6545\u969c\u6a21\u5f0f\u6aa2\u67e5\u6545\u969c\u4ee3\u78bc\u72c0\u6cc1\u3002<br>\u72c0\u6cc1\u986f\u793a\u201cRecover\u201d\uff08\u5fa9\u539f\uff09<br>\u2192 \u79fb\u81f3\u9805\u76ee 7 \u4e26\u5b8c\u6210\u7dad\u4fee\u3002<br>\u72c0\u6cc1\u986f\u793a\u201cMalfunction\u201d\uff08\u6545\u969c\uff09<br>\u2192 \u79fb\u81f3\u9805\u76ee 5\u3002          |\n| \u6545\u969c\u4ee3\u78bc\u7de8\u865f |                                                                                                                                                                                                     | P0107\u3001P0108                                                                                                                                                                                                                                                                                                                                                           |                                                                                                                             |\n| \u9805\u76ee     |                                                                                                                                                                                                     | [P0107] \u9032\u6c23\u58d3\u529b\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u65b7\u8def\u6216\u642d\u9435\u77ed\u8def\u3002<br>[P0108] \u9032\u6c23\u58d3\u529b\u611f\u77e5\u5668\uff1a\u5075\u6e2c\u5230\u65b7\u8def\u6216\u96fb\u6e90\u77ed\u8def\u3002                                                                                                                                                                                                                                                                                                            |                                                                                                                             |\n| 5      | \u9032\u6c23\u58d3\u529b\u611f\u77e5\u5668\u6709\u7455\u75b5\u3002                                                                                                                                                                                         | \u57f7\u884c\u8a3a\u65b7\u6a21\u5f0f\u3002(\u4ee3\u78bc\u7de8\u865f 03)<br>\u5f15\u64ce\u505c\u6b62\u6642\uff1a<br>\u986f\u793a\u76ee\u524d\u6d77\u62d4\u9ad8\u5ea6\u7684\u5927\u6c23\u58d3\u529b\u4ee5<br>\u53ca\u5929\u6c23\u72c0\u6cc1\u3002<br>\u5728\u6d77\u5e73\u9762\uff1a\u5927\u7d04 101 kPa<br>(757.6 mmHg, 29.8 inHg)<br>\u6d77\u5e73\u9762\u4ee5\u4e0a 1000 m (3300<br>ft)\uff1a\u5927\u7d04 90 kPa (675.1<br>mmHg, 26.6 inHg)<br>\u6d77\u5e73\u9762\u4ee5\u4e0a 2000 m (6700<br>ft)\uff1a\u5927\u7d04 80 kPa (600.0<br>mmHg, 23.6 inHg)<br>\u6d77\u5e73\u9762\u4ee5\u4e0a 3000 m (9800<br>ft)\uff1a\u5927\u7d04 70 kPa (525.0<br>mmHg, 20.7 inHg)<br>\u6253\u99ac\u9054\u6416\u8f49\u5f15\u64ce\u6642:\u78ba\u8a8d\u986f\u793a\u503c<br>\u6709\u8b8a\u5316\u3002<br>\u6253\u99ac\u9054\u6416\u8f49\u5f15\u64ce\u6642\u6578\u503c\u4e0d\u6703\u6539<br>\u8b8a\u3002\u2192 \u66f4\u63db\u7bc0\u6d41\u95a5\u672c\u9ad4\u3002 | \u5c07\u4e3b\u958b\u95dc\u5207\u63db\u5230\u201cON\u201d\uff0c\u7136\u5f8c<br>\u4f7f\u7528\u5c71\u8449\u8a3a\u65b7\u5de5\u5177\u7684\u6545\u969c\u6a21\u5f0f\u6aa2<br>\u67e5\u6545\u969c\u4ee3\u78bc\u72c0\u6cc1\u3002<br>\u72c0\u6cc1\u986f\u793a\u201cRecover\u201d\uff08\u5fa9\u539f\uff09<br>\u2192 \u79fb\u81f3\u9805\u76ee 7 \u4e26\u5b8c\u6210\u7dad\u4fee\u3002<br>\u72c0\u6cc1\u986f\u793a\u201cMalfunction\u201d\uff08\u6545<br>\u969c) \u2192 \u79fb\u81f3\u9805\u76ee 6\u3002 |\n| 6      | ECU \u6545\u969c\u3002                                                                                                                                                                                             | \u66f4\u63db ECU\u3002<br>\u53c3\u95b1\u7b2c 8-101 \u9801\u7684\u201cECU\uff08\u5f15<br>\u64ce\u63a7\u5236\u5143\u4ef6\uff09\u7684\u66f4\u63db\u201d\u3002                                                                                                                                                                                                                                                                                                                          | \u5b8c\u6210\u7dad\u4fee\u3002                                                                                                                       |\n| 7      | \u522a\u9664\u6545\u969c\u4ee3\u78bc\uff0c\u7136\u5f8c\u6aa2\u67e5\u5f15\u64ce\u6545<br>\u969c\u8b66\u544a\u71c8\u662f\u5426\u7184\u6ec5\u3002                                                                                                                                                                         | \u4f7f\u7528\u5c71\u8449\u8a3a\u65b7\u5de5\u5177\u78ba\u8a8d\u6545\u969c\u4ee3\u78bc<br>\u7684\u72c0\u6cc1\u70ba\u201cRecover\u201d\uff08\u5fa9\u539f\uff09\uff0c<br>\u7136\u5f8c\u522a\u9664\u6545\u969c\u4ee3\u78bc\u3002                                                                                                                                                                                                                                                                                                                     |                                                                                                                             |\n\n{339}------------------------------------------------",
+        "claim_slugs": [
+          "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0107\u3001p0108"
+        ],
+        "read_slugs": [
+          "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0107\u3001p0108",
+          "\u6545\u969c\u4ee3\u78bc\u8868"
+        ],
+        "retrieved_chunk_metadata": [],
+        "latency_ms_wall": 81913.17469626665,
+        "latency_ms_llm": 242.17707850039005,
+        "cost_usd": 0.0,
+        "tool_trace": [
+          {
+            "name": "list_manuals",
+            "input": {
+              "vehicle_model": "MWS-150-A"
+            },
+            "latency_ms": 21.615056321024895,
+            "is_error": false
+          },
+          {
+            "name": "list_manuals",
+            "input": {},
+            "latency_ms": 19.49523203074932,
+            "is_error": false
+          },
+          {
+            "name": "get_manual_toc",
+            "input": {
+              "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+            },
+            "latency_ms": 80.53265139460564,
+            "is_error": false
+          },
+          {
+            "name": "read_manual_section",
+            "input": {
+              "section": "\u6545\u969c\u4ee3\u78bc\u7de8\u865f-p0107\u3001p0108",
+              "include_subsections": true,
+              "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+            },
+            "latency_ms": 64.30850736796856,
+            "is_error": false
+          },
+          {
+            "name": "read_manual_section",
+            "input": {
+              "section": "\u6545\u969c\u4ee3\u78bc\u8868",
+              "include_subsections": true,
+              "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+            },
+            "latency_ms": 56.22563138604164,
+            "is_error": false
+          }
+        ],
+        "stopped_reason": "complete",
+        "iterations": 6,
+        "obd_signal_citations": [],
+        "obd_dtc_citations": [],
+        "surfaced_images": []
+      },
+      "grade": {
+        "section_recall": 1.0,
+        "claim_precision": 1.0,
+        "exploration_cost": 0.5,
+        "fact_recall": 1.0,
+        "fact_density": 1.0,
+        "hallucination_penalty": 1.0,
+        "citation_quality": 1.0,
+        "answer_quality": 0.88,
+        "trajectory_efficiency": 1.0,
+        "value_accuracy": 1.0,
+        "overall": 0.982,
+        "reasoning": "Judge (0.88): The system output correctly identifies P0107 as the intake pressure sensor open-circuit or ground-short code and faithfully reproduces all 7 diagnostic steps with the correct wire colors (Pink/Green for ground-short, Blue-Blue and Pink/Green-Pink/Green for open-circuit). Minor omissions include the 0.2 V threshold the ECU uses to set P0107 and the explicit distinction that P0108 covers the power-short case, but a technician could still execute the procedure correctly from this output."
+      }
+    }
+  ]
+}
