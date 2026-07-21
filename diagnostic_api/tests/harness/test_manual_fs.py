@@ -737,6 +737,36 @@ class TestWarningBannerFilter:
         tree = parse_heading_tree(md)
         assert [n.title for n in tree] == ["使用注意事項"]
 
+    def test_note_banner_does_not_slice_dtc_section(self) -> None:
+        """``### 註`` NOTE banners are filtered too (#210).
+
+        In the real MWS-150-A a ``### 註`` banner 7 lines into the
+        ``#### 故障代碼編號 P0107、P0108`` section terminated its
+        span at 112 chars, orphaning the whole diagnostic
+        procedure — the manual agent read the correct section and
+        honestly reported the procedure absent.
+        """
+        from app.harness_tools.manual_fs import (
+            extract_section,
+            parse_heading_tree,
+        )
+        md = (
+            "#### 故障代碼編號 P0107、P0108\n\n"
+            "#### 注 意\n\n切勿拆卸節流閥本體。\n\n"
+            "### 註\n\n執行以下程序。\n\n"
+            "檢查粉紅色 / 綠色導線的導通。\n\n"
+            "#### 故障代碼編號 P0112、P0113\n\nnext\n"
+        )
+        tree = parse_heading_tree(md)
+        titles = [n.title for n in tree]
+        assert "註" not in titles
+        sec = extract_section(
+            md, "故障代碼編號-p0107、p0108", True,
+        )
+        assert sec is not None
+        assert "粉紅色 / 綠色" in sec
+        assert "故障代碼編號 P0112" not in sec
+
 
 def _walk_slugs(nodes: List[HeadingNode]) -> List[str]:
     """Flatten a heading tree into a list of slugs (test util)."""

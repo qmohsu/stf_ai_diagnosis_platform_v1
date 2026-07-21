@@ -11,6 +11,7 @@ precise filesystem-based navigation.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -29,6 +30,7 @@ from app.harness_tools.input_models import (
 from app.harness_tools.manual_fs import (
     HeadingNode,
     _clean_md,
+    _flatten_tree,
     build_multimodal_section,
     extract_section,
     find_closest_slug,
@@ -157,6 +159,84 @@ def _count_descendants(nodes: List[HeadingNode]) -> int:
     for node in nodes:
         n += 1 + _count_descendants(node.children)
     return n
+
+
+# OBD-II style DTC token: P/C/B/U + 4 hex-ish digits (P0107,
+# P062F, ...).  Word-bounded so P0107 in "P0107、P0108" matches
+# but the digits of e.g. "8-101" do not.
+_DTC_TOKEN_PATTERN = re.compile(
+    r"\b([PCBU]\d[0-9A-F]{3})\b", re.IGNORECASE,
+)
+
+# A DTC-index table row: first cell holds exactly one DTC token,
+# e.g. ``| P0107 | 20 |``.
+_DTC_ROW_PATTERN = re.compile(
+    r"^\|\s*([PCBU]\d[0-9A-F]{3})\s*\|", re.IGNORECASE,
+)
+
+
+def _build_dtc_slug_map(md_text: str) -> Dict[str, str]:
+    """Map DTC codes to the slug of the heading that names them.
+
+    Scans EVERY heading in the manual (all depths — the
+    ``故障代碼編號 P0107、P0108`` diagnostic sections sit at
+    ``####`` level, below the default TOC depth) and records,
+    for each DTC token in a heading title, the slug of the first
+    heading that mentions it.  A heading naming several codes
+    (``P0107、P0108``) maps each of them to itself.
+
+    Args:
+        md_text: Full manual markdown.
+
+    Returns:
+        Dict of upper-cased DTC code → section slug.
+    """
+    mapping: Dict[str, str] = {}
+    for node in _flatten_tree(parse_heading_tree(md_text)):
+        for raw in _DTC_TOKEN_PATTERN.findall(node.title):
+            mapping.setdefault(raw.upper(), node.slug)
+    return mapping
+
+
+def _augment_dtc_index(
+    index_text: str,
+    slug_map: Dict[str, str],
+) -> str:
+    """Append a section-slug column to the DTC index table.
+
+    The conversion pipeline emits the appendix as
+    ``| DTC | Occurrences |`` — an occurrence count with no way
+    to navigate to the code's diagnostic section.  This rewrites
+    each row to carry the slug of the heading that names the
+    code, so the agent can jump straight from the index to
+    ``read_manual_section`` (the behaviour the manual-agent
+    prompt promises).  Codes with no matching heading get ``-``.
+
+    Args:
+        index_text: The raw index table text.
+        slug_map: DTC code → slug from ``_build_dtc_slug_map``.
+
+    Returns:
+        Table text with a ``Section slug`` column appended to
+        header, separator, and each DTC row; non-table lines
+        are passed through unchanged.
+    """
+    out_lines: List[str] = []
+    for line in index_text.split("\n"):
+        stripped = line.rstrip()
+        row_match = _DTC_ROW_PATTERN.match(stripped)
+        if row_match:
+            code = row_match.group(1).upper()
+            slug = slug_map.get(code, "-")
+            out_lines.append(f"{stripped} {slug} |")
+        elif re.match(r"^\|[\s:|-]+\|$", stripped):
+            out_lines.append(f"{stripped}-----|")
+        elif stripped.startswith("|"):
+            # Header (or other non-DTC) table row.
+            out_lines.append(f"{stripped} Section slug |")
+        else:
+            out_lines.append(line)
+    return "\n".join(out_lines)
 
 
 def _extract_dtc_index(md_text: str) -> str | None:
@@ -353,10 +433,19 @@ async def get_manual_toc(
 
     toc = _format_toc_tree(tree, max_depth=max_depth)
 
-    # Append DTC index if present.
+    # Append DTC index if present, enriched with the slug of
+    # each code's diagnostic section (those sections often sit
+    # below max_depth and are otherwise invisible here).
     dtc_index = _extract_dtc_index(md_text)
     if dtc_index:
-        toc += "\n\nDTC Quick Index:\n" + dtc_index
+        dtc_index = _augment_dtc_index(
+            dtc_index, _build_dtc_slug_map(md_text),
+        )
+        toc += (
+            "\n\nDTC Quick Index (pass a Section slug to "
+            "read_manual_section for the code's diagnostic "
+            "procedure):\n" + dtc_index
+        )
 
     return toc
 
