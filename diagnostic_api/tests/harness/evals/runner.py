@@ -88,6 +88,7 @@ async def run_manual_agent(
     question: str,
     obd_context: Optional[str] = None,
     deps: Optional[ManualAgentDeps] = None,
+    vehicle: Optional[str] = None,
 ) -> ManualAgentResult:
     """Run the manual sub-agent for one golden entry.
 
@@ -98,6 +99,8 @@ async def run_manual_agent(
             inject a fake ``LLMClient``.  When ``None``, a
             process-cached default pointing at local Ollama is
             lazily constructed from ``settings``.
+        vehicle: Optional harness-verified vehicle identity for
+            the ``## VEHICLE`` block (HARNESS-29, #213).
 
     Returns:
         A ``ManualAgentResult`` with summary, citations,
@@ -109,11 +112,13 @@ async def run_manual_agent(
         "manual_agent_runner_invoked",
         question_preview=question[:80],
         has_obd_context=obd_context is not None,
+        vehicle=vehicle,
         model=effective_deps.config.model,
     )
 
     return await _run_agent_loop(
         question, obd_context, effective_deps,
+        vehicle=vehicle,
     )
 
 
@@ -343,6 +348,7 @@ async def run_manual_agent_unified(
     question: str,
     obd_context: Optional[str] = None,
     deps: Optional[ManualAgentDeps] = None,
+    vehicle: Optional[str] = None,
 ) -> SystemRunResult:
     """Run the manual sub-agent and return a unified ``SystemRunResult``.
 
@@ -356,6 +362,10 @@ async def run_manual_agent_unified(
         question: The inquiry to answer.
         obd_context: Optional OBD context snippet.
         deps: Optional pre-built dependency container.
+        vehicle: Optional harness-verified vehicle identity for
+            the ``## VEHICLE`` block (HARNESS-29, #213) —
+            mirrors production delegation's session-row
+            injection.
 
     Returns:
         A ``SystemRunResult`` with ``system_label="manual_agent"``,
@@ -363,7 +373,9 @@ async def run_manual_agent_unified(
         the shared judge.
     """
     wall_start = time.perf_counter()
-    result = await run_manual_agent(question, obd_context, deps)
+    result = await run_manual_agent(
+        question, obd_context, deps, vehicle=vehicle,
+    )
     wall_end = time.perf_counter()
     latency_ms_wall = (wall_end - wall_start) * 1000
     return _agent_result_to_system_run(

@@ -98,6 +98,75 @@ def _resolve_llm_client() -> LLMClient:
     return _default_llm_client()
 
 
+def _resolve_session_vehicle(
+    session_id: str,
+) -> Optional[str]:
+    """Look up the harness-verified vehicle identity for a session.
+
+    HARNESS-29 (#213): the manual sub-agent must receive the
+    vehicle identity deterministically — the main agent's
+    free-text ``inquiry`` may omit it (observed on golden
+    cross-004: a vehicle-less inquiry made manual selection a
+    coin flip and produced a car-manual spec for a scooter).
+    Reads the make/model that APP-60 requires at upload plus the
+    ``vehicle_id`` (VIN) from the ``OBDAnalysisSession`` row.
+
+    Args:
+        session_id: Session UUID string (loop-injected).
+
+    Returns:
+        ``"<Manufacturer> <Model> (VIN <vehicle_id>)"`` (VIN part
+        omitted when absent/unknown), or ``None`` when the session
+        cannot be resolved or has no vehicle identity — the
+        sub-agent then falls back to the legacy behaviour.
+    """
+    # Lazy imports — keep the module loadable without the DB
+    # stack (mirrors the handlers' lazy-import convention).
+    import uuid as _uuid
+
+    from app.db.session import SessionLocal
+    from app.models_db import OBDAnalysisSession
+
+    try:
+        sid = _uuid.UUID(session_id)
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+    try:
+        db = SessionLocal()
+    except Exception:  # pragma: no cover — DB not configured
+        return None
+    try:
+        row = (
+            db.query(OBDAnalysisSession)
+            .filter(OBDAnalysisSession.id == sid)
+            .first()
+        )
+        if row is None:
+            return None
+        canonical = row.canonical_name
+        vehicle_id = (row.vehicle_id or "").strip()
+        has_vin = vehicle_id and vehicle_id.lower() not in (
+            "unknown", "v-unknown",
+        )
+        if canonical and has_vin:
+            return f"{canonical} (VIN {vehicle_id})"
+        if canonical:
+            return canonical
+        if has_vin:
+            return vehicle_id
+        return None
+    except Exception as exc:
+        logger.warning(
+            "resolve_session_vehicle_failed",
+            session_id=session_id,
+            error=str(exc),
+        )
+        return None
+    finally:
+        db.close()
+
+
 # ── delegate_to_obd_agent ────────────────────────────────────────
 
 
@@ -181,8 +250,9 @@ async def delegate_to_manual_agent(
 
     Args:
         input_data: Validated ``DelegateToManualAgentInput`` fields
-            plus the loop-injected ``_session_id`` (unused — the
-            manual sub-agent doesn't need a session UUID).
+            plus the loop-injected ``_session_id`` (used to
+            resolve the harness-verified vehicle identity;
+            HARNESS-29, #213).
 
     Returns:
         Markdown rendering of the sub-agent finding.
@@ -200,6 +270,13 @@ async def delegate_to_manual_agent(
 
     inquiry: str = input_data["inquiry"]
     obd_context: Optional[str] = input_data.get("obd_context")
+    # HARNESS-29: vehicle identity is resolved from the session
+    # row, NOT trusted from the main agent's free text — an
+    # inquiry that omits (or mis-states) the vehicle no longer
+    # degrades manual selection to a guess.
+    vehicle: Optional[str] = _resolve_session_vehicle(
+        input_data.get("_session_id", ""),
+    )
 
     llm_client = _resolve_llm_client()
     config = ManualAgentConfig(
@@ -217,10 +294,11 @@ async def delegate_to_manual_agent(
         "delegate_to_manual_agent_start",
         inquiry_preview=inquiry[:120],
         has_obd_context=obd_context is not None,
+        vehicle=vehicle,
     )
 
     result = await run_manual_agent(
-        inquiry, obd_context, deps,
+        inquiry, obd_context, deps, vehicle=vehicle,
     )
 
     logger.info(

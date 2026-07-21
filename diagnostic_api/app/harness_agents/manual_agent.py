@@ -276,6 +276,7 @@ def create_manual_agent_registry() -> ToolRegistry:
 def _build_initial_messages(
     question: str,
     obd_context: Optional[str],
+    vehicle: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Assemble the opening system + user messages."""
     return [
@@ -286,7 +287,7 @@ def _build_initial_messages(
         {
             "role": "user",
             "content": build_manual_agent_user_message(
-                question, obd_context,
+                question, obd_context, vehicle=vehicle,
             ),
         },
     ]
@@ -806,6 +807,7 @@ async def run_manual_agent(
     question: str,
     obd_context: Optional[str],
     deps: ManualAgentDeps,
+    vehicle: Optional[str] = None,
 ) -> ManualAgentResult:
     """Run the manual sub-agent against a diagnostic inquiry.
 
@@ -818,6 +820,10 @@ async def run_manual_agent(
         obd_context: Optional OBD context snippet.
         deps: Injected dependencies (``LLMClient``,
             ``ToolRegistry``, ``ManualAgentConfig``).
+        vehicle: Optional harness-verified vehicle identity,
+            rendered as an authoritative ``## VEHICLE`` block
+            (HARNESS-29, #213).  ``None`` preserves the legacy
+            message shape.
 
     Returns:
         A fully-populated ``ManualAgentResult`` with summary,
@@ -828,7 +834,9 @@ async def run_manual_agent(
     cfg = deps.config
     tool_schemas = deps.tool_registry.schemas
 
-    messages = _build_initial_messages(question, obd_context)
+    messages = _build_initial_messages(
+        question, obd_context, vehicle=vehicle,
+    )
     raw_sections: List[SectionRef] = []
     tool_trace: List[ToolCallTrace] = []
     iterations = 0

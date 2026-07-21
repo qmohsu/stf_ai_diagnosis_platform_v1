@@ -13,7 +13,7 @@ Validates that ``delegate_to_obd_agent`` and
 from __future__ import annotations
 
 from typing import Any, Dict, List
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -223,7 +223,7 @@ class TestDelegateToManualAgent:
     async def test_returns_formatted_markdown(self) -> None:
         captured: List[Any] = []
 
-        async def fake_run(inquiry, obd_context, deps):
+        async def fake_run(inquiry, obd_context, deps, vehicle=None):
             captured.append((inquiry, obd_context, deps))
             return ManualAgentResult(
                 summary="Section X has the procedure.",
@@ -239,6 +239,10 @@ class TestDelegateToManualAgent:
         with patch(
             "app.harness_agents.manual_agent.run_manual_agent",
             new=fake_run,
+        ), patch(
+            "app.harness_tools.delegation_tools."
+            "_resolve_session_vehicle",
+            return_value=None,
         ):
             result = await delegate_to_manual_agent({
                 "_session_id": SESSION_ID,
@@ -260,13 +264,17 @@ class TestDelegateToManualAgent:
     async def test_obd_context_is_optional(self) -> None:
         captured: List[Any] = []
 
-        async def fake_run(inquiry, obd_context, deps):
+        async def fake_run(inquiry, obd_context, deps, vehicle=None):
             captured.append((inquiry, obd_context, deps))
             return ManualAgentResult(summary="ok")
 
         with patch(
             "app.harness_agents.manual_agent.run_manual_agent",
             new=fake_run,
+        ), patch(
+            "app.harness_tools.delegation_tools."
+            "_resolve_session_vehicle",
+            return_value=None,
         ):
             await delegate_to_manual_agent({
                 "_session_id": SESSION_ID,
@@ -276,6 +284,93 @@ class TestDelegateToManualAgent:
         assert captured
         _, obd_ctx, _ = captured[0]
         assert obd_ctx is None
+
+    @pytest.mark.asyncio
+    async def test_vehicle_resolved_and_threaded(self) -> None:
+        """HARNESS-29 (#213): session vehicle reaches the sub-agent.
+
+        The handler must resolve the vehicle from the session row
+        (NOT from the main agent's free text) and pass it to
+        ``run_manual_agent`` so the ## VEHICLE block is rendered.
+        """
+        captured: List[Any] = []
+
+        async def fake_run(inquiry, obd_context, deps, vehicle=None):
+            captured.append(vehicle)
+            return ManualAgentResult(summary="ok")
+
+        with patch(
+            "app.harness_agents.manual_agent.run_manual_agent",
+            new=fake_run,
+        ), patch(
+            "app.harness_tools.delegation_tools."
+            "_resolve_session_vehicle",
+            return_value="Yamaha TRICITY155 (VIN JYA123)",
+        ) as resolver:
+            await delegate_to_manual_agent({
+                "_session_id": SESSION_ID,
+                "inquiry": "what cooling causes for overheating?",
+            })
+
+        resolver.assert_called_once_with(SESSION_ID)
+        assert captured == ["Yamaha TRICITY155 (VIN JYA123)"]
+
+
+class TestResolveSessionVehicle:
+    """Tests for the session-row vehicle lookup (HARNESS-29)."""
+
+    def _row(self, manufacturer, vehicle_model, vehicle_id):
+        from app.models_db import OBDAnalysisSession
+        row = OBDAnalysisSession()
+        row.manufacturer = manufacturer
+        row.vehicle_model = vehicle_model
+        row.vehicle_id = vehicle_id
+        return row
+
+    def _patch_db(self, row):
+        """Patch SessionLocal so the query returns ``row``."""
+        db = MagicMock()
+        db.query.return_value.filter.return_value.first.return_value = row
+        return patch(
+            "app.db.session.SessionLocal", return_value=db,
+        )
+
+    def test_canonical_name_plus_vin(self) -> None:
+        """Make/model + a real VIN render as 'Make Model (VIN x)'."""
+        from app.harness_tools.delegation_tools import (
+            _resolve_session_vehicle,
+        )
+        row = self._row("Yamaha", "TRICITY155", "JYA123")
+        with self._patch_db(row):
+            out = _resolve_session_vehicle(SESSION_ID)
+        assert out == "Yamaha TRICITY155 (VIN JYA123)"
+
+    def test_unknown_vin_omitted(self) -> None:
+        """A 'V-UNKNOWN' vehicle_id is not rendered as a VIN."""
+        from app.harness_tools.delegation_tools import (
+            _resolve_session_vehicle,
+        )
+        row = self._row("Yamaha", "TRICITY155", "V-UNKNOWN")
+        with self._patch_db(row):
+            out = _resolve_session_vehicle(SESSION_ID)
+        assert out == "Yamaha TRICITY155"
+
+    def test_no_identity_returns_none(self) -> None:
+        """A historical row with no make/model/VIN yields None."""
+        from app.harness_tools.delegation_tools import (
+            _resolve_session_vehicle,
+        )
+        row = self._row(None, None, None)
+        with self._patch_db(row):
+            out = _resolve_session_vehicle(SESSION_ID)
+        assert out is None
+
+    def test_malformed_session_id_returns_none(self) -> None:
+        """A non-UUID session id degrades to None, not an error."""
+        from app.harness_tools.delegation_tools import (
+            _resolve_session_vehicle,
+        )
+        assert _resolve_session_vehicle("not-a-uuid") is None
 
 
 # ── ToolDefinition metadata ──────────────────────────────────────
