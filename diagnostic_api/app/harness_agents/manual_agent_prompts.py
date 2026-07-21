@@ -48,8 +48,13 @@ questions that require information outside the manuals.
 
 ## Process
 
-1. Identify the vehicle model and the specific question from the
-   user message.  If the question asks for MORE THAN ONE thing
+1. Identify the vehicle and the specific question from the user
+   message.  When a ## VEHICLE block is present it is
+   harness-verified from the upload session and AUTHORITATIVE —
+   use it as the vehicle under investigation even if the question
+   text names no vehicle (or a conflicting one).  Only when there
+   is no ## VEHICLE block does the vehicle come from the question
+   text.  If the question asks for MORE THAN ONE thing
    (e.g. "the bleed sequence AND the pad wear limit" = 2 parts;
    "the inspection interval AND the clearance specs" = 2 parts),
    enumerate the distinct parts NOW — your final answer must cover
@@ -256,6 +261,7 @@ No prose before or after.  No markdown fences.
 def build_manual_agent_user_message(
     question: str,
     obd_context: Optional[str],
+    vehicle: Optional[str] = None,
 ) -> str:
     """Build the opening user message for one agent run.
 
@@ -263,12 +269,27 @@ def build_manual_agent_user_message(
         question: The diagnostic inquiry posed to the sub-agent.
         obd_context: Optional OBD context snippet (observed DTCs,
             symptom summary).  ``None`` for pure manual lookups.
+        vehicle: Optional harness-verified vehicle identity (e.g.
+            ``"Yamaha TRICITY155 (VIN ...)"``), injected
+            deterministically from the upload session (HARNESS-29,
+            #213) — NOT authored by the delegating LLM.  When set,
+            it is rendered as an authoritative ``## VEHICLE``
+            block that overrides any vehicle wording in the
+            question.  ``None`` keeps the legacy two-block shape.
 
     Returns:
         A user-role message string.
     """
     ctx_block = obd_context.strip() if obd_context else "(none)"
+    vehicle_block = ""
+    if vehicle and vehicle.strip():
+        vehicle_block = (
+            f"## VEHICLE\n{vehicle.strip()}\n"
+            f"(verified from the upload session — authoritative; "
+            f"the manual you use MUST match this vehicle)\n\n"
+        )
     return (
+        f"{vehicle_block}"
         f"## QUESTION\n{question.strip()}\n\n"
         f"## OBD CONTEXT\n{ctx_block}\n\n"
         f"Use the tools to find an authoritative answer.  Be "

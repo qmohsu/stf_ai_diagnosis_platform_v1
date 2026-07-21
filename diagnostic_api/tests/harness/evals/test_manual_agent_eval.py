@@ -52,6 +52,15 @@ from tests.harness.evals.schemas import GoldenEntry
 _PASS_THRESHOLD = 0.4
 
 
+# HARNESS-29 (#213): the harness-verified vehicle identity for
+# this corpus, injected as the ``## VEHICLE`` block — mirroring
+# what production ``delegate_to_manual_agent`` resolves from the
+# upload session row (APP-60 make/model).  Entries may override
+# via ``GoldenEntry.vehicle`` (empty string = deliberately no
+# vehicle, exercising the legacy inference path).
+_CORPUS_VEHICLE = "Yamaha TRICITY155 (factory code MWS-150-A)"
+
+
 # Load goldens at import time so pytest parametrization shows one
 # test id per entry.  HARNESS-20: the locked tier is the canonical
 # source — promote_golden.py is the only way an entry lands here.
@@ -112,9 +121,15 @@ async def test_manual_agent(
     # judge_result helper that took a ManualAgentResult directly
     # was removed during HARNESS-21's judge rewrite when the
     # grader was generalised across systems.
+    vehicle = (
+        entry.vehicle
+        if entry.vehicle is not None
+        else _CORPUS_VEHICLE
+    )
     run = await run_manual_agent_unified(
         entry.question, entry.obd_context,
         deps=manual_agent_deps,
+        vehicle=vehicle,
     )
     grade = await grade_run(entry, run, client=judge_client)
     eval_report.record(entry, run, grade)  # type: ignore[arg-type]

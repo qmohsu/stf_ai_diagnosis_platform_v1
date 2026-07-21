@@ -222,6 +222,12 @@ class GoldenEntry(BaseModel):
         obd_context: Optional short snippet of OBD context that
             primes the agent (e.g. observed DTC list, symptom
             description).  None for pure manual-lookup tasks.
+        vehicle: Harness-verified vehicle identity rendered as the
+            authoritative ``## VEHICLE`` block (HARNESS-29, #213),
+            mirroring what production delegation injects from the
+            session row.  ``None`` → the eval entry point supplies
+            the corpus default; empty string → deliberately no
+            vehicle (tests the legacy inference path).
         golden_summary: Human-written reference answer, 3–8
             sentences.  Used by the judge's ``answer_quality``
             rubric dimension.
@@ -296,6 +302,13 @@ class GoldenEntry(BaseModel):
     difficulty: GoldenDifficulty
     question: str
     obd_context: Optional[str] = None
+    # HARNESS-29 (#213): harness-verified vehicle identity,
+    # mirroring the ``## VEHICLE`` block that production
+    # ``delegate_to_manual_agent`` injects from the session row.
+    # ``None`` means "use the corpus default" (the eval entry
+    # point supplies it) — entries deliberately testing a missing
+    # vehicle would set it to an empty string explicitly.
+    vehicle: Optional[str] = None
     golden_summary: str
     # Default to an empty list so OBD-lane entries (which have no
     # manual-section citations) don't need to spell out the field.

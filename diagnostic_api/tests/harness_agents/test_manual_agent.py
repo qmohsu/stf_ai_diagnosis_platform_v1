@@ -1086,6 +1086,71 @@ class TestSubQuestionCoveragePrompts:
         assert _MAX_SECTION_READS_BEFORE_FINAL == 4
 
 
+class TestVehicleBlockPrompts:
+    """HARNESS-29 (#213): harness-verified ## VEHICLE block.
+
+    The vehicle identity is injected deterministically (from the
+    session row in production, from the golden's corpus default in
+    the eval) so a vehicle-less inquiry no longer degrades manual
+    selection to a guess (golden cross-004: a 'Bike is
+    overheating' question was answered from the Corolla Haynes
+    manual).
+    """
+
+    def test_vehicle_block_rendered_first(self) -> None:
+        """A supplied vehicle renders as the leading block."""
+        from app.harness_agents.manual_agent_prompts import (
+            build_manual_agent_user_message,
+        )
+        msg = build_manual_agent_user_message(
+            "Bike is overheating — what should I check?",
+            None,
+            vehicle="Yamaha TRICITY155 (VIN JYA123)",
+        )
+        assert msg.startswith("## VEHICLE\n")
+        assert "Yamaha TRICITY155 (VIN JYA123)" in msg
+        assert "authoritative" in msg
+        # Original blocks still present, after the vehicle block.
+        assert msg.index("## VEHICLE") < msg.index("## QUESTION")
+        assert "## OBD CONTEXT" in msg
+
+    def test_no_vehicle_keeps_legacy_shape(self) -> None:
+        """None / empty vehicle → byte-identical legacy message."""
+        from app.harness_agents.manual_agent_prompts import (
+            build_manual_agent_user_message,
+        )
+        legacy = build_manual_agent_user_message("q", None)
+        assert build_manual_agent_user_message(
+            "q", None, vehicle=None,
+        ) == legacy
+        assert build_manual_agent_user_message(
+            "q", None, vehicle="  ",
+        ) == legacy
+        assert "## VEHICLE" not in legacy
+
+    def test_system_prompt_declares_vehicle_block_authority(
+        self,
+    ) -> None:
+        """Process step 1 tells the agent the block wins over the
+        question text (or its absence)."""
+        from app.harness_agents.manual_agent_prompts import (
+            MANUAL_AGENT_SYSTEM_PROMPT,
+        )
+        assert "## VEHICLE block" in MANUAL_AGENT_SYSTEM_PROMPT
+        assert "AUTHORITATIVE" in MANUAL_AGENT_SYSTEM_PROMPT
+
+    def test_initial_messages_thread_vehicle(self) -> None:
+        """run_manual_agent's message builder carries the vehicle."""
+        from app.harness_agents.manual_agent import (
+            _build_initial_messages,
+        )
+        msgs = _build_initial_messages(
+            "q", None, vehicle="Yamaha TRICITY155",
+        )
+        assert "## VEHICLE" in msgs[1]["content"]
+        assert "Yamaha TRICITY155" in msgs[1]["content"]
+
+
 class TestSingleManualConstraintPrompts:
     """HARNESS-24 WP3 round 2 (#194 / PR #196): hard single-manual
     constraint on mid-run reads.
