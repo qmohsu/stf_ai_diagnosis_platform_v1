@@ -41,15 +41,18 @@ _MAX_HEADING_CHARS = 150
 _PROCEDURE_STEP_RE = re.compile(
     r"^\s*\d+\.\s+\S{1,40}:?\s*$"
 )
-# Marker also renders the manual's 注意/警告 callout boxes as
-# headings (``### 注 意`` / ``## 警 告``).  They are banners, not
-# sections: as level-2/3 "headings" they arbitrarily slice real
-# sections' bodies (#186: the promoted bleed-procedure title had an
-# EMPTY body because a ``## 警 告`` banner two lines later
-# terminated it).  Filtering them lets sections span to the next
-# real heading — strictly more complete section text.
+# Marker also renders the manual's 注意/警告/註 callout boxes as
+# headings (``### 注 意`` / ``## 警 告`` / ``### 註``).  They are
+# banners, not sections: as level-2/3 "headings" they arbitrarily
+# slice real sections' bodies (#186: the promoted bleed-procedure
+# title had an EMPTY body because a ``## 警 告`` banner two lines
+# later terminated it; #210: the ``故障代碼編號 P0107、P0108``
+# diagnostic section shrank to 112 chars because a ``### 註`` NOTE
+# banner 7 lines in terminated the ``####`` span, orphaning the
+# whole 7-step procedure).  Filtering them lets sections span to
+# the next real heading — strictly more complete section text.
 _WARNING_BANNER_RE = re.compile(
-    r"^\s*(?:注\s*意|警\s*告)\s*$"
+    r"^\s*(?:注\s*意|警\s*告|註)\s*$"
 )
 
 
