@@ -302,6 +302,67 @@ class TestListManuals:
         assert "No manuals found" in result
 
 
+# ── DTC index slug mapping ────────────────────────────────────────
+
+
+class TestDtcIndexSlugMap:
+    """Tests for _build_dtc_slug_map and _augment_dtc_index."""
+
+    # Mirrors the real MWS-150-A layout: diagnostic sections are
+    # #### headings naming two codes each, and the appendix table
+    # is the pipeline's two-column | DTC | Occurrences | shape.
+    _REALISTIC_MD = (
+        "# Manual\n\n"
+        "### 汽油噴射系統\n\nintro\n\n"
+        "#### 故障代碼編號 P0107、P0108\n\nprocedure text\n\n"
+        "#### 故障代碼編號 P062F\n\nmore text\n\n"
+        "## Appendix: DTC Index\n\n"
+        "| DTC | Occurrences |\n"
+        "|-----|-------------|\n"
+        "| P0107 | 20 |\n"
+        "| P0108 | 18 |\n"
+        "| P062F | 3 |\n"
+        "| P0500 | 2 |\n"
+    )
+
+    def test_map_covers_codes_in_deep_headings(self) -> None:
+        """Depth-4 headings naming two codes map both codes."""
+        from app.harness_tools.manual_tools import (
+            _build_dtc_slug_map,
+        )
+
+        mapping = _build_dtc_slug_map(self._REALISTIC_MD)
+        assert (
+            mapping["P0107"] == "故障代碼編號-p0107、p0108"
+        )
+        assert mapping["P0108"] == mapping["P0107"]
+        assert mapping["P062F"] == "故障代碼編號-p062f"
+        assert "P0500" not in mapping
+
+    def test_augment_appends_slug_column(self) -> None:
+        """Two-column index rows gain the section-slug cell."""
+        from app.harness_tools.manual_tools import (
+            _augment_dtc_index,
+            _build_dtc_slug_map,
+            _extract_dtc_index,
+        )
+
+        index = _extract_dtc_index(self._REALISTIC_MD)
+        assert index is not None
+        augmented = _augment_dtc_index(
+            index, _build_dtc_slug_map(self._REALISTIC_MD),
+        )
+        lines = augmented.splitlines()
+        assert lines[0] == "| DTC | Occurrences | Section slug |"
+        assert lines[1] == "|-----|-------------|-----|"
+        assert (
+            "| P0107 | 20 | 故障代碼編號-p0107、p0108 |"
+            in lines
+        )
+        # Unmapped code degrades to '-' rather than a fake slug.
+        assert "| P0500 | 2 | - |" in lines
+
+
 # ── get_manual_toc ────────────────────────────────────────────────
 
 
@@ -326,6 +387,27 @@ class TestGetManualToc:
         )
         assert "DTC Quick Index" in result
         assert "P0171" in result
+
+    @pytest.mark.asyncio
+    async def test_dtc_index_maps_code_to_section_slug(
+        self,
+    ) -> None:
+        """Index rows carry the slug of the code's own section.
+
+        The P0171 diagnostic section is a ``####`` heading —
+        below the default TOC depth — so the index row must
+        surface its slug for direct read_manual_section access.
+        """
+        result = await get_manual_toc(
+            {"manual_id": "MWS150A_Service_Manual"},
+        )
+        index_row = next(
+            ln for ln in result.splitlines()
+            if ln.startswith("| P0171")
+        )
+        assert "dtc-p0171-system-too-lean" in index_row
+        # Header advertises the new column.
+        assert "Section slug" in result
 
     @pytest.mark.asyncio
     async def test_not_found(self) -> None:
