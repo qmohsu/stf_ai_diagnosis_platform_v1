@@ -90,7 +90,10 @@ def _mineru_text(content: dict) -> str:
     # paragraph: {'paragraph_content': [{'type':'text','content':…}]}
     # title:     {'title_content':     [...], 'level': N}
     # header:    plain list or same shape.
-    for key in ("paragraph_content", "title_content", "content"):
+    for key in (
+        "paragraph_content", "title_content",
+        "page_header_content", "content",
+    ):
         val = content.get(key)
         if isinstance(val, str):
             return val

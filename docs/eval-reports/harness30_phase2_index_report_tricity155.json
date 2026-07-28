@@ -1,0 +1,69 @@
+{
+  "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+  "publishable": true,
+  "gates": [
+    {
+      "gate": "I1-coverage",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "I2-no-empty-shells",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "I3-dtc-complete",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "I4-ids-and-refs",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "I5-no-junk-titles",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "I6-vocab-membership",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "I7-content-hash",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "I8-noise-budget",
+      "passed": true,
+      "detail": "noise ratio 3.3%"
+    }
+  ],
+  "tree": {
+    "chapters": 69,
+    "nodes": 464,
+    "synthesized_dtc_boundaries": 15,
+    "noise_items": 245,
+    "unclassified_nodes": []
+  },
+  "entities": {
+    "swept_codes": 22,
+    "cards": 22,
+    "cards_with_isolate_ref": 22
+  },
+  "summaries": {
+    "generated": 460,
+    "gate_rejected": 29,
+    "fallback_extractive": 4,
+    "rejected_nodes": [
+      "general-desc-tricity155-mws150-a",
+      "maintenance-insp-惰轉排氣的檢查",
+      "engine-desc-安裝主支架",
+      "fuel-desc-噴油嘴-2"
+    ]
+  }
+}

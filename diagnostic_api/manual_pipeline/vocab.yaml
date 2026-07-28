@@ -1,0 +1,68 @@
+# Controlled vocabulary for the manual index (spec §3.5).
+# HARNESS-30 Phase 2 / S2.1.  Versioned independently of any
+# manual's index: adding aliases/entries for a new manual bumps
+# vocab_version and never touches published indexes.
+#
+# Granularity rulings (2026-07-23 review):
+# - electrical split into ignition/starting/charging/lighting —
+#   the troubleshooting cause-groups use exactly this granularity
+#   (R3 depends on it); `electrical` remains for the 電裝 chapter
+#   umbrella and harness/ECU content.
+# - transmission NOT split (CVT/belt/clutch are one chapter).
+# - `unclassified` is the escape hatch: classification failure is
+#   visible (I6 counts it, build report lists it) but NEVER blocks
+#   coverage — a node's span/readability is independent of labels.
+
+vocab_version: "1"
+
+subsystems:
+  general:       {aliases: [一般資訊, 機車的資訊, 規格, General information, Specifications]}
+  maintenance:   {aliases: [定期保養, 定期檢查與調整, Routine maintenance]}
+  engine:        {aliases: [引擎, 發動機, 汽缸, 曲軸, Engine]}
+  fuel:          {aliases: [汽油系統, 燃油系統, 汽油噴射系統, 噴油嘴, 節流閥, Fuel system]}
+  cooling:       {aliases: [冷卻系統, 水箱, Cooling system]}
+  lubrication:   {aliases: [潤滑系統, 機油, Lubrication]}
+  ignition:      {aliases: [點火系統, 點火線圈, 火星塞, Ignition]}
+  starting:      {aliases: [起動系統, 電動起動器, 起動馬達, Starting system]}
+  charging:      {aliases: [充電系統, AC發電機, 電瓶, Charging system]}
+  electrical:    {aliases: [電裝系統, 電氣系統, ECU, 電線總成, Electrical system]}
+  transmission:  {aliases: [傳動, V型皮帶, 離合器, 變速箱, CVT, Transmission]}
+  brakes:        {aliases: [煞車, 制動, 煞車卡鉗, 煞車主缸, Brakes]}
+  abs:           {aliases: [ABS, 防鎖死煞車系統, 液壓單元]}
+  wheels_tires:  {aliases: [車輪, 輪胎, 外胎, Wheels, Tyres]}
+  suspension:    {aliases: [懸吊, 前叉, 後緩衝器, 搖臂, Suspension]}
+  steering:      {aliases: [轉向, 轉向舵頭, 三角架, Steering]}
+  chassis_body:  {aliases: [車體, 車架, 車殼, Bodywork, Frame]}
+  lighting:      {aliases: [燈光, 照明或訊號系統, 前燈, 方向燈, Lighting]}
+  instruments:   {aliases: [儀錶, Instruments]}
+  unclassified:  {aliases: []}
+
+node_types:
+  specification:        {patterns: [規格, 尺寸, 容量表]}
+  operation:            {patterns: [的釋放, 的調整, 的更換, 的清潔, 暖機]}
+  remove_install:       {patterns: [的拆卸, 的安裝, 的分解, 的組裝, 分解圖]}
+  inspection:           {patterns: [的檢查, 的測量, 檢查與調整]}
+  fault_isolation:      {patterns: [故障代碼編號, 故障排除詳細說明]}
+  troubleshooting_tree: {patterns: [故障排除, 無法起動, 性能不佳]}
+  wiring:               {patterns: [電路圖, 配線圖]}
+  parts:                {patterns: [零件, 工作/拆卸零件]}
+  index:                {patterns: [目錄, 索引, 快速索引]}
+  description:          {patterns: []}   # default when nothing matches
+
+# Cause-group titles inside the troubleshooting chapter (R3
+# nesting rule): these attach as CHILDREN of the nearest
+# preceding non-cause-group title (the symptom).
+troubleshooting_cause_groups:
+  - 引擎
+  - 汽油系統
+  - 電裝系統
+  - 點火系統
+  - 冷卻系統
+  - 車體
+  - 煞車系統
+  - 離合器
+  - 傳動系統
+
+# Chapter titles used by R4 (page-header chapter assembly) to
+# anchor the top level; matched against PAGE_HEADER item text.
+# subsystem mapping comes from the aliases above.
