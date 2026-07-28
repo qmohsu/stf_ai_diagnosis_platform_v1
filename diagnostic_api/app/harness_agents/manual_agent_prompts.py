@@ -45,6 +45,16 @@ questions that require information outside the manuals.
   quotes must come from its output.  With include_subsections=true
   (the default) it also returns every nested subsection, so reading
   a parent section covers all of its children in one call.
+- search_manual_text: literal (grep-style) full-text search over
+  one manual; each hit shows the matching line and its enclosing
+  section slug.  Use it (a) to locate content the TOC does not
+  surface — e.g. a DTC whose quick-index row is marked
+  NOT-INDEXED(use search_manual_text): the code IS in the manual,
+  this finds where; and (b) as the MANDATORY absence-check before
+  any "the manual does not contain X" claim (see the decline
+  rules).  It matches exact text, not meaning — search the key
+  identifier (DTC code, component name, spec label), not a
+  paraphrase.
 
 ## Process
 
@@ -100,7 +110,10 @@ efficient run looks like:
     list_manuals (1) -> get_manual_toc (1)
         -> read_manual_section (1-2 targeted reads) -> final JSON
 
-That is 3-4 tool calls total.  Before EVERY tool call ask: "can I
+That is 3-4 tool calls total.  One search_manual_text call is
+always a legitimate addition when (a) the quick-index marks the
+code NOT-INDEXED, or (b) you are about to conclude absence — the
+search gate is never a budget violation.  Before EVERY tool call ask: "can I
 already answer (or correctly decline) EVERY part of the question
 from what I have?"  If yes, stop calling tools and return the
 final JSON.  Answering one part of a multi-part question is NOT
@@ -115,7 +128,11 @@ Concretely:
   change; a repeat read wastes a whole iteration and brings you no
   new evidence.
 - For DTC questions, jump straight from the TOC's DTC quick-index
-  to the mapped slug — one targeted read usually suffices.
+  to the mapped slug — one targeted read usually suffices.  If the
+  quick-index row is marked NOT-INDEXED(use search_manual_text),
+  the code IS present (see its occurrence count): call
+  search_manual_text with the code and read the section(s) its
+  hits point to — NEVER treat the mark as absence.
 - After each read, decide: answer now, decline ("Not found"), or
   make ONE more targeted read.  If a read was a NEAR MISS (right
   component, wrong task — e.g. you wanted the bleed procedure but
@@ -188,20 +205,35 @@ without further tool calls, as soon as either is true:
   that *would* contain the answer (via the TOC / DTC index) and
   read them, and the specific fact, code, spec, or procedure is
   simply not there.  Two or three well-targeted section reads are
-  enough to conclude absence.  Re-reading sections you have already
-  read, or scanning unrelated ones, will NOT surface information the
-  manual does not contain — so do not keep searching.  For a
-  multi-part question this test applies PER PART: concluding one
-  part is absent (or answered) never excuses skipping the others
-  while reads remain and matching unread TOC titles exist.
+  enough to conclude absence — PROVIDED the search gate below has
+  also fired.  Re-reading sections you have already read, or
+  scanning unrelated ones, will NOT surface information the manual
+  does not contain — so do not keep searching.  For a multi-part
+  question this test applies PER PART: concluding one part is
+  absent (or answered) never excuses skipping the others while
+  reads remain and matching unread TOC titles exist.
+
+**SEARCH GATE for absence claims (HARD constraint).**  Before ANY
+"Not found" / "the manual does not contain X" conclusion, you MUST
+have called search_manual_text with the question's key identifier
+(the DTC code, component name, or spec term):
+
+- 0 matches → absence is PROVEN; decline confidently and say so
+  ("search_manual_text found 0 matches for 'X'").
+- matches in sections you have NOT read → absence is NOT
+  established; read the best-matching hit before concluding.
+- Absence of a TOC entry, a NOT-INDEXED quick-index mark, or an
+  empty section read is NEVER sufficient evidence of absence on
+  its own.
 
 **Honesty rule for absence claims.**  "The manual does not contain
-X" is a strong claim — make it ONLY when the TOC shows no unread
-title that plausibly covers X.  If you ran out of reads with a
-plausible title still unread, say what is true instead: "Not found
-in the sections read (<titles>); the TOC lists '<title>' which may
-cover this."  Never let a near-miss read (right component, wrong
-task) become a claim that the whole manual lacks the procedure.
+X" is a strong claim — make it ONLY when the search gate fired
+(0 matches) AND the TOC shows no unread title that plausibly
+covers X.  If you ran out of reads with a plausible title still
+unread, say what is true instead: "Not found in the sections read
+(<titles>); the TOC lists '<title>' which may cover this."  Never
+let a near-miss read (right component, wrong task) become a claim
+that the whole manual lacks the procedure.
 
 In either case return:
     {"summary": "Not found: <short explanation>", "citations": []}

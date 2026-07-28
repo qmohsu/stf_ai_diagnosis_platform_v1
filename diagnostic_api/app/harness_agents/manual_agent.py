@@ -1,12 +1,14 @@
-"""Manual-search sub-agent: restricted 3-tool ReAct loop.
+"""Manual-search sub-agent: restricted 4-tool ReAct loop.
 
 Answers a single diagnostic inquiry by navigating vehicle service
-manuals.  Uses only the 3 manual-fs navigation tools
-(``list_manuals``, ``get_manual_toc``, ``read_manual_section``) —
-no access to OBD data, no semantic RAG search (``search_manual``
-was removed in HARNESS-15 to keep the agent's capabilities
-architecturally orthogonal to the RAG comparison track), no
-session-event persistence, no SSE streaming.
+manuals.  Uses only the 4 manual-fs navigation tools
+(``list_manuals``, ``get_manual_toc``, ``read_manual_section``,
+``search_manual_text``) — no access to OBD data, no semantic RAG
+search (``search_manual`` was removed in HARNESS-15 to keep the
+agent's capabilities architecturally orthogonal to the RAG
+comparison track; the literal grep added by HARNESS-30a is
+navigation, not semantic retrieval, so that separation stands),
+no session-event persistence, no SSE streaming.
 
 The sub-agent reuses ``LLMClient`` protocol and ``ToolRegistry``
 from ``app.harness`` but runs its own minimal loop and returns a
@@ -51,6 +53,7 @@ from app.harness_tools.manual_tools import (
     GET_MANUAL_TOC_DEF,
     LIST_MANUALS_DEF,
     READ_MANUAL_SECTION_DEF,
+    SEARCH_MANUAL_TEXT_DEF,
     _read_manual_file,
 )
 
@@ -160,10 +163,11 @@ _FORCE_FINAL_INSTRUCTION = (
     '{"summary": "Not found: <short explanation>", "citations": []} '
     "and, where useful, state what the manual DOES cover instead of "
     "a bare refusal.  HONESTY RULE for absence claims: say 'the "
-    "manual does not contain X' ONLY if no unread TOC title "
+    "manual does not contain X' ONLY if a search_manual_text call "
+    "for X returned 0 matches AND no unread TOC title "
     "plausibly covers X; otherwise say 'not found in the sections "
-    "read (<section titles>)' and name the unread TOC title that "
-    "may cover it."
+    "read (<section titles>)' and name the unread TOC title (or "
+    "unread search hit) that may cover it."
 )
 """Injected once when the read-count / repeat backstop trips.  Paired
 with a ``tools=[]`` LLM call so the model cannot keep navigating."""
@@ -232,7 +236,7 @@ class ManualAgentDeps:
 
 
 def create_manual_agent_registry() -> ToolRegistry:
-    """Build a ``ToolRegistry`` with the 3 manual-fs navigation tools.
+    """Build a ``ToolRegistry`` with the 4 manual-fs navigation tools.
 
     Excludes:
 
@@ -257,14 +261,16 @@ def create_manual_agent_registry() -> ToolRegistry:
     than the default harness registry.
 
     Returns:
-        A fresh ``ToolRegistry`` with exactly 3 tools registered:
-        ``list_manuals``, ``get_manual_toc``, ``read_manual_section``.
+        A fresh ``ToolRegistry`` with exactly 4 tools registered:
+        ``list_manuals``, ``get_manual_toc``,
+        ``read_manual_section``, ``search_manual_text``.
     """
     registry = ToolRegistry()
     for tool_def in (
         LIST_MANUALS_DEF,
         GET_MANUAL_TOC_DEF,
         READ_MANUAL_SECTION_DEF,
+        SEARCH_MANUAL_TEXT_DEF,
     ):
         registry.register(tool_def)
     return registry

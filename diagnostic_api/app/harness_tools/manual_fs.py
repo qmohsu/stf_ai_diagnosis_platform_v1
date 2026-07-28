@@ -52,7 +52,19 @@ _PROCEDURE_STEP_RE = re.compile(
 # whole 7-step procedure).  Filtering them lets sections span to
 # the next real heading — strictly more complete section text.
 _WARNING_BANNER_RE = re.compile(
-    r"^\s*(?:注\s*意|警\s*告|註)\s*$"
+    r"^\s*(?:注\s*意|警\s*告|註)(?:\s+[A-Z]{2,4}\d\w*)?\s*$"
+)
+
+# HARNESS-30a (#217): two more marker misclassification families
+# that survived the banner filter on the TRICITY155 scan
+# (49 junk headings): code-suffixed banners (``警 告 EWA13120``,
+# ``注 意 ECA13120`` — covered by the optional suffix group
+# above) and troubleshooting-flowchart tokens rendered as
+# headings (``OK ↓`` decision labels and ``▲▲▲``/``▼▼▼`` arrow
+# rows).  Like the bare banners, they slice real sections'
+# bodies when treated as headings.
+_FLOWCHART_TOKEN_RE = re.compile(
+    r"^\s*(?:OK\s*↓|[▲▼\s]+)\s*$"
 )
 
 
@@ -79,6 +91,8 @@ def _is_real_heading(title: str) -> bool:
     if _PROCEDURE_STEP_RE.match(stripped):
         return False
     if _WARNING_BANNER_RE.match(stripped):
+        return False
+    if _FLOWCHART_TOKEN_RE.match(stripped):
         return False
     return True
 

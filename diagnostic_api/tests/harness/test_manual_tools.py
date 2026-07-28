@@ -16,6 +16,7 @@ from app.harness_tools.manual_tools import (
     get_manual_toc,
     list_manuals,
     read_manual_section,
+    search_manual_text,
 )
 
 
@@ -359,8 +360,76 @@ class TestDtcIndexSlugMap:
             "| P0107 | 20 | 故障代碼編號-p0107、p0108 |"
             in lines
         )
-        # Unmapped code degrades to '-' rather than a fake slug.
-        assert "| P0500 | 2 | - |" in lines
+        # Unmapped code carries the HARNESS-30a instruction marker
+        # rather than a bare '-' (which cross-006 showed the agent
+        # reading as proof of absence).
+        assert (
+            "| P0500 | 2 | "
+            "NOT-INDEXED(use search_manual_text) |" in lines
+        )
+
+
+# ── search_manual_text (HARNESS-30a) ──────────────────────────────
+
+
+class TestSearchManualText:
+    """Tests for the literal full-text search handler."""
+
+    @pytest.mark.asyncio
+    async def test_hit_reports_enclosing_section_slug(
+        self,
+    ) -> None:
+        """Each hit is attributed to its enclosing section so the
+        agent can jump straight to read_manual_section."""
+        result = await search_manual_text({
+            "manual_id": "MWS150A_Service_Manual",
+            "query": "vacuum leaks",
+        })
+        assert "1 line(s) match" in result
+        assert "dtc-p0171-system-too-lean" in result
+        assert "Check intake manifold" in result
+
+    @pytest.mark.asyncio
+    async def test_case_insensitive(self) -> None:
+        """Lower-cased DTC query still matches P0171 lines."""
+        result = await search_manual_text({
+            "manual_id": "MWS150A_Service_Manual",
+            "query": "p0171",
+        })
+        assert "0 matches" not in result
+        assert "P0171" in result
+
+    @pytest.mark.asyncio
+    async def test_zero_matches_is_explicit(self) -> None:
+        """Zero hits produce the explicit absence statement the
+        search gate relies on."""
+        result = await search_manual_text({
+            "manual_id": "MWS150A_Service_Manual",
+            "query": "P9999",
+        })
+        assert "0 matches for 'P9999'" in result
+        assert "does not contain" in result
+
+    @pytest.mark.asyncio
+    async def test_max_hits_caps_output(self) -> None:
+        """Hit list is capped but the total count is reported."""
+        result = await search_manual_text({
+            "manual_id": "MWS150A_Service_Manual",
+            "query": "Fuel",
+            "max_hits": 2,
+        })
+        assert "showing first 2" in result
+        assert result.count("- [section:") == 2
+
+    @pytest.mark.asyncio
+    async def test_manual_not_found(self) -> None:
+        """Unknown manual returns the available list."""
+        result = await search_manual_text({
+            "manual_id": "nope",
+            "query": "anything",
+        })
+        assert "not found" in result
+        assert "MWS150A_Service_Manual" in result
 
 
 # ── get_manual_toc ────────────────────────────────────────────────
@@ -408,6 +477,16 @@ class TestGetManualToc:
         assert "dtc-p0171-system-too-lean" in index_row
         # Header advertises the new column.
         assert "Section slug" in result
+
+    @pytest.mark.asyncio
+    async def test_toc_carries_absence_guard_text(self) -> None:
+        """The quick index is followed by the HARNESS-30a guard
+        forbidding NOT-INDEXED marks being read as absence."""
+        result = await get_manual_toc(
+            {"manual_id": "MWS150A_Service_Manual"},
+        )
+        assert "NEVER cite a NOT-INDEXED" in result
+        assert "search_manual_text" in result
 
     @pytest.mark.asyncio
     async def test_not_found(self) -> None:
