@@ -146,6 +146,40 @@ class ReadManualSectionInput(BaseModel):
     )
 
 
+class SearchManualTextInput(BaseModel):
+    """Input for the search_manual_text tool (HARNESS-30a).
+
+    Literal (grep-style) full-text search — the mandatory
+    absence-check before the agent may claim the manual lacks
+    something.  Distinct from semantic RAG retrieval: exact
+    substring matching, deterministic, ideal for identifier
+    queries (DTC codes, part names, spec labels).
+    """
+
+    manual_id: str = Field(
+        ...,
+        description="Manual filename stem (from list_manuals).",
+    )
+    query: str = Field(
+        ...,
+        min_length=2,
+        description=(
+            "Literal text to find (case-insensitive substring), "
+            "e.g. 'P0335' or '曲軸位置感知器'. Not a regex, not "
+            "a semantic query."
+        ),
+    )
+    max_hits: int = Field(
+        default=20,
+        ge=1,
+        le=100,
+        description=(
+            "Cap on returned matching lines (default 20). The "
+            "total match count is always reported."
+        ),
+    )
+
+
 # ── OBD investigation primitives (HARNESS-19) ────────────────────
 
 

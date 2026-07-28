@@ -180,18 +180,21 @@ def _make_deps(
 class TestManualAgentRegistry:
     """Tests for ``create_manual_agent_registry``."""
 
-    def test_registers_exactly_three_manual_tools(self) -> None:
-        """Registry contains the 3 manual-fs navigation tools.
+    def test_registers_exactly_four_manual_tools(self) -> None:
+        """Registry contains the 4 manual-fs navigation tools.
 
-        ``search_manual`` was removed in HARNESS-15 to keep the
-        agent's capabilities architecturally orthogonal to RAG —
-        see ``create_manual_agent_registry`` docstring.
+        ``search_manual`` (semantic RAG) was removed in HARNESS-15
+        to keep the agent architecturally orthogonal to RAG and
+        stays removed; ``search_manual_text`` (literal grep,
+        HARNESS-30a) is navigation, not semantic retrieval, so the
+        separation stands — see ``create_manual_agent_registry``.
         """
         registry = create_manual_agent_registry()
         assert set(registry.tool_names) == {
             "list_manuals",
             "get_manual_toc",
             "read_manual_section",
+            "search_manual_text",
         }
 
     def test_read_obd_data_is_not_registered(self) -> None:

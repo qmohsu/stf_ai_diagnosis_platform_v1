@@ -768,6 +768,65 @@ class TestWarningBannerFilter:
         assert "故障代碼編號 P0112" not in sec
 
 
+class TestNoiseHeadingFilterHarness30a:
+    """HARNESS-30a (#217): two marker misclassification families
+    that survived the #186/#210 banner filter — code-suffixed
+    banners and flowchart tokens (49 junk headings on the real
+    TRICITY155 scan)."""
+
+    def test_code_suffixed_banners_filtered(self) -> None:
+        """``警 告 EWA13120`` / ``注 意 ECA13120`` are banners."""
+        from app.harness_tools.manual_fs import parse_heading_tree
+        md = (
+            "## 前煞車\n\nbody\n\n"
+            "### 警 告 EWA13120\n\n危險\n\n"
+            "### 注 意 ECA13120\n\n小心\n\n"
+            "## 後煞車\n\nother\n"
+        )
+        titles = [n.title for n in parse_heading_tree(md)]
+        assert titles == ["前煞車", "後煞車"]
+
+    def test_flowchart_tokens_filtered(self) -> None:
+        """``OK ↓`` decision labels and ▲/▼ arrow rows are
+        flowchart artifacts, not sections."""
+        from app.harness_tools.manual_fs import parse_heading_tree
+        md = (
+            "## 故障排除\n\nstep\n\n"
+            "### OK ↓\n\ncontinue\n\n"
+            "### OK↓\n\ncontinue\n\n"
+            "### ▲ ▲ ▲▲▲ ▲▲▲\n\n\n"
+            "### ▼▼▼ ▼\n\n\n"
+            "## 下一章\n\nnext\n"
+        )
+        titles = [n.title for n in parse_heading_tree(md)]
+        assert titles == ["故障排除", "下一章"]
+
+    def test_section_spans_through_new_noise(self) -> None:
+        """Filtered noise no longer slices the enclosing span."""
+        from app.harness_tools.manual_fs import extract_section
+        md = (
+            "## 故障排除\n\nintro\n\n"
+            "### 警 告 EWA13120\n\n戴上護目鏡\n\n"
+            "### OK ↓\n\n檢查繼電器導通。\n\n"
+            "## 下一章\n\nnext\n"
+        )
+        sec = extract_section(md, "故障排除", True)
+        assert sec is not None
+        assert "戴上護目鏡" in sec
+        assert "檢查繼電器導通" in sec
+        assert "next" not in sec
+
+    def test_real_titles_with_similar_words_survive(self) -> None:
+        """Titles containing 警告/OK as part of real text stay."""
+        from app.harness_tools.manual_fs import parse_heading_tree
+        md = (
+            "## 警告燈的檢查\n\nbody\n\n"
+            "## 引擎故障警告燈\n\nbody\n"
+        )
+        titles = [n.title for n in parse_heading_tree(md)]
+        assert titles == ["警告燈的檢查", "引擎故障警告燈"]
+
+
 def _walk_slugs(nodes: List[HeadingNode]) -> List[str]:
     """Flatten a heading tree into a list of slugs (test util)."""
     out: List[str] = []

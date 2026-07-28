@@ -1,9 +1,11 @@
 """Manual filesystem navigation tools for the harness agent loop.
 
-Three tools for structured manual retrieval:
+Four tools for structured manual retrieval:
   - ``list_manuals``: discover available manuals
   - ``get_manual_toc``: read a manual's heading structure
   - ``read_manual_section``: read a full section with images
+  - ``search_manual_text``: literal grep-style search
+    (HARNESS-30a — the mandatory absence-check)
 
 These complement ``search_manual`` (semantic RAG search) with
 precise filesystem-based navigation.
@@ -26,6 +28,7 @@ from app.harness_tools.input_models import (
     GetManualTocInput,
     ListManualsInput,
     ReadManualSectionInput,
+    SearchManualTextInput,
 )
 from app.harness_tools.manual_fs import (
     HeadingNode,
@@ -198,6 +201,14 @@ def _build_dtc_slug_map(md_text: str) -> Dict[str, str]:
     return mapping
 
 
+# HARNESS-30a (#217): the marker a quick-index row carries when a
+# code appears in the manual body but no heading names it.  13/22
+# TRICITY155 codes are in this state; cross-006 showed the agent
+# reading the former ``-`` as proof of absence.  The marker must be
+# an instruction, never a shrug.
+_UNINDEXED_MARKER = "NOT-INDEXED(use search_manual_text)"
+
+
 def _augment_dtc_index(
     index_text: str,
     slug_map: Dict[str, str],
@@ -210,7 +221,10 @@ def _augment_dtc_index(
     each row to carry the slug of the heading that names the
     code, so the agent can jump straight from the index to
     ``read_manual_section`` (the behaviour the manual-agent
-    prompt promises).  Codes with no matching heading get ``-``.
+    prompt promises).  Codes with no matching heading get
+    ``NOT-INDEXED(use search_manual_text)`` — they ARE in the
+    manual (see the occurrence count) but lack an indexed
+    section (HARNESS-30a).
 
     Args:
         index_text: The raw index table text.
@@ -227,7 +241,7 @@ def _augment_dtc_index(
         row_match = _DTC_ROW_PATTERN.match(stripped)
         if row_match:
             code = row_match.group(1).upper()
-            slug = slug_map.get(code, "-")
+            slug = slug_map.get(code, _UNINDEXED_MARKER)
             out_lines.append(f"{stripped} {slug} |")
         elif re.match(r"^\|[\s:|-]+\|$", stripped):
             out_lines.append(f"{stripped}-----|")
@@ -445,6 +459,12 @@ async def get_manual_toc(
             "\n\nDTC Quick Index (pass a Section slug to "
             "read_manual_section for the code's diagnostic "
             "procedure):\n" + dtc_index
+            + "\n\nIMPORTANT: a row marked "
+            "NOT-INDEXED(use search_manual_text) means the code "
+            "IS present in the manual (see its occurrence count) "
+            "but no section heading names it — locate its content "
+            "with search_manual_text. NEVER cite a NOT-INDEXED "
+            "mark as evidence the manual lacks the code."
         )
 
     return toc
@@ -603,6 +623,103 @@ def _flatten_for_slugs(
     return result
 
 
+# ── Tool: search_manual_text ──────────────────────────────────────
+
+
+_HIT_PREVIEW_CHARS = 110
+
+
+async def search_manual_text(
+    input_data: Dict[str, Any],
+) -> str:
+    """Literal full-text search over one manual (HARNESS-30a).
+
+    Case-insensitive substring search over the manual's markdown
+    lines.  Each hit reports the matching line and the slug of its
+    enclosing section, so a hit is immediately navigable with
+    ``read_manual_section``.
+
+    This is the mandatory absence-check: the agent may only claim
+    "the manual does not contain X" after this tool returned zero
+    matches for X.  It is deliberately literal (grep), NOT
+    semantic retrieval — identifier queries like DTC codes get
+    exact answers with no embedding noise (cf. HARNESS-15's
+    removal of ``search_manual`` from the manual agent, which
+    stays removed).
+
+    Args:
+        input_data: ``manual_id``, ``query``, optional
+            ``max_hits`` (default 20).
+
+    Returns:
+        Formatted hit list with section slugs, or an explicit
+        zero-match statement.
+    """
+    manual_id: str = input_data["manual_id"]
+    query: str = input_data["query"]
+    max_hits: int = int(input_data.get("max_hits", 20))
+
+    md_text = _read_manual_file(manual_id)
+    if md_text is None:
+        available = [f.stem for f in _scan_manual_files()]
+        if available:
+            return (
+                f"Manual '{manual_id}' not found. "
+                f"Available: {', '.join(available)}"
+            )
+        return f"Manual '{manual_id}' not found."
+
+    lines = md_text.split("\n")
+    needle = query.casefold()
+    hits = [
+        (idx, line.strip())
+        for idx, line in enumerate(lines)
+        if needle in line.casefold()
+    ]
+
+    if not hits:
+        return (
+            f"0 matches for '{query}' in manual "
+            f"'{manual_id}'. The manual does not contain this "
+            f"text (checked all {len(lines)} lines)."
+        )
+
+    # Map each hit line to its enclosing section slug.  Nodes are
+    # flattened in document order, so the enclosing section is the
+    # last one starting at or before the hit line.
+    flat = _flatten_for_slugs(parse_heading_tree(md_text))
+    starts = [(node.line_start, node.slug) for node in flat]
+
+    def _enclosing_slug(line_idx: int) -> str:
+        best = "(before first section)"
+        for start, slug in starts:
+            if start <= line_idx:
+                best = slug
+            else:
+                break
+        return best
+
+    shown = hits[:max_hits]
+    out: List[str] = [
+        f"{len(hits)} line(s) match '{query}' in manual "
+        f"'{manual_id}'"
+        + (f" (showing first {len(shown)}):"
+           if len(hits) > len(shown) else ":")
+    ]
+    for idx, text in shown:
+        preview = text[:_HIT_PREVIEW_CHARS]
+        if len(text) > _HIT_PREVIEW_CHARS:
+            preview += "…"
+        out.append(
+            f"- [section: {_enclosing_slug(idx)}] {preview}"
+        )
+    out.append(
+        "\nPass a section slug above to read_manual_section "
+        "to read the full context of a hit."
+    )
+    return "\n".join(out)
+
+
 # ── ToolDefinition exports ────────────────────────────────────────
 
 
@@ -635,6 +752,24 @@ GET_MANUAL_TOC_DEF = ToolDefinition(
     input_schema=GetManualTocInput.model_json_schema(),
     handler=get_manual_toc,
     input_model=GetManualTocInput,
+    is_read_only=True,
+)
+
+SEARCH_MANUAL_TEXT_DEF = ToolDefinition(
+    name="search_manual_text",
+    description=(
+        "Literal (grep-style) full-text search over one manual. "
+        "Case-insensitive substring match; each hit shows the "
+        "matching line and its enclosing section slug for "
+        "read_manual_section. Use for identifier lookups (DTC "
+        "codes, part names, spec labels) and ALWAYS before "
+        "concluding the manual does not contain something — "
+        "'not in the TOC' or a NOT-INDEXED quick-index mark is "
+        "NOT evidence of absence; zero matches here is."
+    ),
+    input_schema=SearchManualTextInput.model_json_schema(),
+    handler=search_manual_text,
+    input_model=SearchManualTextInput,
     is_read_only=True,
 )
 
