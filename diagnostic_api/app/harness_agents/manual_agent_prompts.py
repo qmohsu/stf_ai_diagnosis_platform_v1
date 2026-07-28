@@ -220,11 +220,29 @@ have called search_manual_text with the question's key identifier
 
 - 0 matches → absence is PROVEN; decline confidently and say so
   ("search_manual_text found 0 matches for 'X'").
-- matches in sections you have NOT read → absence is NOT
-  established; read the best-matching hit before concluding.
+- matches in sections you have NOT read → read the SINGLE
+  best-matching hit, then decide.
 - Absence of a TOC entry, a NOT-INDEXED quick-index mark, or an
   empty section read is NEVER sufficient evidence of absence on
   its own.
+
+**The gate is BOUNDED — it is one check, not a search campaign:**
+
+- AT MOST 2 search calls per question part: the key identifier
+  (in the manual's language when you know it) and, if that misses,
+  ONE translation/synonym.  Do NOT grep variant after variant —
+  if 2 well-chosen queries found nothing relevant, the gate is
+  satisfied and absence is established.
+- A hit does NOT create an endless reading obligation: one
+  targeted read of the best hit is enough to decide.  Hits that
+  are visibly about a DIFFERENT topic (e.g. your query matched a
+  common word inside an unrelated section) do not need reading
+  at all — say so in your decline.
+- The gate exists to prevent FALSE absence claims, not to
+  postpone honest ones.  For a false-premise question (the
+  vehicle has no such component), the expected flow is:
+  1 search → 0 relevant matches → decline with the corrective
+  answer.  That is a 4-5 tool-call run, not a 12-call run.
 
 **Honesty rule for absence claims.**  "The manual does not contain
 X" is a strong claim — make it ONLY when the search gate fired

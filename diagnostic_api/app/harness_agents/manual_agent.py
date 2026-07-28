@@ -852,6 +852,7 @@ async def run_manual_agent(
     # No-progress backstop state (HARNESS-23 T2 / #144).
     seen_call_signatures: set = set()
     section_reads = 0
+    search_calls = 0  # HARNESS-30a: greps count toward the backstop
     force_final = False
     # Deterministic manual pinning state (WP3 round 3 / #194).
     manual_inventory: List[_ManualInventoryEntry] = []
@@ -1110,9 +1111,24 @@ async def run_manual_agent(
                 # from what it has — instead of riding the wall-clock
                 # to a timeout/answer_quality=0 (the adversarial
                 # failure mode confirmed on the server smoke).
+                # HARNESS-30a: search_manual_text counts toward the
+                # backstop too.  The targeted re-run on the 30a
+                # branch showed the spin migrating from reads to
+                # searches — 6 query-variant greps interleaved with
+                # 3 reads rode all 12 iterations without EVER
+                # tripping the read-only counter (5 of 6 adversarial
+                # entries regressed to no-final-answer).  Weighting
+                # searches at half a read lets the legitimate flow
+                # (gate search + a couple of hit-reads) finish while
+                # variant-grep spirals still trip the forced
+                # synthesis turn.
                 section_reads += sum(
                     1 for tc in response.tool_calls
                     if tc.name == "read_manual_section"
+                )
+                search_calls += sum(
+                    1 for tc in response.tool_calls
+                    if tc.name == "search_manual_text"
                 )
                 signatures = {
                     f"{tc.name}:{tc.arguments}"
@@ -1123,8 +1139,9 @@ async def run_manual_agent(
                 )
                 seen_call_signatures |= signatures
 
+                evidence_load = section_reads + search_calls / 2
                 if (
-                    section_reads >= _MAX_SECTION_READS_BEFORE_FINAL
+                    evidence_load >= _MAX_SECTION_READS_BEFORE_FINAL
                     or repeated_call
                     or foreign_manual_spin
                 ):
@@ -1138,6 +1155,7 @@ async def run_manual_agent(
                         run_id=run_id,
                         iteration=iterations,
                         section_reads=section_reads,
+                        search_calls=search_calls,
                         repeated_call=repeated_call,
                         foreign_manual_spin=foreign_manual_spin,
                         blocked_count=sum(
