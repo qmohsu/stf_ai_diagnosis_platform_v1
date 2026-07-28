@@ -1,0 +1,6949 @@
+spec_version: '0.3'
+manual_id: 0a2ba199-665f-41aa-a106-1163cad68d16
+source:
+  content_file: tricity155.md
+  content_sha256: 408eaae7d7adc86702d3dc8a361c7810990c7f5415b4ce4cd3f2ad8df60a67d8
+  parser: mineru-3.4.4/hybrid-engine + pymupdf-authority
+  built_at: '2026-07-28T16:59:56.885620+00:00'
+applicability:
+  manufacturer: Yamaha
+  models:
+  - TRICITY155
+  - MWS150-A
+vocab_version: '1'
+tree:
+- node_id: general-desc-前言
+  title: 前言
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 0
+  - 44
+  page_range:
+  - 1
+  - 9
+  summary: 在總說章節中，技術人員可以找到關於TRICITY155 MWS150-A機車的車輛識別資訊、儀錶功能說明以及進行拆卸、零件更換和電裝系統維護時所需的基本維修注意事項。
+  children:
+  - node_id: general-desc-tricity155-mws150-a
+    title: TRICITY155 MWS150-A
+    aliases:
+    - 服務手冊
+    node_type: description
+    subsystem: general
+    span:
+    - 0
+    - 12
+    page_range:
+    - 1
+    - 2
+    summary: TRICITY155 MWS150-A
+    children: []
+  - node_id: general-desc-重要資訊
+    title: 重要資訊
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 12
+    - 17
+    page_range:
+    - 3
+    - 3
+    summary: 技术人员在此找到服务手册的使用说明，包括手册的编写目的、适用对象，以及关于产品规格变更和持续改进的重要通知。
+    children: []
+  - node_id: general-desc-手冊重要資訊
+    title: 手冊重要資訊
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 17
+    - 20
+    page_range:
+    - 3
+    - 3
+    summary: Technicians find safety warnings, cautions, notes, and their corresponding
+      symbols to prevent personal injury, death, or damage to the motorcycle during
+      service procedures.
+    children: []
+  - node_id: general-desc-本手冊使用方法
+    title: 本手冊使用方法
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 20
+    - 32
+    page_range:
+    - 4
+    - 4
+    summary: Technicians find instructions for installation, removal, disassembly,
+      assembly, repair, and inspection procedures, including exploded views with numbered
+      steps, symbols for lubrication or replacement parts, and work instruction tables.
+    children: []
+  - node_id: general-spec-符號
+    title: 符號
+    aliases: []
+    node_type: specification
+    subsystem: general
+    span:
+    - 32
+    - 38
+    page_range:
+    - 5
+    - 6
+    summary: 本節提供維修手冊中使用的符號定義，例如引擎機油、齒輪油、煞車液、鎖緊扭力、引擎轉速等，以及無需拆卸引擎即可維修和更換零件的標示。
+    children: []
+  - node_id: general-idx-目錄
+    title: 目錄
+    aliases: []
+    node_type: index
+    subsystem: general
+    span:
+    - 38
+    - 42
+    page_range:
+    - 7
+    - 8
+    summary: Regular inspection and adjustment tasks for technicians include verifying
+      torque specifications and ensuring service intervals, as outlined in the service
+      data section.
+    children: []
+  - node_id: general-desc-總說
+    title: 總說
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 42
+    - 44
+    page_range:
+    - 9
+    - 9
+    summary: Technicians find general information, including vehicle identification
+      locations, label details, instrument functions, and basic maintenance precautions
+      for components like gaskets, seals, and electrical systems.
+    children: []
+- node_id: general-desc-機車的資訊
+  title: 機車的資訊
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 44
+  - 81
+  page_range:
+  - 10
+  - 11
+  summary: Technicians find vehicle identification locations, emission control details
+    including idle speed of 1600 ± 100 rpm, tire pressures like 200 kPa for the front,
+    and various warning labels.
+  children:
+  - node_id: engine-desc-引擎號碼打刻位置
+    title: 引擎號碼打刻位置
+    aliases: []
+    node_type: description
+    subsystem: engine
+    span:
+    - 52
+    - 55
+    page_range:
+    - 11
+    - 11
+    summary: 引擎號碼“1”打刻於曲軸箱底部左側，這是技師查找引擎識別號碼的位置。
+    children: []
+  - node_id: chassis_body-desc-車體號碼打刻位置
+    title: 車體號碼打刻位置
+    aliases: []
+    node_type: description
+    subsystem: chassis_body
+    span:
+    - 55
+    - 58
+    page_range:
+    - 11
+    - 11
+    summary: 車體號碼“1”打刻於座墊下方的車架。
+    children: []
+  - node_id: general-desc-車輛排氣管制資訊
+    title: 車輛排氣管制資訊
+    aliases:
+    - 車輛排放管制資訊標籤
+    node_type: description
+    subsystem: general
+    span:
+    - 58
+    - 67
+    page_range:
+    - 11
+    - 11
+    summary: 在車輛排氣管制資訊標籤中，技術人員可找到引擎排氣量（155c.c）、OBD stage I診斷系統、各排放控制設備的辨識號碼、惰轉轉速（1600
+      ± 100 rpm）、原地噪音管制值（87 dB(A)）及測試轉速（4000 rpm）。
+    children: []
+  - node_id: wheels_tires-spec-輪胎胎壓與尺寸標籤
+    title: 輪胎胎壓與尺寸標籤
+    aliases: []
+    node_type: specification
+    subsystem: wheels_tires
+    span:
+    - 67
+    - 70
+    page_range:
+    - 11
+    - 11
+    summary: Technicians find the tire pressure and size label in the storage box,
+      listing pressures of 200 kPa for the front and 225 kPa for the rear under all
+      loads, and tire sizes of 90/80-14M/C 43P front and 130/70-13M/C 63P rear.
+    children: []
+  - node_id: general-desc-a警告
+    title: A警告
+    aliases:
+    - 警告標籤
+    node_type: description
+    subsystem: general
+    span:
+    - 70
+    - 81
+    page_range:
+    - 11
+    - 11
+    summary: Technicians find safety warnings and pre-ride inspection items, including
+      checks for brake function, tires, fluids, lights, horn, and instruments, on
+      a label attached to the left side of the lower leg guard cover.
+    children: []
+- node_id: general-desc-機構說明
+  title: 機構說明
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 81
+  - 178
+  page_range:
+  - 12
+  - 14
+  summary: 技術人員在此找到多功能儀錶單元的機構說明，包括速度錶、汽油錶、時鐘、車外氣溫顯示器（範圍-10°C至40°C）、多功能液晶儀錶（顯示ODO、TRIP
+    1、TRIP 2、OIL TRIP、BELT TRIP）、機油更換指示器（在1000 km和後續每4000 km亮起）以及V皮帶更換指示器（每20000 km亮起）的操作與設定方法。
+  children:
+  - node_id: instruments-desc-多功能儀錶單元
+    title: 多功能儀錶單元
+    aliases:
+    - 儀錶功能
+    node_type: description
+    subsystem: instruments
+    span:
+    - 81
+    - 110
+    page_range:
+    - 12
+    - 12
+    summary: Technicians find the speedometer section, which displays the vehicle's
+      traveling speed.
+    children: []
+  - node_id: general-desc-汽油錶
+    title: 汽油錶
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 110
+    - 118
+    page_range:
+    - 12
+    - 12
+    summary: 汽油錶顯示油箱油量，當油位低時最後一個區段和警告指示器會閃爍，若電路有問題則所有顯示區段和指示器會閃爍，需檢查電路。
+    children: []
+  - node_id: general-desc-時鐘-clock
+    title: 時鐘 “CLOCK”
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 118
+    - 123
+    page_range:
+    - 12
+    - 13
+    summary: Technicians find the clock mechanism description, which operates on a
+      12-hour system.
+    children: []
+  - node_id: general-desc-設定時鐘
+    title: '[ 設定時鐘 ]'
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 123
+    - 129
+    page_range:
+    - 13
+    - 13
+    summary: Technicians find instructions for setting the clock by holding "SELECT"
+      and "RESET" buttons, then using them to adjust the flashing hour and minute
+      digits.
+    children: []
+  - node_id: general-desc-車外氣溫顯示器-out-temp
+    title: 車外氣溫顯示器“OUT TEMP”
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 129
+    - 137
+    page_range:
+    - 13
+    - 13
+    summary: Technicians find information on the "OUT TEMP" outside temperature display,
+      which shows temperatures from –10 °C to 40 °C in 1°C increments, noting that
+      accuracy may be affected at speeds below approximately 20 km/h.
+    children: []
+  - node_id: instruments-desc-多功能液晶儀錶
+    title: 多功能液晶儀錶
+    aliases: []
+    node_type: description
+    subsystem: instruments
+    span:
+    - 137
+    - 151
+    page_range:
+    - 13
+    - 13
+    summary: Technicians find instructions for setting and resetting the multi-function
+      liquid crystal display, including the odometer "ODO", trip meters "TRIP 1" or
+      "TRIP 2", "OIL TRIP", and "BELT TRIP", using the "SELECT" and "RESET" buttons.
+    children: []
+  - node_id: general-desc-汽油備用計程錶
+    title: 汽油備用計程錶
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 151
+    - 170
+    page_range:
+    - 13
+    - 14
+    summary: 汽油備用計程錶在油箱剩餘約1.6 L汽油時自動啟動，計算行駛距離，並可透過SELECT和RESET按鈕操作顯示或暫時關閉。
+    children: []
+  - node_id: general-desc-v-皮帶更換計程錶-belt-trip
+    title: V 皮帶更換計程錶 “BELT TRIP”
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 170
+    - 178
+    page_range:
+    - 14
+    - 14
+    summary: Technicians find instructions for resetting the V-belt replacement trip
+      meter and its indicator light, which illuminates every 20000 km (12500 mi),
+      by selecting the meter and holding the "RESET" button.
+    children: []
+- node_id: general-desc-維修注意事項
+  title: 維修注意事項
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 178
+  - 214
+  page_range:
+  - 15
+  - 16
+  summary: Technicians find general maintenance precautions covering disassembly preparation,
+    parts replacement, and specific procedures for gaskets, seals, bearings, circlips,
+    and rubber parts, including instructions to lubricate seal lips with lithium soap
+    base grease.
+  children:
+  - node_id: general-desc-拆卸與分解的準備
+    title: 拆卸與分解的準備
+    aliases:
+    - 維修注意事項
+    node_type: description
+    subsystem: general
+    span:
+    - 178
+    - 187
+    page_range:
+    - 15
+    - 15
+    summary: Technicians find preparation steps for disassembly and teardown, including
+      cleaning components, using correct tools, keeping matched parts together, and
+      keeping all parts away from fire sources.
+    children: []
+  - node_id: general-parts-更換零件
+    title: 更換零件
+    aliases: []
+    node_type: parts
+    subsystem: general
+    span:
+    - 187
+    - 190
+    page_range:
+    - 15
+    - 15
+    summary: Technicians find instructions for replacing parts, specifying the use
+      of genuine Yamaha parts and recommended lubricants like oil and grease.
+    children: []
+  - node_id: general-desc-墊片、油封與-o-型環
+    title: 墊片、油封與 O 型環
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 190
+    - 198
+    page_range:
+    - 15
+    - 15
+    summary: 在引擎徹底檢修時，技術人員會找到更換所有墊片、油封和O型環的任務，並需清潔墊片表面、油封唇部，以及使用機油和黃油潤滑相關零件。
+    children: []
+  - node_id: general-desc-固定墊圈-墊片與開口銷
+    title: 固定墊圈/墊片與開口銷
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 198
+    - 201
+    page_range:
+    - 15
+    - 15
+    summary: 此部分說明在拆卸後，技術人員需更換所有固定墊圈/墊片及開口銷，並在按規格鎖緊螺栓或螺帽後，將固定片沿其一個平面折彎。
+    children: []
+  - node_id: general-desc-軸承與油封
+    title: 軸承與油封
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 201
+    - 208
+    page_range:
+    - 15
+    - 16
+    summary: Technicians find instructions for installing bearing "1" and oil seal
+      "2", requiring manufacturer markings to be visible, lubricating the seal lip
+      with lithium soap-based grease, and optionally lubricating the bearing, with
+      a warning against spinning bearings with compressed air.
+    children: []
+  - node_id: general-desc-夾環
+    title: 夾環
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 208
+    - 211
+    page_range:
+    - 16
+    - 16
+    summary: Technicians find instructions for inspecting and replacing circlips,
+      including the requirement to always replace piston pin circlips after one use,
+      and ensuring the sharp corner is positioned opposite the thrust face during
+      installation.
+    children: []
+  - node_id: general-parts-橡膠零件
+    title: 橡膠零件
+    aliases: []
+    node_type: parts
+    subsystem: general
+    span:
+    - 211
+    - 214
+    page_range:
+    - 16
+    - 16
+    summary: Technicians find instructions for inspecting rubber parts for deterioration
+      and warnings to avoid contact with gasoline, flammable oils, and lubricants
+      not specified, as these parts are sensitive.
+    children: []
+- node_id: general-desc-基本維修資訊
+  title: 基本維修資訊
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 214
+  - 345
+  page_range:
+  - 17
+  - 21
+  summary: Technicians find procedures for removing and installing push rivets and
+    screw rivets, along with electrical system handling precautions and checks for
+    continuity and resistance, including coolant temperature sensor resistance values
+    of 2510–2770 Ω at 20°C and 210–221 Ω at 100°C.
+  children:
+  - node_id: general-desc-基本維修資訊-2
+    title: 基本維修資訊
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 214
+    - 232
+    page_range:
+    - 17
+    - 17
+    summary: Technicians find instructions for removing and installing push rivets,
+      including steps to push the pin inward with a screwdriver for removal and to
+      ensure the pin is flush with the rivet head after installation.
+    children: []
+  - node_id: general-desc-螺絲類型
+    title: 螺絲類型
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 232
+    - 278
+    page_range:
+    - 17
+    - 19
+    summary: Technicians find instructions for removing and installing rotating rivets
+      using a screwdriver, along with critical safety precautions for handling electrical
+      components and battery cables.
+    children: []
+  - node_id: electrical-insp-電裝系統的檢查
+    title: 電裝系統的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: electrical
+    span:
+    - 278
+    - 288
+    page_range:
+    - 19
+    - 19
+    summary: Technicians find instructions for checking the electrical equipment system,
+      including verifying battery voltage is at least 12 V and proper methods for
+      inserting tester probes into connectors.
+    children: []
+  - node_id: general-insp-連接部位的檢查
+    title: 連接部位的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 288
+    - 345
+    page_range:
+    - 19
+    - 21
+    summary: 技術人員在此節找到連接部位（導線、接頭、連接器）的檢查任務，以及冷卻液溫度感知器電阻在20°C時為2510–2770Ω和在100°C時為210–221Ω的關鍵規格值。
+    children: []
+- node_id: general-desc-特殊工具
+  title: 特殊工具
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 345
+  - 365
+  page_range:
+  - 22
+  - 28
+  summary: 本節列出維修所需的特殊工具清單，包括三用電錶（90890-03112/YU-03112-C）、山葉診斷工具（90890-03250/90890-03252）、汽門調整工具（90890-01311/YM-A5970）等，並標明其對應的參考頁碼。
+  children:
+  - node_id: general-desc-特殊工具-2
+    title: 特殊工具
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 345
+    - 365
+    page_range:
+    - 22
+    - 28
+    summary: This section lists the special tools required for proper adjustment and
+      assembly, including the analog multimeter YU-03112-C, Yamaha diagnostic tool
+      USB 90890-03250, valve adjusting tool set YM-A5970, and compression tester YU-33223,
+      along with their part numbers and reference pages.
+    children: []
+- node_id: general-desc-服務資料
+  title: 服務資料
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 365
+  - 367
+  page_range:
+  - 29
+  - 29
+  summary: Technicians find general specifications, engine and body dimensions, electrical
+    system details, tightening torque values, lubrication points and types, cooling
+    system diagrams, and cable routing information in the service data section.
+  children: []
+- node_id: general-desc-一般規格
+  title: 一般規格
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 367
+  - 369
+  page_range:
+  - 30
+  - 30
+  summary: Technicians find the general specifications for model BB88, including dimensions
+    like overall length 1980 mm, weight 165 kg, and capacities such as maximum load
+    167 kg for 2 persons.
+  children: []
+- node_id: general-desc-引擎規格
+  title: 引擎規格
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 369
+  - 377
+  page_range:
+  - 31
+  - 34
+  summary: 在引擎規格章節，技術人員可找到引擎的詳細技術數據，包括排氣量155 cm³、壓縮比10.5:1、壓縮壓力1566-2016kPa/860r/min、推薦機油SAE
+    10W-40、火星塞間隙0.8-0.9 mm以及引擎怠速轉速1500-1700 r/min等關鍵規格。
+  children: []
+- node_id: general-desc-車體規格
+  title: 車體規格
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 377
+  - 381
+  page_range:
+  - 35
+  - 36
+  summary: 在車體規格章節，技術人員可查找車架、輪胎、煞車、懸吊及電裝系統的關鍵規格，如前輪尺寸為14M/C × MT2.15、前煞車碟厚度限制為3.0
+    mm，以及電瓶型號為YTZ7V。
+  children: []
+- node_id: general-desc-鎖緊扭力
+  title: 鎖緊扭力
+  aliases:
+  - 電裝規格
+  node_type: description
+  subsystem: general
+  span:
+  - 381
+  - 395
+  page_range:
+  - 37
+  - 40
+  summary: 本節提供引擎與車體組件的鎖緊扭力規格，例如排氣管螺帽為15 N·m，以及下三角架環螺帽需依註解步驟鎖緊至38 N·m後再調整。
+  children:
+  - node_id: general-spec-一般鎖緊扭力規格
+    title: 一般鎖緊扭力規格
+    aliases:
+    - 鎖緊扭力
+    node_type: specification
+    subsystem: general
+    span:
+    - 385
+    - 395
+    page_range:
+    - 39
+    - 40
+    summary: Technicians find general tightening torque specifications for standard
+      fasteners, including values like 10 mm nut/6 mm bolt at 6 N·m, and specific
+      component torques such as exhaust pipe nuts at 15 N·m and cylinder head cover
+      bolts at 10 N·m.
+    children: []
+- node_id: general-desc-潤滑位置與潤滑類型
+  title: 潤滑位置與潤滑類型
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 395
+  - 398
+  page_range:
+  - 41
+  - 41
+  summary: 技術人員在此查找引擎各潤滑位置的指定潤滑劑類型，例如軸承使用E、O型環使用LS、搖臂停止器插銷使用M，以及特定部件需使用Yamaha bond
+    No.1215®。
+  children:
+  - node_id: general-desc-潤滑位置與潤滑類型-2
+    title: 潤滑位置與潤滑類型
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 395
+    - 398
+    page_range:
+    - 41
+    - 41
+    summary: 此部分列出引擎各潤滑位置（如軸承、O型環、凸輪軸等）及其對應的潤滑劑類型（如E、M、LS或Yamaha bond No.1215®）。
+    children: []
+- node_id: lubrication-desc-潤滑系統圖表與圖示
+  title: 潤滑系統圖表與圖示
+  aliases: []
+  node_type: description
+  subsystem: lubrication
+  span:
+  - 398
+  - 413
+  page_range:
+  - 42
+  - 47
+  summary: 技術人員在此找到引擎機油潤滑圖表，其中標示了機油濾網、機油泵浦總成、曲軸、凸輪軸、油嘴及搖臂/汽門桿端等潤滑系統組件的位置與關係。
+  children: []
+- node_id: cooling-desc-冷卻系統圖示
+  title: 冷卻系統圖示
+  aliases: []
+  node_type: description
+  subsystem: cooling
+  span:
+  - 413
+  - 418
+  page_range:
+  - 48
+  - 49
+  summary: 冷卻系統圖示展示了水箱蓋、副水箱軟管、水箱、水箱進出水軟管、恆溫器總成、水泵浦進水軟管及水泵浦總成等組件的位置。
+  children:
+  - node_id: cooling-desc-冷卻系統圖示-2
+    title: 冷卻系統圖示
+    aliases: []
+    node_type: description
+    subsystem: cooling
+    span:
+    - 413
+    - 418
+    page_range:
+    - 48
+    - 49
+    summary: 冷卻系統圖示中，技術人員可找到水箱蓋、副水箱軟管、水箱、水箱進出水軟管、恆溫器總成、水泵浦進水軟管及水泵浦總成等組件的位置與連接關係。
+    children: []
+- node_id: general-desc-鋼索配置
+  title: 鋼索配置
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 418
+  - 643
+  page_range:
+  - 50
+  - 79
+  summary: 在鋼索配置章節，技術人員可找到車輛各部位（如方向把手、轉向舵頭、前後車架、液壓單元等）的線束、軟管與鋼索（如油門鋼索、煞車軟管、感知器導線）的詳細佈局圖、部件清單與安裝固定說明（例如對齊油漆記號、使用固定座、間隙規格為1–5
+    mm和5–6 mm）。
+  children:
+  - node_id: general-desc-鋼索配置-2
+    title: 鋼索配置
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 418
+    - 602
+    page_range:
+    - 50
+    - 71
+    summary: This section provides the cable and hose routing diagrams for the handlebar,
+      steering head, wheels, air cleaner box, and front/rear frames, including specifications
+      like aligning white paint marks and clearances of 1–5 mm (0.04–0.20 in) and
+      5–6 mm (0.20–0.24 in).
+    children: []
+  - node_id: abs-desc-液壓單元
+    title: 液壓單元
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 602
+    - 639
+    page_range:
+    - 72
+    - 76
+    summary: Technicians find the hydraulic unit and brake hose routing configuration,
+      including connections to the brake calipers and master cylinder, along with
+      ABS ECU connector and specific alignment instructions using paint marks (blue,
+      white, yellow).
+    children: []
+  - node_id: maintenance-insp-定期檢查與調整
+    title: 定期檢查與調整
+    aliases: []
+    node_type: inspection
+    subsystem: maintenance
+    span:
+    - 639
+    - 643
+    page_range:
+    - 77
+    - 79
+    summary: Technicians find instructions for periodic inspection and adjustment
+      tasks, including checking components like spark plugs, adjusting valve clearance,
+      and verifying specifications such as idle speed.
+    children: []
+- node_id: maintenance-desc-定期保養
+  title: 定期保養
+  aliases: []
+  node_type: description
+  subsystem: maintenance
+  span:
+  - 643
+  - 1782
+  page_range:
+  - 80
+  - 109
+  summary: 在定期保養章節中，技術人員可找到建議的檢查與調整程序，包括檢查汽油管路、火星塞間隙（0.8-0.9 mm）、汽門間隙（進氣0.10–0.14
+    mm，排氣0.21–0.25 mm）、使用山葉診斷工具檢查故障碼，以及各項組件的更換週期。
+  children:
+  - node_id: maintenance-desc-簡介
+    title: 簡介
+    aliases:
+    - 定期保養
+    node_type: description
+    subsystem: maintenance
+    span:
+    - 643
+    - 646
+    page_range:
+    - 80
+    - 80
+    summary: 本章提供了进行建议检查和调整的所有相关资料，包括定期保养程序，以使摩托车行驶更顺畅、延长寿命并降低检修成本。
+    children: []
+  - node_id: maintenance-desc-廢氣控制系統定期保養表
+    title: 廢氣控制系統定期保養表
+    aliases: []
+    node_type: description
+    subsystem: maintenance
+    span:
+    - 646
+    - 652
+    page_range:
+    - 80
+    - 80
+    summary: 該定期保養表列出了廢氣控制系統的檢查項目，包括汽油管路、火星塞、汽門間隙、汽油噴射、排氣系統、蒸發油氣控制系統等，並規定了在實際行駛里程達1,000、4,000、8,000、12,000、16,000、20,000公里及年度檢查時需執行的對應保養內容。
+    children: []
+  - node_id: maintenance-desc-一般定期保養-潤滑表
+    title: 一般定期保養 / 潤滑表
+    aliases: []
+    node_type: description
+    subsystem: maintenance
+    span:
+    - 652
+    - 666
+    page_range:
+    - 80
+    - 82
+    summary: Technicians find the general periodic maintenance and lubrication schedule,
+      detailing tasks like diagnostic system checks, air filter replacement every
+      20,000 km, brake fluid replacement every 2 years, and V-belt replacement when
+      its indicator shows.
+    children: []
+  - node_id: maintenance-desc-使用山葉診斷工具檢查機車
+    title: 使用山葉診斷工具檢查機車
+    aliases: []
+    node_type: description
+    subsystem: maintenance
+    span:
+    - 666
+    - 708
+    page_range:
+    - 83
+    - 83
+    summary: 技師在此節中學習如何使用山葉診斷工具檢查機車的故障代碼並執行動態檢查，以及檢查汽油軟管是否有龜裂、損傷或連接鬆脫。
+    children: []
+  - node_id: maintenance-desc-檢查汽油濾清器
+    title: 檢查汽油濾清器
+    aliases: []
+    node_type: description
+    subsystem: maintenance
+    span:
+    - 708
+    - 734
+    page_range:
+    - 83
+    - 84
+    summary: Technicians find instructions for inspecting and replacing the gasoline
+      filter, including its removal and installation steps, a check for damage/contamination,
+      and a replacement interval of every 12000 km (7200 mi).
+    children: []
+  - node_id: ignition-insp-火星塞的檢查
+    title: 火星塞的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: ignition
+    span:
+    - 734
+    - 867
+    page_range:
+    - 84
+    - 87
+    summary: This section details the spark plug inspection procedure, including removal,
+      checking the specified NGK/CPR8EA type and electrode condition, cleaning, measuring
+      and adjusting the gap, and installation with a 13 N·m torque specification.
+    children: []
+  - node_id: engine-insp-引擎惰轉轉速的檢查
+    title: 引擎惰轉轉速的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: engine
+    span:
+    - 867
+    - 874
+    page_range:
+    - 87
+    - 87
+    summary: 技师在此部分找到引擎怠速转速的检查任务，涉及空气滤清器滤芯和引擎压缩，并依据规格值判断是否进行下一步调整。
+    children: []
+  - node_id: engine-desc-引擎惰轉轉速
+    title: 引擎惰轉轉速
+    aliases: []
+    node_type: description
+    subsystem: engine
+    span:
+    - 874
+    - 888
+    page_range:
+    - 87
+    - 87
+    summary: Technicians find the procedure for checking and adjusting engine idle
+      speed, including verifying the ISC learning value and cleaning the ISC component
+      and throttle body if the value is "02", with a specified idle speed range of
+      1500–1700 r/min.
+    children: []
+  - node_id: fuel-insp-節流閥本體接頭與進氣歧管的檢查
+    title: 節流閥本體接頭與進氣歧管的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: fuel
+    span:
+    - 888
+    - 899
+    page_range:
+    - 87
+    - 87
+    summary: Technicians find instructions for inspecting the throttle body connector
+      "1" and intake manifold "2" for cracks or damage, requiring replacement if found,
+      along with removal and installation references.
+    children: []
+  - node_id: maintenance-insp-活性碳罐的檢查
+    title: 活性碳罐的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: maintenance
+    span:
+    - 899
+    - 913
+    page_range:
+    - 87
+    - 87
+    summary: Technicians find instructions for inspecting the charcoal canister, its
+      purge hose, and the fuel tank vent hose for cracks or damage, requiring replacement
+      if found.
+    children: []
+  - node_id: maintenance-insp-排氣系統的檢查
+    title: 排氣系統的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: maintenance
+    span:
+    - 913
+    - 926
+    page_range:
+    - 87
+    - 88
+    summary: 技術人員在此找到排氣系統的檢查步驟，包括檢查排氣管與墊片的損傷及更換標準，以及排氣管螺帽的鎖緊扭力和排氣管螺栓的定期保養扭力值為15 N·m與53
+      N·m。
+    children: []
+  - node_id: maintenance-insp-惰轉排氣的檢查
+    title: 惰轉排氣的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: maintenance
+    span:
+    - 926
+    - 964
+    page_range:
+    - 88
+    - 89
+    summary: 1. 將車輛停放於平坦地面，並保持其筆直狀態。
+    children: []
+  - node_id: maintenance-op-廢氣排放的調整
+    title: 廢氣排放的調整
+    aliases: []
+    node_type: operation
+    subsystem: maintenance
+    span:
+    - 964
+    - 980
+    page_range:
+    - 89
+    - 89
+    summary: Technicians find instructions for adjusting exhaust emissions, including
+      connecting the Yamaha diagnostic tool (USB90890-03250 or 90890-03252) and setting
+      the CO concentration to the standard value.
+    children: []
+  - node_id: maintenance-desc-定期保養-3
+    title: 定期保養
+    aliases: []
+    node_type: description
+    subsystem: maintenance
+    span:
+    - 980
+    - 1026
+    page_range:
+    - 89
+    - 90
+    summary: Technicians find instructions for inspecting and replacing the air cleaner
+      element every 20,000 km, cleaning the V-belt case air cleaner element with solvent,
+      and tightening its cover bolt to 7 N·m.
+    children: []
+  - node_id: brakes-insp-煞車操作的檢查
+    title: 煞車操作的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 1026
+    - 1033
+    page_range:
+    - 90
+    - 90
+    summary: Technicians find instructions for checking brake operation, directing
+      them to inspect the front brake on page 4-34 and the rear brake on page 4-46
+      if operation is abnormal.
+    children: []
+  - node_id: brakes-insp-前煞車片的檢查
+    title: 前煞車片的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 1033
+    - 1042
+    page_range:
+    - 90
+    - 91
+    summary: Technicians find the inspection procedure for front brake pads, including
+      checking wear indicator groove "a" and replacement criteria, with reference
+      to page 4-34 for the front brake system.
+    children: []
+  - node_id: brakes-insp-後煞車片的檢查
+    title: 後煞車片的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 1042
+    - 1050
+    page_range:
+    - 91
+    - 91
+    summary: Technicians find procedures for inspecting rear brake pads, including
+      checking wear indicator "a" nearly contacting the brake disc, which requires
+      pad replacement.
+    children: []
+  - node_id: brakes-op-後煞車把手自由間隙的調整
+    title: 後煞車把手自由間隙的調整
+    aliases: []
+    node_type: operation
+    subsystem: brakes
+    span:
+    - 1050
+    - 1074
+    page_range:
+    - 91
+    - 91
+    summary: Technicians find instructions for adjusting the rear brake lever free
+      play to the specified range of 10.0–15.0 mm, including loosening the locknut,
+      turning the adjuster bolt, and tightening the locknut to 7 N·m.
+    children: []
+  - node_id: brakes-insp-前煞車軟管的檢查
+    title: 前煞車軟管的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 1074
+    - 1085
+    page_range:
+    - 91
+    - 91
+    summary: Technicians find instructions for inspecting the front brake hose for
+      cracks, damage, wear, and fluid leaks, with steps to tighten the mounting bracket
+      and reference pages for the front brake and ABS system.
+    children: []
+  - node_id: brakes-insp-後煞車軟管的檢查
+    title: 後煞車軟管的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 1085
+    - 1098
+    page_range:
+    - 92
+    - 92
+    summary: Technicians find instructions for inspecting the rear brake hose for
+      cracks, damage, wear, or fluid leaks, checking its mounting bracket, and referencing
+      related sections for rear brakes and ABS.
+    children: []
+  - node_id: brakes-insp-煞車液量的檢查
+    title: 煞車液量的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 1098
+    - 1181
+    page_range:
+    - 92
+    - 94
+    summary: Technicians find instructions for checking brake fluid level against
+      the minimum mark "a" and for bleeding air from the hydraulic brake system, including
+      the ABS, following a specified sequence and using DOT 4 fluid.
+    children: []
+  - node_id: brakes-insp-駐車煞車把手的檢查
+    title: 駐車煞車把手的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 1181
+    - 1197
+    page_range:
+    - 94
+    - 94
+    summary: Technicians find instructions to check the parking brake lever operation,
+      cable length, and cable bushings, with references to adjustments on page 3-15
+      and the rear brake on page 4-46.
+    children: []
+  - node_id: brakes-op-駐車煞車把手的調整
+    title: 駐車煞車把手的調整
+    aliases: []
+    node_type: operation
+    subsystem: brakes
+    span:
+    - 1197
+    - 1214
+    page_range:
+    - 94
+    - 94
+    summary: Technicians find instructions for adjusting the parking brake lever cable
+      length "a" to the specified 95–97 mm by turning the adjustment nut "1" in direction
+      "b" or "c".
+    children: []
+  - node_id: wheels_tires-insp-車輪的檢查
+    title: 車輪的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: wheels_tires
+    span:
+    - 1214
+    - 1223
+    page_range:
+    - 94
+    - 94
+    summary: Technicians find procedures for inspecting all wheels for damage or out-of-round
+      conditions, requiring replacement if found, with a warning against repairs and
+      a note to balance wheels after any tire or wheel exchange or replacement.
+    children: []
+  - node_id: wheels_tires-insp-外胎的檢查
+    title: 外胎的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: wheels_tires
+    span:
+    - 1223
+    - 1280
+    page_range:
+    - 94
+    - 96
+    summary: This section provides the technician with procedures for inspecting tire
+      pressure (measured cold) and tire condition, including wear limits of 1.0 mm
+      for both front and rear tires, and specifies approved tire models like the IRC/SCT-003.
+    children: []
+  - node_id: wheels_tires-insp-車輪軸承的檢查
+    title: 車輪軸承的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: wheels_tires
+    span:
+    - 1280
+    - 1285
+    page_range:
+    - 96
+    - 96
+    summary: Technicians find procedures for inspecting wheel bearings on all wheels,
+      referencing front wheel checks on page 4-27 and rear wheel checks on page 4-33.
+    children: []
+  - node_id: steering-insp-轉向舵頭及下三角架的檢查與調整
+    title: 轉向舵頭及下三角架的檢查與調整
+    aliases: []
+    node_type: inspection
+    subsystem: steering
+    span:
+    - 1285
+    - 1340
+    page_range:
+    - 96
+    - 97
+    summary: Technicians find procedures for inspecting and adjusting the steering
+      stem head and lower triple clamp, including initial and final torque specifications
+      of 38 N·m and 16 N·m for the lower ring nut, and 75 N·m for the upper ring nut.
+    children: []
+  - node_id: maintenance-insp-橫拉桿襯套與前臂襯套的檢查
+    title: 橫拉桿襯套與前臂襯套的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: maintenance
+    span:
+    - 1340
+    - 1371
+    page_range:
+    - 97
+    - 98
+    summary: Technicians find instructions for checking tie-rod bushings and front
+      arm bushings for looseness by moving the front wheels side-to-side, and for
+      checking link arm bearing operation by moving the inner and outer fork tubes
+      up and down.
+    children: []
+  - node_id: maintenance-desc-把手的潤滑
+    title: 把手的潤滑
+    aliases:
+    - 車體鎖緊扭力的檢查
+    node_type: description
+    subsystem: maintenance
+    span:
+    - 1371
+    - 1377
+    page_range:
+    - 98
+    - 98
+    summary: Technicians find instructions for lubricating the handle's pivot points
+      and metal moving parts, specifying silicone grease as the recommended lubricant.
+    children: []
+  - node_id: maintenance-insp-側支架的檢查
+    title: 側支架的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: maintenance
+    span:
+    - 1377
+    - 1386
+    page_range:
+    - 98
+    - 98
+    summary: Technicians find instructions for checking side stand operation and lubricating
+      pivot points, metal-to-metal contact areas, and spring contact points with lithium
+      soap-based grease.
+    children: []
+  - node_id: maintenance-desc-主支架的潤滑
+    title: 主支架的潤滑
+    aliases:
+    - 主支架的檢查
+    node_type: description
+    subsystem: maintenance
+    span:
+    - 1386
+    - 1395
+    page_range:
+    - 98
+    - 98
+    summary: Technicians find instructions for lubricating the main stand's pivot
+      points, metal-to-metal contact areas, and spring contact points using lithium
+      soap-based grease.
+    children: []
+  - node_id: suspension-insp-前叉的檢查
+    title: 前叉的檢查
+    aliases:
+    - 側支架開關的檢查
+    node_type: inspection
+    subsystem: suspension
+    span:
+    - 1395
+    - 1414
+    page_range:
+    - 98
+    - 98
+    summary: Technicians find instructions for inspecting the front fork, including
+      checking the inner tube for damage/scratches and the seal for oil leaks, and
+      testing its operation by applying the front brake and compressing the handlebars.
+    children: []
+  - node_id: suspension-insp-後懸吊裝置的檢查
+    title: 後懸吊裝置的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: suspension
+    span:
+    - 1414
+    - 1429
+    page_range:
+    - 98
+    - 99
+    summary: Technicians find instructions for inspecting the rear suspension, including
+      checking the rear shock absorber assembly for oil leaks and smooth operation,
+      with references to specific replacement procedures.
+    children: []
+  - node_id: engine-insp-引擎機油量的檢查
+    title: 引擎機油量的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: engine
+    span:
+    - 1429
+    - 1457
+    page_range:
+    - 99
+    - 99
+    summary: Technicians find steps for checking engine oil level, ensuring it is
+      between the minimum "a" and maximum "b" marks on the dipstick, using recommended
+      SAE 10W-40 oil of API SG or higher grade.
+    children: []
+  - node_id: engine-op-引擎機油的更換
+    title: 引擎機油的更換
+    aliases: []
+    node_type: operation
+    subsystem: engine
+    span:
+    - 1457
+    - 1520
+    page_range:
+    - 99
+    - 100
+    summary: 技術人員在此找到更換引擎機油的步驟，包括排放機油、清潔或更換機油濾網、添加指定容量0.90 L的機油，以及檢查機油壓力並重設機油更換指示器。
+    children: []
+  - node_id: maintenance-insp-冷卻液量的檢查
+    title: 冷卻液量的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: maintenance
+    span:
+    - 1520
+    - 1539
+    page_range:
+    - 100
+    - 100
+    summary: Technicians find instructions for checking coolant level, ensuring it
+      is between the minimum "a" and maximum "b" marks, and using distilled water
+      if coolant is unavailable.
+    children: []
+  - node_id: cooling-insp-冷卻系統的檢查
+    title: 冷卻系統的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: cooling
+    span:
+    - 1539
+    - 1556
+    page_range:
+    - 101
+    - 101
+    summary: Technicians find instructions for inspecting the cooling system, including
+      tasks for removing and installing the radiator cap and checking components like
+      the radiator, hoses, thermostat assembly, and water pump inlet hose for cracks
+      or damage.
+    children: []
+  - node_id: maintenance-op-冷卻液的更換
+    title: 冷卻液的更換
+    aliases: []
+    node_type: operation
+    subsystem: maintenance
+    span:
+    - 1556
+    - 1686
+    page_range:
+    - 101
+    - 104
+    summary: Technicians find instructions for coolant replacement, including torque
+      specs like coolant drain bolts at 10 N·m (cylinder side) and 1.0 N·m (radiator
+      side), and gear oil replacement with a capacity of 0.15 L and a drain bolt torque
+      of 20 N·m.
+    children: []
+  - node_id: maintenance-op-v-皮帶的更換
+    title: V 皮帶的更換
+    aliases: []
+    node_type: operation
+    subsystem: maintenance
+    span:
+    - 1686
+    - 1708
+    page_range:
+    - 104
+    - 104
+    summary: This section provides the procedure for V-belt replacement, including
+      removal of the air cleaner box and V-belt case, inspection for damage or wear,
+      installation, and resetting the V-belt replacement indicator and odometer.
+    children: []
+  - node_id: brakes-insp-煞車燈開關的檢查
+    title: 煞車燈開關的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 1708
+    - 1713
+    page_range:
+    - 104
+    - 104
+    summary: Technicians find instructions for checking the operation of the front
+      and rear brake light switches by operating the brake lever and confirming the
+      brake light illuminates, with a fault reference to page 8-97.
+    children: []
+  - node_id: maintenance-insp-鋼索的檢查與潤滑
+    title: 鋼索的檢查與潤滑
+    aliases: []
+    node_type: inspection
+    subsystem: maintenance
+    span:
+    - 1713
+    - 1726
+    page_range:
+    - 104
+    - 104
+    summary: Technicians find procedures for inspecting and lubricating all inner
+      and outer cables, including checking for damage requiring replacement and ensuring
+      smooth operation with recommended lubricants like engine oil.
+    children: []
+  - node_id: maintenance-insp-油門握把操作的檢查
+    title: 油門握把操作的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: maintenance
+    span:
+    - 1726
+    - 1778
+    page_range:
+    - 104
+    - 106
+    summary: Technicians find procedures for inspecting throttle grip operation, including
+      checking the throttle cable and grip movement, adjusting the free play to 3.0–7.0
+      mm (0.12–0.28 in), and verifying proper return after adjustment.
+    children: []
+  - node_id: chassis_body-desc-車體
+    title: 車體
+    aliases: []
+    node_type: description
+    subsystem: chassis_body
+    span:
+    - 1778
+    - 1782
+    page_range:
+    - 107
+    - 109
+    summary: This section covers body panel removal/installation, wheel and brake
+      service (including ABS), and front/rear suspension component procedures like
+      fork disassembly and swingarm inspection.
+    children: []
+- node_id: chassis_body-desc-一般車體-1
+  title: 一般車體 （1）
+  aliases: []
+  node_type: description
+  subsystem: chassis_body
+  span:
+  - 1782
+  - 1810
+  page_range:
+  - 110
+  - 111
+  summary: Technicians find instructions for removing and installing the chest cover,
+    including the specified torque for the chest cover screw of 1.5 N·m (0.15 kgf·m,
+    1.1 lb·ft).
+  children:
+  - node_id: chassis_body-ri-胸蓋的拆卸
+    title: 胸蓋的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 1786
+    - 1795
+    page_range:
+    - 111
+    - 111
+    summary: Technicians find instructions for removing the front cover (胸蓋) by opening
+      the seat, removing screws, and detaching it from the side cover assembly.
+    children: []
+  - node_id: chassis_body-ri-胸蓋的安裝
+    title: 胸蓋的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 1795
+    - 1807
+    page_range:
+    - 111
+    - 111
+    summary: Technicians find instructions for installing the chest cover, including
+      the specified torque of 1.5 N·m for the chest cover screw.
+    children: []
+  - node_id: chassis_body-desc-一般車體-1-2
+    title: 一般車體 （1）
+    aliases: []
+    node_type: description
+    subsystem: chassis_body
+    span:
+    - 1807
+    - 1810
+    page_range:
+    - 111
+    - 111
+    summary: Technicians find instructions for installing the chest cover by aligning
+      its protruding points into the side cover assembly.
+    children: []
+- node_id: chassis_body-desc-一般車體-2
+  title: 一般車體 （2）
+  aliases: []
+  node_type: description
+  subsystem: chassis_body
+  span:
+  - 1810
+  - 1827
+  page_range:
+  - 112
+  - 113
+  summary: Technicians find instructions for removing and installing the storage box,
+    including the fuse box cover, with a specified torque of 7 N·m (0.7 kgf·m, 5.1
+    lb·ft).
+  children:
+  - node_id: chassis_body-desc-拆卸保險絲盒蓋
+    title: 拆卸保險絲盒蓋
+    aliases: []
+    node_type: description
+    subsystem: chassis_body
+    span:
+    - 1812
+    - 1819
+    page_range:
+    - 113
+    - 113
+    summary: Technicians find instructions for removing the fuse box cover, including
+      detaching its hook from the fuel lid projection and disengaging the fuel lid
+      projection from the cover's slot.
+    children: []
+  - node_id: chassis_body-desc-安裝保險絲盒蓋
+    title: 安裝保險絲盒蓋
+    aliases: []
+    node_type: description
+    subsystem: chassis_body
+    span:
+    - 1819
+    - 1825
+    page_range:
+    - 113
+    - 113
+    summary: Technicians find instructions for installing the fuse box cover by aligning
+      its slots and hook with the protrusions on the fuel tank cover.
+    children: []
+  - node_id: chassis_body-desc-一般車體-2-2
+    title: 一般車體 （2）
+    aliases: []
+    node_type: description
+    subsystem: chassis_body
+    span:
+    - 1825
+    - 1827
+    page_range:
+    - 113
+    - 113
+    summary: Technicians find body panel removal procedures, corrosion protection
+      guidelines, and structural component specifications for general vehicle body
+      repair in this section.
+    children: []
+- node_id: chassis_body-desc-一般車體-3
+  title: 一般車體 （3）
+  aliases: []
+  node_type: description
+  subsystem: chassis_body
+  span:
+  - 1827
+  - 1884
+  page_range:
+  - 114
+  - 117
+  summary: Technicians find procedures for removing and installing the rear cover,
+    lower side cowlings, and side cover assembly, including torque specifications
+    for side cover assembly screws of 4.0 N·m and 1.5 N·m.
+  children:
+  - node_id: chassis_body-ri-後蓋的拆卸
+    title: 後蓋的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 1831
+    - 1838
+    page_range:
+    - 116
+    - 116
+    summary: Technicians find instructions for removing the rear cover, including
+      removing the push rivets and sliding the cover backward.
+    children: []
+  - node_id: chassis_body-ri-後蓋的安裝
+    title: 後蓋的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 1838
+    - 1843
+    page_range:
+    - 116
+    - 116
+    summary: Technicians find instructions for installing the rear cover by sliding
+      it forward and installing the push rivets.
+    children: []
+  - node_id: chassis_body-desc-一般車體-3-2
+    title: 一般車體 （3）
+    aliases: []
+    node_type: description
+    subsystem: chassis_body
+    span:
+    - 1843
+    - 1845
+    page_range:
+    - 116
+    - 116
+    summary: 在一般車體（3）中，技術人員可找到關於車體結構檢查、車門調整以及車身板件間隙的標準規範與維修程序。
+    children: []
+  - node_id: chassis_body-ri-底側整流罩的拆卸
+    title: 底側整流罩的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 1845
+    - 1854
+    page_range:
+    - 116
+    - 116
+    summary: Technicians find instructions for removing the lower side cowling by
+      detaching push rivets, disengaging its tabs from the footrest bracket, and pulling
+      it free from the grommet on the front cowl lower inner panel.
+    children: []
+  - node_id: chassis_body-ri-底側整流罩的安裝
+    title: 底側整流罩的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 1854
+    - 1863
+    page_range:
+    - 116
+    - 117
+    summary: Technicians find instructions for installing the lower side cowling,
+      including aligning its projections with the front cowling's grommet and the
+      footrest's slot, and securing it with push rivets.
+    children: []
+  - node_id: chassis_body-ri-側蓋總成的拆卸
+    title: 側蓋總成的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 1863
+    - 1871
+    page_range:
+    - 117
+    - 117
+    summary: Technicians find the removal procedure for both side cover assemblies,
+      including steps to detach screws, disengage tabs from the rear fender, and pull
+      the assembly to release tabs from the footrest and rear lamp/brake lamp assembly
+      grommet.
+    children: []
+  - node_id: chassis_body-desc-一般車體-3-3
+    title: 一般車體 （3）
+    aliases: []
+    node_type: description
+    subsystem: chassis_body
+    span:
+    - 1871
+    - 1873
+    page_range:
+    - 117
+    - 117
+    summary: This section covers the removal and installation of the front bumper,
+      including procedures for the bumper cover, energy absorber, and related fasteners.
+    children: []
+  - node_id: chassis_body-ri-側蓋總成的安裝
+    title: 側蓋總成的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 1873
+    - 1884
+    page_range:
+    - 117
+    - 117
+    summary: Technicians find the installation procedure for both side cover assemblies,
+      including alignment steps with the footrest and rear fender, and torque specifications
+      of 4.0 N·m and 1.5 N·m for the screws.
+    children: []
+- node_id: chassis_body-desc-一般車體-4
+  title: 一般車體 （4）
+  aliases: []
+  node_type: description
+  subsystem: chassis_body
+  span:
+  - 1884
+  - 1896
+  page_range:
+  - 118
+  - 119
+  summary: Technicians find instructions for removing and installing the rear fender
+    cover, including disconnecting connectors for the license plate light and rear
+    turn signal, and a torque specification of 10 N·m for the fender bolts.
+  children:
+  - node_id: chassis_body-ri-後擋泥蓋的安裝
+    title: 後擋泥蓋的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 1886
+    - 1896
+    page_range:
+    - 119
+    - 119
+    summary: Technicians find instructions for installing the rear fender cover, including
+      aligning it with the rear lamp/brake light assembly and tightening its bolt
+      to 10 N·m (1.0 kgf·m, 7.2 lb·ft).
+    children: []
+- node_id: chassis_body-desc-一般車體-5
+  title: 一般車體 （5）
+  aliases: []
+  node_type: description
+  subsystem: chassis_body
+  span:
+  - 1896
+  - 1947
+  page_range:
+  - 120
+  - 122
+  summary: Technicians find procedures for removing and installing the front upper
+    panel and upper foot guard, including torque specifications like the front upper
+    panel screw at 1.5 N·m (0.15 kgf·m, 1.1 lb·ft).
+  children:
+  - node_id: chassis_body-ri-前上面板的拆卸
+    title: 前上面板的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 1900
+    - 1908
+    page_range:
+    - 121
+    - 121
+    summary: Technicians find instructions for removing the front upper panel by detaching
+      screws, releasing its tabs from the lower fender protector, and lifting it to
+      disengage tabs from the headlight grommet.
+    children: []
+  - node_id: chassis_body-ri-前上面板的安裝
+    title: 前上面板的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 1908
+    - 1914
+    page_range:
+    - 121
+    - 121
+    summary: Technicians find instructions for installing the front upper panel by
+      aligning its tabs with the headlight grommet and the lower fender guard slot.
+    children: []
+  - node_id: chassis_body-desc-一般車體-5-2
+    title: 一般車體 （5）
+    aliases: []
+    node_type: description
+    subsystem: chassis_body
+    span:
+    - 1914
+    - 1920
+    page_range:
+    - 121
+    - 121
+    summary: Technicians find the torque specification for installing the front upper
+      panel screw, which is 1.5 N·m (0.15 kgf·m, 1.1 lb·ft).
+    children: []
+  - node_id: chassis_body-ri-上腳防護擋板的拆卸
+    title: 上腳防護擋板的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 1920
+    - 1930
+    page_range:
+    - 121
+    - 122
+    summary: Technicians find instructions for removing the upper foot guard by pulling
+      it backward to disengage its tabs from the slots.
+    children: []
+  - node_id: instruments-ri-儀錶總成蓋的拆卸
+    title: 儀錶總成蓋的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: instruments
+    span:
+    - 1930
+    - 1938
+    page_range:
+    - 122
+    - 122
+    summary: Technicians find instructions for removing the instrument panel cover
+      by sliding it backward after removing screws.
+    children: []
+  - node_id: instruments-ri-儀錶總成蓋的安裝
+    title: 儀錶總成蓋的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: instruments
+    span:
+    - 1938
+    - 1947
+    page_range:
+    - 122
+    - 122
+    summary: 'Technicians find the installation procedure and torque specification
+      for the instrument cluster cover screws: 1.5 N·m (0.15 kgf·m, 1.1 lb·ft).'
+    children: []
+- node_id: chassis_body-desc-一般車體-6
+  title: 一般車體 （6）
+  aliases: []
+  node_type: description
+  subsystem: chassis_body
+  span:
+  - 1947
+  - 1969
+  page_range:
+  - 123
+  - 124
+  summary: Technicians find instructions for removing and installing the upper handlebar
+    cover, including the specified torque of 1.8 N·m for its screws.
+  children:
+  - node_id: chassis_body-ri-上方向把手蓋的拆卸
+    title: 上方向把手蓋的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 1949
+    - 1957
+    page_range:
+    - 124
+    - 124
+    summary: Technicians find instructions for removing the upper handlebar cover,
+      including detaching push rivets and screws and disengaging its tabs from the
+      lower cover's slots.
+    children: []
+  - node_id: chassis_body-ri-上方向把手蓋的安裝
+    title: 上方向把手蓋的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 1957
+    - 1963
+    page_range:
+    - 124
+    - 124
+    summary: Technicians find instructions for installing the upper handlebar cover
+      by aligning its protruding points with the slots on the lower handlebar cover.
+    children: []
+  - node_id: chassis_body-desc-一般車體-6-2
+    title: 一般車體 （6）
+    aliases: []
+    node_type: description
+    subsystem: chassis_body
+    span:
+    - 1963
+    - 1969
+    page_range:
+    - 124
+    - 124
+    summary: 'Technicians find the installation procedure and torque specification
+      for the upper handle cover screw: 1.8 N·m (0.18 kgf·m, 1.3 lb·ft).'
+    children: []
+- node_id: chassis_body-desc-一般車體-7
+  title: 一般車體 （7）
+  aliases: []
+  node_type: description
+  subsystem: chassis_body
+  span:
+  - 1969
+  - 2036
+  page_range:
+  - 125
+  - 128
+  summary: Technicians find procedures for removing and installing the lower leg guard
+    covers and front cowling, including torque specifications like 1.5 N·m for the
+    guard screws and 7 N·m for the cowling bolts.
+  children:
+  - node_id: chassis_body-ri-下腳防護擋板蓋的拆卸
+    title: 下腳防護擋板蓋的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 1972
+    - 2022
+    page_range:
+    - 126
+    - 127
+    summary: This section provides the removal and installation procedure for the
+      lower leg protection board cover, including aligning its tabs with slots and
+      tightening screws to 1.5 N·m.
+    children: []
+  - node_id: chassis_body-ri-下腳防護擋板的安裝
+    title: 下腳防護擋板的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 2022
+    - 2036
+    page_range:
+    - 127
+    - 128
+    summary: 该部分指导技师安装下脚防护挡板，包括中央螺丝扭矩为4.0 N·m和其余螺丝扭矩为1.5 N·m。
+    children: []
+- node_id: chassis_body-desc-一般車體-8
+  title: 一般車體 （8）
+  aliases: []
+  node_type: description
+  subsystem: chassis_body
+  span:
+  - 2036
+  - 2087
+  page_range:
+  - 129
+  - 131
+  summary: Technicians find procedures for removing and installing the front center
+    panel, front side panel, and front lower panel, including aligning tabs with slots
+    and a specified torque of 1.5 N·m for the front lower panel screws.
+  children:
+  - node_id: chassis_body-desc-一般車體-8-2
+    title: 一般車體 （8）
+    aliases: []
+    node_type: description
+    subsystem: chassis_body
+    span:
+    - 2036
+    - 2039
+    page_range:
+    - 129
+    - 129
+    summary: Technicians find general body specifications and procedures for vehicle
+      body maintenance and repair in this section.
+    children: []
+  - node_id: chassis_body-ri-前中面板的拆卸
+    title: 前中面板的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 2039
+    - 2046
+    page_range:
+    - 130
+    - 130
+    summary: Technicians find instructions for removing the front center panel by
+      detaching its protruding points from the side cowl's slot holes.
+    children: []
+  - node_id: chassis_body-ri-前中面板的安裝
+    title: 前中面板的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 2046
+    - 2052
+    page_range:
+    - 130
+    - 130
+    summary: Technicians find instructions for installing the front center panel by
+      aligning its protruding points into the side cowl's slot holes.
+    children: []
+  - node_id: chassis_body-desc-一般車體-8-3
+    title: 一般車體 （8）
+    aliases: []
+    node_type: description
+    subsystem: chassis_body
+    span:
+    - 2052
+    - 2054
+    page_range:
+    - 130
+    - 130
+    summary: Technicians find general body specifications and procedures for vehicle
+      body components, including dimensions, alignment data, and repair methods for
+      panels and structural elements.
+    children: []
+  - node_id: chassis_body-ri-前側面板的拆卸
+    title: 前側面板的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 2054
+    - 2061
+    page_range:
+    - 130
+    - 130
+    summary: Technicians find instructions for removing the front side panel by detaching
+      its protruding points from the slots in the side cowling.
+    children: []
+  - node_id: chassis_body-ri-前側面板的安裝
+    title: 前側面板的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 2061
+    - 2069
+    page_range:
+    - 130
+    - 131
+    summary: Technicians find the installation procedure for the front side panel,
+      detailing how to fit its protruding points into the side cowl's groove.
+    children: []
+  - node_id: chassis_body-ri-前下面板的拆卸
+    title: 前下面板的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 2069
+    - 2077
+    page_range:
+    - 131
+    - 131
+    summary: Technicians find instructions for removing the front lower panel, involving
+      the removal of screws and detaching its tabs from slots in the front side panel
+      and headlight assembly.
+    children: []
+  - node_id: chassis_body-ri-前下面板的安裝
+    title: 前下面板的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: chassis_body
+    span:
+    - 2077
+    - 2087
+    page_range:
+    - 131
+    - 131
+    summary: Technicians find instructions for installing the front lower panel, including
+      aligning its tabs with slots and tightening its screws to a torque of 1.5 N·m
+      (0.15 kgf·m, 1.1 lb·ft).
+    children: []
+- node_id: chassis_body-desc-一般車體-9
+  title: 一般車體 （9）
+  aliases: []
+  node_type: description
+  subsystem: chassis_body
+  span:
+  - 2087
+  - 2089
+  page_range:
+  - 132
+  - 132
+  summary: Technicians find instructions for removing the footrest, including disconnecting
+    the side stand switch lead and rear brake hose, and removing parts like the front
+    cowl inner panels and under cover.
+  children: []
+- node_id: general-desc-前輪
+  title: 前輪
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 2089
+  - 2295
+  page_range:
+  - 133
+  - 140
+  summary: 在前輪章節中，技術人員可以找到拆卸、分解、檢查、組立和安裝前輪總成的程序，包括檢查車輪失圓度（縱向限制1.0 mm，橫向限制0.5 mm）、感知器轉子偏斜量（限制0.25
+    mm）以及感知器與轉子之間的距離（1.02-1.76 mm），並附有相關的扭力規範。
+  children:
+  - node_id: general-parts-前輪
+    title: 前輪
+    aliases: []
+    node_type: parts
+    subsystem: general
+    span:
+    - 2089
+    - 2097
+    page_range:
+    - 133
+    - 135
+    summary: Technicians find the step-by-step procedure for removing and disassembling
+      the front wheel, including parts like the front wheel sensor, brake caliper,
+      axle, brake disc, wheel bearings, and seals.
+    children: []
+  - node_id: general-ri-前輪的拆卸
+    title: 前輪的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: general
+    span:
+    - 2097
+    - 2113
+    page_range:
+    - 136
+    - 136
+    summary: Technicians find instructions for removing the front wheel, including
+      the task of removing the front brake caliper and elevating the front wheel,
+      with a warning to support the vehicle securely.
+    children: []
+  - node_id: general-ri-前輪的分解
+    title: 前輪的分解
+    aliases: []
+    node_type: remove_install
+    subsystem: general
+    span:
+    - 2113
+    - 2125
+    page_range:
+    - 136
+    - 136
+    summary: Technicians find the disassembly procedure for the front wheel, covering
+      the removal of the oil seal "1" and the wheel bearing "3".
+    children: []
+  - node_id: general-insp-前輪的檢查
+    title: 前輪的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 2125
+    - 2152
+    page_range:
+    - 136
+    - 137
+    summary: Technicians find procedures for inspecting front wheel components, including
+      checking the axle and tire for damage, measuring longitudinal (limit 1.0 mm)
+      and lateral (limit 0.5 mm) wheel runout, and inspecting wheel bearings and oil
+      seals for replacement.
+    children: []
+  - node_id: general-desc-前輪感知器與感知器轉子的維修
+    title: 前輪感知器與感知器轉子的維修
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 2152
+    - 2243
+    page_range:
+    - 137
+    - 139
+    summary: Technicians find instructions for inspecting and measuring the front
+      wheel sensor and sensor rotor, including cleaning procedures, a DTC-free visual
+      check for damage, and a wheel sensor rotor deflection limit of 0.25 mm (0.0098
+      in).
+    children: []
+  - node_id: brakes-ri-前輪-碟式煞車-的安裝
+    title: 前輪（碟式煞車）的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: brakes
+    span:
+    - 2243
+    - 2295
+    page_range:
+    - 139
+    - 140
+    summary: Technicians find the installation procedure for the front wheel (disc
+      brake), including torque specifications for components like the sensor rotor
+      (8 N·m) and brake disc (23 N·m), and the required clearance between the sensor
+      rotor and sensor of 1.02-1.76 mm.
+    children: []
+- node_id: general-desc-後輪
+  title: 後輪
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 2295
+  - 2348
+  page_range:
+  - 141
+  - 142
+  summary: Technicians find instructions for removing and installing the rear wheel
+    and brake disc, including torque specifications of 8 N·m for the sensor rotor
+    bolt and 23 N·m for the brake disc bolt, and wheel runout limits of 1.0 mm (longitudinal)
+    and 0.5 mm (lateral).
+  children:
+  - node_id: brakes-ri-後輪-碟式煞車-的拆卸
+    title: 後輪（碟式煞車）的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: brakes
+    span:
+    - 2297
+    - 2307
+    page_range:
+    - 142
+    - 142
+    summary: Technicians find instructions for removing the rear wheel (disc brake),
+      including warnings to keep the sensor and rotor away from magnets and to support
+      the vehicle securely on a flat surface using the main stand.
+    children: []
+  - node_id: general-insp-後輪的檢查
+    title: 後輪的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 2307
+    - 2319
+    page_range:
+    - 142
+    - 142
+    summary: 'Technicians find procedures for inspecting the rear wheel and tire for
+      damage/wear and measuring wheel runout, with specified limits: longitudinal
+      wheel runout limit 1.0 mm (0.04 in) and lateral wheel runout limit 0.5 mm (0.02
+      in).'
+    children: []
+  - node_id: general-desc-後輪感知器轉子的維修
+    title: 後輪感知器轉子的維修
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 2319
+    - 2331
+    page_range:
+    - 142
+    - 142
+    summary: Technicians find instructions for inspecting the rear wheel sensor rotor
+      and measuring its runout, referencing the procedure for the front wheel sensor
+      and rotor on page 4-28.
+    children: []
+  - node_id: brakes-ri-後輪-碟式煞車-的安裝
+    title: 後輪 （碟式煞車）的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: brakes
+    span:
+    - 2331
+    - 2348
+    page_range:
+    - 142
+    - 142
+    summary: Technicians find installation steps for the rear wheel with disc brake,
+      including the rear wheel sensor rotor and brake disc, with torque specifications
+      of 8 N·m and 23 N·m respectively.
+    children: []
+- node_id: brakes-desc-前煞車
+  title: 前煞車
+  aliases: []
+  node_type: description
+  subsystem: brakes
+  span:
+  - 2348
+  - 2655
+  page_range:
+  - 143
+  - 154
+  summary: 技師在此找到前煞車系統的拆卸、檢查、更換與安裝程序，包括煞車碟失圓度限制0.15 mm、厚度限制3.0 mm，以及多項螺栓扭力值如煞車碟螺栓23
+    N·m、卡鉗螺栓35 N·m和空氣釋放螺絲5 N·m。
+  children:
+  - node_id: brakes-desc-簡介
+    title: 簡介
+    aliases: []
+    node_type: description
+    subsystem: brakes
+    span:
+    - 2360
+    - 2371
+    page_range:
+    - 149
+    - 149
+    summary: Technicians find warnings and precautions for disc brake maintenance,
+      including not disassembling components unnecessarily, bleeding the system after
+      disconnection, avoiding solvents, using only clean brake fluid, and immediate
+      first aid if brake fluid contacts eyes.
+    children: []
+  - node_id: brakes-insp-前煞車碟的檢查
+    title: 前煞車碟的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 2371
+    - 2480
+    page_range:
+    - 149
+    - 151
+    summary: Technicians find procedures for inspecting the front brake disc, including
+      measuring its runout limit of 0.15 mm and thickness limit of 3.0 mm, and adjusting
+      or replacing it if out of specification.
+    children: []
+  - node_id: brakes-insp-前煞車卡鉗的檢查
+    title: 前煞車卡鉗的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 2480
+    - 2500
+    page_range:
+    - 151
+    - 151
+    summary: Technicians find procedures for inspecting the front brake caliper, its
+      piston, cylinder, and body for damage, along with recommended replacement intervals
+      for components like brake pads and fluid.
+    children: []
+  - node_id: brakes-desc-前煞車卡鉗的組立
+    title: 前煞車卡鉗的組立
+    aliases: []
+    node_type: description
+    subsystem: brakes
+    span:
+    - 2500
+    - 2523
+    page_range:
+    - 151
+    - 152
+    summary: Technicians find instructions for assembling the front brake caliper,
+      including the specified brake fluid DOT 4 and a torque specification of 29 N·m
+      for the brake hose union bolt.
+    children: []
+  - node_id: brakes-desc-new
+    title: New
+    aliases: []
+    node_type: description
+    subsystem: brakes
+    span:
+    - 2523
+    - 2566
+    page_range:
+    - 152
+    - 152
+    summary: Technicians find instructions for removing the front brake master cylinder,
+      including draining the brake system, disconnecting the brake hose connection
+      bolt "1", copper washer "2", and front brake hose "3".
+    children: []
+  - node_id: brakes-insp-前煞車主缸的檢查
+    title: 前煞車主缸的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 2566
+    - 2584
+    page_range:
+    - 152
+    - 153
+    summary: Technicians find instructions for inspecting the front brake master cylinder,
+      its reservoir components, and the front brake hose for damage or blockages,
+      specifying replacement if issues like cracks, wear, or clogged fluid passages
+      are found.
+    children: []
+  - node_id: brakes-desc-前煞車主缸的組立
+    title: 前煞車主缸的組立
+    aliases: []
+    node_type: description
+    subsystem: brakes
+    span:
+    - 2584
+    - 2655
+    page_range:
+    - 153
+    - 154
+    summary: 此部分说明前刹车主缸的组装步骤，包括安装主缸、固定座、软管，添加指定DOT 4刹车油，并涉及刹车系统排气、液位检查及后刹车把手自由间隙调整为10.0–15.0
+      mm。
+    children: []
+- node_id: brakes-desc-後煞車
+  title: 後煞車
+  aliases: []
+  node_type: description
+  subsystem: brakes
+  span:
+  - 2655
+  - 3016
+  page_range:
+  - 155
+  - 168
+  summary: This section provides procedures for inspecting, disassembling, and servicing
+    the rear brake system, including checking the brake disc for a maximum runout
+    of 0.15 mm and a minimum thickness of 3.5 mm, replacing brake pads with a wear
+    limit of 0.8 mm, and specifying DOT 4 brake fluid.
+  children:
+  - node_id: brakes-desc-簡介-2
+    title: 簡介
+    aliases: []
+    node_type: description
+    subsystem: brakes
+    span:
+    - 2670
+    - 2681
+    page_range:
+    - 162
+    - 162
+    summary: Technicians find warnings about brake system maintenance, including not
+      disassembling components unnecessarily, bleeding the system after disconnection,
+      avoiding solvents, using only clean brake fluid, and immediate first aid if
+      brake fluid contacts eyes.
+    children: []
+  - node_id: brakes-insp-後煞車碟的檢查
+    title: 後煞車碟的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 2681
+    - 2708
+    page_range:
+    - 162
+    - 162
+    summary: 'Technicians find instructions for inspecting the rear brake disc, including
+      checks for damage/wear, measuring disc runout (limit: 0.15 mm) and thickness
+      (limit: 3.5 mm), and the rear brake disc bolt torque specification of 23 N·m.'
+    children: []
+  - node_id: brakes-op-後煞車片的更換
+    title: 後煞車片的更換
+    aliases: []
+    node_type: operation
+    subsystem: brakes
+    span:
+    - 2708
+    - 2754
+    page_range:
+    - 162
+    - 163
+    summary: Technicians find instructions for replacing rear brake pads, including
+      measuring pad thickness (limit 0.8 mm), installing new pads and springs, and
+      torque specifications for the caliper bolt (35 N·m) and air release screw (6
+      N·m).
+    children: []
+  - node_id: brakes-ri-後煞車卡鉗的拆卸
+    title: 後煞車卡鉗的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: brakes
+    span:
+    - 2754
+    - 2764
+    page_range:
+    - 163
+    - 163
+    summary: Technicians find instructions for removing the rear brake caliper, including
+      steps to detach the brake hose connection bolt (1), copper washer (2), and the
+      rear brake hose (3), after draining the brake fluid.
+    children: []
+  - node_id: brakes-ri-後煞車卡鉗的分解
+    title: 後煞車卡鉗的分解
+    aliases: []
+    node_type: remove_install
+    subsystem: brakes
+    span:
+    - 2764
+    - 2778
+    page_range:
+    - 163
+    - 164
+    summary: Technicians find instructions for disassembling the rear brake caliper,
+      including removing the piston, dust seal, and piston seal by applying compressed
+      air to the brake hose port.
+    children: []
+  - node_id: brakes-insp-後煞車卡鉗的檢查
+    title: 後煞車卡鉗的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 2778
+    - 2797
+    page_range:
+    - 164
+    - 164
+    summary: Technicians find inspection procedures for the rear brake caliper, including
+      checking the piston, cylinder, and body for damage, and recommended replacement
+      intervals for components like brake pads (as needed) and brake fluid (every
+      two years and whenever the brake is disassembled).
+    children: []
+  - node_id: brakes-desc-後煞車卡鉗的組立
+    title: 後煞車卡鉗的組立
+    aliases: []
+    node_type: description
+    subsystem: brakes
+    span:
+    - 2797
+    - 2804
+    page_range:
+    - 164
+    - 164
+    summary: Technicians find instructions for assembling the rear brake caliper,
+      including warnings to clean components with brake fluid, avoid solvents, replace
+      seals during disassembly, and use specified DOT 4 brake fluid.
+    children: []
+  - node_id: brakes-insp-駐車煞車塊的檢查
+    title: 駐車煞車塊的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 2804
+    - 2861
+    page_range:
+    - 164
+    - 165
+    summary: 'Technicians find instructions for inspecting the parking brake shoes,
+      including checking for polishing, measuring lining thickness (spec: 4.0 mm,
+      limit: 2.0 mm), measuring brake drum inner diameter (limit: 131.0 mm), and inspecting
+      the drum surface and camshaft for damage or wear.'
+    children: []
+  - node_id: brakes-desc-new-2
+    title: New
+    aliases: []
+    node_type: description
+    subsystem: brakes
+    span:
+    - 2861
+    - 2871
+    page_range:
+    - 165
+    - 166
+    summary: Technicians find instructions for installing the parking brake shoe assembly,
+      specifying to apply Yamaha grease F to the pivot pin and brake camshaft and
+      to orient the shoe assembly's concave part inward.
+    children: []
+  - node_id: brakes-ri-後煞車卡鉗的安裝
+    title: 後煞車卡鉗的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: brakes
+    span:
+    - 2871
+    - 2918
+    page_range:
+    - 166
+    - 166
+    summary: Technicians find instructions for installing the rear brake caliper,
+      including torque specifications of 29 N·m for the hose bolt and 35 N·m for the
+      caliper bolt, and using specified DOT 4 brake fluid.
+    children: []
+  - node_id: brakes-ri-後煞車主缸的拆卸
+    title: 後煞車主缸的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: brakes
+    span:
+    - 2918
+    - 2929
+    page_range:
+    - 166
+    - 167
+    summary: Technicians find instructions for removing the rear brake master cylinder,
+      including disconnecting the brake hose connection bolt "1" and the brake hose
+      "3".
+    children: []
+  - node_id: brakes-insp-後煞車主缸的檢查
+    title: 後煞車主缸的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 2929
+    - 2944
+    page_range:
+    - 167
+    - 167
+    summary: Technicians find instructions for inspecting the rear brake master cylinder,
+      including checking the cylinder body, fluid passages, reservoir, cover, diaphragm
+      seat, diaphragm, and brake hose for damage, wear, or blockages, with replacement
+      required if issues are found.
+    children: []
+  - node_id: brakes-desc-後煞車主缸的組立
+    title: 後煞車主缸的組立
+    aliases: []
+    node_type: description
+    subsystem: brakes
+    span:
+    - 2944
+    - 3016
+    page_range:
+    - 167
+    - 168
+    summary: Technicians find instructions for assembling the rear brake master cylinder,
+      including installation steps, torque specifications like 7 N·m for the mount
+      and 29 N·m for the hose bolt, and key adjustments such as the rear brake lever
+      free play of 10.0–15.0 mm.
+    children: []
+- node_id: abs-desc-abs-防鎖死煞車系統
+  title: ABS（防鎖死煞車系統）
+  aliases: []
+  node_type: description
+  subsystem: abs
+  span:
+  - 3016
+  - 3220
+  page_range:
+  - 169
+  - 175
+  summary: 本節說明如何拆卸、檢查和安裝ABS液壓單元總成，包括煞車軟管的拆裝順序、使用指定煞車液DOT 4、螺栓鎖緊扭力7 N·m與16 N·m，以及煞車管路配置確認和ABS反應力量確認的測試步驟。
+  children:
+  - node_id: abs-ri-液壓單元總成的拆卸
+    title: 液壓單元總成的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: abs
+    span:
+    - 3020
+    - 3050
+    page_range:
+    - 171
+    - 171
+    summary: Technicians find instructions for removing the hydraulic unit assembly,
+      including disconnecting the ABS ECU connector and brake hoses, and cautions
+      about brake fluid and tightening connecting bolts to the specified torque.
+    children: []
+  - node_id: abs-insp-液壓單元總成的檢查
+    title: 液壓單元總成的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: abs
+    span:
+    - 3050
+    - 3054
+    page_range:
+    - 171
+    - 171
+    summary: Technicians find instructions to inspect the hydraulic unit assembly
+      for cracks or damage, requiring replacement of the entire hydraulic unit assembly
+      and its connected brake hose if found.
+    children: []
+  - node_id: brakes-insp-煞車管的檢查
+    title: 煞車管的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: brakes
+    span:
+    - 3054
+    - 3060
+    page_range:
+    - 171
+    - 171
+    summary: Technicians find instructions for inspecting brake steel pipes, specifically
+      checking the flare nut ends for damage, with a procedure applicable to all such
+      pipes.
+    children: []
+  - node_id: abs-ri-液壓單元總成的安裝
+    title: 液壓單元總成的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: abs
+    span:
+    - 3060
+    - 3115
+    page_range:
+    - 171
+    - 172
+    summary: 此章节指导技师安装液压单元总成，包括螺栓扭矩7 N·m、刹车管扩口螺帽扭矩16 N·m、添加指定DOT 4刹车液、进行空气释放、检查操作并删除故障代码。
+    children: []
+  - node_id: brakes-desc-煞車管路配置確認
+    title: 煞車管路配置確認
+    aliases: []
+    node_type: description
+    subsystem: brakes
+    span:
+    - 3115
+    - 3143
+    page_range:
+    - 172
+    - 173
+    summary: 技师在此处找到使用山叶诊断工具（代码02）确认刹车管路配置的任务，涉及连接ABS测试接头并检查蓄电池电压需高于12.8 V。
+    children: []
+  - node_id: abs-desc-abs-防鎖死煞車系統-2
+    title: ABS（防鎖死煞車系統）
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 3143
+    - 3163
+    page_range:
+    - 173
+    - 173
+    summary: Technicians perform the ABS actuator check by operating both brake levers
+      simultaneously to verify hydraulic unit operation for about 5 seconds, checking
+      for correct pulse sequence, and deleting all fault codes if normal.
+    children: []
+  - node_id: abs-desc-abs-反應力量確認
+    title: ABS 反應力量確認
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 3163
+    - 3217
+    page_range:
+    - 174
+    - 175
+    summary: Technicians find instructions for performing the ABS reaction force confirmation
+      task using the Yamaha diagnostic tool, checking for brake fluid leaks, and deleting
+      any fault codes after confirming the hydraulic unit operates normally.
+    children: []
+  - node_id: abs-insp-abs-警告燈的檢查
+    title: ABS 警告燈的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: abs
+    span:
+    - 3217
+    - 3220
+    page_range:
+    - 175
+    - 175
+    summary: Technicians find the procedure to verify the ABS warning light extinguishes
+      after repairs, requiring a road test at speeds above 10 km/h (6 mph).
+    children: []
+- node_id: general-desc-方向把手
+  title: 方向把手
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 3220
+  - 3333
+  page_range:
+  - 176
+  - 180
+  summary: This section provides the procedure for removing, inspecting, and installing
+    the handlebar, including torque specifications like the handlebar bracket nut
+    at 53 N·m and key adjustments such as the throttle grip free play of 3.0–7.0 mm.
+  children:
+  - node_id: general-ri-方向把手的拆卸
+    title: 方向把手的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: general
+    span:
+    - 3224
+    - 3233
+    page_range:
+    - 178
+    - 178
+    summary: Technicians find instructions for removing the handlebar grips, including
+      the method of using compressed air to detach the handlebar grip "1".
+    children: []
+  - node_id: general-insp-方向把手的檢查
+    title: 方向把手的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 3233
+    - 3333
+    page_range:
+    - 178
+    - 180
+    summary: This section provides inspection and installation procedures for the
+      handlebar, including torque specifications like 53 N·m for the handlebar holder
+      nut and adjustment values such as 3.0–7.0 mm for throttle grip freeplay.
+    children: []
+- node_id: suspension-desc-前叉
+  title: 前叉
+  aliases: []
+  node_type: description
+  subsystem: suspension
+  span:
+  - 3333
+  - 3582
+  page_range:
+  - 181
+  - 191
+  summary: 在前叉章节，技术人员找到前叉的拆卸、分解、检查、组立和安装程序，包括前叉弹簧自由长度266.7 mm（限制261.3 mm）和主管/导管油量及油位规格。
+  children:
+  - node_id: suspension-ri-前叉腳的拆卸
+    title: 前叉腳的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: suspension
+    span:
+    - 3345
+    - 3402
+    page_range:
+    - 186
+    - 187
+    summary: Technicians find the procedure for disassembling the front fork leg,
+      including steps like draining the fork oil, removing the dust seal and oil seal
+      clip ring, and detaching the inner tube, with warnings to avoid damaging seals
+      and the stopper.
+    children: []
+  - node_id: suspension-insp-前叉腳的檢查
+    title: 前叉腳的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: suspension
+    span:
+    - 3402
+    - 3425
+    page_range:
+    - 187
+    - 187
+    summary: 'Technicians find procedures for inspecting front fork legs, including
+      checking the outer tube for bending/damage/scratches, measuring the fork spring
+      free length (spec: 266.7 mm, limit: 261.3 mm), and inspecting the damper rod
+      and stopper for damage or wear.'
+    children: []
+  - node_id: suspension-desc-前叉腳的組立
+    title: 前叉腳的組立
+    aliases: []
+    node_type: description
+    subsystem: suspension
+    span:
+    - 3425
+    - 3543
+    page_range:
+    - 187
+    - 190
+    summary: Technicians find the assembly procedure for front fork legs, including
+      required part replacements, specific torque specifications like 18 N·m for bolts,
+      and oil capacity/level specifications such as 159.0 cm³ and 53 mm for the main
+      fork.
+    children: []
+  - node_id: suspension-ri-前叉腳的安裝
+    title: 前叉腳的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: suspension
+    span:
+    - 3543
+    - 3582
+    page_range:
+    - 190
+    - 191
+    summary: Technicians find the installation procedure for the front fork leg, including
+      tightening the lower triple clamp adjusting bolt and front fork leg bolt to
+      50 N·m, and aligning the inner tube end with the top of the lower triple clamp.
+    children: []
+- node_id: steering-desc-前臂與下三角架
+  title: 前臂與下三角架
+  aliases: []
+  node_type: description
+  subsystem: steering
+  span:
+  - 3582
+  - 3663
+  page_range:
+  - 192
+  - 196
+  summary: This section provides procedures for removing and installing the front
+    arm and lower triple clamp, including torque specifications of 75 N·m, 38 N·m,
+    and 16 N·m, and a toe-in specification of -6 mm or more.
+  children:
+  - node_id: steering-desc-拆卸下三角架
+    title: 拆卸下三角架
+    aliases: []
+    node_type: description
+    subsystem: steering
+    span:
+    - 3588
+    - 3610
+    page_range:
+    - 195
+    - 195
+    summary: Technicians find instructions for removing the lower triple clamp, including
+      steps to remove specific nuts like the upper ring nut "~1" and the lower ring
+      nut ^ { 6 6 } 4 ^ { , 5 }, and the component itself "5".
+    children: []
+  - node_id: steering-insp-前臂、橫拉桿與下三角架的檢查
+    title: 前臂、橫拉桿與下三角架的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: steering
+    span:
+    - 3610
+    - 3630
+    page_range:
+    - 195
+    - 195
+    summary: Technicians find instructions for cleaning, inspecting, and replacing
+      the bearings, cups, front arm, tie rod, lower triangle frame, and tie rod ends,
+      specifying to replace if there is damage/dents or bending/cracking/damage.
+    children: []
+  - node_id: steering-ri-前臂的安裝
+    title: 前臂的安裝
+    aliases:
+    - 下三角架的安裝
+    node_type: remove_install
+    subsystem: steering
+    span:
+    - 3630
+    - 3663
+    page_range:
+    - 195
+    - 196
+    summary: Technicians find instructions for installing the front arm and lower
+      bracket, including a toe-in specification check where the value must be -6 mm
+      (-0.24 in) or greater.
+    children: []
+- node_id: steering-desc-轉向舵頭
+  title: 轉向舵頭
+  aliases: []
+  node_type: description
+  subsystem: steering
+  span:
+  - 3663
+  - 3776
+  page_range:
+  - 197
+  - 204
+  summary: Technicians find the disassembly and assembly sequence for the steering
+    head, including component inspection, bearing replacement, and torque specifications
+    like 110 N·m for the lower link arm bolt.
+  children:
+  - node_id: steering-desc-拆卸轉向機柱
+    title: 拆卸轉向機柱
+    aliases: []
+    node_type: description
+    subsystem: steering
+    span:
+    - 3675
+    - 3694
+    page_range:
+    - 202
+    - 202
+    summary: This section provides the procedure for removing the steering column,
+      including the sequence for removing components like the upper ring nut "1",
+      lower ring nut, and the required special tool, steering nut wrench "3".
+    children: []
+  - node_id: steering-insp-轉向舵頭的檢查
+    title: 轉向舵頭的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: steering
+    span:
+    - 3694
+    - 3718
+    page_range:
+    - 202
+    - 202
+    summary: Technicians find instructions for inspecting and replacing the steering
+      head's bearings and races, specifying to replace them as a set if damaged and
+      to use kerosene as the recommended cleaning solvent.
+    children: []
+  - node_id: steering-desc-安裝轉向機柱
+    title: 安裝轉向機柱
+    aliases: []
+    node_type: description
+    subsystem: steering
+    span:
+    - 3718
+    - 3732
+    page_range:
+    - 202
+    - 203
+    summary: Technicians find the installation procedure for the steering column,
+      including lubrication of the upper and lower bearings and the installation sequence
+      for components like the lower ring nut "1", rubber washer, center ring nut "2",
+      lock washer "3", upper ring nut "4", and the ring nut cover.
+    children: []
+  - node_id: steering-desc-安裝連桿臂和下三角架管
+    title: 安裝連桿臂和下三角架管
+    aliases: []
+    node_type: description
+    subsystem: steering
+    span:
+    - 3732
+    - 3776
+    page_range:
+    - 203
+    - 204
+    summary: This section provides the installation and tightening procedures for
+      the link arm and lower triple clamp, including specific torque specifications
+      such as 88 N·m for the front lower link arm nut and 110 N·m for the lower triple
+      clamp bolts.
+    children: []
+- node_id: suspension-desc-後緩衝器總成與搖臂
+  title: 後緩衝器總成與搖臂
+  aliases: []
+  node_type: description
+  subsystem: suspension
+  span:
+  - 3776
+  - 3904
+  page_range:
+  - 205
+  - 213
+  summary: 此章节提供后缓冲器总成与摇臂的拆卸、检查与安装步骤，包括后轮传感器保养、关键扭矩值（如后轮轴螺母95 N·m）以及传感器转子与摇臂间距规格（18.94–19.58
+    mm）。
+  children:
+  - node_id: suspension-ri-後緩衝器總成的拆卸
+    title: 後緩衝器總成的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: suspension
+    span:
+    - 3780
+    - 3786
+    page_range:
+    - 207
+    - 207
+    summary: Technicians find instructions for removing the rear cushion assembly,
+      including safely raising the vehicle on a flat surface using the main stand
+      to elevate the rear wheel.
+    children: []
+  - node_id: suspension-ri-搖臂的拆卸
+    title: 搖臂的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: suspension
+    span:
+    - 3786
+    - 3802
+    page_range:
+    - 207
+    - 207
+    summary: Technicians find instructions for removing the rocker arm, including
+      steps to detach the rear axle nut, rear brake hose bracket, rear wheel sensor,
+      and rear brake caliper, with a warning not to press the brake lever during caliper
+      removal.
+    children: []
+  - node_id: suspension-desc-後輪感知器的保養
+    title: 後輪感知器的保養
+    aliases: []
+    node_type: description
+    subsystem: suspension
+    span:
+    - 3802
+    - 3814
+    page_range:
+    - 207
+    - 207
+    summary: Technicians find rear wheel sensor maintenance procedures, including
+      inspection steps for the rear wheel sensor and sensor rotor, with warnings against
+      disassembly, impact, and exposure to magnetic fields.
+    children: []
+  - node_id: suspension-insp-後緩衝器總成的檢查
+    title: 後緩衝器總成的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: suspension
+    span:
+    - 3814
+    - 3826
+    page_range:
+    - 207
+    - 207
+    summary: Technicians find inspection procedures for the rear buffer assembly,
+      checking the rod, assembly, spring, bushings, and bolts for damage or wear,
+      with instructions to replace the entire assembly if issues like bending, oil
+      leakage, or wear are found.
+    children: []
+  - node_id: suspension-insp-搖臂的檢查
+    title: 搖臂的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: suspension
+    span:
+    - 3826
+    - 3836
+    page_range:
+    - 207
+    - 207
+    summary: Technicians find instructions for inspecting the rocker arm for bending/cracks/damage
+      requiring replacement, and for inspecting the spacer, collar, oil seal, and
+      bearing for damage/wear requiring replacement.
+    children: []
+  - node_id: suspension-ri-搖臂的安裝
+    title: 搖臂的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: suspension
+    span:
+    - 3836
+    - 3849
+    page_range:
+    - 207
+    - 207
+    summary: This section details the installation of the swingarm, including lubrication
+      of the oil seal lip with lithium soap-based grease, assembly of components like
+      bearing "1" and oil seal "2", and tightening the bearing retainer plate bolts
+      to 10 N·m.
+    children: []
+  - node_id: suspension-desc-後緩衝器總成與搖臂-2
+    title: 後緩衝器總成與搖臂
+    aliases: []
+    node_type: description
+    subsystem: suspension
+    span:
+    - 3849
+    - 3900
+    page_range:
+    - 208
+    - 210
+    summary: 'Technicians find installation and tightening procedures for the rear
+      cushion assembly and swingarm, including torque specifications: rear axle nut
+      at 95 N·m, swingarm mounting bolts at 57 N·m, and a required distance "a" measurement
+      of 18.94–19.58 mm after certain replacements.'
+    children: []
+  - node_id: engine-desc-引擎
+    title: 引擎
+    aliases: []
+    node_type: description
+    subsystem: engine
+    span:
+    - 3900
+    - 3904
+    page_range:
+    - 211
+    - 213
+    summary: 在引擎章節中，技術人員可找到引擎的檢查、壓縮壓力測量、拆卸與安裝，以及汽缸頭、凸輪軸、汽門、汽缸與活塞、V皮帶自動變速、起動離合器、AC發電機、電動起動器、機油泵浦、變速箱和曲軸等各組件的拆卸、檢查與安裝程序。
+    children: []
+- node_id: engine-desc-引擎的檢查
+  title: 引擎的檢查
+  aliases: []
+  node_type: description
+  subsystem: engine
+  span:
+  - 3904
+  - 3956
+  page_range:
+  - 214
+  - 215
+  summary: 在引擎的檢查中，技術人員進行壓縮壓力測量，其規格為1566–2016 kPa/860 r/min，並根據測量結果診斷活塞環磨損或汽缸頭等部件問題。
+  children:
+  - node_id: engine-insp-壓縮壓力的測量
+    title: 壓縮壓力的測量
+    aliases:
+    - 引擎的檢查
+    node_type: inspection
+    subsystem: engine
+    span:
+    - 3905
+    - 3956
+    page_range:
+    - 214
+    - 215
+    summary: This section provides the procedure for measuring engine compression
+      pressure, specifying the standard range as 1566–2016 kPa/860 r/min, and includes
+      troubleshooting steps for readings outside this range.
+    children: []
+- node_id: engine-desc-引擎的拆卸
+  title: 引擎的拆卸
+  aliases: []
+  node_type: description
+  subsystem: engine
+  span:
+  - 3956
+  - 4035
+  page_range:
+  - 216
+  - 221
+  summary: 此部分详细说明了引擎拆卸的步骤，包括断开VVA电磁阀接头、曲轴位置传感器接头等连接，并提供了引擎安装螺栓的扭矩规格为68 N·m。
+  children:
+  - node_id: engine-ri-引擎的安裝
+    title: 引擎的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: engine
+    span:
+    - 3964
+    - 4015
+    page_range:
+    - 220
+    - 221
+    summary: Technicians find the engine installation procedure, detailing steps for
+      installing collars, stoppers, engine mounts, and fasteners with specific torque
+      specifications like 68 N·m for front engine mount nuts/bolts and 54 N·m for
+      engine bracket nuts.
+    children: []
+  - node_id: engine-desc-連接導線
+    title: 連接導線
+    aliases: []
+    node_type: description
+    subsystem: engine
+    span:
+    - 4015
+    - 4028
+    page_range:
+    - 221
+    - 221
+    summary: Technicians find instructions for connecting the engine ground wire "1"
+      with a torque specification of 7 N·m and the spark plug cap "1", ensuring proper
+      routing away from the VVA solenoid and water pump inlet hose.
+    children: []
+  - node_id: engine-ri-排氣管的安裝
+    title: 排氣管的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: engine
+    span:
+    - 4028
+    - 4033
+    page_range:
+    - 221
+    - 221
+    summary: Technicians find instructions for installing the exhaust pipe, including
+      using a new gasket "1" for the cylinder head and orienting its protrusion "a"
+      toward the cylinder head.
+    children: []
+  - node_id: engine-ri-引擎的拆卸
+    title: 引擎的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: engine
+    span:
+    - 4033
+    - 4035
+    page_range:
+    - 221
+    - 221
+    summary: 该部分指导技师如何拆卸引擎，包括必要的步骤和注意事项。
+    children: []
+- node_id: engine-desc-汽缸頭
+  title: 汽缸頭
+  aliases: []
+  node_type: description
+  subsystem: engine
+  span:
+  - 4035
+  - 4212
+  page_range:
+  - 222
+  - 230
+  summary: 此部分说明汽缸头的拆卸、检查与安装步骤，包括对准正时标记、检查汽缸头弯曲（限制0.05 mm）、检查凸轮轴链轮磨损（超过1/4齿需更换）、检查VVA电磁阀，以及锁紧汽缸头螺帽（24
+    N·m）和螺栓（10 N·m）的扭力规格。
+  children:
+  - node_id: engine-ri-汽缸頭的拆卸
+    title: 汽缸頭的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: engine
+    span:
+    - 4045
+    - 4066
+    page_range:
+    - 226
+    - 226
+    summary: Technicians find instructions for removing the cylinder head, including
+      aligning the generator rotor's "I" mark, loosening the camshaft sprocket bolt
+      with tool 90890-04162, and the specific sequence for loosening bolts and nuts.
+    children: []
+  - node_id: engine-insp-汽缸頭的檢查
+    title: 汽缸頭的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: engine
+    span:
+    - 4066
+    - 4094
+    page_range:
+    - 226
+    - 227
+    summary: Technicians find procedures for inspecting the cylinder head, including
+      cleaning combustion chamber carbon, checking for damage/rust, and measuring
+      flatness with a specified limit of 0.05 mm (0.0020 in).
+    children: []
+  - node_id: engine-insp-凸輪軸鏈輪的檢查
+    title: 凸輪軸鏈輪的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: engine
+    span:
+    - 4094
+    - 4103
+    page_range:
+    - 227
+    - 227
+    summary: Technicians find instructions for inspecting the camshaft sprocket, specifying
+      replacement of the entire camshaft sprocket, timing chain, and crankshaft if
+      wear exceeds 1/4 of a tooth "a".
+    children: []
+  - node_id: engine-insp-正時鏈條張力器的檢查
+    title: 正時鏈條張力器的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: engine
+    span:
+    - 4103
+    - 4115
+    page_range:
+    - 227
+    - 227
+    summary: Technicians find instructions for inspecting the timing chain tensioner,
+      including steps to check for smooth extension of the tensioner rod and replacement
+      criteria for damage or irregular movement.
+    children: []
+  - node_id: engine-insp-減壓系統的檢查
+    title: 減壓系統的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: engine
+    span:
+    - 4115
+    - 4124
+    page_range:
+    - 227
+    - 228
+    summary: Technicians find instructions for checking the decompression system,
+      including verifying the decompression lever operates smoothly and its movement
+      range "a" matches the specified 20.88°.
+    children: []
+  - node_id: engine-insp-vva-電磁閥的檢查
+    title: VVA 電磁閥的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: engine
+    span:
+    - 4124
+    - 4128
+    page_range:
+    - 228
+    - 228
+    summary: Technicians find instructions for inspecting the VVA (Variable Valve
+      Actuator) solenoid valve "1" for cracks or damage, specifying replacement if
+      found.
+    children: []
+  - node_id: engine-ri-汽缸頭的安裝
+    title: 汽缸頭的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: engine
+    span:
+    - 4128
+    - 4212
+    page_range:
+    - 228
+    - 230
+    summary: Technicians find the cylinder head installation procedure, including
+      tightening cylinder head nuts to 24 N·m and bolts to 10 N·m, installing the
+      timing chain and tensioner, and final tightening of the camshaft sprocket bolt
+      to 30 N·m.
+    children: []
+- node_id: general-desc-凸輪軸
+  title: 凸輪軸
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 4212
+  - 4315
+  page_range:
+  - 231
+  - 234
+  summary: This section details the camshaft removal, inspection (including checking
+    for blue discoloration/pitting/scratches and measuring lobe heights like 32.211–32.311
+    mm for intake), and installation procedures, along with the inspection of rocker
+    arms and rocker arm shafts.
+  children:
+  - node_id: general-parts-凸輪軸
+    title: 凸輪軸
+    aliases: []
+    node_type: parts
+    subsystem: general
+    span:
+    - 4212
+    - 4216
+    page_range:
+    - 231
+    - 232
+    summary: This section provides the disassembly sequence and parts list for the
+      camshaft assembly, including components like the camshaft stopper plate, camshaft
+      assembly, rocker arms, and adjustment screws.
+    children: []
+  - node_id: general-desc-拆卸凸輪軸
+    title: 拆卸凸輪軸
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 4216
+    - 4225
+    page_range:
+    - 232
+    - 232
+    summary: Technicians find instructions for removing the camshaft assembly, including
+      loosening the intake and exhaust adjustment screws and using a slide hammer
+      to detach the assembly after aligning holes and pushing the rocker arm stopper
+      pin.
+    children: []
+  - node_id: general-insp-凸輪軸的檢查
+    title: 凸輪軸的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 4225
+    - 4232
+    page_range:
+    - 232
+    - 232
+    summary: Technicians find instructions for inspecting the camshaft lobes for blue
+      spots, pits, or scratches and measuring dimensions "a" and "b" against specifications,
+      requiring replacement if out of spec.
+    children: []
+  - node_id: general-spec-凸輪軸突部尺寸
+    title: 凸輪軸突部尺寸
+    aliases: []
+    node_type: specification
+    subsystem: general
+    span:
+    - 4232
+    - 4257
+    page_range:
+    - 232
+    - 233
+    summary: Technicians find camshaft lobe height specifications for intake, high-speed
+      intake, and exhaust, along with out-of-round limits and rocker shaft diameter
+      tolerances.
+    children: []
+  - node_id: suspension-insp-搖臂與搖臂軸的檢查
+    title: 搖臂與搖臂軸的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: suspension
+    span:
+    - 4257
+    - 4278
+    page_range:
+    - 233
+    - 233
+    summary: Technicians find procedures for inspecting rocker arms and shafts, including
+      checking for damage/wear, measuring rocker arm inner diameter (10.015 mm) and
+      shaft outer diameter, with replacement required if out of specification.
+    children: []
+  - node_id: general-desc-凸輪軸-2
+    title: 凸輪軸
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 4278
+    - 4280
+    page_range:
+    - 233
+    - 233
+    summary: Technicians find camshaft specifications, including lobe lift measurements
+      and timing marks, for proper engine assembly and valve timing alignment.
+    children: []
+  - node_id: suspension-desc-安裝凸輪軸與搖臂
+    title: 安裝凸輪軸與搖臂
+    aliases: []
+    node_type: description
+    subsystem: suspension
+    span:
+    - 4280
+    - 4315
+    page_range:
+    - 233
+    - 234
+    summary: 此部分说明如何安装凸轮轴总成与摇臂组件，包括润滑步骤、弹簧定位、对准摇臂孔与安装凸轮轴停止器板，并指定凸轮轴停止器板螺栓的扭矩为8 N·m。
+    children: []
+- node_id: general-desc-汽門與汽門彈簧
+  title: 汽門與汽門彈簧
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 4315
+  - 4501
+  page_range:
+  - 235
+  - 240
+  summary: 本節說明汽門與汽門彈簧的拆卸、檢查與安裝程序，包括測量汽門桿與導管間隙（進氣0.010–0.037 mm，排氣0.025–0.052 mm）、汽門座寬度（0.90–1.20
+    mm）及彈簧自由長度（33.79 mm）等規格。
+  children:
+  - node_id: general-ri-汽門的拆卸
+    title: 汽門的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: general
+    span:
+    - 4317
+    - 4405
+    page_range:
+    - 236
+    - 238
+    summary: 'Technicians find procedures for valve removal, inspection of valve-to-guide
+      clearance (intake: 0.010–0.037 mm limit 0.080 mm; exhaust: 0.025–0.052 mm limit
+      0.100 mm), guide replacement with a specified position of 9.9–10.3 mm, and checks
+      for valve stem out-of-roundness (0.010 mm).'
+    children: []
+  - node_id: general-insp-汽門座的檢查
+    title: 汽門座的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 4405
+    - 4455
+    page_range:
+    - 238
+    - 239
+    summary: 'Technicians find procedures for inspecting valve seats, including cleaning
+      carbon, checking for pitting/wear, measuring seat width (intake: 0.90–1.20 mm,
+      limit 1.6 mm; exhaust: 0.90–1.20 mm, limit 1.6 mm) using Prussian blue, and
+      lapping the seat and valve face.'
+    children: []
+  - node_id: general-insp-汽門彈簧的檢查
+    title: 汽門彈簧的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 4455
+    - 4465
+    page_range:
+    - 239
+    - 239
+    summary: Technicians find procedures for measuring valve spring free length and
+      tilt, with specifications for intake and exhaust springs being 33.79 mm free
+      length and a 32.10 mm limit.
+    children: []
+  - node_id: general-ri-汽門的安裝
+    title: 汽門的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: general
+    span:
+    - 4465
+    - 4501
+    page_range:
+    - 239
+    - 240
+    summary: 此部分说明汽门与气门弹簧的安装步骤，包括润滑气门杆和气门杆油封、安装气门弹簧座与气门锁扣，并指定使用汽门弹簧压缩器（90890-04019/YM-04019）及其附件（90890-04108/YM-04108）进行作业。
+    children: []
+- node_id: engine-desc-汽缸與活塞
+  title: 汽缸與活塞
+  aliases: []
+  node_type: description
+  subsystem: engine
+  span:
+  - 4501
+  - 4643
+  page_range:
+  - 241
+  - 245
+  summary: 在“汽缸與活塞”章节，技术人员可找到拆卸与安装汽缸、活塞及活塞环的步骤，以及检查部件磨损、测量汽缸内径（58.000-58.010 mm）、活塞与汽缸间隙（0.015–0.048
+    mm）和活塞环末端间隙（顶环限制0.50 mm，第2环限制0.85 mm）的规范。
+  children:
+  - node_id: engine-ri-活塞的拆卸
+    title: 活塞的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: engine
+    span:
+    - 4503
+    - 4523
+    page_range:
+    - 242
+    - 242
+    summary: Technicians find instructions for removing the piston, including the
+      piston pin circlip, piston pin, piston, and piston rings, along with the specific
+      tool number 90890-01304 for the piston pin puller.
+    children: []
+  - node_id: engine-insp-汽缸與活塞的檢查
+    title: 汽缸與活塞的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: engine
+    span:
+    - 4523
+    - 4597
+    page_range:
+    - 242
+    - 244
+    summary: 本節指導技術人員檢查汽缸與活塞，包括測量汽缸內徑（規格58.000-58.010 mm）、活塞與汽缸間隙（0.015–0.048 mm）、活塞環末端間隙（頂環限制0.50
+      mm，第2環限制0.85 mm）、活塞銷外徑（13.995–14.000 mm）以及活塞銷與活塞銷孔之間的間隙（0.002–0.018 mm）。
+    children: []
+  - node_id: engine-ri-活塞與汽缸的安裝
+    title: 活塞與汽缸的安裝
+    aliases:
+    - 排氣側正時鏈條導件的檢查
+    node_type: remove_install
+    subsystem: engine
+    span:
+    - 4597
+    - 4620
+    page_range:
+    - 244
+    - 244
+    summary: Technicians find instructions for installing piston rings and pistons,
+      ensuring manufacturer marks face up and piston markings point toward the exhaust
+      side.
+    children: []
+  - node_id: engine-desc-new
+    title: New
+    aliases: []
+    node_type: description
+    subsystem: engine
+    span:
+    - 4620
+    - 4643
+    page_range:
+    - 244
+    - 245
+    summary: Technicians find instructions for installing cylinder "1" with its gasket
+      and locating pin, plus aligning piston rings with specified end gaps for top,
+      second, upper oil rail, spacer, and lower oil rail rings on the exhaust side.
+    children: []
+- node_id: general-desc-v-皮帶自動變速
+  title: V 皮帶自動變速
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 4643
+  - 4873
+  page_range:
+  - 246
+  - 255
+  summary: Technicians find procedures for removing and installing the V-belt, primary
+    and secondary sheaves, including torque specifications like the secondary sheave
+    nut at 55 N·m and checks for components such as the clutch shoe thickness with
+    a limit of 2.5 mm.
+  children:
+  - node_id: general-parts-v-皮帶自動變速
+    title: V 皮帶自動變速
+    aliases: []
+    node_type: parts
+    subsystem: general
+    span:
+    - 4644
+    - 4653
+    page_range:
+    - 246
+    - 249
+    summary: 本節說明拆卸V皮帶、主槽輪與副槽輪的順序，包含主固定槽輪螺帽扭力值為49 N·m，以及相關零件如V皮帶、軸承和離合器殼等。
+    children: []
+  - node_id: general-desc-拆卸主槽輪
+    title: 拆卸主槽輪
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 4653
+    - 4665
+    page_range:
+    - 250
+    - 250
+    summary: Technicians find instructions for removing the main fixed sheave, including
+      steps to loosen the main fixed sheave nut using rotor holding tool 90890-01235
+      (YU-01235).
+    children: []
+  - node_id: general-desc-拆卸副槽輪
+    title: 拆卸副槽輪
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 4665
+    - 4683
+    page_range:
+    - 250
+    - 250
+    summary: Technicians find instructions for removing the secondary sheave, detailing
+      steps to remove the clutch housing nut and housing, and to loosen (but not remove)
+      the secondary sheave nut using specific tools like rotor holding tool YM-04166
+      and a 39 mm socket wrench.
+    children: []
+  - node_id: general-desc-分解副槽輪
+    title: 分解副槽輪
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 4683
+    - 4692
+    page_range:
+    - 250
+    - 250
+    summary: Technicians find instructions for disassembling the secondary sheave,
+      including removing the secondary sheave nut "1" using specific tools like the
+      sheave spring compressor "2" (90890-04134 or YM-04134) and the sheave holder
+      "3" (90890-04135 or YM-04135) for a V-belt automatic transmission.
+    children: []
+  - node_id: transmission-insp-離合器殼的檢查
+    title: 離合器殼的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: transmission
+    span:
+    - 4692
+    - 4704
+    page_range:
+    - 251
+    - 251
+    summary: Technicians find instructions for inspecting the clutch housing for damage/wear
+      and measuring its inner diameter "a" against the specification of 125.0 mm (4.92
+      in) to 126.0 mm (4.96 in), with replacement required for any non-conformity.
+    children: []
+  - node_id: transmission-insp-離合器塊的檢查
+    title: 離合器塊的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: transmission
+    span:
+    - 4704
+    - 4721
+    page_range:
+    - 251
+    - 251
+    summary: Technicians find procedures for inspecting the clutch shoe assembly,
+      including checking for damage/wear or polishing, measuring thickness against
+      a specification limit of 2.5 mm (0.10 in), and replacing the entire set if out
+      of spec.
+    children: []
+  - node_id: general-insp-v-皮帶的檢查
+    title: V 皮帶的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 4721
+    - 4733
+    page_range:
+    - 251
+    - 251
+    summary: Technicians find instructions for inspecting the V-belt for cracks, damage,
+      wear, or oil contamination, and measuring its width against the specified values
+      of 25.5 mm or 23.0 mm, with replacement required if out of specification.
+    children: []
+  - node_id: general-insp-主槽輪的檢查
+    title: 主槽輪的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 4733
+    - 4739
+    page_range:
+    - 251
+    - 251
+    summary: Technicians find instructions for inspecting the main sliding sheave,
+      main fixed sheave, and collar for cracks, damage, or wear, requiring replacement
+      of the entire set if found.
+    children: []
+  - node_id: general-insp-主槽輪滾珠的檢查
+    title: 主槽輪滾珠的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 4739
+    - 4750
+    page_range:
+    - 251
+    - 252
+    summary: Technicians find instructions for inspecting the main sheave ball, checking
+      for cracks/damage/wear and measuring its outer diameter against the specification
+      of 20.0 mm with a limit of 19.5 mm, requiring replacement if out of spec.
+    children: []
+  - node_id: general-insp-副槽輪的檢查
+    title: 副槽輪的檢查
+    aliases:
+    - 主槽輪滑件的檢查
+    node_type: inspection
+    subsystem: general
+    span:
+    - 4750
+    - 4771
+    page_range:
+    - 252
+    - 252
+    summary: Technicians find instructions for inspecting the sub-pulley, including
+      checking for cracks/damage/wear on the sub-fixed pulley, the torque cam groove,
+      and guide pin "1", with a specified compression spring free length of 95.0 mm
+      and a limit of 85.5 mm.
+    children: []
+  - node_id: general-desc-副槽輪的組立
+    title: 副槽輪的組立
+    aliases:
+    - 主槽輪的組立
+    node_type: description
+    subsystem: general
+    span:
+    - 4771
+    - 4803
+    page_range:
+    - 252
+    - 253
+    summary: Technicians find assembly steps for the secondary sheave, including lubrication
+      of the secondary sliding sheave inner surface and oil seal "1" using Shell dolium
+      grease R® or Yamaha grease E, and installation of a new oil seal and the secondary
+      sliding sheave "1" using the oil seal guide "3".
+    children: []
+  - node_id: general-desc-new-2
+    title: New 2
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 4803
+    - 4816
+    page_range:
+    - 253
+    - 253
+    summary: Technicians find instructions for installing the spring seat, compression
+      spring, clutch starter, and sub-sheave nut "1" using specific tools like the
+      sheave spring compressor "2" (90890-04134 or YM-04134) and sheave holding block
+      "3" (90890-04135 or YM-04135).
+    children: []
+  - node_id: general-ri-主槽輪、v-皮帶與副槽輪的安裝
+    title: 主槽輪、V 皮帶與副槽輪的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: general
+    span:
+    - 4816
+    - 4873
+    page_range:
+    - 253
+    - 255
+    summary: Technicians find installation steps and torque specifications for the
+      primary sheave, V-belt, and secondary sheave, including secondary sheave nut
+      at 55 N·m, clutch housing nut at 45 N·m, and primary fixed sheave nut at 49
+      N·m.
+    children: []
+- node_id: transmission-desc-起動離合器
+  title: 起動離合器
+  aliases: []
+  node_type: description
+  subsystem: transmission
+  span:
+  - 4873
+  - 4921
+  page_range:
+  - 256
+  - 258
+  summary: Technicians find the disassembly sequence, inspection procedures for the
+    starter clutch, idle gear, starter wheel, timing chain and guides, and the installation
+    specification for the oil seal with an installation depth of 1.0–1.5 mm (0.04–0.06
+    in).
+  children:
+  - node_id: transmission-parts-起動離合器
+    title: 起動離合器
+    aliases: []
+    node_type: parts
+    subsystem: transmission
+    span:
+    - 4873
+    - 4879
+    page_range:
+    - 256
+    - 257
+    summary: Technicians find the disassembly sequence and parts list for the starter
+      clutch, including the application of Yamaha Bond No.1215 (90890-85505).
+    children: []
+  - node_id: transmission-insp-起動輪的檢查
+    title: 起動輪的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: transmission
+    span:
+    - 4879
+    - 4891
+    page_range:
+    - 258
+    - 258
+    summary: Technicians find procedures for inspecting the starter wheel assembly,
+      including checking the bearing, starter clutch idler gear, starter wheel "1",
+      and the starter wheel's contact surface for damage, wear, or burrs, with instructions
+      to replace any faulty parts.
+    children: []
+  - node_id: transmission-insp-起動離合器的檢查
+    title: 起動離合器的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: transmission
+    span:
+    - 4891
+    - 4899
+    page_range:
+    - 258
+    - 258
+    summary: Technicians find instructions for checking the starter clutch operation,
+      including steps to install the starter wheel and test engagement when turned
+      counterclockwise and free rotation when turned clockwise, indicating replacement
+      if faulty.
+    children: []
+  - node_id: transmission-insp-正時鏈條的檢查
+    title: 正時鏈條的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: transmission
+    span:
+    - 4899
+    - 4905
+    page_range:
+    - 258
+    - 258
+    summary: Technicians find instructions for inspecting the timing chain for damage
+      or stiffening, specifying replacement of the entire timing chain and camshaft
+      chain sprocket if such issues are present.
+    children: []
+  - node_id: transmission-ri-起動離合器的安裝
+    title: 起動離合器的安裝
+    aliases:
+    - 正時鏈條導件（進氣側）的檢查
+    node_type: remove_install
+    subsystem: transmission
+    span:
+    - 4905
+    - 4921
+    page_range:
+    - 258
+    - 258
+    summary: 此部分说明如何安装起动离合器，包括安装油封（深度1.0–1.5 mm）和检查进气侧正时链条导件是否损坏或磨损。
+    children: []
+- node_id: general-desc-ac-發電機
+  title: AC 發電機
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 4921
+  - 4962
+  page_range:
+  - 259
+  - 260
+  summary: 本節說明AC發電機的拆卸與安裝步驟，包括拆卸轉子螺帽（需使用專用工具）和轉子（需使用飛輪拉出器），並指定轉子螺帽的鎖緊扭力為80 N·m。
+  children:
+  - node_id: general-parts-ac-發電機
+    title: AC 發電機
+    aliases: []
+    node_type: parts
+    subsystem: general
+    span:
+    - 4921
+    - 4924
+    page_range:
+    - 259
+    - 259
+    summary: Technicians find the disassembly sequence for the AC generator, including
+      parts like the AC generator rotor (1), stator coil assembly (1), and crankshaft
+      position sensor (1).
+    children: []
+  - node_id: general-desc-拆卸-ac-發電機
+    title: 拆卸 AC 發電機
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 4924
+    - 4943
+    page_range:
+    - 260
+    - 260
+    summary: Technicians find instructions for removing the AC generator, including
+      steps to remove the rotor nut using rotor holding tool 90890-01235 and the rotor
+      itself using flywheel puller 90890-01189, while noting precautions to protect
+      the crankshaft.
+    children: []
+  - node_id: general-desc-安裝-ac-發電機
+    title: 安裝 AC 發電機
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 4943
+    - 4962
+    page_range:
+    - 260
+    - 260
+    summary: Technicians find the procedure for installing the AC generator, including
+      installing components like the rotor and tightening the generator rotor nut
+      to 80 N·m (8.0 kgf·m, 58 lb·ft) using the specified rotor holding tool.
+    children: []
+- node_id: starting-desc-電動起動器
+  title: 電動起動器
+  aliases: []
+  node_type: description
+  subsystem: starting
+  span:
+  - 4962
+  - 5046
+  page_range:
+  - 261
+  - 264
+  summary: Technicians find procedures for inspecting the electric starter motor,
+    including checking the commutator diameter (spec limit 17.6 mm), armature coil
+    resistance (0.0279–0.0341Ω), brush length (wear limit 3.50 mm), and brush spring
+    force (3.92–5.88 N).
+  children:
+  - node_id: starting-parts-電動起動器
+    title: 電動起動器
+    aliases: []
+    node_type: parts
+    subsystem: starting
+    span:
+    - 4962
+    - 4967
+    page_range:
+    - 261
+    - 262
+    summary: This section provides the disassembly sequence for the starter motor,
+      listing components like the starter motor front cover, gasket, armature assembly,
+      brush holder set, and rear cover.
+    children: []
+  - node_id: starting-insp-起動馬達的檢查
+    title: 起動馬達的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: starting
+    span:
+    - 4967
+    - 5027
+    page_range:
+    - 263
+    - 264
+    summary: Technicians find procedures for inspecting the starter motor, including
+      cleaning the commutator, measuring its diameter (limit 16.6 mm), mica undercut
+      depth (1.35 mm), armature coil resistance (0.0279–0.0341Ω), brush length (limit
+      3.50 mm), and brush spring force (3.92–5.88 N).
+    children: []
+  - node_id: starting-desc-起動馬達的組立
+    title: 起動馬達的組立
+    aliases: []
+    node_type: description
+    subsystem: starting
+    span:
+    - 5027
+    - 5036
+    page_range:
+    - 264
+    - 264
+    summary: Technicians find instructions for assembling the starter motor, including
+      aligning the front and rear cover marks "a" and "b", and tightening the cover
+      bolts to 2.5 N·m.
+    children: []
+  - node_id: starting-ri-起動馬達的安裝
+    title: 起動馬達的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: starting
+    span:
+    - 5036
+    - 5046
+    page_range:
+    - 264
+    - 264
+    summary: Technicians find instructions for installing the starter motor, including
+      connecting the starter motor cable "1" to the starter motor "2" with a torque
+      of 3.5 N·m and aligning the cable parallel to the motor shaft "a".
+    children: []
+- node_id: lubrication-desc-機油泵浦
+  title: 機油泵浦
+  aliases: []
+  node_type: description
+  subsystem: lubrication
+  span:
+  - 5046
+  - 5097
+  page_range:
+  - 265
+  - 267
+  summary: This section provides the disassembly sequence, inspection procedures,
+    and assembly steps for the oil pump, including key clearance specifications like
+    the inner-to-outer rotor tip clearance limit of 0.23 mm and the outer rotor-to-body
+    clearance of 0.13-0.18 mm.
+  children:
+  - node_id: lubrication-parts-機油泵浦
+    title: 機油泵浦
+    aliases: []
+    node_type: parts
+    subsystem: lubrication
+    span:
+    - 5046
+    - 5051
+    page_range:
+    - 265
+    - 266
+    summary: This section provides the disassembly sequence for the oil pump, listing
+      components like the oil pump cover, driven gear, rotor assembly, inner rotor,
+      outer rotor, and housing.
+    children: []
+  - node_id: lubrication-insp-機油泵浦的檢查
+    title: 機油泵浦的檢查
+    aliases:
+    - 機油濾網的檢查
+    node_type: inspection
+    subsystem: lubrication
+    span:
+    - 5051
+    - 5075
+    page_range:
+    - 267
+    - 267
+    summary: Technicians find procedures for inspecting the oil pump and strainer,
+      including checking components for damage, measuring rotor clearances (0.150
+      mm limit 0.23 mm, 0.13-0.18 mm limit 0.25 mm), and verifying pump operation.
+    children: []
+  - node_id: lubrication-desc-機油泵浦的組立
+    title: 機油泵浦的組立
+    aliases: []
+    node_type: description
+    subsystem: lubrication
+    span:
+    - 5075
+    - 5097
+    page_range:
+    - 267
+    - 267
+    summary: Technicians find assembly instructions for the oil pump, including lubrication
+      steps for components like the inner and outer rotors, installation torque of
+      1.0 N·m for the pump cover screw, and a reference for operational checks.
+    children: []
+- node_id: transmission-desc-變速箱
+  title: 變速箱
+  aliases: []
+  node_type: description
+  subsystem: transmission
+  span:
+  - 5097
+  - 5141
+  page_range:
+  - 268
+  - 270
+  summary: 在變速箱檢查部分，技術人員檢查變速齒輪的藍色色斑/凹坑/磨耗、卡爪的龜裂/損傷/圓邊，以及齒輪嚙合與動作是否平順，並在安裝部分遵循油封、夾環、主從動齒輪的安裝深度與螺栓鎖緊扭力規範，如變速箱蓋螺栓19
+    N·m和齒輪油排油螺栓20 N·m。
+  children:
+  - node_id: transmission-parts-變速箱
+    title: 變速箱
+    aliases: []
+    node_type: parts
+    subsystem: transmission
+    span:
+    - 5097
+    - 5102
+    page_range:
+    - 268
+    - 269
+    summary: This section provides the disassembly sequence and parts list for the
+      transmission, including components like the gear oil filler cap, drain bolt,
+      transmission cover, main shaft assembly, and bearings.
+    children: []
+  - node_id: transmission-insp-變速箱的檢查
+    title: 變速箱的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: transmission
+    span:
+    - 5102
+    - 5112
+    page_range:
+    - 270
+    - 270
+    summary: This section details the inspection of the transmission, including checking
+      transmission gears for blue spots/pitting/wear and their dogs for cracks/damage/rounding,
+      inspecting gear meshing, and ensuring smooth gear operation, with instructions
+      to replace faulty components or reassemble as needed.
+    children: []
+  - node_id: transmission-ri-變速箱的安裝
+    title: 變速箱的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: transmission
+    span:
+    - 5112
+    - 5141
+    page_range:
+    - 270
+    - 270
+    summary: Technicians find instructions for installing transmission seals, clips,
+      gears, and covers, including specific installation depths like 26.7–26.8 mm
+      and torque specifications such as 19 N·m for the cover bolts.
+    children: []
+- node_id: engine-desc-曲軸
+  title: 曲軸
+  aliases: []
+  node_type: description
+  subsystem: engine
+  span:
+  - 5141
+  - 5246
+  page_range:
+  - 271
+  - 277
+  summary: Technicians find procedures for disassembling and inspecting the crankshaft
+    assembly, including checking crankshaft runout with a limit of 0.030 mm and width
+    of 51.45–51.50 mm, and reassembling the crankcase using sealant.
+  children:
+  - node_id: engine-ri-曲軸箱的分解
+    title: 曲軸箱的分解
+    aliases: []
+    node_type: remove_install
+    subsystem: engine
+    span:
+    - 5146
+    - 5158
+    page_range:
+    - 273
+    - 273
+    summary: Technicians find instructions for disassembling the crankcase, including
+      removing the crankcase bolts in a crisscross pattern and carefully separating
+      the left crankcase using a soft hammer on reinforced areas.
+    children: []
+  - node_id: engine-ri-曲軸總成的拆卸
+    title: 曲軸總成的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: engine
+    span:
+    - 5158
+    - 5169
+    page_range:
+    - 273
+    - 273
+    summary: Technicians find instructions for removing the crankshaft assembly "1"
+      using the crankshaft case separator tool "2" and M6 bolts "3", with tool part
+      numbers 90890-01135 and YU-01135-B specified.
+    children: []
+  - node_id: engine-desc-曲軸-2
+    title: 曲軸
+    aliases: []
+    node_type: description
+    subsystem: engine
+    span:
+    - 5169
+    - 5171
+    page_range:
+    - 273
+    - 273
+    summary: The technician finds specifications for the crankshaft, including its
+      inspection procedures, dimensional tolerances, and any associated diagnostic
+      trouble codes (DTCs) related to crankshaft position sensor faults.
+    children: []
+  - node_id: engine-insp-曲軸總成的檢查
+    title: 曲軸總成的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: engine
+    span:
+    - 5171
+    - 5192
+    page_range:
+    - 273
+    - 274
+    summary: Technicians find procedures for inspecting the crankshaft assembly, including
+      measuring its out-of-round limit (0.030 mm) and width specification (51.45–51.50
+      mm), and checking the crankshaft sprocket and bearings for damage.
+    children: []
+  - node_id: engine-insp-曲軸箱的檢查
+    title: 曲軸箱的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: engine
+    span:
+    - 5192
+    - 5198
+    page_range:
+    - 274
+    - 274
+    summary: 技師在此節中進行曲軸箱檢查，任務包括清洗曲軸箱、清潔墊片表面，並檢查曲軸箱是否有龜裂或損傷，若發現則需更換。
+    children: []
+  - node_id: lubrication-insp-機油泵浦驅動齒輪的檢查
+    title: 機油泵浦驅動齒輪的檢查
+    aliases:
+    - 檢查軸承
+    node_type: inspection
+    subsystem: lubrication
+    span:
+    - 5198
+    - 5206
+    page_range:
+    - 274
+    - 274
+    summary: Technicians find instructions for inspecting the oil pump drive gear
+      and its bearing, specifying to replace them if operation is not smooth or if
+      damage/wear is present.
+    children: []
+  - node_id: engine-ri-曲軸的安裝
+    title: 曲軸的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: engine
+    span:
+    - 5206
+    - 5214
+    page_range:
+    - 274
+    - 274
+    summary: Technicians find instructions for installing the crankshaft assembly
+      using specific tools like the crankshaft installer bushing and bolts, ensuring
+      the connecting rod is held at TDC until the assembly contacts the bearing.
+    children: []
+  - node_id: engine-desc-曲軸箱的組立
+    title: 曲軸箱的組立
+    aliases: []
+    node_type: description
+    subsystem: engine
+    span:
+    - 5214
+    - 5233
+    page_range:
+    - 274
+    - 275
+    summary: Technicians find instructions for assembling the crankcase, including
+      cleaning surfaces, applying Yamaha bond No.121590890-85505 sealant to the mating
+      surface while avoiding oil passages, installing the right crankcase and bolts,
+      and tightening bolts to 10 N·m in a crisscross pattern.
+    children: []
+  - node_id: engine-desc-安裝主支架
+    title: 安裝主支架
+    aliases: []
+    node_type: description
+    subsystem: engine
+    span:
+    - 5233
+    - 5244
+    page_range:
+    - 275
+    - 276
+    summary: • 主支架 " ~ 1 "
+    children: []
+  - node_id: cooling-desc-冷卻系統
+    title: 冷卻系統
+    aliases: []
+    node_type: description
+    subsystem: cooling
+    span:
+    - 5244
+    - 5246
+    page_range:
+    - 277
+    - 277
+    summary: Technicians find procedures for inspecting and installing the radiator,
+      checking and installing the thermostat assembly, and disassembling, inspecting,
+      assembling, and installing the water pump.
+    children: []
+- node_id: cooling-desc-水箱
+  title: 水箱
+  aliases: []
+  node_type: description
+  subsystem: cooling
+  span:
+  - 5246
+  - 5303
+  page_range:
+  - 278
+  - 281
+  summary: Technicians find instructions for inspecting the radiator, including checking
+    fins/hoses, measuring the radiator cap valve opening pressure (108.0–137.4 kPa),
+    and performing a cooling system pressure test (196 kPa), followed by installation
+    steps.
+  children:
+  - node_id: cooling-insp-水箱的檢查
+    title: 水箱的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: cooling
+    span:
+    - 5250
+    - 5277
+    page_range:
+    - 280
+    - 280
+    summary: Technicians find instructions for inspecting the radiator core for blockages
+      or damage, checking hoses for cracks, measuring the radiator cap's valve opening
+      pressure (108.0–137.4 kPa), and inspecting the radiator fan for damage.
+    children: []
+  - node_id: cooling-ri-水箱的安裝
+    title: 水箱的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: cooling
+    span:
+    - 5277
+    - 5303
+    page_range:
+    - 280
+    - 281
+    summary: This section provides installation steps for the radiator, including
+      adding coolant to the specified capacity, checking the cooling system for leaks
+      using a pressure test at 196 kPa, measuring radiator cap opening pressure, and
+      installing the rear brake hose bracket with a torque of 10 N·m.
+    children: []
+- node_id: general-desc-恆溫器
+  title: 恆溫器
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 5303
+  - 5335
+  page_range:
+  - 282
+  - 283
+  summary: Technicians find thermostat removal steps, inspection criteria where it
+    should open at 74–78 °C and align at 90 °C, and installation checks for cooling
+    system leaks and radiator cap pressure.
+  children:
+  - node_id: general-insp-恆溫器總成的檢查
+    title: 恆溫器總成的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 5310
+    - 5327
+    page_range:
+    - 283
+    - 283
+    summary: Technicians find instructions for checking the thermostat assembly, including
+      verifying it opens at 74–78 °C and that at 90 °C the thermostat element aligns
+      with the lower edge of the hole, or to replace it.
+    children: []
+  - node_id: general-ri-恆溫器總成的安裝
+    title: 恆溫器總成的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: general
+    span:
+    - 5327
+    - 5335
+    page_range:
+    - 283
+    - 283
+    summary: Technicians find instructions for installing the thermostat assembly,
+      including adding coolant to the specified capacity, checking for cooling system
+      leaks, and measuring if the radiator cap opening pressure is below the specified
+      value.
+    children: []
+- node_id: general-desc-水泵浦
+  title: 水泵浦
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 5335
+  - 5402
+  page_range:
+  - 284
+  - 289
+  summary: 在水泵浦章节，技术人员可找到水泵浦总成的拆卸、检查、组装和安装步骤，包括水泵浦油封安装深度0-0.5 mm以及水泵浦总成螺栓扭矩10 N·m等关键规格。
+  children:
+  - node_id: general-parts-水泵浦
+    title: 水泵浦
+    aliases: []
+    node_type: parts
+    subsystem: general
+    span:
+    - 5335
+    - 5341
+    page_range:
+    - 284
+    - 286
+    summary: 技术人员在此部分找到水泵总成的拆卸步骤，包括断开活性碳罐清除软管和水泵进水软管，并移除两个定位销。
+    children: []
+  - node_id: general-ri-水泵浦的分解
+    title: 水泵浦的分解
+    aliases: []
+    node_type: remove_install
+    subsystem: general
+    span:
+    - 5341
+    - 5347
+    page_range:
+    - 286
+    - 286
+    summary: Technicians find instructions for disassembling the water pump, specifically
+      for removing the water pump oil seal (1) from the inside of the water pump housing
+      (2).
+    children: []
+  - node_id: general-desc-水泵浦的組立
+    title: 水泵浦的組立
+    aliases:
+    - 水泵浦的檢查
+    node_type: description
+    subsystem: general
+    span:
+    - 5347
+    - 5375
+    page_range:
+    - 286
+    - 286
+    summary: Technicians find instructions for assembling the water pump, including
+      installing the water pump oil seal to a specified depth of 0-0.5 mm (0-0.02
+      in) and checking the impeller shaft for smooth rotation after installation.
+    children: []
+  - node_id: general-ri-水泵浦的安裝
+    title: 水泵浦的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: general
+    span:
+    - 5375
+    - 5400
+    page_range:
+    - 286
+    - 288
+    summary: Technicians find the installation procedure for the water pump assembly,
+      including aligning the impeller shaft with the camshaft sprocket bolt, torquing
+      bolts to 10 N·m, lubricating the O-ring, adding coolant, and checking the system
+      for leaks and the radiator cap's opening pressure.
+    children: []
+  - node_id: fuel-desc-汽油系統
+    title: 汽油系統
+    aliases: []
+    node_type: description
+    subsystem: fuel
+    span:
+    - 5400
+    - 5402
+    page_range:
+    - 289
+    - 289
+    summary: Technicians find procedures for the gasoline system, including tasks
+      like fuel pump removal (7-3), fuel pressure checks (7-4), injector inspection
+      (7-7), and throttle body cleaning (7-12).
+    children: []
+- node_id: general-desc-汽油箱
+  title: 汽油箱
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 5402
+  - 5518
+  page_range:
+  - 290
+  - 294
+  summary: 此部分指导技术人员如何拆卸和安装汽油箱及其组件，包括汽油泵浦、滤清器、防翻阀和活性碳罐，并检查汽油压力，标准为怠速时300–390 kPa。
+  children:
+  - node_id: general-parts-汽油箱
+    title: 汽油箱
+    aliases: []
+    node_type: parts
+    subsystem: general
+    span:
+    - 5402
+    - 5407
+    page_range:
+    - 290
+    - 291
+    summary: This section provides the step-by-step removal procedure for the fuel
+      tank, including disconnecting the fuel pump connector, fuel level sensor connector,
+      fuel hoses, and removing components like the fuel pump, fuel filter, and evaporation
+      canister.
+    children: []
+  - node_id: general-ri-汽油箱的拆卸
+    title: 汽油箱的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: general
+    span:
+    - 5407
+    - 5429
+    page_range:
+    - 292
+    - 292
+    summary: 该部分指导技术人员如何拆卸汽油箱，包括断开汽油泵浦接头、汽油油面感应器接头、汽油箱通气软管，并拆卸汽油软管连接器盖和汽油软管。
+    children: []
+  - node_id: general-ri-汽油泵浦的拆卸
+    title: 汽油泵浦的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: general
+    span:
+    - 5429
+    - 5435
+    page_range:
+    - 292
+    - 292
+    summary: Technicians find instructions for removing the gasoline pump, with warnings
+      to avoid dropping it, subjecting it to strong impacts, and touching the fuel
+      level sensor base.
+    children: []
+  - node_id: general-desc-檢查汽油濾清器
+    title: 檢查汽油濾清器
+    aliases:
+    - 汽油泵浦本體的檢查
+    node_type: description
+    subsystem: general
+    span:
+    - 5435
+    - 5445
+    page_range:
+    - 292
+    - 292
+    summary: Technicians find instructions for inspecting the gasoline pump body for
+      blockages or cracks and the gasoline filter for damage or contamination, specifying
+      actions like clearing blockages or replacing the entire pump assembly.
+    children: []
+  - node_id: general-insp-防翻閥的檢查
+    title: 防翻閥的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 5445
+    - 5453
+    page_range:
+    - 292
+    - 292
+    summary: Technicians find instructions for inspecting the anti-rollover valve
+      (~1) for damage, checking for smooth airflow only in the arrow direction, and
+      replacing it if faulty.
+    children: []
+  - node_id: general-ri-活性碳罐的安裝
+    title: 活性碳罐的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: general
+    span:
+    - 5453
+    - 5461
+    page_range:
+    - 292
+    - 292
+    summary: Technicians find instructions for installing the charcoal canister (活性碳罐
+      " ~ 1 ") and its bracket (固定座 ^ { 6 6 } 2 ^ { , 9 }), including verifying correct
+      hose routing.
+    children: []
+  - node_id: general-ri-汽油泵浦的安裝
+    title: 汽油泵浦的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: general
+    span:
+    - 5461
+    - 5470
+    page_range:
+    - 292
+    - 293
+    summary: Technicians find instructions for installing the fuel pump assembly,
+      including the gasket, pump, mounting bracket, and fuel tank for FWD vehicles.
+    children: []
+  - node_id: general-desc-汽油泵浦支架螺栓
+    title: 汽油泵浦支架螺栓
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 5470
+    - 5480
+    page_range:
+    - 293
+    - 293
+    summary: 技術人員在此找到汽油泵浦支架螺栓的安裝任務，需按照3.8 N·m的扭矩規範鎖緊。
+    children: []
+  - node_id: general-ri-汽油箱的安裝
+    title: 汽油箱的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: general
+    span:
+    - 5480
+    - 5491
+    page_range:
+    - 293
+    - 293
+    summary: 技术人员在此部分找到汽油箱安装步骤，包括安装汽油软管、汽油软管连接器盖，并需确认连接牢固及位置正确，同时需用干布擦拭汽油泵浦凹处的残余汽油。
+    children: []
+  - node_id: general-insp-汽油壓力的檢查
+    title: 汽油壓力的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 5491
+    - 5518
+    page_range:
+    - 293
+    - 294
+    summary: Technicians find instructions for checking fuel pressure, including connecting
+      pressure gauge 90890-03153 and adapter 90890-03181, measuring idle pressure
+      at 300–390 kPa, and replacing the fuel pump if faulty.
+    children: []
+- node_id: fuel-desc-噴油嘴
+  title: 噴油嘴
+  aliases: []
+  node_type: description
+  subsystem: fuel
+  span:
+  - 5518
+  - 5565
+  page_range:
+  - 295
+  - 296
+  summary: This section provides procedures for removing and installing the fuel hose
+    and injector, including a torque specification of 10 N·m for the injector bolt
+    and checks for injector blockage, deposits, damage, and resistance.
+  children:
+  - node_id: fuel-desc-噴油嘴-2
+    title: 噴油嘴
+    aliases: []
+    node_type: description
+    subsystem: fuel
+    span:
+    - 5518
+    - 5521
+    page_range:
+    - 295
+    - 295
+    summary: 噴油嘴
+    children: []
+  - node_id: fuel-ri-汽油軟管的拆卸
+    title: 汽油軟管的拆卸
+    aliases: []
+    node_type: remove_install
+    subsystem: fuel
+    span:
+    - 5521
+    - 5532
+    page_range:
+    - 296
+    - 296
+    summary: Technicians find instructions for removing the gasoline hose, including
+      a warning to cover the connection with cloth due to residual pressure and a
+      note on detaching the hose from the injector by pushing the connector cover
+      "1" in the direction of the arrow.
+    children: []
+  - node_id: fuel-insp-噴油嘴的檢查
+    title: 噴油嘴的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: fuel
+    span:
+    - 5532
+    - 5541
+    page_range:
+    - 296
+    - 296
+    summary: Technicians find procedures for inspecting the injector for blockages,
+      deposits, or damage requiring replacement, and for checking the injector resistance,
+      referring to page 7-7.
+    children: []
+  - node_id: fuel-ri-噴油嘴的安裝
+    title: 噴油嘴的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: fuel
+    span:
+    - 5541
+    - 5555
+    page_range:
+    - 296
+    - 296
+    summary: Technicians find the installation procedure for the fuel injector, including
+      the adapter, O-ring, and injector itself, with a specified torque of 10 N·m
+      for the bolts and alignment instructions for the components.
+    children: []
+  - node_id: fuel-ri-汽油軟管的安裝
+    title: 汽油軟管的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: fuel
+    span:
+    - 5555
+    - 5565
+    page_range:
+    - 296
+    - 296
+    summary: Technicians find instructions for installing the gasoline hose onto the
+      fuel injector, requiring a secure connection until a click is heard and sliding
+      the hose connector cover in the direction of the arrow.
+    children: []
+- node_id: general-desc-空氣濾清器箱
+  title: 空氣濾清器箱
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 5565
+  - 5596
+  page_range:
+  - 297
+  - 298
+  summary: Technicians find instructions for removing and installing the air cleaner
+    box components, including the air cleaner filter element, and a specified torque
+    of 3.0 N·m for the air cleaner box joint clamp screw.
+  children:
+  - node_id: general-ri-空氣濾清器箱的安裝
+    title: 空氣濾清器箱的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: general
+    span:
+    - 5567
+    - 5596
+    page_range:
+    - 298
+    - 298
+    summary: This section details the installation of the air cleaner box assembly,
+      including connecting hoses and the air cleaner box connector with specific alignment
+      points and applying sealant (Three Bond 1521), and specifies a torque of 3.0
+      N·m for the connector clamp screw.
+    children: []
+- node_id: fuel-desc-節流閥本體
+  title: 節流閥本體
+  aliases: []
+  node_type: description
+  subsystem: fuel
+  span:
+  - 5596
+  - 5756
+  page_range:
+  - 299
+  - 307
+  summary: 本節說明節流閥本體的拆卸、檢查、清潔、安裝與更換程序，包括檢查蝶形閥與節流閥本體是否損傷，清潔 ISC 元件與特定區域，以及使用診斷代碼編號
+    67、54、87 重設 ISC 學習值、ISC 閥位置和 A/F 控制學習值，並檢查引擎惰轉轉速是否在 1500–1700 r/min 的規格內。
+  children:
+  - node_id: fuel-parts-節流閥本體
+    title: 節流閥本體
+    aliases: []
+    node_type: parts
+    subsystem: fuel
+    span:
+    - 5596
+    - 5601
+    page_range:
+    - 299
+    - 300
+    summary: Technicians find the disassembly procedure for the throttle body, including
+      steps to detach the ISC element connector, throttle body sensor assembly connector,
+      and components like the throttle cable and intake manifold.
+    children: []
+  - node_id: fuel-insp-節流閥本體的檢查
+    title: 節流閥本體的檢查
+    aliases:
+    - 拆卸節流閥本體
+    node_type: inspection
+    subsystem: fuel
+    span:
+    - 5601
+    - 5628
+    page_range:
+    - 301
+    - 301
+    summary: Technicians find instructions for inspecting the throttle body assembly,
+      including checks for cracks, damage, and wear on the throttle body and butterfly
+      valve, with warnings against dropping it or adjusting the stop screw.
+    children: []
+  - node_id: fuel-op-isc-惰轉轉速控制-元件及節流閥本體的清潔
+    title: ISC（惰轉轉速控制）元件及節流閥本體的清潔
+    aliases: []
+    node_type: operation
+    subsystem: fuel
+    span:
+    - 5628
+    - 5718
+    page_range:
+    - 301
+    - 303
+    summary: 此部分指导技师完成ISC元件及节流阀本体的清洁、检查、安装任务，涉及ISC元件、弹簧、O型环等组件，并包含使用诊断代码“67”、“54”、“87”进行重置以及引擎惰转转速1500–1700
+      r/min的规格检查。
+    children: []
+  - node_id: fuel-desc-更換節流閥本體
+    title: 更換節流閥本體
+    aliases: []
+    node_type: description
+    subsystem: fuel
+    span:
+    - 5718
+    - 5741
+    page_range:
+    - 303
+    - 303
+    summary: Technicians find instructions for replacing the throttle body, including
+      resetting ISC learning values using diagnostic code "67", ISC valve position
+      using code "54", A/F control learning values using code "87", and checking the
+      engine idle speed specification of 1500–1700 r/min.
+    children: []
+  - node_id: fuel-ri-節流閥本體的安裝
+    title: 節流閥本體的安裝
+    aliases: []
+    node_type: remove_install
+    subsystem: fuel
+    span:
+    - 5741
+    - 5752
+    page_range:
+    - 304
+    - 304
+    summary: Technicians find throttle body installation instructions, including aligning
+      its protrusion with the intake manifold's groove and tightening the intake manifold
+      clamp screw to 3.0 N·m (0.30 kgf·m, 2.2 lb·ft).
+    children: []
+  - node_id: electrical-desc-電裝系統
+    title: 電裝系統
+    aliases: []
+    node_type: description
+    subsystem: electrical
+    span:
+    - 5752
+    - 5756
+    page_range:
+    - 305
+    - 307
+    summary: 在汽油噴射系統的故障排除詳細說明中，技師可以找到故障代碼的診斷方法。
+    children: []
+- node_id: ignition-desc-點火系統
+  title: 點火系統
+  aliases: []
+  node_type: description
+  subsystem: ignition
+  span:
+  - 5756
+  - 5824
+  page_range:
+  - 308
+  - 311
+  summary: Technicians find the ignition system troubleshooting procedure for no spark
+    or intermittent spark, including checks for the main fuse 1, battery, spark plug,
+    ignition spark gap, spark plug cap, ignition coil, crankshaft position sensor,
+    main switch, side stand switch, wiring, and ECU replacement.
+  children:
+  - node_id: ignition-tree-故障排除
+    title: 故障排除
+    aliases:
+    - 點火系統
+    node_type: troubleshooting_tree
+    subsystem: ignition
+    span:
+    - 5771
+    - 5824
+    page_range:
+    - 310
+    - 311
+    summary: 此部分提供点火系统无法操作（无火花或间歇火花）的故障排除流程，包括检查主保险丝1、电瓶、火星塞、点火火花间隙、火星塞盖、点火线圈、曲轴位置感知器、主开关、侧支架开关、线路，并指导更换相应部件或ECU。
+    children: []
+- node_id: starting-desc-電動起動系統
+  title: 電動起動系統
+  aliases: []
+  node_type: description
+  subsystem: starting
+  span:
+  - 5824
+  - 5906
+  page_range:
+  - 312
+  - 317
+  summary: Technicians find the electric starting system's circuit diagram, component
+    list, operation conditions requiring both brake and side stand switches to be
+    closed, and a step-by-step troubleshooting procedure for when the starter motor
+    does not operate.
+  children:
+  - node_id: starting-desc-電動起動系統-2
+    title: 電動起動系統
+    aliases: []
+    node_type: description
+    subsystem: starting
+    span:
+    - 5824
+    - 5830
+    page_range:
+    - 312
+    - 313
+    summary: Technicians find the electric starting system circuit diagram, listing
+      components like the main switch (4), battery (12), starter relay (13), starter
+      motor (14), and related switches and fuses with their identification numbers.
+    children: []
+  - node_id: starting-desc-起動電路切斷系統的運作
+    title: 起動電路切斷系統的運作
+    aliases: []
+    node_type: description
+    subsystem: starting
+    span:
+    - 5830
+    - 5890
+    page_range:
+    - 314
+    - 315
+    summary: Technicians find the operation conditions and troubleshooting steps for
+      the starter circuit cut-off system, including checks for the starter motor,
+      starter relay, diode, main switch, and side stand switch.
+    children: []
+  - node_id: starting-desc-電動起動系統-3
+    title: 電動起動系統
+    aliases: []
+    node_type: description
+    subsystem: starting
+    span:
+    - 5890
+    - 5906
+    page_range:
+    - 316
+    - 317
+    summary: Technicians find procedures for checking the starter switch, brake light
+      switch, and entire starting system wiring, with replacement instructions for
+      faulty components.
+    children: []
+- node_id: charging-desc-充電系統
+  title: 充電系統
+  aliases: []
+  node_type: description
+  subsystem: charging
+  span:
+  - 5906
+  - 5942
+  page_range:
+  - 318
+  - 321
+  summary: 在充電系統故障排除中，技術人員找到針對電瓶無法充電的診斷流程，包括檢查主保險絲1、電瓶、定子線圈、整流調整器及系統線路，並對應更換或維修指示。
+  children:
+  - node_id: charging-tree-故障排除
+    title: 故障排除
+    aliases: []
+    node_type: troubleshooting_tree
+    subsystem: charging
+    span:
+    - 5912
+    - 5942
+    page_range:
+    - 320
+    - 321
+    summary: Technicians find a troubleshooting flowchart for a charging system where
+      the battery won't charge, detailing checks for the main fuse, battery, stator
+      coil, and regulator/rectifier, with component replacement or repair as the outcome
+      for each failed test.
+    children: []
+- node_id: general-desc-照明系統
+  title: 照明系統
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 5942
+  - 6010
+  page_range:
+  - 322
+  - 325
+  summary: 技術人員在此找到照明系統的故障排除流程，包括檢查燈泡、保險絲（主保險絲1、主保險絲2和訊號系統）、電瓶、主開關、遠近光燈開關、置物箱燈開關和線路，並根據檢查結果進行更換或維修。
+  children:
+  - node_id: general-tree-故障排除
+    title: 故障排除
+    aliases: []
+    node_type: troubleshooting_tree
+    subsystem: general
+    span:
+    - 5969
+    - 6010
+    page_range:
+    - 324
+    - 325
+    summary: Technicians find troubleshooting steps for lighting system issues, including
+      checking bulbs, fuses (主保險絲 1, 主保險絲 2), battery, switches, and wiring, with
+      component replacement instructions if checks fail.
+    children: []
+- node_id: general-desc-訊號系統
+  title: 訊號系統
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 6010
+  - 6132
+  page_range:
+  - 326
+  - 331
+  summary: This section provides the signal system circuit diagram, component list,
+    and troubleshooting steps for issues like non-functioning turn signals, brake
+    lights, warning lights, horn, fuel gauge, or speedometer, including checks for
+    fuses, the battery, switches, and specific components.
+  children:
+  - node_id: general-tree-故障排除-2
+    title: 故障排除
+    aliases: []
+    node_type: troubleshooting_tree
+    subsystem: general
+    span:
+    - 6016
+    - 6039
+    page_range:
+    - 328
+    - 328
+    summary: 技术人员在此部分找到信号系统故障排除流程，包括检查保险丝、电瓶、主开关和线路，以解决转向灯、刹车灯、喇叭、汽油表和速度表不工作的问题。
+    children: []
+  - node_id: general-insp-訊號系統的檢查
+    title: 訊號系統的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 6039
+    - 6132
+    page_range:
+    - 328
+    - 331
+    summary: Technicians find troubleshooting steps for signal system issues like
+      horn not working, brake light not lighting, turn signals not flashing, coolant
+      temperature warning lamp not illuminating, fuel gauge not displaying, and speedometer
+      not operating, including component checks and replacements.
+    children: []
+- node_id: fuel-desc-汽油噴射系統
+  title: 汽油噴射系統
+  aliases: []
+  node_type: description
+  subsystem: fuel
+  span:
+  - 6132
+  - 6293
+  page_range:
+  - 332
+  - 365
+  summary: 技師在此找到汽油噴射系統的故障排除方法，包括檢查引擎故障警告燈、使用山葉診斷工具讀取故障代碼（如P0106、P0107、P0108、P0112、P0113），並依據代碼執行特定感知器（如進氣壓力感知器）的檢測與維修程序。
+  children:
+  - node_id: fuel-desc-汽油噴射系統-2
+    title: 汽油噴射系統
+    aliases: []
+    node_type: description
+    subsystem: fuel
+    span:
+    - 6132
+    - 6138
+    page_range:
+    - 332
+    - 333
+    summary: This section provides the circuit diagram for the gasoline injection
+      system, listing key components like the ECU, injectors, sensors (e.g., crankshaft
+      position, coolant temperature), and the engine trouble warning lamp.
+    children: []
+  - node_id: electrical-desc-ecu-自我診斷功能
+    title: ECU 自我診斷功能
+    aliases: []
+    node_type: description
+    subsystem: electrical
+    span:
+    - 6138
+    - 6140
+    page_range:
+    - 334
+    - 334
+    summary: 技師在此可找到ECU自我診斷功能的說明，該功能監控汽油噴射系統，偵測到故障時會點亮引擎故障警告燈並將故障代碼儲存於ECU記憶體中。
+    children: []
+  - node_id: engine-desc-檢查引擎故障警告燈
+    title: 檢查引擎故障警告燈
+    aliases: []
+    node_type: description
+    subsystem: engine
+    span:
+    - 6140
+    - 6142
+    page_range:
+    - 334
+    - 334
+    summary: Technicians find instructions for checking the engine malfunction warning
+      light, verifying it illuminates for about 2 seconds when the main switch is
+      ON, and diagnosing a potential LED fault if it does not.
+    children: []
+  - node_id: electrical-desc-ecu-偵測到感知器發出的異常訊號
+    title: ECU 偵測到感知器發出的異常訊號
+    aliases: []
+    node_type: description
+    subsystem: electrical
+    span:
+    - 6142
+    - 6145
+    page_range:
+    - 334
+    - 334
+    summary: 當ECU偵測到感知器發出異常訊號時，會亮起引擎故障警告燈，並根據預設的指定值向引擎發出替代運作指示。
+    children: []
+  - node_id: fuel-tree-故障排除的方法
+    title: 故障排除的方法
+    aliases: []
+    node_type: troubleshooting_tree
+    subsystem: fuel
+    span:
+    - 6145
+    - 6170
+    page_range:
+    - 334
+    - 334
+    summary: 技師在此找到引擎運轉不正常且故障燈亮時的故障排除方法，包括使用山葉診斷工具檢查故障代碼（如節流閥位置感知器訊號01、點火線圈30、噴油嘴36），並參閱第8-28頁的故障排除詳細說明進行維修確認。
+    children: []
+  - node_id: fuel-desc-山葉診斷工具
+    title: 山葉診斷工具
+    aliases: []
+    node_type: description
+    subsystem: fuel
+    span:
+    - 6170
+    - 6186
+    page_range:
+    - 335
+    - 335
+    summary: Technicians find instructions for connecting the Yamaha diagnostic tool
+      by removing the protective cover and connecting it to connector "1," along with
+      part numbers for the tool and OBD/GST harness.
+    children: []
+  - node_id: fuel-fault-故障排除詳細說明-故障代碼
+    title: 故障排除詳細說明（故障代碼）
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6186
+    - 6193
+    page_range:
+    - 335
+    - 335
+    summary: 本節說明依據山葉診斷工具顯示的故障代碼進行檢查、維修及刪除代碼的處理方式，並指引診斷代碼的相關功能表。
+    children: []
+  - node_id: electrical-parts-連接至-ecu-的零件
+    title: 連接至 ECU 的零件
+    aliases: []
+    node_type: parts
+    subsystem: electrical
+    span:
+    - 6193
+    - 6214
+    page_range:
+    - 335
+    - 336
+    summary: 此部分列出連接至 ECU 的零件，包括曲軸位置感知器、ABS ECU、噴油嘴等，並指出檢查電源短路時需先拆離這些零件的接頭。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p0106
+    title: 故障代碼編號 P0106
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6214
+    - 6218
+    page_range:
+    - 336
+    - 336
+    summary: 技師在此找到針對故障代碼 P0106（進氣壓力感知器系統故障）的診斷程序，包括檢查感知器安裝、使用診斷工具（代碼03）讀取進氣壓力值（例如海平面約101kPa），以及相應的更換或維修步驟。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p0107
+    title: 故障代碼編號 P0107
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6218
+    - 6226
+    page_range:
+    - 336
+    - 340
+    summary: 此部分提供故障代码 P0107 和 P0108 的诊断程序，涉及进气压力传感器，检查其断路或短路，并列出在海平面其正常压力值约为 101kPa。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p0112、p0113
+    title: 故障代碼編號 P0112、P0113
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6226
+    - 6235
+    page_range:
+    - 340
+    - 343
+    summary: 技師在此節針對故障代碼 P0112（進氣溫度感知器搭鐵短路）和 P0113（斷路或電源短路），依序檢查節流閥本體感知器總成接頭、ECU接頭、電線總成導通、感知器安裝狀況，並在引擎冷機時使用山葉診斷工具（代碼編號05）比較實際空氣溫度與顯示值。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p0117、p0118
+    title: 故障代碼編號 P0117、P0118
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6235
+    - 6243
+    page_range:
+    - 343
+    - 345
+    summary: 此部分提供故障代碼 P0117 和 P0118 的診斷與維修程序，針對冷卻液溫度感知器的短路或斷路故障，指導技師檢查接頭、線路、感知器安裝及
+      ECU，並使用山葉診斷工具確認。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p0122
+    title: 故障代碼編號 P0122
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6243
+    - 6251
+    page_range:
+    - 346
+    - 349
+    summary: 此節提供故障代碼 P0122 和 P0123 的診斷程序，針對節流閥位置感知器斷路或短路問題，包含檢查接頭、導通測試，以及感知器訊號在完全關閉時應為
+      13-21、完全開啟時應為 92-102 的規格。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p0132
+    title: 故障代碼編號 P0132
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6251
+    - 6253
+    page_range:
+    - 349
+    - 350
+    summary: 此部分针对故障代码P0132（氧传感器检测到电源短路），指导技师依次检查传感器安装、接头连接、线束导通，并可能更换氧传感器或ECU。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p0201
+    title: 故障代碼編號 P0201
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6253
+    - 6255
+    page_range:
+    - 350
+    - 351
+    summary: 故障代码P0201对应喷油嘴故障，诊断代码36，技术人员需检查喷油嘴连接、电阻及ECU连接，并执行诊断模式以确认运作声音。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p0335
+    title: 故障代碼編號 P0335
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6255
+    - 6258
+    page_range:
+    - 351
+    - 352
+    summary: 此部分提供故障代码 P0335（曲轴位置传感器无信号）的诊断流程，包括检查传感器接头、ECU接头、线束导通性、传感器安装及传感器本身，并指导使用雅马哈诊断工具确认故障状态。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p0351
+    title: 故障代碼編號 P0351
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6258
+    - 6261
+    page_range:
+    - 352
+    - 353
+    summary: 技術人員在此找到故障代碼 P0351 的診斷程序，涉及檢查點火線圈的一次導線斷路或短路、相關接頭、電線總成導通性、點火線圈安裝與電阻，以及可能的
+      ECU 故障。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p0500
+    title: 故障代碼編號 P0500
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6261
+    - 6265
+    page_range:
+    - 353
+    - 354
+    summary: 此部分指導技師診斷和維修故障代碼 P0500，涉及檢查右前輪感知器、相關接頭、導線通斷，並在診斷模式（代碼編號07）下確認前輪速度脈衝值是否隨車輪轉動而增加。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p0507
+    title: 故障代碼編號 P0507
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6265
+    - 6270
+    page_range:
+    - 354
+    - 357
+    summary: 此部分針對故障代碼 P0507，指導技師診斷與維修 ISC（惰轉轉速控制）元件及其相關組件，包含診斷代碼編號 54 的測試程序與故障可能原因。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p0511
+    title: 故障代碼編號 P0511
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6270
+    - 6273
+    page_range:
+    - 357
+    - 358
+    summary: 技師在此找到故障代碼 P0511 的診斷程序，針對 ISC（惰轉轉速控制）元件故障，檢查接頭連接、線路導通（粉紅色、綠色/黃色、灰色、天藍色線）及元件運作，並使用山葉診斷工具確認狀況。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p0560
+    title: 故障代碼編號 P0560
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6273
+    - 6276
+    page_range:
+    - 358
+    - 359
+    summary: 技術人員在此找到故障代碼 P0560（充電電壓異常）的診斷程序，包括檢查充電系統、整流調整器或AC發電機，並使用山葉診斷工具確認故障狀況。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p0601
+    title: 故障代碼編號 P0601
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6276
+    - 6277
+    page_range:
+    - 359
+    - 359
+    summary: 技術人員在此找到關於故障代碼P0601的資訊，其描述為ECU記憶體故障，故障防護系統會導致無法起動引擎且無法騎乘機車，並列出可能原因為ECU故障，需更換ECU。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p062f
+    title: 故障代碼編號 P062F
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6277
+    - 6279
+    page_range:
+    - 359
+    - 360
+    summary: 技師在此找到故障代碼 P062F 的診斷與維修程序，涉及 EEPROM 資料錯誤（如代碼 01、11、12），並包含更換 ECU 或調整
+      CO 濃度等具體維修步驟。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p1601
+    title: 故障代碼編號 P1601
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6279
+    - 6283
+    page_range:
+    - 360
+    - 361
+    summary: 此部分指导技师诊断和修复故障代码P1601，涉及侧支架开关及其至ECU的蓝/黄导线，包括检查连接、导通性、开关状态（ON/OFF）以及使用诊断工具（代码20）进行验证。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p2195
+    title: 故障代碼編號 P2195
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6283
+    - 6288
+    page_range:
+    - 361
+    - 363
+    summary: 此部分提供故障代碼 P2195（含氧量感知器偵測到斷路）的診斷與維修流程，包括檢查感知器安裝、接頭連接、電線導通、汽油壓力，並指引使用山葉診斷工具確認狀況為“Recover”或“Malfunction”以逐步排除故障。
+    children: []
+  - node_id: fuel-fault-故障代碼編號-p2645
+    title: 故障代碼編號 P2645
+    aliases: []
+    node_type: fault_isolation
+    subsystem: fuel
+    span:
+    - 6288
+    - 6293
+    page_range:
+    - 363
+    - 365
+    summary: 此部分提供故障代碼 P2645 的診斷程序，針對 VVA 電磁閥故障，指導技師檢查接頭、線束導通、電磁閥電阻，並在引擎加速至 6000 r/min
+      後使用山葉診斷工具確認狀況。
+    children: []
+- node_id: general-desc-汽油泵浦系統
+  title: 汽油泵浦系統
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 6293
+  - 6337
+  page_range:
+  - 366
+  - 369
+  summary: 技术人员在此找到汽油泵浦系统的故障排除步骤，用于诊断汽油泵不动作的问题，包括检查主保险丝1和2、电瓶、主开关、汽油泵浦和系统线路，并指导更换ECU、保险丝、主开关或汽油泵浦等操作。
+  children:
+  - node_id: general-desc-汽油泵浦系統-2
+    title: 汽油泵浦系統
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 6293
+    - 6306
+    page_range:
+    - 366
+    - 367
+    summary: Technicians find the fuel pump system circuit diagram showing components
+      like the main switch, fuses, battery, ECU, fuel pump, and ground points.
+    children: []
+  - node_id: general-tree-故障排除-3
+    title: 故障排除
+    aliases: []
+    node_type: troubleshooting_tree
+    subsystem: general
+    span:
+    - 6306
+    - 6337
+    page_range:
+    - 368
+    - 369
+    summary: 此部分提供汽油泵浦不動作的故障排除流程，包括檢查保險絲、電瓶、主開關、汽油泵浦及其系統線路，並列出對應的更換或維修操作。
+    children: []
+- node_id: abs-desc-abs-防鎖死煞車系統-3
+  title: ABS（防鎖死煞車系統）
+  aliases: []
+  node_type: description
+  subsystem: abs
+  span:
+  - 6337
+  - 6367
+  page_range:
+  - 370
+  - 371
+  summary: Technicians find the ABS circuit diagram showing components like the ABS
+    ECU, wheel sensors, fuses, switches, warning lights, and ground points.
+  children: []
+- node_id: abs-desc-abs-防鎖死煞車系統-4
+  title: ABS （防鎖死煞車系統）
+  aliases: []
+  node_type: description
+  subsystem: abs
+  span:
+  - 6367
+  - 6370
+  page_range:
+  - 372
+  - 372
+  summary: Technicians find the ABS connector location diagram, which shows the positions
+    of connectors for the Anti-lock Braking System components.
+  children:
+  - node_id: abs-desc-abs-接頭位置圖表
+    title: ABS 接頭位置圖表
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6367
+    - 6370
+    page_range:
+    - 372
+    - 372
+    summary: Technicians find the ABS connector location diagram, which shows the
+      position of the anti-lock braking system connector.
+    children: []
+- node_id: abs-desc-abs-防鎖死煞車系統-5
+  title: ABS（防鎖死煞車系統）
+  aliases: []
+  node_type: description
+  subsystem: abs
+  span:
+  - 6370
+  - 6627
+  page_range:
+  - 373
+  - 401
+  summary: 此部分提供ABS故障排除的基本程序，包括检查ABS警告灯状态（如不亮、常亮或闪烁）和使用山叶诊断工具读取故障代码（如12, 14, 16, 18,
+    21, 24, 28, 29, 31, 32, 33, 34, 42, 44, 51, 53, 54, 55, 64, 65, 66, 71, 72, 75）以定位和维修故障组件。
+  children:
+  - node_id: abs-tree-abs-故障排除概要
+    title: ABS 故障排除概要
+    aliases: []
+    node_type: troubleshooting_tree
+    subsystem: abs
+    span:
+    - 6387
+    - 6395
+    page_range:
+    - 374
+    - 374
+    summary: 本节说明ABS故障排除，包括使用山叶诊断工具识别问题与维修方法，并提及ABS警告灯指示故障及最后检查的重要性。
+    children: []
+  - node_id: abs-desc-abs-警告燈亮起時的-abs-操作
+    title: ABS 警告燈亮起時的 ABS 操作
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6395
+    - 6403
+    page_range:
+    - 374
+    - 374
+    summary: 當ABS警告燈持續亮起時，ABS系統會以一般煞車系統運作，這可能是因自我診斷偵測到故障或未在車速約10 km/h時完成診斷所致。
+    children: []
+  - node_id: abs-desc-自我診斷與維修
+    title: 自我診斷與維修
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6403
+    - 6426
+    page_range:
+    - 374
+    - 375
+    summary: Technicians find instructions for using the ABS ECU's self-diagnosis
+      function to check and clear stored fault codes using a Yamaha diagnostic tool,
+      along with special handling precautions for ABS components.
+    children: []
+  - node_id: abs-tree-故障排除的基本程序
+    title: 故障排除的基本程序
+    aliases: []
+    node_type: troubleshooting_tree
+    subsystem: abs
+    span:
+    - 6426
+    - 6433
+    page_range:
+    - 376
+    - 377
+    summary: 技师在此处找到ABS故障排除的基本程序，包括相关组件的保养或检查警告，以及最后检查的参考信息。
+    children: []
+  - node_id: abs-desc-a-檢查-abs-警告燈
+    title: '[A] 檢查 ABS 警告燈'
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6433
+    - 6439
+    page_range:
+    - 377
+    - 377
+    summary: Technicians find the procedure to check the ABS warning light operation,
+      including steps for when the light does not illuminate [A-1, A-2] or stays illuminated
+      [A-3].
+    children: []
+  - node_id: abs-desc-a-1-只有-abs-警告燈未亮起
+    title: '[A-1] 只有 ABS 警告燈未亮起'
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6439
+    - 6445
+    page_range:
+    - 377
+    - 377
+    summary: Technicians find procedures for diagnosing an ABS warning light that
+      does not illuminate, involving checks for ground shorts in the white/red wire
+      and testing the meter circuit or ABS ECU.
+    children: []
+  - node_id: abs-desc-a-2-全部指示燈未亮起
+    title: '[A-2] 全部指示燈未亮起'
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6445
+    - 6462
+    page_range:
+    - 377
+    - 377
+    summary: Technicians find the diagnostic procedure for when all indicators fail
+      to illuminate, covering checks for the main switch, battery, main fuse, and
+      instrument cluster circuit.
+    children: []
+  - node_id: abs-desc-a-3-abs-警告燈亮起
+    title: '[A-3] ABS 警告燈亮起'
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6462
+    - 6485
+    page_range:
+    - 377
+    - 378
+    summary: 技術人員在此節中可找到診斷 ABS 警告燈亮起的任務，涉及檢查 ABS ECU 通訊、保險絲、接頭與線束，並在確認 ABS ECU 故障時更換液壓單元總成。
+    children: []
+  - node_id: abs-desc-b-1-目前偵測到故障
+    title: '[B-1] 目前偵測到故障'
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6485
+    - 6489
+    page_range:
+    - 378
+    - 378
+    summary: Technicians find instructions for reading ABS fault codes using a Yamaha
+      diagnostic tool, with steps for when codes are displayed [B-2] or not displayed
+      [C-1].
+    children: []
+  - node_id: abs-desc-b-2-使用故障代碼診斷
+    title: '[B-2] 使用故障代碼診斷'
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6489
+    - 6497
+    page_range:
+    - 378
+    - 378
+    summary: 'This section explains how to use the Yamaha diagnostic tools (USB: 90890-03250,
+      A/I: 90890-03252) to identify faults by reading diagnostic trouble codes.'
+    children: []
+  - node_id: abs-desc-山葉診斷工具的連接
+    title: 山葉診斷工具的連接
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6497
+    - 6506
+    page_range:
+    - 378
+    - 378
+    summary: 技術人員在此節學習如何連接山葉診斷工具至ABS測試接頭，以讀取故障代碼並在完成工作後將其刪除。
+    children: []
+  - node_id: abs-desc-故障代碼表
+    title: 故障代碼表
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6506
+    - 6516
+    page_range:
+    - 379
+    - 383
+    summary: 技師在此故障代碼表中查找ABS系統的診斷資訊，包括故障代碼如12、14*27*、16等對應的後輪感知器、液壓單元總成等組件故障現象與檢查點。
+    children: []
+  - node_id: abs-fault-故障代碼編號-14、27
+    title: 故障代碼編號 14、27
+    aliases: []
+    node_type: fault_isolation
+    subsystem: abs
+    span:
+    - 6516
+    - 6520
+    page_range:
+    - 383
+    - 383
+    summary: 技術人員在此找到故障代碼14和27的診斷程序，針對後輪感知器，包括檢查異物和感知器轉子，以及代碼記錄條件：後煞車 ABS 持續運轉 20
+      秒以上記錄為編號27，36 秒以上記錄為編號14。
+    children: []
+  - node_id: abs-fault-故障代碼編號-16
+    title: 故障代碼編號 16
+    aliases: []
+    node_type: fault_isolation
+    subsystem: abs
+    span:
+    - 6520
+    - 6524
+    page_range:
+    - 383
+    - 383
+    summary: Technicians find troubleshooting steps for DTC 16 (rear wheel sensor
+      open/short circuit), including inspecting the connector between the sensor and
+      hydraulic unit assembly for issues like protruding pins or poor fixation.
+    children: []
+  - node_id: abs-desc-abs-防鎖死煞車系統-6
+    title: ABS（防鎖死煞車系統）
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6524
+    - 6526
+    page_range:
+    - 384
+    - 384
+    summary: 此部分指導技術人員診斷和修復ABS故障代碼16（後輪感知器斷路或短路），檢查電線總成的導通與短路，並在必要時更換電線總成、車輪感知器或液壓單元總成。
+    children: []
+  - node_id: abs-fault-故障代碼編號-18、46
+    title: 故障代碼編號 18、46
+    aliases: []
+    node_type: fault_isolation
+    subsystem: abs
+    span:
+    - 6526
+    - 6534
+    page_range:
+    - 384
+    - 386
+    summary: 技師在此找到關於故障代碼編號 18 和 46 的診斷資訊，其項目為後輪感知器(遺失脈衝)，並提供檢查後輪感知器周圍異物、組件安裝及感知器轉子瑕疵等可能原因與維修工作順序。
+    children: []
+  - node_id: abs-fault-故障代碼編號-29、74
+    title: 故障代碼編號 29、74
+    aliases: []
+    node_type: fault_isolation
+    subsystem: abs
+    span:
+    - 6534
+    - 6538
+    page_range:
+    - 386
+    - 386
+    summary: 此部分說明故障代碼29和74的診斷，針對右前輪感知器脈衝期間異常，列出了檢查異物、車輪安裝、感知器轉子及感知器本身的維修順序。
+    children: []
+  - node_id: abs-fault-故障代碼編號-31
+    title: 故障代碼編號 31
+    aliases: []
+    node_type: fault_isolation
+    subsystem: abs
+    span:
+    - 6538
+    - 6542
+    page_range:
+    - 386
+    - 387
+    summary: 此處說明故障代碼31的診斷流程，針對ABS液壓單元總成電磁閥供電異常問題，列出檢查保險絲、接頭、電線總成及更換液壓單元總成等步驟。
+    children: []
+  - node_id: abs-fault-故障代碼編號-33
+    title: 故障代碼編號 33
+    aliases: []
+    node_type: fault_isolation
+    subsystem: abs
+    span:
+    - 6542
+    - 6551
+    page_range:
+    - 387
+    - 389
+    summary: 故障代碼編號 33 的章節指導技師診斷液壓單元總成（ABS 馬達供電異常）的故障，檢查項目包括 ABS 馬達保險絲、相關接頭與電線總成（紅色/黑色-紅色/黑色、黑色-黑色），並在必要時更換液壓單元總成。
+    children: []
+  - node_id: abs-fault-故障代碼編號-51
+    title: 故障代碼編號 51
+    aliases: []
+    node_type: fault_isolation
+    subsystem: abs
+    span:
+    - 6551
+    - 6553
+    page_range:
+    - 389
+    - 389
+    summary: 故障代碼 51 表示供應至 ABS ECU 的電壓過高，技術人員需檢查電瓶、電瓶端子及充電系統。
+    children: []
+  - node_id: abs-fault-故障代碼編號-53
+    title: 故障代碼編號 53
+    aliases: []
+    node_type: fault_isolation
+    subsystem: abs
+    span:
+    - 6553
+    - 6557
+    page_range:
+    - 389
+    - 389
+    summary: 技術人員在此找到故障代碼53的診斷流程，針對ABS ECU供電電壓過低的問題，檢查項目包括電瓶、接頭、棕色/白色電線以及充電系統。
+    children: []
+  - node_id: abs-fault-故障代碼編號-54
+    title: 故障代碼編號 54
+    aliases: []
+    node_type: fault_isolation
+    subsystem: abs
+    span:
+    - 6557
+    - 6561
+    page_range:
+    - 389
+    - 390
+    summary: 故障代码54指示液压单元总成（ABS电磁阀及ABS马达供电电路）存在瑕疵，技术人员在此查找故障现象、检查顺序以及相关电路和接头的维修步骤。
+    children: []
+  - node_id: abs-fault-故障代碼編號-55
+    title: 故障代碼編號 55
+    aliases: []
+    node_type: fault_isolation
+    subsystem: abs
+    span:
+    - 6561
+    - 6563
+    page_range:
+    - 390
+    - 390
+    summary: 故障代碼55表示液壓單元總成(ABS ECU)有瑕疵，偵測到異常資料，解決方法是更換液壓單元總成。
+    children: []
+  - node_id: abs-desc-abs-防鎖死煞車系統-7
+    title: ABS（防鎖死煞車系統）
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6563
+    - 6565
+    page_range:
+    - 391
+    - 391
+    summary: Technicians find diagnostic steps for DTC 64, indicating low power supply
+      voltage to the rear wheel sensor, checking for shorts in the wiring harness,
+      a faulty sensor, or a defective hydraulic unit assembly.
+    children: []
+  - node_id: abs-desc-abs-防鎖死煞車系統-8
+    title: ABS（防鎖死煞車系統）
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6565
+    - 6567
+    page_range:
+    - 392
+    - 392
+    summary: Technicians find diagnostic steps for DTC 65, indicating low power supply
+      voltage to the left front wheel sensor, including checks for shorts in the wiring
+      harness, a faulty sensor, or a defective hydraulic unit assembly.
+    children: []
+  - node_id: abs-desc-abs-防鎖死煞車系統-9
+    title: ABS（防鎖死煞車系統）
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6567
+    - 6571
+    page_range:
+    - 393
+    - 394
+    summary: Technicians find diagnostic steps for DTC 66 (right front wheel sensor
+      supply voltage low), checking the sensor, wiring harness, and hydraulic unit
+      for shorts or defects.
+    children: []
+  - node_id: abs-fault-故障代碼編號-72、25
+    title: 故障代碼編號 72、25
+    aliases: []
+    node_type: fault_isolation
+    subsystem: abs
+    span:
+    - 6571
+    - 6574
+    page_range:
+    - 394
+    - 394
+    summary: Technicians find diagnostic procedures for DTCs 72 and 25, focusing on
+      the right front wheel sensor, checking for debris, improper installation, or
+      a faulty sensor rotor.
+    children: []
+  - node_id: abs-fault-故障代碼編號-75
+    title: 故障代碼編號 75
+    aliases: []
+    node_type: fault_isolation
+    subsystem: abs
+    span:
+    - 6574
+    - 6576
+    page_range:
+    - 394
+    - 394
+    summary: 技術人員在此找到故障代碼75的診斷程序，需先將主開關切換到“OFF”再進行接頭拆裝。
+    children: []
+  - node_id: abs-desc-abs-防鎖死煞車系統-10
+    title: ABS（防鎖死煞車系統）
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6576
+    - 6578
+    page_range:
+    - 395
+    - 395
+    summary: 此部分指導技術人員診斷和維修故障代碼75（左前輪感知器斷路或短路），檢查項目包括感知器接頭、線束導通與短路，以及感知器或液壓單元總成本身。
+    children: []
+  - node_id: abs-fault-故障代碼編號-76
+    title: 故障代碼編號 76
+    aliases: []
+    node_type: fault_isolation
+    subsystem: abs
+    span:
+    - 6578
+    - 6582
+    page_range:
+    - 395
+    - 395
+    summary: 技術人員在此找到右前輪感知器（斷路或短路）的故障診斷順序，包括檢查其與液壓單元總成之間接頭的插銷與固定狀況，故障代碼為76。
+    children: []
+  - node_id: abs-desc-abs-防鎖死煞車系統-11
+    title: ABS（防鎖死煞車系統）
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6582
+    - 6584
+    page_range:
+    - 396
+    - 396
+    summary: 此部分指導技術人員診斷和修復ABS故障代碼76，即右前輪感知器斷路或短路，檢查相關線束的導通性與絕緣，並在必要時更換感知器或液壓單元總成。
+    children: []
+  - node_id: abs-fault-故障代碼編號-77、85
+    title: 故障代碼編號 77、85
+    aliases: []
+    node_type: fault_isolation
+    subsystem: abs
+    span:
+    - 6584
+    - 6588
+    page_range:
+    - 396
+    - 397
+    summary: 此部分提供故障代碼77和85的診斷資訊，針對左前輪感知器遺失脈衝訊號的故障現象，列出了檢查異物、感知器安裝、感知器轉子及感知器本體的維修順序。
+    children: []
+  - node_id: abs-fault-故障代碼編號-78、86
+    title: 故障代碼編號 78、86
+    aliases: []
+    node_type: fault_isolation
+    subsystem: abs
+    span:
+    - 6588
+    - 6597
+    page_range:
+    - 397
+    - 399
+    summary: 此部分提供故障代碼編號 78、86、77、81、82、83、84 的診斷與維修指引，涉及右前輪感知器、左前輪 ABS 等組件，並包含車速
+      30 km/h 以上或 29 km/h 以下等關鍵規格值。
+    children: []
+  - node_id: abs-desc-b-3-刪除故障代碼
+    title: '[B-3] 刪除故障代碼'
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6597
+    - 6601
+    page_range:
+    - 400
+    - 400
+    summary: Technicians find instructions to delete all displayed DTCs using the
+      Yamaha diagnostic tool (USB90890-03250 or 90890-03252) and refer to its operation
+      manual.
+    children: []
+  - node_id: abs-desc-山葉診斷工具的連接-2
+    title: 山葉診斷工具的連接
+    aliases: []
+    node_type: description
+    subsystem: abs
+    span:
+    - 6601
+    - 6604
+    page_range:
+    - 400
+    - 400
+    summary: Technicians connect the Yamaha diagnostic tool to the ABS test connector
+      (4P) after removing the protective cover "1".
+    children: []
+  - node_id: abs-desc-檢查程序
+    title: 檢查程序
+    aliases:
+    - '[C-1] 最後檢查'
+    node_type: description
+    subsystem: abs
+    span:
+    - 6604
+    - 6627
+    page_range:
+    - 400
+    - 401
+    summary: Technicians find the final inspection procedure, which includes checking
+      brake fluid levels, verifying wheel sensor installation, testing the hydraulic
+      unit, clearing DTCs, and ensuring the ABS warning light functions correctly.
+    children: []
+- node_id: general-desc-電裝組件
+  title: 電裝組件
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 6627
+  - 7092
+  page_range:
+  - 402
+  - 417
+  summary: 在電裝組件章節中，技術人員可以找到對開關、燈泡、保險絲、ECU、電瓶、繼電器、二極體、火星塞蓋和點火線圈等組件的檢查、更換與測試程序，包括使用三用電錶檢查導通、測量電阻（如點火線圈一次線圈電阻為2.16–2.64Ω）和電壓，以及更換保險絲（如主保險絲1為15
+    A）和重設A/F控制學習值（使用診斷代碼編號87）等任務。
+  children:
+  - node_id: general-insp-燈泡與燈泡座的檢查
+    title: 燈泡與燈泡座的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 6654
+    - 6660
+    page_range:
+    - 407
+    - 407
+    summary: Technicians find instructions for inspecting bulbs and sockets for damage,
+      wear, connection, and continuity, with repair or replacement required for issues,
+      excluding LED lamps.
+    children: []
+  - node_id: general-desc-燈泡類型
+    title: 燈泡類型
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 6660
+    - 6665
+    page_range:
+    - 407
+    - 407
+    summary: Technicians find bulb types for turn signals and license plate lights,
+      where bulb "a" is carefully pulled from its socket for removal.
+    children: []
+  - node_id: general-insp-燈泡狀況的檢查
+    title: 燈泡狀況的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 6665
+    - 6679
+    page_range:
+    - 407
+    - 407
+    summary: Technicians find procedures for checking bulb condition, including removal
+      precautions and continuity testing using a multimeter set to "0" and range "Ω
+      × 1", with no continuity indicating replacement.
+    children: []
+  - node_id: general-insp-保險絲的檢查
+    title: 保險絲的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 6679
+    - 6691
+    page_range:
+    - 407
+    - 407
+    summary: Technicians find instructions for checking fuses, including removing
+      the fuse box cover and using a multimeter set to "Ω × 1" to check for continuity.
+    children: []
+  - node_id: general-desc-三用電錶
+    title: 三用電錶
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 6691
+    - 6711
+    page_range:
+    - 407
+    - 408
+    summary: 'Technicians find instructions for replacing blown fuses using a multimeter,
+      including specific amperage values: Main Fuse 1 (15 A), Main Fuse 2 (7.5 A),
+      Signal System (7.5 A), ABS Control Unit (7.5 A), ABS Motor (30 A), ABS Solenoid
+      (30 A), Terminal (2 A), and spares.'
+    children: []
+  - node_id: electrical-op-ecu-引擎控制元件-的更換
+    title: ECU（引擎控制元件）的更換
+    aliases: []
+    node_type: operation
+    subsystem: electrical
+    span:
+    - 6711
+    - 6727
+    page_range:
+    - 408
+    - 408
+    summary: Technicians find instructions for replacing the ECU, including resetting
+      the A/F control learning value using diagnostic code "87" and checking the engine
+      idle speed, which should be 1500–1700 r/min.
+    children: []
+  - node_id: charging-insp-電瓶的檢查與充電
+    title: 電瓶的檢查與充電
+    aliases: []
+    node_type: inspection
+    subsystem: charging
+    span:
+    - 6727
+    - 6834
+    page_range:
+    - 408
+    - 410
+    summary: This section provides procedures for inspecting and charging a valve-regulated
+      lead-acid (VRLA) battery, including safety warnings, steps for measuring open-circuit
+      voltage (e.g., 12.8 V indicates no charge needed), and specific charging methods
+      with voltage settings like 16–17 V.
+    children: []
+  - node_id: general-insp-繼電器的檢查
+    title: 繼電器的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 6834
+    - 6840
+    page_range:
+    - 410
+    - 410
+    summary: Technicians find instructions for checking relay operation using a multimeter
+      (model YU-03112-C) and a 12V battery, specifying to replace the relay if it
+      does not meet the required specifications.
+    children: []
+  - node_id: general-desc-起動繼電器
+    title: 起動繼電器
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 6840
+    - 6847
+    page_range:
+    - 410
+    - 410
+    summary: Technicians find instructions for testing the starter relay, including
+      connecting the positive and negative battery terminals and multimeter probes.
+    children: []
+  - node_id: lighting-insp-方向燈繼電器的檢查
+    title: 方向燈繼電器的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: lighting
+    span:
+    - 6847
+    - 6872
+    page_range:
+    - 410
+    - 411
+    summary: Technicians find instructions for checking the turn signal relay, including
+      measuring its input and output voltage specifications, both of which should
+      be DC 12V.
+    children: []
+  - node_id: general-insp-二極體的檢查
+    title: 二極體的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 6872
+    - 6888
+    page_range:
+    - 411
+    - 411
+    summary: Technicians find instructions for checking a diode using a multimeter
+      (model 90890-03112 or analog YU-03112-C), specifying correct and incorrect continuity
+      readings between the blue/yellow "1" and blue/black "2" terminals, and to replace
+      it if out of specification.
+    children: []
+  - node_id: ignition-insp-火星塞蓋的檢查
+    title: 火星塞蓋的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: ignition
+    span:
+    - 6888
+    - 6950
+    page_range:
+    - 412
+    - 413
+    summary: Technicians find procedures for checking spark plug cap resistance (3.75–6.25
+      kΩ), ignition coil primary (2.16–2.64Ω) and secondary (8.64–12.96 kΩ) coil resistance,
+      and ignition spark gap (minimum 6.0 mm).
+    children: []
+  - node_id: engine-insp-曲軸位置感知器的檢查
+    title: 曲軸位置感知器的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: engine
+    span:
+    - 6950
+    - 6963
+    page_range:
+    - 413
+    - 413
+    summary: Technicians find instructions for checking the crankshaft position sensor,
+      including its removal, resistance measurement procedure, and the specified resistance
+      range of 228–342Ω.
+    children: []
+  - node_id: starting-insp-起動馬達運作的檢查
+    title: 起動馬達運作的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: starting
+    span:
+    - 6963
+    - 6976
+    page_range:
+    - 413
+    - 413
+    summary: Technicians find instructions for checking starter motor operation, including
+      connecting jumper wire "3" to positive battery terminal "1" and starter motor
+      lead "2", and a warning about using a jumper with sufficient capacity.
+    children: []
+  - node_id: general-insp-定子線圈的檢查
+    title: 定子線圈的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 6976
+    - 6991
+    page_range:
+    - 413
+    - 414
+    summary: Technicians find instructions for checking the stator coil resistance,
+      specifying a value of 0.496–0.744 Ω (white - white), and procedures for replacement
+      if the reading is out of specification.
+    children: []
+  - node_id: general-insp-整流調整器的檢查
+    title: 整流調整器的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 6991
+    - 7006
+    page_range:
+    - 414
+    - 414
+    summary: Technicians find instructions for checking the charging voltage of the
+      regulator rectifier, specifying a value of 14 V at 5000 r/min, and learn to
+      replace it if the reading is out of specification.
+    children: []
+  - node_id: general-insp-汽油油面感應器的檢查
+    title: 汽油油面感應器的檢查
+    aliases: []
+    node_type: inspection
+    subsystem: general
+    span:
+    - 7006
+    - 7090
+    page_range:
+    - 414
+    - 416
+    summary: 本節說明如何檢查汽油油面感應器，包括測量其在滿位（10.0–14.0Ω）與空位（267.0–273.0Ω）的電阻值。
+    children: []
+  - node_id: general-tree-故障排除-4
+    title: 故障排除
+    aliases: []
+    node_type: troubleshooting_tree
+    subsystem: general
+    span:
+    - 7090
+    - 7092
+    page_range:
+    - 417
+    - 417
+    summary: 在自我診斷功能與診斷代碼表章節，技術人員可找到診斷代碼：感知器操作表和診斷代碼：作動器操作表，用於執行系統故障診斷。
+    children: []
+- node_id: general-desc-故障排除
+  title: 故障排除
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 7092
+  - 7397
+  page_range:
+  - 418
+  - 421
+  summary: 在故障排除部分，技术人员可以找到针对无法起动/起动困难、引擎怠速转速不正确、离合器故障、过热、刹车性能不佳、前叉故障、操控不稳定以及照明或信号系统故障等问题的诊断指南和相关组件检查列表。
+  children:
+  - node_id: general-desc-一般資訊
+    title: 一般資訊
+    aliases:
+    - 故障排除
+    node_type: description
+    subsystem: general
+    span:
+    - 7092
+    - 7096
+    page_range:
+    - 418
+    - 418
+    summary: 技術人員在此找到基本故障排除指南，涵蓋一般故障排除方法，並指引參閱手冊中相關程序進行零件檢查、調整和更換。
+    children: []
+  - node_id: general-tree-無法起動-起動困難
+    title: 無法起動/起動困難
+    aliases: []
+    node_type: troubleshooting_tree
+    subsystem: general
+    span:
+    - 7096
+    - 7167
+    page_range:
+    - 418
+    - 418
+    summary: Technicians find potential causes for engine no-start/hard-start issues,
+      covering engine components (cylinder, piston, air filter, crankcase), fuel system
+      (tank, pump, throttle body), and electrical system (battery, fuses, spark plug,
+      ignition coil, switches, wiring, and starting system).
+    children:
+    - node_id: engine-desc-引擎-2
+      title: 引擎
+      aliases: []
+      node_type: description
+      subsystem: engine
+      span:
+      - 7097
+      - 7121
+      page_range:
+      - 418
+      - 418
+      summary: 在引擎部分，技术人员可找到汽缸和汽缸頭、活塞和活塞環、空氣濾清器以及曲軸箱與曲軸等组件的檢查與故障診斷任務，例如汽門間隙不正確或活塞環卡死。
+      children: []
+    - node_id: fuel-desc-汽油系統-2
+      title: 汽油系統
+      aliases: []
+      node_type: description
+      subsystem: fuel
+      span:
+      - 7121
+      - 7133
+      page_range:
+      - 418
+      - 418
+      summary: Technicians find troubleshooting steps for the gasoline system, covering
+        the fuel tank, fuel pump, and throttle body, including issues like a faulty
+        fuel pump or clogged fuel pump filter.
+      children: []
+    - node_id: electrical-desc-電裝系統-2
+      title: 電裝系統
+      aliases: []
+      node_type: description
+      subsystem: electrical
+      span:
+      - 7133
+      - 7167
+      page_range:
+      - 418
+      - 418
+      summary: Technicians find troubleshooting information for the electrical system,
+        covering tasks and components like the battery, fuses, spark plugs, ignition
+        coil, ECU, switches, wiring, and the starter system, including specific faults
+        such as incorrect spark plug gap or a faulty crankshaft position sensor.
+      children: []
+  - node_id: engine-desc-引擎惰轉轉速不正確
+    title: 引擎惰轉轉速不正確
+    aliases: []
+    node_type: description
+    subsystem: engine
+    span:
+    - 7167
+    - 7197
+    page_range:
+    - 418
+    - 419
+    summary: 在引擎惰轉轉速不正確的章節中，技術人員可找到針對引擎、汽油系統及電裝系統的故障排除，包括檢查ISC元件故障、火星塞間隙不正確或ECU故障等可能原因。
+    children:
+    - node_id: fuel-desc-汽油系統-3
+      title: 汽油系統
+      aliases:
+      - 引擎
+      node_type: description
+      subsystem: fuel
+      span:
+      - 7168
+      - 7180
+      page_range:
+      - 418
+      - 418
+      summary: 技師在此節找到汽油系統與引擎的故障排除指南，包括汽門間隙、空氣濾清器阻塞，以及節流閥本體損壞、ISC元件故障和油門握把自由間隙不當等問題。
+      children: []
+    - node_id: electrical-desc-電裝系統-3
+      title: 電裝系統
+      aliases: []
+      node_type: description
+      subsystem: electrical
+      span:
+      - 7180
+      - 7197
+      page_range:
+      - 419
+      - 419
+      summary: Technicians find troubleshooting procedures for the electrical system,
+        covering tasks like checking a dead battery, faulty spark plugs with incorrect
+        gap or heat range, and diagnosing issues with the ignition coil, ECU, or crankshaft
+        position sensor.
+      children: []
+  - node_id: general-tree-中速和高速性能不佳
+    title: 中速和高速性能不佳
+    aliases: []
+    node_type: troubleshooting_tree
+    subsystem: general
+    span:
+    - 7197
+    - 7207
+    page_range:
+    - 419
+    - 419
+    summary: Technicians find troubleshooting steps for poor mid- and high-speed performance,
+      covering the engine's air cleaner element and the fuel system's throttle body
+      and fuel pump.
+    children:
+    - node_id: fuel-desc-汽油系統-4
+      title: 汽油系統
+      aliases:
+      - 引擎
+      node_type: description
+      subsystem: fuel
+      span:
+      - 7199
+      - 7207
+      page_range:
+      - 419
+      - 419
+      summary: 在汽油系統章節，技術人員可找到節流閥本體和汽油泵浦的故障診斷任務，相關故障碼為節流閥本體故障和汽油泵浦故障。
+      children: []
+  - node_id: engine-desc-引擎運轉但機車無法移動
+    title: 引擎運轉但機車無法移動
+    aliases:
+    - 離合器故障
+    node_type: description
+    subsystem: engine
+    span:
+    - 7207
+    - 7219
+    page_range:
+    - 419
+    - 419
+    summary: 此部分指導技術人員診斷引擎運轉但機車無法移動的問題，檢查項目包括V皮帶、主槽輪凸輪與滑件、離合器彈簧以及變速齒輪是否損壞或磨損。
+    children: []
+  - node_id: transmission-desc-離合器打滑
+    title: 離合器打滑
+    aliases: []
+    node_type: description
+    subsystem: transmission
+    span:
+    - 7219
+    - 7226
+    page_range:
+    - 419
+    - 419
+    summary: Technicians find troubleshooting steps for clutch slippage, covering
+      the clutch shoe spring, clutch shoes, and the main sliding sheave, including
+      checks for damage, wear, or seizing.
+    children: []
+  - node_id: general-tree-起動性能不佳
+    title: 起動性能不佳
+    aliases: []
+    node_type: troubleshooting_tree
+    subsystem: general
+    span:
+    - 7226
+    - 7234
+    page_range:
+    - 419
+    - 419
+    summary: Technicians find checks for poor starting performance, including V-belt
+      slippage or contamination, main sliding pulley operation faults, and clutch
+      block bending, damage, or wear.
+    children: []
+  - node_id: general-tree-加速性能不佳
+    title: 加速性能不佳
+    aliases: []
+    node_type: troubleshooting_tree
+    subsystem: general
+    span:
+    - 7234
+    - 7249
+    page_range:
+    - 419
+    - 419
+    summary: 技師在此章節查找加速性能不佳的故障原因，涉及V皮帶打滑或污染、主槽輪滾珠運轉故障或磨損，以及主固定槽輪、主滑動槽輪、副固定槽輪和副滑動槽輪的磨損檢查。
+    children: []
+  - node_id: general-desc-過熱
+    title: 過熱
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 7249
+    - 7289
+    page_range:
+    - 419
+    - 420
+    summary: 技術人員在此找到引擎過熱的故障排除指南，涵蓋冷卻系統檢查（如冷卻液量、水箱、水泵浦、恆溫器）、引擎部件（如積碳、機油狀況）、以及汽油、車體煞車和電裝系統（如火星塞、ECU）的可能原因。
+    children:
+    - node_id: engine-desc-引擎-5
+      title: 引擎
+      aliases: []
+      node_type: description
+      subsystem: engine
+      span:
+      - 7250
+      - 7258
+      page_range:
+      - 419
+      - 419
+      summary: Technicians find engine troubleshooting steps for coolant pipe blockages,
+        cylinder head and piston carbon buildup, and incorrect oil level, viscosity,
+        or quality issues.
+      children: []
+    - node_id: cooling-desc-冷卻系統-2
+      title: 冷卻系統
+      aliases: []
+      node_type: description
+      subsystem: cooling
+      span:
+      - 7258
+      - 7275
+      page_range:
+      - 419
+      - 419
+      summary: 技術人員在此找到冷卻系統的故障排除步驟，包括冷卻液量過低、水箱/水泵浦/恆溫器故障，以及軟管和鋼管損壞或連接不當等問題。
+      children: []
+    - node_id: chassis_body-desc-車體-2
+      title: 車體
+      aliases:
+      - 汽油系統
+      - 電裝系統
+      node_type: description
+      subsystem: chassis_body
+      span:
+      - 7275
+      - 7289
+      page_range:
+      - 420
+      - 420
+      summary: Technicians find troubleshooting steps for the throttle body, air filter,
+        brakes, spark plugs, and ignition system, including issues like connector
+        damage, clogged filters, brake drag, incorrect spark plug gap or heat range,
+        and ECU failure.
+      children: []
+  - node_id: brakes-tree-煞車性能不佳
+    title: 煞車性能不佳
+    aliases:
+    - 過冷
+    node_type: troubleshooting_tree
+    subsystem: brakes
+    span:
+    - 7289
+    - 7305
+    page_range:
+    - 420
+    - 420
+    summary: Technicians find troubleshooting steps for poor braking performance,
+      listing causes like worn brake pads, air in the hydraulic system, brake fluid
+      leaks, and brake disc contamination with oil or grease.
+    children: []
+  - node_id: suspension-desc-前叉油洩漏
+    title: 前叉油洩漏
+    aliases:
+    - 前叉腳故障
+    node_type: description
+    subsystem: suspension
+    span:
+    - 7305
+    - 7315
+    page_range:
+    - 420
+    - 420
+    summary: Technicians find troubleshooting steps for front fork oil leakage, including
+      bent inner tubes, cracked outer tubes, incorrect oil seal installation, damaged
+      seal lips, incorrect oil level, loose damper rod bolts, damaged copper washers,
+      and cracked O-rings on fork cap bolts.
+    children: []
+  - node_id: general-desc-故障
+    title: 故障
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 7315
+    - 7323
+    page_range:
+    - 420
+    - 420
+    summary: 'Technicians find a list of front fork assembly faults: inner tube bending
+      or damage, outer tube bending or damage, fork spring damage, outer tube bushing
+      wear or damage, damper rod bending or damage, incorrect fork oil viscosity,
+      and incorrect oil level.'
+    children: []
+  - node_id: general-desc-操控不穩定
+    title: 操控不穩定
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 7323
+    - 7356
+    page_range:
+    - 420
+    - 420
+    summary: 技師在此章節中針對操控不穩定的問題，依序檢查方向把手、轉向舵頭組件、前叉腳、搖臂、後緩衝器總成、輪胎、輪圈及車架等部件，查找如彎曲、損壞、安裝錯誤、不平均或磨耗等具體故障。
+    children: []
+  - node_id: lighting-desc-照明或訊號系統故障
+    title: 照明或訊號系統故障
+    aliases: []
+    node_type: description
+    subsystem: lighting
+    span:
+    - 7356
+    - 7364
+    page_range:
+    - 420
+    - 420
+    summary: 技術人員在此找到前燈不亮的故障排除步驟，包括前燈 LED 錯誤、電裝配件過多、連接不正確、迴路搭鐵不良及主開關接觸不良。
+    children: []
+  - node_id: lighting-desc-方向燈不亮
+    title: 方向燈不亮
+    aliases:
+    - 後燈 / 煞車燈不亮
+    node_type: description
+    subsystem: lighting
+    span:
+    - 7364
+    - 7377
+    page_range:
+    - 421
+    - 421
+    summary: 技師在此章節可找到後燈/煞車燈不亮與方向燈不亮的故障排除任務，涉及方向燈開關、繼電器、燈泡、電線總成、電瓶、保險絲等組件，以及後燈/煞車燈LED錯誤、電裝配件過多、連接不正確、迴路搭鐵不良等可能原因與DTC。
+    children: []
+  - node_id: lighting-desc-方向燈保持亮著
+    title: 方向燈保持亮著
+    aliases:
+    - 方向燈緩慢閃爍
+    node_type: description
+    subsystem: lighting
+    span:
+    - 7377
+    - 7385
+    page_range:
+    - 421
+    - 421
+    summary: Technicians find troubleshooting steps for turn signals staying on or
+      flashing slowly, listing potential faults like the turn signal relay, main switch,
+      turn signal switch, or incorrect/burned-out bulbs.
+    children: []
+  - node_id: general-desc-喇叭不會響
+    title: 喇叭不會響
+    aliases:
+    - 方向燈快速閃爍
+    node_type: description
+    subsystem: general
+    span:
+    - 7385
+    - 7397
+    page_range:
+    - 421
+    - 421
+    summary: Technicians find troubleshooting steps for horn failure and rapid turn
+      signal flashing, covering components like bulbs, relays, switches, fuses, and
+      wiring assemblies.
+    children: []
+- node_id: general-desc-自我診斷功能與診斷代碼表
+  title: 自我診斷功能與診斷代碼表
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 7397
+  - 7418
+  page_range:
+  - 422
+  - 432
+  summary: 此部分提供自我診斷功能與診斷代碼表，包含故障代碼如P0106、P0107、P0108、P0112、P0113、P0117、P0118、P0122、P0123、P0132、P0201、P0335、P0351、P0500、P0507、P0511、P0560、P0601、P062F、P1601、P2195、P2645的項目、可能原因、故障現象及故障防護系統運作。
+  children:
+  - node_id: general-spec-自我診斷功能與診斷代碼表
+    title: 自我診斷功能與診斷代碼表
+    aliases: []
+    node_type: specification
+    subsystem: general
+    span:
+    - 7397
+    - 7403
+    page_range:
+    - 422
+    - 422
+    summary: 在自我診斷功能與診斷代碼表中，技術人員可查找故障代碼（如P0106、P0107、P0108、P0112、P0113）對應的項目、可能原因、故障現象及防護系統運作，例如進氣壓力固定為101.3[kPa]或進氣溫度固定為20[°C]。
+    children: []
+  - node_id: general-spec-自我診斷功能與診斷代碼表-2
+    title: 自我診斷功能與診斷代碼表
+    aliases: []
+    node_type: specification
+    subsystem: general
+    span:
+    - 7403
+    - 7405
+    page_range:
+    - 423
+    - 423
+    summary: 此部分提供故障代碼表，包含P0117、P0118、P0122、P0123、P0132等代碼，列出對應的故障項目、可能原因、故障現象及防護系統運作，例如冷卻液溫度感知器或節流閥位置感知器電路電壓異常的診斷資訊。
+    children: []
+  - node_id: general-spec-自我診斷功能與診斷代碼表-3
+    title: 自我診斷功能與診斷代碼表
+    aliases: []
+    node_type: specification
+    subsystem: general
+    span:
+    - 7405
+    - 7410
+    page_range:
+    - 424
+    - 426
+    summary: 在自我診斷功能與診斷代碼表中，技術人員可查找故障代碼（如P0201、P0335、P0351、P0500、P0507、P0511、P0560、P0601、P062F、P1601、P2195、P2645）對應的故障項目、可能原因、故障現象及防護系統運作。
+    children: []
+  - node_id: general-desc-自我診斷功能與診斷代碼表-2
+    title: 自我診斷功能與診斷代碼表
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 7410
+    - 7413
+    page_range:
+    - 427
+    - 427
+    summary: 在自我診斷功能與診斷代碼表中，技術人員可查找診斷代碼編號、對應項目（如汽油系統電壓、側支架開關、EEPROM故障代碼P062F、ISC學習狀況、A/F控制學習資料重設）及其程序，並執行特定作動器檢查（如點火線圈測試）。
+    children: []
+  - node_id: general-desc-自我診斷功能與診斷代碼表-3
+    title: 自我診斷功能與診斷代碼表
+    aliases: []
+    node_type: description
+    subsystem: general
+    span:
+    - 7413
+    - 7418
+    page_range:
+    - 428
+    - 431
+    summary: 在自我診斷功能與診斷代碼表中，技師可查找診斷代碼編號、對應項目（如噴油嘴、VVA電磁閥、前燈、ISC元件）及其作動測試程序，例如代碼36測試噴油嘴以每秒1次作動5次，代碼45測試VVA電磁閥以每5秒1次作動5次。
+    children: []
+- node_id: general-desc-tricity155-mws150-a-2016線路圖
+  title: TRICITY155 MWS150-A 2016線路圖
+  aliases: []
+  node_type: description
+  subsystem: general
+  span:
+  - 7418
+  - 7424
+  page_range:
+  - 433
+  - 434
+  summary: This section contains the wiring diagram for the TRICITY155 MWS150-A 2016
+    model, showing the electrical connections and component layout.
+  children: []
+faults:
+- code: P0106
+  item: 進氣壓力感知器(鋼管與軟管系統)
+  symptom: 引擎惰轉轉速過快。引擎惰轉轉速不穩。引擎反應不佳。引擎失去動力。廢氣排放量增加。
+  fail_safe: 進氣壓力差固定為0[kPa]。負載會依據節流閥開度進行偵測。進氣歧管壓力係使用節流閥位置感知器計算。不會依照進氣壓力進行瞬間控制。進氣壓力固定為101.3[kPa]。不會進行含氧量回饋。
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p0106
+  related_refs: []
+- code: P0107
+  item: ''
+  symptom: ''
+  fail_safe: ''
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p0107
+  related_refs: []
+- code: P0108
+  item: ''
+  symptom: ''
+  fail_safe: ''
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: general-spec-自我診斷功能與診斷代碼表-3
+  related_refs: []
+- code: P0112
+  item: ''
+  symptom: ''
+  fail_safe: ''
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p0112、p0113
+  related_refs: []
+- code: P0113
+  item: ''
+  symptom: ''
+  fail_safe: ''
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: general-spec-自我診斷功能與診斷代碼表-3
+  related_refs: []
+- code: P0117
+  item: ''
+  symptom: ''
+  fail_safe: ''
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p0117、p0118
+  related_refs: []
+- code: P0118
+  item: ''
+  symptom: ''
+  fail_safe: ''
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: general-spec-自我診斷功能與診斷代碼表-3
+  related_refs: []
+- code: P0122
+  item: ''
+  symptom: ''
+  fail_safe: ''
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p0122
+  related_refs: []
+- code: P0123
+  item: ''
+  symptom: ''
+  fail_safe: ''
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: general-spec-自我診斷功能與診斷代碼表-3
+  related_refs: []
+- code: P0132
+  item: 含氧量感知器(偵測到電源短路)(未收到含氧量感知器的任何正常訊號)
+  symptom: 廢氣排放量增加。
+  fail_safe: 不會進行含氧量回饋。
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p0132
+  related_refs: []
+- code: P0201
+  item: 噴油嘴(未收到噴油嘴電路的任何正常訊號)
+  symptom: 引擎失去動力。引擎難以起動。引擎無法起動。引擎熄火。
+  fail_safe: 引擎運轉時:引擎強制熄火。引擎停止時:引擎無法起動。不會噴油。
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p0201
+  related_refs: []
+- code: P0335
+  item: 曲軸位置感知器(未收到曲軸位置感知器的任何正常訊號)
+  symptom: 引擎無法起動。
+  fail_safe: 無法運轉。
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p0335
+  related_refs: []
+- code: P0351
+  item: 點火系統(未收到點火線圈的任何正常訊號)
+  symptom: 引擎熄火。引擎失去動力。引擎難以起動。引擎無法起動。
+  fail_safe: 引擎運轉時:引擎強制熄火。引擎停止時:引擎無法起動。不會噴油。
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p0351
+  related_refs: []
+- code: P0500
+  item: 前輪感知器(未收到前輪感知器的任何正常訊號)
+  symptom: 車速未顯示在儀錶上。引擎在機車減速至停止時熄火。引擎惰轉轉速過快。引擎惰轉轉速不穩。廢氣排放量增加。
+  fail_safe: 不會進行含氧量回饋。不會進行 ISC 回饋。不會進行 ISC 學習。
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p0500
+  related_refs: []
+- code: P0507
+  item: ISC 閥(完全打開時卡住)
+  symptom: 引擎惰轉轉速過快。
+  fail_safe: 不會進行惰轉轉速控制。
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p0507
+  related_refs: []
+- code: P0511
+  item: ISC(惰轉轉速控制)元件(ISC 元件未運轉)
+  symptom: 引擎難以起動。引擎惰轉轉速不穩。引擎惰轉轉速過快。
+  fail_safe: 電力並未供應到 ISC 元件。
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p0511
+  related_refs: []
+- code: P0560
+  item: 充電電壓異常。
+  symptom: 引擎難以起動。廢氣排放量增加。電瓶性能衰減或電瓶有瑕疵。
+  fail_safe: 不會進行含氧量回饋。不會進行 ISC 學習。VVA 電磁閥不會運轉。
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p0560
+  related_refs: []
+- code: P0601
+  item: ECU 記憶體故障。(ROM 資料錯誤)
+  symptom: 引擎無法起動。
+  fail_safe: 引擎無法起動。不會進行點火與噴油。無法判斷其他的故障代碼。無法寫入到 EEPROM。
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p0601
+  related_refs: []
+- code: P062F
+  item: EEPROM 寫入錯誤
+  symptom: 廢氣排放量增加。引擎無法起動或難以起動。引擎惰轉轉速不穩。OBD 記憶體值不正確。
+  fail_safe: ISC 學習值 = 預設值已初始化含氧量回饋學習值。已初始化 CO 調整值。已初始化 OBD 記憶體值。
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p062f
+  related_refs: []
+- code: P1601
+  item: 側支架開關(未收到側支架開關的任何正常訊號)
+  symptom: 引擎無法起動。
+  fail_safe: 引擎強制熄火。
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p1601
+  related_refs: []
+- code: P2195
+  item: 含氧量感知器(偵測到斷路)(未收到含氧量感知器的任何正常訊號)
+  symptom: 廢氣排放量增加。
+  fail_safe: 不會進行含氧量回饋。
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p2195
+  related_refs: []
+- code: P2645
+  item: VVA 系統故障(電磁閥運作時未收到VVA 電磁閥的正常訊號)
+  symptom: 引擎扭力在高速時下降。
+  fail_safe: 固定在低速凸輪位置。引擎轉速上限下降。
+  detect_ref: general-spec-自我診斷功能與診斷代碼表-3
+  isolate_ref: fuel-fault-故障代碼編號-p2645
+  related_refs: []
