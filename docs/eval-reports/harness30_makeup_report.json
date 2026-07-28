@@ -1,0 +1,693 @@
+{
+  "clean": true,
+  "goldens": 30,
+  "distinct_slugs": 25,
+  "unresolved_slugs": [],
+  "must_contain_missing_total": 0,
+  "entries": [
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-adversarial-001",
+      "slugs": [],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-adversarial-002",
+      "slugs": [],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-adversarial-003",
+      "slugs": [],
+      "must_contain_missing": [],
+      "must_contain_variant_fixes": [
+        {
+          "old": "4 行程",
+          "new": "4行程"
+        }
+      ]
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-adversarial-004",
+      "slugs": [],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-adversarial-005",
+      "slugs": [],
+      "must_contain_missing": [],
+      "must_contain_variant_fixes": [
+        {
+          "old": "4 行程",
+          "new": "4行程"
+        }
+      ]
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-adversarial-006",
+      "slugs": [],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-cross-001",
+      "slugs": [
+        {
+          "old": "廢氣控制系統定期保養表",
+          "new": "maintenance-desc-廢氣控制系統定期保養表",
+          "method": "title-exact"
+        },
+        {
+          "old": "廢氣控制系統定期保養表",
+          "new": "maintenance-desc-廢氣控制系統定期保養表",
+          "method": "title-exact"
+        },
+        {
+          "old": "冷卻系統",
+          "new": "cooling-desc-冷卻系統",
+          "method": "title-exact-dedup"
+        },
+        {
+          "old": "冷卻系統",
+          "new": "cooling-desc-冷卻系統",
+          "method": "title-exact-dedup"
+        },
+        {
+          "old": "冷卻系統",
+          "new": "cooling-desc-冷卻系統",
+          "method": "title-exact-dedup"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-cross-002",
+      "slugs": [
+        {
+          "old": "故障代碼編號-p0117、p0118",
+          "new": "fuel-fault-故障代碼編號-p0117、p0118",
+          "method": "title-exact"
+        },
+        {
+          "old": "故障代碼編號-p0117、p0118",
+          "new": "fuel-fault-故障代碼編號-p0117、p0118",
+          "method": "title-exact"
+        },
+        {
+          "old": "冷卻液溫度感知器的檢查",
+          "new": "general-insp-汽油油面感應器的檢查",
+          "method": "content-locate"
+        },
+        {
+          "old": "冷卻液溫度感知器的檢查",
+          "new": "general-insp-汽油油面感應器的檢查",
+          "method": "content-locate"
+        },
+        {
+          "old": "冷卻液溫度感知器的檢查",
+          "new": "general-insp-汽油油面感應器的檢查",
+          "method": "content-locate"
+        }
+      ],
+      "must_contain_missing": [],
+      "must_contain_variant_fixes": [
+        {
+          "old": "綠色 / 紅色",
+          "new": "綠色/紅色"
+        }
+      ]
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-cross-003",
+      "slugs": [
+        {
+          "old": "無法起動-起動困難",
+          "new": "general-tree-無法起動-起動困難",
+          "method": "title-exact"
+        },
+        {
+          "old": "無法起動-起動困難",
+          "new": "general-tree-無法起動-起動困難",
+          "method": "title-exact"
+        },
+        {
+          "old": "無法起動-起動困難",
+          "new": "general-tree-無法起動-起動困難",
+          "method": "title-exact"
+        },
+        {
+          "old": "壓縮壓力的測量",
+          "new": "engine-insp-壓縮壓力的測量",
+          "method": "title-exact"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-cross-004",
+      "slugs": [
+        {
+          "old": "過熱",
+          "new": "general-desc-過熱",
+          "method": "title-exact"
+        },
+        {
+          "old": "過熱",
+          "new": "general-desc-過熱",
+          "method": "title-exact"
+        },
+        {
+          "old": "過熱",
+          "new": "general-desc-過熱",
+          "method": "title-exact"
+        },
+        {
+          "old": "冷卻系統",
+          "new": "cooling-desc-冷卻系統",
+          "method": "title-exact-dedup"
+        },
+        {
+          "old": "冷卻系統",
+          "new": "cooling-desc-冷卻系統",
+          "method": "title-exact-dedup"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-cross-005",
+      "slugs": [
+        {
+          "old": "液壓煞車系統空氣的釋放",
+          "new": "brakes-insp-煞車液量的檢查",
+          "method": "content-locate"
+        },
+        {
+          "old": "液壓煞車系統空氣的釋放",
+          "new": "brakes-insp-煞車液量的檢查",
+          "method": "content-locate"
+        },
+        {
+          "old": "車體規格",
+          "new": "general-desc-車體規格",
+          "method": "title-exact"
+        },
+        {
+          "old": "車體規格",
+          "new": "general-desc-車體規格",
+          "method": "title-exact"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-cross-006",
+      "slugs": [
+        {
+          "old": "無法起動-起動困難",
+          "new": "general-tree-無法起動-起動困難",
+          "method": "title-exact"
+        },
+        {
+          "old": "自我診斷功能表",
+          "new": "general-desc-車體規格",
+          "method": "quote-locate"
+        },
+        {
+          "old": "自我診斷功能表",
+          "new": "general-desc-車體規格",
+          "method": "quote-locate"
+        },
+        {
+          "old": "自我診斷功能表",
+          "new": "general-desc-車體規格",
+          "method": "quote-locate"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-dtc-001",
+      "slugs": [
+        {
+          "old": "故障代碼編號-p0117、p0118",
+          "new": "fuel-fault-故障代碼編號-p0117、p0118",
+          "method": "title-exact"
+        },
+        {
+          "old": "故障代碼編號-p0117、p0118",
+          "new": "fuel-fault-故障代碼編號-p0117、p0118",
+          "method": "title-exact"
+        },
+        {
+          "old": "故障代碼編號-p0117、p0118",
+          "new": "fuel-fault-故障代碼編號-p0117、p0118",
+          "method": "title-exact"
+        },
+        {
+          "old": "故障代碼編號-p0117、p0118",
+          "new": "fuel-fault-故障代碼編號-p0117、p0118",
+          "method": "title-exact"
+        },
+        {
+          "old": "故障代碼編號-p0117、p0118",
+          "new": "fuel-fault-故障代碼編號-p0117、p0118",
+          "method": "title-exact"
+        }
+      ],
+      "must_contain_missing": [],
+      "must_contain_variant_fixes": [
+        {
+          "old": "綠色 / 紅色",
+          "new": "綠色/紅色"
+        }
+      ]
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-image-001",
+      "slugs": [
+        {
+          "old": "汽門間隙的調整",
+          "new": "ignition-insp-火星塞的檢查",
+          "method": "content-locate"
+        },
+        {
+          "old": "汽缸頭的拆卸",
+          "new": "engine-ri-汽缸頭的拆卸",
+          "method": "title-exact"
+        },
+        {
+          "old": "汽缸頭的拆卸",
+          "new": "engine-ri-汽缸頭的拆卸",
+          "method": "title-exact"
+        },
+        {
+          "old": "汽缸頭的安裝",
+          "new": "engine-ri-汽缸頭的安裝",
+          "method": "title-exact"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-image-002",
+      "slugs": [
+        {
+          "old": "鋼索配置",
+          "new": "general-desc-鋼索配置-2",
+          "method": "title-exact-dedup"
+        },
+        {
+          "old": "鋼索配置",
+          "new": "general-desc-鋼索配置-2",
+          "method": "title-exact-dedup"
+        },
+        {
+          "old": "鋼索配置",
+          "new": "general-desc-鋼索配置-2",
+          "method": "title-exact-dedup"
+        },
+        {
+          "old": "鋼索配置",
+          "new": "general-desc-鋼索配置-2",
+          "method": "title-exact-dedup"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-image-003",
+      "slugs": [
+        {
+          "old": "引擎機油量的檢查",
+          "new": "engine-insp-引擎機油量的檢查",
+          "method": "title-exact"
+        },
+        {
+          "old": "引擎機油量的檢查",
+          "new": "engine-insp-引擎機油量的檢查",
+          "method": "title-exact"
+        },
+        {
+          "old": "引擎機油量的檢查",
+          "new": "engine-insp-引擎機油量的檢查",
+          "method": "title-exact"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-image-004",
+      "slugs": [
+        {
+          "old": "冷卻液的更換",
+          "new": "maintenance-op-冷卻液的更換",
+          "method": "title-exact"
+        },
+        {
+          "old": "冷卻液的更換",
+          "new": "maintenance-op-冷卻液的更換",
+          "method": "title-exact"
+        },
+        {
+          "old": "冷卻液的更換",
+          "new": "maintenance-op-冷卻液的更換",
+          "method": "title-exact"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-image-005",
+      "slugs": [
+        {
+          "old": "液壓煞車系統空氣的釋放",
+          "new": "brakes-insp-煞車液量的檢查",
+          "method": "content-locate"
+        },
+        {
+          "old": "液壓煞車系統空氣的釋放",
+          "new": "brakes-insp-煞車液量的檢查",
+          "method": "content-locate"
+        },
+        {
+          "old": "液壓煞車系統空氣的釋放",
+          "new": "brakes-insp-煞車液量的檢查",
+          "method": "content-locate"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-image-006",
+      "slugs": [
+        {
+          "old": "惰轉排氣的檢查",
+          "new": "maintenance-insp-惰轉排氣的檢查",
+          "method": "title-exact"
+        },
+        {
+          "old": "惰轉排氣的檢查",
+          "new": "maintenance-insp-惰轉排氣的檢查",
+          "method": "title-exact"
+        },
+        {
+          "old": "惰轉排氣的檢查",
+          "new": "maintenance-insp-惰轉排氣的檢查",
+          "method": "title-exact"
+        },
+        {
+          "old": "惰轉排氣的檢查",
+          "new": "maintenance-insp-惰轉排氣的檢查",
+          "method": "title-exact"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-lookup-001",
+      "slugs": [
+        {
+          "old": "冷卻系統",
+          "new": "cooling-desc-冷卻系統",
+          "method": "title-exact-dedup"
+        },
+        {
+          "old": "冷卻系統",
+          "new": "cooling-desc-冷卻系統",
+          "method": "title-exact-dedup"
+        },
+        {
+          "old": "冷卻系統",
+          "new": "cooling-desc-冷卻系統",
+          "method": "title-exact-dedup"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-lookup-002",
+      "slugs": [
+        {
+          "old": "引擎機油的更換",
+          "new": "engine-op-引擎機油的更換",
+          "method": "title-exact"
+        },
+        {
+          "old": "引擎機油的更換",
+          "new": "engine-op-引擎機油的更換",
+          "method": "title-exact"
+        },
+        {
+          "old": "引擎機油的更換",
+          "new": "engine-op-引擎機油的更換",
+          "method": "title-exact"
+        },
+        {
+          "old": "引擎機油的更換",
+          "new": "engine-op-引擎機油的更換",
+          "method": "title-exact"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-lookup-003",
+      "slugs": [
+        {
+          "old": "火星塞的檢查",
+          "new": "ignition-insp-火星塞的檢查",
+          "method": "title-exact"
+        },
+        {
+          "old": "火星塞的檢查",
+          "new": "ignition-insp-火星塞的檢查",
+          "method": "title-exact"
+        },
+        {
+          "old": "火星塞的檢查",
+          "new": "ignition-insp-火星塞的檢查",
+          "method": "title-exact"
+        },
+        {
+          "old": "火星塞的檢查",
+          "new": "ignition-insp-火星塞的檢查",
+          "method": "title-exact"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-lookup-004",
+      "slugs": [
+        {
+          "old": "惰轉排氣的檢查",
+          "new": "maintenance-insp-惰轉排氣的檢查",
+          "method": "title-exact"
+        },
+        {
+          "old": "惰轉排氣的檢查",
+          "new": "maintenance-insp-惰轉排氣的檢查",
+          "method": "title-exact"
+        },
+        {
+          "old": "惰轉排氣的檢查",
+          "new": "maintenance-insp-惰轉排氣的檢查",
+          "method": "title-exact"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-lookup-005",
+      "slugs": [
+        {
+          "old": "車體規格",
+          "new": "general-desc-車體規格",
+          "method": "title-exact"
+        },
+        {
+          "old": "車體規格",
+          "new": "general-desc-車體規格",
+          "method": "title-exact"
+        },
+        {
+          "old": "車體規格",
+          "new": "general-desc-車體規格",
+          "method": "title-exact"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-lookup-006",
+      "slugs": [
+        {
+          "old": "車體規格",
+          "new": "general-desc-車體規格",
+          "method": "title-exact"
+        },
+        {
+          "old": "車體規格",
+          "new": "general-desc-車體規格",
+          "method": "title-exact"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-procedural-002",
+      "slugs": [
+        {
+          "old": "故障代碼編號-p0107、p0108",
+          "new": "fuel-fault-故障代碼編號-p0107",
+          "method": "quote-locate"
+        },
+        {
+          "old": "故障代碼編號-p0107、p0108",
+          "new": "fuel-fault-故障代碼編號-p0107",
+          "method": "quote-locate"
+        },
+        {
+          "old": "故障代碼編號-p0107、p0108",
+          "new": "fuel-fault-故障代碼編號-p0107",
+          "method": "quote-locate"
+        },
+        {
+          "old": "故障代碼編號-p0107、p0108",
+          "new": "fuel-fault-故障代碼編號-p0107",
+          "method": "quote-locate"
+        },
+        {
+          "old": "故障代碼編號-p0107、p0108",
+          "new": "fuel-fault-故障代碼編號-p0107",
+          "method": "quote-locate"
+        }
+      ],
+      "must_contain_missing": [],
+      "must_contain_variant_fixes": [
+        {
+          "old": "粉紅色 / 綠色",
+          "new": "粉紅色/綠色"
+        }
+      ]
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-procedural-003",
+      "slugs": [
+        {
+          "old": "引擎機油的更換",
+          "new": "engine-op-引擎機油的更換",
+          "method": "title-exact"
+        },
+        {
+          "old": "引擎機油的更換",
+          "new": "engine-op-引擎機油的更換",
+          "method": "title-exact"
+        },
+        {
+          "old": "引擎機油的更換",
+          "new": "engine-op-引擎機油的更換",
+          "method": "title-exact"
+        },
+        {
+          "old": "引擎機油的更換",
+          "new": "engine-op-引擎機油的更換",
+          "method": "title-exact"
+        },
+        {
+          "old": "引擎機油的更換",
+          "new": "engine-op-引擎機油的更換",
+          "method": "title-exact"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-procedural-004",
+      "slugs": [
+        {
+          "old": "冷卻液的更換",
+          "new": "maintenance-op-冷卻液的更換",
+          "method": "title-exact"
+        },
+        {
+          "old": "冷卻液的更換",
+          "new": "maintenance-op-冷卻液的更換",
+          "method": "title-exact"
+        },
+        {
+          "old": "冷卻液的更換",
+          "new": "maintenance-op-冷卻液的更換",
+          "method": "title-exact"
+        },
+        {
+          "old": "冷卻液的更換",
+          "new": "maintenance-op-冷卻液的更換",
+          "method": "title-exact"
+        },
+        {
+          "old": "冷卻液的更換",
+          "new": "maintenance-op-冷卻液的更換",
+          "method": "title-exact"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-procedural-005",
+      "slugs": [
+        {
+          "old": "液壓煞車系統空氣的釋放",
+          "new": "brakes-insp-煞車液量的檢查",
+          "method": "content-locate"
+        },
+        {
+          "old": "液壓煞車系統空氣的釋放",
+          "new": "brakes-insp-煞車液量的檢查",
+          "method": "content-locate"
+        },
+        {
+          "old": "液壓煞車系統空氣的釋放",
+          "new": "brakes-insp-煞車液量的檢查",
+          "method": "content-locate"
+        },
+        {
+          "old": "液壓煞車系統空氣的釋放",
+          "new": "brakes-insp-煞車液量的檢查",
+          "method": "content-locate"
+        }
+      ],
+      "must_contain_missing": []
+    },
+    {
+      "id": "0a2ba199-665f-41aa-a106-1163cad68d16-procedural-006",
+      "slugs": [
+        {
+          "old": "壓縮壓力的測量",
+          "new": "engine-insp-壓縮壓力的測量",
+          "method": "title-exact"
+        },
+        {
+          "old": "壓縮壓力的測量",
+          "new": "engine-insp-壓縮壓力的測量",
+          "method": "title-exact"
+        },
+        {
+          "old": "壓縮壓力的測量",
+          "new": "engine-insp-壓縮壓力的測量",
+          "method": "title-exact"
+        },
+        {
+          "old": "壓縮壓力的測量",
+          "new": "engine-insp-壓縮壓力的測量",
+          "method": "title-exact"
+        },
+        {
+          "old": "壓縮壓力的測量",
+          "new": "engine-insp-壓縮壓力的測量",
+          "method": "title-exact"
+        }
+      ],
+      "must_contain_missing": []
+    }
+  ]
+}

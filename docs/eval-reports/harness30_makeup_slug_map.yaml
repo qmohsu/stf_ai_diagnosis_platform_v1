@@ -1,0 +1,75 @@
+冷卻液溫度感知器的檢查:
+  method: content-locate
+  node_id: general-insp-汽油油面感應器的檢查
+冷卻液的更換:
+  method: title-exact
+  node_id: maintenance-op-冷卻液的更換
+冷卻系統:
+  method: title-exact-dedup
+  node_id: cooling-desc-冷卻系統
+壓縮壓力的測量:
+  method: title-exact
+  node_id: engine-insp-壓縮壓力的測量
+定期保養:
+  method: title-exact-dedup
+  node_id: maintenance-desc-簡介
+定期檢查與調整:
+  method: title-exact
+  node_id: maintenance-insp-定期檢查與調整
+廢氣控制系統定期保養表:
+  method: title-exact
+  node_id: maintenance-desc-廢氣控制系統定期保養表
+引擎惰轉轉速的檢查:
+  method: title-exact
+  node_id: engine-insp-引擎惰轉轉速的檢查
+引擎機油的更換:
+  method: title-exact
+  node_id: engine-op-引擎機油的更換
+引擎機油量的檢查:
+  method: title-exact
+  node_id: engine-insp-引擎機油量的檢查
+引擎規格:
+  method: title-exact
+  node_id: general-desc-引擎規格
+引擎規格-2:
+  method: title-exact+desuffixed
+  node_id: general-desc-引擎規格
+惰轉排氣的檢查:
+  method: title-exact
+  node_id: maintenance-insp-惰轉排氣的檢查
+故障代碼編號-p0107、p0108:
+  method: quote-locate
+  node_id: fuel-fault-故障代碼編號-p0107
+故障代碼編號-p0117、p0118:
+  method: title-exact
+  node_id: fuel-fault-故障代碼編號-p0117、p0118
+汽缸頭的安裝:
+  method: title-exact
+  node_id: engine-ri-汽缸頭的安裝
+汽缸頭的拆卸:
+  method: title-exact
+  node_id: engine-ri-汽缸頭的拆卸
+汽門間隙的調整:
+  method: content-locate
+  node_id: ignition-insp-火星塞的檢查
+液壓煞車系統空氣的釋放:
+  method: content-locate
+  node_id: brakes-insp-煞車液量的檢查
+火星塞的檢查:
+  method: title-exact
+  node_id: ignition-insp-火星塞的檢查
+無法起動-起動困難:
+  method: title-exact
+  node_id: general-tree-無法起動-起動困難
+自我診斷功能表:
+  method: quote-locate
+  node_id: general-desc-車體規格
+車體規格:
+  method: title-exact
+  node_id: general-desc-車體規格
+過熱:
+  method: title-exact
+  node_id: general-desc-過熱
+鋼索配置:
+  method: title-exact-dedup
+  node_id: general-desc-鋼索配置-2
