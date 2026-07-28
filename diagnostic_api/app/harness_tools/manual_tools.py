@@ -47,8 +47,10 @@ logger = structlog.get_logger(__name__)
 
 _MANUAL_DIR = Path(settings.manual_storage_path)
 
-# Directories to skip when scanning for .md files.
-_SKIP_DIRS = {"images", "uploads", ".queue"}
+# Directories to skip when scanning for .md files.  ``index``
+# holds the Phase-3 sidecar + v2 content — its .md must not be
+# listed as a separate manual.
+_SKIP_DIRS = {"images", "uploads", ".queue", "index"}
 
 
 # ── Helpers ───────────────────────────────────────────────────────
@@ -422,6 +424,12 @@ async def get_manual_toc(
     except (TypeError, ValueError):
         max_depth = 3
 
+    # ── Index track (HARNESS-30 Phase 3) ─────────────────────
+    from app.harness_tools.manual_index import load_runtime_index
+    rt_index = load_runtime_index(manual_id)
+    if rt_index is not None:
+        return rt_index.toc_text(max_depth=max_depth or 3)
+
     md_text = _read_manual_file(manual_id)
     if md_text is None:
         available = [
@@ -495,6 +503,42 @@ async def read_manual_section(
     include_subs: bool = input_data.get(
         "include_subsections", True,
     )
+
+    # ── Index track (HARNESS-30 Phase 3) ─────────────────────
+    from app.harness_tools.manual_index import load_runtime_index
+    rt_index = load_runtime_index(manual_id)
+    if rt_index is not None:
+        node, candidates = rt_index.resolve(section_query)
+        if node is None and candidates:
+            listing = "\n".join(
+                f"- {c.title}  [{c.node_id}] "
+                f"({c.subsystem}/{c.node_type})"
+                for c in candidates[:10]
+            )
+            return (
+                f"Section query '{section_query}' is ambiguous "
+                f"({len(candidates)} matches). Pick ONE node_id "
+                f"and call again:\n{listing}"
+            )
+        if node is None:
+            return (
+                f"Section '{section_query}' not found in manual "
+                f"'{manual_id}'. Use get_manual_toc for node_ids "
+                f"or search_manual_text to locate content."
+            )
+        section_text = rt_index.section_text(node)
+        if section_text is None:
+            return (
+                f"Node '{node.node_id}' has no content anchor — "
+                f"use search_manual_text."
+            )
+        blocks = build_multimodal_section(
+            section_text, rt_index.dir,
+        )
+        has_images = any(
+            b.get("type") == "image_url" for b in blocks
+        )
+        return blocks if has_images else section_text
 
     md_text = _read_manual_file(manual_id)
     if md_text is None:
@@ -658,6 +702,45 @@ async def search_manual_text(
     manual_id: str = input_data["manual_id"]
     query: str = input_data["query"]
     max_hits: int = int(input_data.get("max_hits", 20))
+
+    # ── Index track (HARNESS-30 Phase 3): grep the v2 content
+    # and attribute hits to index nodes ───────────────────────
+    from app.harness_tools.manual_index import load_runtime_index
+    rt_index = load_runtime_index(manual_id)
+    if rt_index is not None:
+        needle = query.casefold()
+        hits = [
+            (idx, line.strip())
+            for idx, line in enumerate(rt_index.content_lines)
+            if needle in line.casefold()
+        ]
+        if not hits:
+            return (
+                f"0 matches for '{query}' in manual "
+                f"'{manual_id}'. The manual does not contain "
+                f"this text (checked all "
+                f"{len(rt_index.content_lines)} lines)."
+            )
+        shown = hits[:max_hits]
+        out_lines = [
+            f"{len(hits)} line(s) match '{query}' in manual "
+            f"'{manual_id}'"
+            + (f" (showing first {len(shown)}):"
+               if len(hits) > len(shown) else ":")
+        ]
+        for idx, text in shown:
+            preview = text[:_HIT_PREVIEW_CHARS]
+            if len(text) > _HIT_PREVIEW_CHARS:
+                preview += "…"
+            out_lines.append(
+                f"- [node: {rt_index.enclosing_node_id(idx)}] "
+                f"{preview}"
+            )
+        out_lines.append(
+            "\nPass a node_id above to read_manual_section "
+            "to read the full context of a hit."
+        )
+        return "\n".join(out_lines)
 
     md_text = _read_manual_file(manual_id)
     if md_text is None:
