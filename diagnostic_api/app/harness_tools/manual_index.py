@@ -184,7 +184,10 @@ class RuntimeIndex:
                 f"{pad}- {node.title}  [{node.node_id}] "
                 f"({node.subsystem}/{node.node_type})"
             )
-            if node.summary and indent < 2:
+            # Summaries only at chapter level — deeper ones blow
+            # the TOC past the sub-agent's context budget (77K
+            # chars measured with depth<2 on TRICITY155).
+            if node.summary and indent == 0:
                 lines.append(f"{pad}  {node.summary[:110]}")
             if indent + 1 < max_depth:
                 for child in node.children:
