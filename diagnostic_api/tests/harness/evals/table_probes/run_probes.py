@@ -51,8 +51,8 @@ async def _run() -> int:
     manual_id = spec["manual_id"]
     results = []
     for probe in spec["probes"]:
-        value = _norm(probe["value"])
-        qualifier = _norm(probe["qualifier"])
+        value = _norm(str(probe["value"]))
+        qualifier = _norm(str(probe["qualifier"]))
         record = {
             "id": probe["id"], "find": False,
             "read": False, "assoc": False, "node": None,
@@ -60,7 +60,7 @@ async def _run() -> int:
 
         search = _norm(await search_manual_text({
             "manual_id": manual_id,
-            "query": probe["value"],
+            "query": str(probe["value"]),
             "max_hits": 5,
         }))
         nodes = re.findall(r"\[node: ([^\]]+)\]", search)
