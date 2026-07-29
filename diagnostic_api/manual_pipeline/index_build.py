@@ -264,10 +264,24 @@ def main() -> int:
     parser.add_argument(
         "--alias-map", type=Path, default=None,
     )
+    parser.add_argument("--manufacturer", default=None)
+    parser.add_argument(
+        "--models", default=None,
+        help="comma-separated vehicle models",
+    )
     args = parser.parse_args()
+    applicability = None
+    if args.manufacturer and args.models:
+        applicability = {
+            "manufacturer": args.manufacturer,
+            "models": [
+                m.strip() for m in args.models.split(",")
+            ],
+        }
     ok = run_index_build(
         args.mineru_dir, args.content_md, args.manual_id,
         args.out,
+        applicability=applicability,
         with_summaries=args.summaries,
         model=args.model,
         item_lines_path=args.item_lines,

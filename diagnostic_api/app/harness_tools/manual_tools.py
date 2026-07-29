@@ -428,7 +428,22 @@ async def get_manual_toc(
     from app.harness_tools.manual_index import load_runtime_index
     rt_index = load_runtime_index(manual_id)
     if rt_index is not None:
-        return rt_index.toc_text(max_depth=max_depth or 3)
+        # Adaptive depth: large trees (Corolla: 1,264 nodes →
+        # 136K chars at depth 3) auto-shrink to stay inside the
+        # sub-agent's context budget; an explicit max_depth from
+        # the caller is honoured as an upper bound.
+        depth = max_depth or 3
+        toc = rt_index.toc_text(max_depth=depth)
+        while len(toc) > 60_000 and depth > 1:
+            depth -= 1
+            toc = rt_index.toc_text(max_depth=depth)
+            toc += (
+                f"\n\n(large manual: tree auto-reduced to "
+                f"depth {depth} — pass max_depth={depth + 1} "
+                f"or read a parent node_id to see nested "
+                f"sections)"
+            )
+        return toc
 
     md_text = _read_manual_file(manual_id)
     if md_text is None:
