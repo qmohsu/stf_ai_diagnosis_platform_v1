@@ -123,6 +123,63 @@ class TestTreeBuilding:
         assert covered == set(range(len(stream)))
 
 
+class TestPhase4Rules:
+    """R4 language-aware headers + R6 bare-para title promotion."""
+
+    def test_r4_english_headers_anchor_chapters(self) -> None:
+        """Latin-manual running headers (M4/Corolla) anchor
+        chapters; brand marks and codes stay furniture."""
+        from manual_pipeline.tree_builder import _headerish
+        assert _headerish("Engine in-car repair procedures")
+        assert _headerish("Braking system")
+        assert not _headerish("YAMAHA")
+        assert not _headerish("2016")
+        assert not _headerish("EAS10003")
+        assert not _headerish("2A•15")
+
+    def test_r6_promotes_unheaded_task_title(self) -> None:
+        """A bare para like 液壓煞車系統空氣的釋放 becomes its own
+        node (the cross-005 root fix)."""
+        stream = [
+            _item(0, 1, ItemKind.PAGE_HEADER, "前煞車"),
+            _item(1, 1, ItemKind.TITLE_CANDIDATE,
+                  "煞車液量的檢查"),
+            _item(2, 1, ItemKind.PARA,
+                  "檢查煞車液量是否位於上下限刻度之間,不足時"
+                  "補充指定的 DOT 4 煞車液並檢查滲漏情形。"),
+            _item(3, 1, ItemKind.PARA, "液壓煞車系統空氣的釋放"),
+            _item(4, 1, ItemKind.PARA,
+                  "a. 將透明塑膠軟管連接到空氣釋放螺絲,依右前、"
+                  "左前、後煞車卡鉗的順序執行排氣程序並補液。"),
+        ]
+        result = build_tree(stream, Vocab.load(), 1)
+        all_nodes = [
+            n for r in result.roots for n in r.walk()
+        ]
+        bleed = [
+            n for n in all_nodes
+            if n.title == "液壓煞車系統空氣的釋放"
+        ]
+        assert len(bleed) == 1
+        assert bleed[0].node_type == "operation"
+        # Its span owns the procedure para.
+        assert bleed[0].span[0] == 3
+
+    def test_r6_does_not_promote_prose(self) -> None:
+        """Ordinary sentences and long paras stay body text."""
+        from manual_pipeline.tree_builder import (
+            _is_promotable_para,
+        )
+        assert not _is_promotable_para(
+            "調整後請確認怠速轉速,必要時重新執行檢查。")
+        assert not _is_promotable_para(
+            "本節說明汽門間隙的調整方法與所需工具,內容較長"
+            "因此不應被提升為標題。")
+        # Numbered steps end in task suffixes too — never nodes
+        # (the I5 catch from the first real R6 build).
+        assert not _is_promotable_para("3. 油門鋼索的安裝")
+
+
 class TestEntities:
     """Fault-card extraction against the synthetic stream."""
 

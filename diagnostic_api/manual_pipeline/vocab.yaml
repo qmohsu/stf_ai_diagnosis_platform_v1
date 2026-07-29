@@ -13,26 +13,26 @@
 #   visible (I6 counts it, build report lists it) but NEVER blocks
 #   coverage — a node's span/readability is independent of labels.
 
-vocab_version: "1"
+vocab_version: "2"
 
 subsystems:
-  general:       {aliases: [一般資訊, 機車的資訊, 規格, General information, Specifications]}
-  maintenance:   {aliases: [定期保養, 定期檢查與調整, Routine maintenance]}
-  engine:        {aliases: [引擎, 發動機, 汽缸, 曲軸, Engine]}
-  fuel:          {aliases: [汽油系統, 燃油系統, 汽油噴射系統, 噴油嘴, 節流閥, Fuel system]}
-  cooling:       {aliases: [冷卻系統, 水箱, Cooling system]}
+  general:       {aliases: [一般資訊, 機車的資訊, 規格, General information, Specifications, Introduction, Reference, Fault finding, Weekly checks]}
+  maintenance:   {aliases: [定期保養, 定期檢查與調整, Routine maintenance, Servicing, Maintenance schedule]}
+  engine:        {aliases: [引擎, 發動機, 汽缸, 曲軸, Engine, Engine in-car repair, Engine removal, Engine overhaul]}
+  fuel:          {aliases: [汽油系統, 燃油系統, 汽油噴射系統, 噴油嘴, 節流閥, Fuel system, Fuel and exhaust, Emission control, Exhaust system]}
+  cooling:       {aliases: [冷卻系統, 水箱, Cooling system, Cooling heating, Heating and ventilation]}
   lubrication:   {aliases: [潤滑系統, 機油, Lubrication]}
-  ignition:      {aliases: [點火系統, 點火線圈, 火星塞, Ignition]}
-  starting:      {aliases: [起動系統, 電動起動器, 起動馬達, Starting system]}
+  ignition:      {aliases: [點火系統, 點火線圈, 火星塞, Ignition, Ignition system]}
+  starting:      {aliases: [起動系統, 電動起動器, 起動馬達, Starting system, Starting and charging]}
   charging:      {aliases: [充電系統, AC發電機, 電瓶, Charging system]}
-  electrical:    {aliases: [電裝系統, 電氣系統, ECU, 電線總成, Electrical system]}
-  transmission:  {aliases: [傳動, V型皮帶, 離合器, 變速箱, CVT, Transmission]}
-  brakes:        {aliases: [煞車, 制動, 煞車卡鉗, 煞車主缸, Brakes]}
+  electrical:    {aliases: [電裝系統, 電氣系統, ECU, 電線總成, Electrical system, Body electrical, Wiring diagrams, Electrical]}
+  transmission:  {aliases: [傳動, V型皮帶, 離合器, 變速箱, CVT, Transmission, Clutch, Manual transmission, Automatic transmission, Driveshafts, Gearbox]}
+  brakes:        {aliases: [煞車, 制動, 煞車卡鉗, 煞車主缸, Brakes, Braking system]}
   abs:           {aliases: [ABS, 防鎖死煞車系統, 液壓單元]}
   wheels_tires:  {aliases: [車輪, 輪胎, 外胎, Wheels, Tyres]}
-  suspension:    {aliases: [懸吊, 前叉, 後緩衝器, 搖臂, Suspension]}
+  suspension:    {aliases: [懸吊, 前叉, 後緩衝器, 搖臂, Suspension, Suspension and steering]}
   steering:      {aliases: [轉向, 轉向舵頭, 三角架, Steering]}
-  chassis_body:  {aliases: [車體, 車架, 車殼, Bodywork, Frame]}
+  chassis_body:  {aliases: [車體, 車架, 車殼, Bodywork, Frame, Bodywork and fittings, Body equipment]}
   lighting:      {aliases: [燈光, 照明或訊號系統, 前燈, 方向燈, Lighting]}
   instruments:   {aliases: [儀錶, Instruments]}
   unclassified:  {aliases: []}

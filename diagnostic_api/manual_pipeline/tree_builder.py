@@ -97,6 +97,22 @@ class TreeBuildResult:
 
 
 _CJK_RE = re.compile(r"[⺀-鿿豈-﫿]")
+_ALPHA_WORD_RE = re.compile(r"[A-Za-z]{2,}")
+
+
+def _headerish(text: str) -> bool:
+    """A header fragment that is a section NAME, not furniture.
+
+    CJK manuals: ≥2 CJK chars (TRICITY155: 前煞車, 汽油噴射系統).
+    Latin manuals (M4 / Corolla adjustment): ≥2 alphabetic words —
+    filters brand marks, years, and document codes (YAMAHA / 2016 /
+    EAS10003 / 2A•15) while keeping 'Engine in-car repair
+    procedures'.
+    """
+    if len(_CJK_RE.findall(text)) >= 2:
+        return True
+    words = _ALPHA_WORD_RE.findall(text)
+    return len(words) >= 2 and sum(len(w) for w in words) >= 8
 
 
 def _chapter_map(
@@ -106,17 +122,17 @@ def _chapter_map(
     """R4: page → chapter title from running headers.
 
     The header zone carries several fragments (brand mark, year,
-    document codes, the section name) — only CJK-bearing
-    fragments are section names (verified on TRICITY155: p146 →
-    前煞車, p351 → 汽油噴射系統).  Pages without one inherit the
-    previous page's chapter; front matter gets '前言'.
+    document codes, the section name) — only name-like fragments
+    (see ``_headerish``) anchor chapters.  Pages without one
+    inherit the previous page's chapter; front matter gets
+    '前言'.
     """
     page_headers: Dict[int, str] = {}
     for it in items:
         if it.kind != ItemKind.PAGE_HEADER or not it.text:
             continue
         text = it.text.strip()
-        if len(_CJK_RE.findall(text)) >= 2:
+        if _headerish(text):
             page_headers.setdefault(it.page, text)
     mapping: Dict[int, str] = {}
     current = "前言"
@@ -127,21 +143,61 @@ def _chapter_map(
     return mapping
 
 
+# R6 (Phase 4): task-suffix patterns that mark a bare PARA line
+# as an engine-missed section title (the #186 unheaded-title
+# family: 液壓煞車系統空氣的釋放, 汽門間隙的調整, 冷卻液溫度感知器
+# 的檢查 carry NO title item in the MinerU stream).  Conservative
+# by design — whole-para, short, task-suffixed, no sentence stop.
+_TASK_SUFFIX_RE = re.compile(
+    r"(?:的釋放|的調整|的檢查|的更換|的清潔|的拆卸|的安裝|"
+    r"的分解|的組裝|的測量)$"
+)
+_MAX_PROMOTED_CHARS = 24
+
+
+def _is_promotable_para(text: str) -> bool:
+    """R6: a bare paragraph that IS a section title.
+
+    Must also survive the R1 noise filter — numbered procedure
+    steps like ``3. 油門鋼索的安裝`` end in task suffixes too and
+    must NOT become nodes (caught by I5 on the first R6 build).
+    """
+    t = text.strip()
+    return (
+        0 < len(t) <= _MAX_PROMOTED_CHARS
+        and _TASK_SUFFIX_RE.search(t) is not None
+        and "。" not in t
+        and "," not in t and "," not in t
+        and not is_noise_title(t)
+    )
+
+
 def _find_boundaries(
     items: List[NormalizedItem],
     noise: Set[int],
 ) -> List[_Boundary]:
-    """Surviving titles (R1) + synthesized DTC boundaries (R2)."""
+    """Surviving titles (R1) + synthesized DTC boundaries (R2)
+    + promoted unheaded titles (R6)."""
     boundaries: List[_Boundary] = []
     titled_codes: Set[str] = set()
+    seen_titles: Set[str] = set()
     for it in items:
         if it.kind == ItemKind.TITLE_CANDIDATE:
             if is_noise_title(it.text):
                 noise.add(it.idx)
                 continue
             boundaries.append(_Boundary(it.idx, it.text, False))
+            seen_titles.add(it.text.strip())
             for code in _DTC_BOUNDARY_RE.findall(it.text):
                 titled_codes.add(code.upper())
+    # R6 pass: bare-para titles the engine missed.
+    for it in items:
+        if it.kind == ItemKind.PARA and _is_promotable_para(
+            it.text,
+        ):
+            boundaries.append(_Boundary(
+                it.idx, it.text.strip(), True,
+            ))
     # R2 pass: DTC blocks with no title of their own.
     for it in items:
         if it.kind not in (ItemKind.PARA, ItemKind.TABLE):
@@ -342,8 +398,12 @@ def _attach_children(
     last_symptom: Optional[IndexNode] = None
     for bound, end in zip(bounds, ends):
         title = bound.title.strip()
+        # Synthesized boundaries: R2 (DTC blocks) are
+        # fault_isolation; R6 (promoted bare-para titles)
+        # classify by their task suffix like any title.
         node_type = (
-            "fault_isolation" if bound.synthesized
+            "fault_isolation"
+            if bound.synthesized and _DTC_BOUNDARY_RE.search(title)
             else vocab.node_type_for(title)
         )
         # R5: table-template override.
