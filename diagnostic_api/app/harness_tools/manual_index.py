@@ -158,7 +158,46 @@ class RuntimeIndex:
         ]
         if len(subs) == 1:
             return subs[0], []
-        return None, subs
+        if subs:
+            return None, subs
+
+        # Node-id-shaped GUESSES: models fabricate plausible ids
+        # in the canonical ``{subsystem}-{type}-{title}`` format
+        # (seen live: ``brakes-op-液壓煞車系統空氣的釋放``).
+        # Retry on the longest CJK run inside the query.
+        import re as _re
+        cjk_runs = _re.findall(r"[⺀-鿿豈-﫿]{2,}", q)
+        if cjk_runs:
+            tail = max(cjk_runs, key=len)
+            if tail != q:
+                node, cands = self.resolve(tail)
+                if node is not None or cands:
+                    return node, cands
+
+        # Last resort: closest-candidate suggestions by CJK
+        # bigram overlap, so a miss lists likely targets instead
+        # of a dead end.
+        grams = {
+            norm_q[i:i + 2] for i in range(len(norm_q) - 1)
+        }
+        if grams:
+            scored = []
+            for node in self.nodes:
+                best = 0.0
+                for name in [node.title, *node.aliases]:
+                    s = _slugify(name)
+                    ng = {s[i:i + 2] for i in range(len(s) - 1)}
+                    if ng:
+                        best = max(
+                            best,
+                            len(grams & ng) / len(grams | ng),
+                        )
+                if best >= 0.3:
+                    scored.append((best, node))
+            scored.sort(key=lambda x: -x[0])
+            if scored:
+                return None, [n for _, n in scored[:5]]
+        return None, []
 
     # ── Rendering ────────────────────────────────────────────
 

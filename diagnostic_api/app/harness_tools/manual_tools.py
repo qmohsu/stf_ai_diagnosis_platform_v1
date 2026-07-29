@@ -717,11 +717,14 @@ async def search_manual_text(
             for idx, line in enumerate(rt_index.content_lines)
             if needle in line.casefold()
         ]
+        def _low_value(line: str) -> bool:
+            # Dotted-leader TOC rows and 參閱 cross-references
+            # match every title but carry no content.
+            return bool(re.search(r"\.{3,}", line)) \
+                or "參閱" in line
         hits = (
-            [h for h in raw_hits
-             if not re.search(r"\.{3,}", h[1])]
-            + [h for h in raw_hits
-               if re.search(r"\.{3,}", h[1])]
+            [h for h in raw_hits if not _low_value(h[1])]
+            + [h for h in raw_hits if _low_value(h[1])]
         )
         if not hits:
             return (

@@ -522,6 +522,30 @@ class TestIndexDualTrack:
         assert "[node: electrical-fault-p0335]" in result
 
     @pytest.mark.asyncio
+    async def test_node_id_guess_salvaged_via_cjk_tail(
+        self, index_track,
+    ) -> None:
+        """A fabricated-but-plausible node_id resolves via its
+        CJK tail (the cross-005 failure mode)."""
+        result = await read_manual_section({
+            "manual_id": "MWS150A_Service_Manual",
+            "section": "brakes-op-煞車卡鉗的檢查",
+        })
+        assert "煞車卡鉗的檢查步驟" in result
+
+    @pytest.mark.asyncio
+    async def test_miss_offers_closest_candidates(
+        self, index_track,
+    ) -> None:
+        """A near-miss query lists bigram-closest node_ids
+        instead of a dead end."""
+        result = await read_manual_section({
+            "manual_id": "MWS150A_Service_Manual",
+            "section": "煞車卡鉗檢查程序",
+        })
+        assert "[brakes-insp-煞車卡鉗的檢查]" in result
+
+    @pytest.mark.asyncio
     async def test_track_off_forces_legacy(
         self, index_track, monkeypatch,
     ) -> None:
