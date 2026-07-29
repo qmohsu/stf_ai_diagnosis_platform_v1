@@ -170,6 +170,12 @@ else
     || die "captured env file is empty — is '$CONTAINER' healthy?"
   # The env file holds credentials (DB, JWT, OpenRouter) — remove on exit.
   trap 'rm -f "$ENV_FILE"' EXIT
+  # HARNESS-30 Phase 3: caller-supplied extra env lines (e.g.
+  # MANUAL_INDEX_TRACK=off) for the dual-track A/B lane switch.
+  if [ -n "${EXTRA_EVAL_ENV:-}" ]; then
+    printf '%s\n' "$EXTRA_EVAL_ENV" >> "$ENV_FILE"
+    log "appended EXTRA_EVAL_ENV: $EXTRA_EVAL_ENV"
+  fi
   log "captured $(wc -l < "$ENV_FILE") env vars from $CONTAINER -> $ENV_FILE"
 fi
 

@@ -1,0 +1,100 @@
+# Table probe set (HARNESS-30 Phase 3 S3.4) — 20 questions whose
+# answers live ONLY in complex-table cells.  Every expected value
+# was verified against the built v2 content (2026-07-23).
+#
+# Verdict rule (docs/manual_pipeline_topdown_plan.md S3.4): pass
+# rate >= 85% (17/20) → the table-enhancement ladder rungs 2-4
+# (pdfplumber / camelot / Docling) stay PERMANENTLY SHELVED;
+# below → escalate one rung and re-run.
+#
+# Each probe is deterministic (no LLM):
+#   find    — search_manual_text(value) must hit
+#   read    — reading the hit's node must return the value
+#   assoc   — the row qualifier must appear within ±200 chars of
+#             the value in the returned slice (cell-row
+#             association survived flattening/rescue)
+# value/qualifier matching is dash-normalized (– — − → -).
+
+manual_id: 0a2ba199-665f-41aa-a106-1163cad68d16
+
+probes:
+  - id: valve-clearance-intake
+    question: 进气门间隙(冷机)是多少?
+    value: "0.10-0.14"
+    qualifier: 進氣
+  - id: valve-clearance-exhaust
+    question: 排气门间隙(冷机)是多少?
+    value: "0.21-0.25"
+    qualifier: 排氣
+  - id: spark-plug-model
+    question: 火星塞型号?
+    value: CPR8EA
+    qualifier: 火星塞
+  - id: spark-plug-gap
+    question: 火星塞间隙?
+    value: "0.8-0.9 mm"
+    qualifier: 火星塞間隙
+  - id: oil-change-qty
+    question: 更换机油的加注量?
+    value: "0.90"
+    qualifier: 機油更換
+  - id: oil-disassembly-qty
+    question: 引擎分解后的机油容量?
+    value: "1.00"
+    qualifier: 機油
+  - id: gear-oil-qty
+    question: 齿轮油容量?
+    value: "0.15"
+    qualifier: 齒輪油
+  - id: compression-ratio
+    question: 压缩比?
+    value: "10.5:1"
+    qualifier: 壓縮比
+  - id: compression-pressure
+    question: 压缩压力规范?
+    value: "1566-2016"
+    qualifier: 壓縮壓力
+  - id: tire-front-1rider
+    question: 单人骑乘时前轮胎压?
+    value: "2.00"
+    qualifier: 前
+  - id: tire-rear-1rider
+    question: 单人骑乘时后轮胎压?
+    value: "225"
+    qualifier: 後
+  - id: brake-fluid-type
+    question: 指定煞车液?
+    value: DOT 4
+    qualifier: 煞車液
+  - id: brake-pad-front
+    question: 前煞车来令片厚度(新品)?
+    value: "5.8 mm"
+    qualifier: 來令片
+  - id: brake-pad-rear
+    question: 后煞车来令片厚度(新品)?
+    value: "5.3 mm"
+    qualifier: 來令片
+  - id: rear-brake-freeplay
+    question: 后煞车把手自由间隙?
+    value: "10.0-15.0 mm"
+    qualifier: 自由間隙
+  - id: head-warp-limit
+    question: 汽缸头弯曲极限?
+    value: "0.05 mm"
+    qualifier: 彎曲限制
+  - id: coolant-sensor-resistance
+    question: 冷却液温度感知器在100°C时的电阻?
+    value: "210"
+    qualifier: 100
+  - id: cam-lobe-height-intake
+    question: 凸轮轴进气突部高度?
+    value: "32.211-32.311"
+    qualifier: 突部高度
+  - id: impeller-tilt-limit
+    question: 水泵轮叶轴倾斜极限?
+    value: "0.15 mm"
+    qualifier: 輪葉軸
+  - id: master-cylinder-bore-front
+    question: 前煞车主缸内径?
+    value: "14.00 mm"
+    qualifier: 主缸內徑

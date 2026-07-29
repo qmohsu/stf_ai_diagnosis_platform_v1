@@ -1,0 +1,169 @@
+{
+  "passed": 20,
+  "total": 20,
+  "rate": 1.0,
+  "threshold": 0.85,
+  "verdict": "LADDER-SHELVED (rung 1 sufficient)",
+  "probes": [
+    {
+      "id": "valve-clearance-intake",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-引擎規格",
+      "passed": true
+    },
+    {
+      "id": "valve-clearance-exhaust",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-引擎規格",
+      "passed": true
+    },
+    {
+      "id": "spark-plug-model",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-引擎規格",
+      "passed": true
+    },
+    {
+      "id": "spark-plug-gap",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-引擎規格",
+      "passed": true
+    },
+    {
+      "id": "oil-change-qty",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-引擎規格",
+      "passed": true
+    },
+    {
+      "id": "oil-disassembly-qty",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-引擎規格",
+      "passed": true
+    },
+    {
+      "id": "gear-oil-qty",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-引擎規格",
+      "passed": true
+    },
+    {
+      "id": "compression-ratio",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-引擎規格",
+      "passed": true
+    },
+    {
+      "id": "compression-pressure",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-引擎規格",
+      "passed": true
+    },
+    {
+      "id": "tire-front-1rider",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-車體規格",
+      "passed": true
+    },
+    {
+      "id": "tire-rear-1rider",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "wheels_tires-spec-輪胎胎壓與尺寸標籤",
+      "passed": true
+    },
+    {
+      "id": "brake-fluid-type",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-車體規格",
+      "passed": true
+    },
+    {
+      "id": "brake-pad-front",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-車體規格",
+      "passed": true
+    },
+    {
+      "id": "brake-pad-rear",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-車體規格",
+      "passed": true
+    },
+    {
+      "id": "rear-brake-freeplay",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-車體規格",
+      "passed": true
+    },
+    {
+      "id": "head-warp-limit",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-引擎規格",
+      "passed": true
+    },
+    {
+      "id": "coolant-sensor-resistance",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-insp-連接部位的檢查",
+      "passed": true
+    },
+    {
+      "id": "cam-lobe-height-intake",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-引擎規格",
+      "passed": true
+    },
+    {
+      "id": "impeller-tilt-limit",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-引擎規格",
+      "passed": true
+    },
+    {
+      "id": "master-cylinder-bore-front",
+      "find": true,
+      "read": true,
+      "assoc": true,
+      "node": "general-desc-車體規格",
+      "passed": true
+    }
+  ]
+}

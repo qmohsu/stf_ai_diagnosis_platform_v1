@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import json
 import sys
 from pathlib import Path
 
@@ -86,6 +87,14 @@ def run_build(
     )
     md_path = out_dir / f"{pdf.stem}.md"
     md_path.write_text(result.markdown, encoding="utf-8")
+    # Item → markdown-line mapping for the index build (Phase 3:
+    # nodes get md_lines so the runtime can slice content).
+    (out_dir / "item_lines.json").write_text(
+        json.dumps({
+            str(k): v for k, v in result.item_lines.items()
+        }),
+        encoding="utf-8",
+    )
 
     audit = reconcile(result.markdown, authority)
     write_build_report(

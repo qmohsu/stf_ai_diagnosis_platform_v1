@@ -621,10 +621,24 @@ def _extract_section_ref(
     if not manual_id or not raw_slug:
         return None
 
-    canonical = _canonicalise_slug(
-        str(raw_slug),
-        _slugs_for_manual(str(manual_id)),
-    )
+    # Index track (HARNESS-30 Phase 3): record the RESOLVED
+    # node_id, not the agent's raw query — expected_recall_slugs
+    # are in node_id currency after the golden makeup, and a
+    # title-text query that resolved successfully must not score
+    # as a recall miss (the anchor-currency artifact measured in
+    # the A/B round 2).
+    from app.harness_tools.manual_index import load_runtime_index
+    rt_index = load_runtime_index(str(manual_id))
+    if rt_index is not None:
+        node, _ = rt_index.resolve(str(raw_slug))
+        canonical = (
+            node.node_id if node is not None else str(raw_slug)
+        )
+    else:
+        canonical = _canonicalise_slug(
+            str(raw_slug),
+            _slugs_for_manual(str(manual_id)),
+        )
 
     had_images = False
     if isinstance(output, str):

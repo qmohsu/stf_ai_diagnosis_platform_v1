@@ -369,6 +369,206 @@ class TestDtcIndexSlugMap:
         )
 
 
+# ── Index dual-track (HARNESS-30 Phase 3) ─────────────────────────
+
+
+V2_CONTENT = """\
+---
+vehicle_model: MWS-150-A
+---
+## 煞車系統
+煞車卡鉗的檢查步驟,扭力 10 Nm。
+## 故障代碼編號 P0335
+曲軸位置感知器排查程序,共六步,包含接頭檢查。
+"""
+
+V2_SIDECAR = {
+    "spec_version": "0.3",
+    "manual_id": "MWS150A_Service_Manual",
+    "source": {
+        "content_file": "MWS150A_Service_Manual.md",
+        "content_sha256": "x", "parser": "t", "built_at": "t",
+    },
+    "applicability": {
+        "manufacturer": "Yamaha", "models": ["MWS-150-A"],
+    },
+    "vocab_version": "1",
+    "tree": [{
+        "node_id": "brakes-desc-煞車系統",
+        "title": "煞車系統",
+        "aliases": [], "node_type": "description",
+        "subsystem": "brakes",
+        "span": [0, 4], "page_range": [1, 2],
+        "md_lines": [3, 9],
+        "summary": "刹车章节。",
+        "children": [
+            {
+                "node_id": "brakes-insp-煞車卡鉗的檢查",
+                "title": "煞車卡鉗的檢查",
+                "aliases": ["舊slug別名"],
+                "node_type": "inspection",
+                "subsystem": "brakes",
+                "span": [0, 2], "page_range": [1, 1],
+                "md_lines": [3, 5],
+                "summary": "卡鉗檢查。", "children": [],
+            },
+            {
+                "node_id": "electrical-fault-p0335",
+                "title": "故障代碼編號 P0335",
+                "aliases": [], "node_type": "fault_isolation",
+                "subsystem": "electrical",
+                "span": [2, 4], "page_range": [2, 2],
+                "md_lines": [5, 9],
+                "summary": "P0335 排查。", "children": [],
+            },
+        ],
+    }],
+    "faults": [{
+        "code": "P0335",
+        "item": "曲軸位置感知器",
+        "symptom": "引擎無法起動。",
+        "fail_safe": "無法運轉。",
+        "detect_ref": "brakes-desc-煞車系統",
+        "isolate_ref": "electrical-fault-p0335",
+        "related_refs": [],
+    }],
+}
+
+
+@pytest.fixture()
+def index_track(manual_dir: Path):
+    """Install a v2 sidecar for the sample manual + patch the
+    index module's storage root; clears the runtime cache."""
+    import yaml as _yaml
+
+    from app.harness_tools import manual_index as mi
+
+    idx_dir = manual_dir / "sub" / "index"
+    idx_dir.mkdir(parents=True)
+    (idx_dir / "MWS150A_Service_Manual.md").write_text(
+        V2_CONTENT, encoding="utf-8",
+    )
+    (idx_dir / "MWS150A_Service_Manual.index.yaml").write_text(
+        _yaml.safe_dump(V2_SIDECAR, allow_unicode=True),
+        encoding="utf-8",
+    )
+    mi._cache.clear()
+    with patch.object(mi, "_MANUAL_DIR", manual_dir):
+        yield idx_dir
+    mi._cache.clear()
+
+
+class TestIndexDualTrack:
+    """Phase-3 dual-track behaviour of the three tools."""
+
+    @pytest.mark.asyncio
+    async def test_toc_served_from_index(
+        self, index_track,
+    ) -> None:
+        """TOC carries node_ids, labels, and the fault card."""
+        result = await get_manual_toc(
+            {"manual_id": "MWS150A_Service_Manual"},
+        )
+        assert "index-driven TOC" in result
+        assert "[electrical-fault-p0335]" in result
+        assert "(brakes/inspection)" in result
+        assert "無法運轉。" in result  # quick-index card row
+
+    @pytest.mark.asyncio
+    async def test_read_by_node_id_slices_v2(
+        self, index_track,
+    ) -> None:
+        """node_id addressing returns the md_lines slice."""
+        result = await read_manual_section({
+            "manual_id": "MWS150A_Service_Manual",
+            "section": "electrical-fault-p0335",
+        })
+        assert "曲軸位置感知器排查程序" in result
+        assert "煞車卡鉗" not in result
+
+    @pytest.mark.asyncio
+    async def test_read_by_legacy_alias(
+        self, index_track,
+    ) -> None:
+        """Old slugs kept as aliases still resolve (makeup)."""
+        result = await read_manual_section({
+            "manual_id": "MWS150A_Service_Manual",
+            "section": "舊slug別名",
+        })
+        assert "煞車卡鉗的檢查步驟" in result
+
+    @pytest.mark.asyncio
+    async def test_ambiguous_query_lists_candidates(
+        self, index_track,
+    ) -> None:
+        """Substring matching lists ALL matches (P2.2 fix)."""
+        result = await read_manual_section({
+            "manual_id": "MWS150A_Service_Manual",
+            "section": "煞車",
+        })
+        assert "ambiguous" in result
+        assert "[brakes-desc-煞車系統]" in result
+        assert "[brakes-insp-煞車卡鉗的檢查]" in result
+
+    @pytest.mark.asyncio
+    async def test_search_attributes_hits_to_nodes(
+        self, index_track,
+    ) -> None:
+        """Grep runs over v2 content with node attribution."""
+        result = await search_manual_text({
+            "manual_id": "MWS150A_Service_Manual",
+            "query": "P0335",
+        })
+        assert "[node: electrical-fault-p0335]" in result
+
+    @pytest.mark.asyncio
+    async def test_node_id_guess_salvaged_via_cjk_tail(
+        self, index_track,
+    ) -> None:
+        """A fabricated-but-plausible node_id resolves via its
+        CJK tail (the cross-005 failure mode)."""
+        result = await read_manual_section({
+            "manual_id": "MWS150A_Service_Manual",
+            "section": "brakes-op-煞車卡鉗的檢查",
+        })
+        assert "煞車卡鉗的檢查步驟" in result
+
+    @pytest.mark.asyncio
+    async def test_miss_offers_closest_candidates(
+        self, index_track,
+    ) -> None:
+        """A near-miss query lists bigram-closest node_ids
+        instead of a dead end."""
+        result = await read_manual_section({
+            "manual_id": "MWS150A_Service_Manual",
+            "section": "煞車卡鉗檢查程序",
+        })
+        assert "[brakes-insp-煞車卡鉗的檢查]" in result
+
+    @pytest.mark.asyncio
+    async def test_track_off_forces_legacy(
+        self, index_track, monkeypatch,
+    ) -> None:
+        """MANUAL_INDEX_TRACK=off restores legacy behaviour."""
+        monkeypatch.setenv("MANUAL_INDEX_TRACK", "off")
+        result = await get_manual_toc(
+            {"manual_id": "MWS150A_Service_Manual"},
+        )
+        assert "index-driven TOC" not in result
+        assert "Chapter 1: General Information" in result
+
+    @pytest.mark.asyncio
+    async def test_no_sidecar_is_byte_identical_legacy(
+        self,
+    ) -> None:
+        """Without a sidecar the legacy path is untouched."""
+        result = await get_manual_toc(
+            {"manual_id": "MWS150A_Service_Manual"},
+        )
+        assert "index-driven TOC" not in result
+        assert "Chapter 3: Fuel System" in result
+
+
 # ── search_manual_text (HARNESS-30a) ──────────────────────────────
 
 

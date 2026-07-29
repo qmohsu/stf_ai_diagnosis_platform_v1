@@ -24,6 +24,7 @@ import sys
 from pathlib import Path
 
 import fitz  # noqa: F401 — asserts build-host deps early.
+import yaml
 
 from manual_pipeline.entities import (
     build_fault_entities,
@@ -44,6 +45,9 @@ def run_index_build(
     applicability: dict | None = None,
     with_summaries: bool = False,
     model: str = "deepseek/deepseek-chat",
+    item_lines_path: Path | None = None,
+    reuse_summaries_from: Path | None = None,
+    alias_map_path: Path | None = None,
 ) -> bool:
     """Build + validate + write the index sidecar.
 
@@ -77,6 +81,55 @@ def run_index_build(
     codes = sweep_codes(content_md)
     faults = build_fault_entities(codes, items, all_nodes)
 
+    # ── md_lines stamping (Phase 3 runtime anchor) ───────────
+    if item_lines_path and item_lines_path.is_file():
+        raw_lines = json.loads(
+            item_lines_path.read_text(encoding="utf-8"),
+        )
+        item_lines = {int(k): v for k, v in raw_lines.items()}
+        for node in all_nodes:
+            ranges = [
+                item_lines[i]
+                for i in range(node.span[0], node.span[1])
+                if i in item_lines
+            ]
+            if ranges:
+                node.md_lines = (
+                    min(r[0] for r in ranges),
+                    max(r[1] for r in ranges),
+                )
+
+    # ── Legacy-slug aliases: feed the makeup slug_map back so
+    # old slugs (and the natural titles the model uses) resolve
+    # at runtime (S3.2 → S3.1 backflow) ──────────────────────
+    if alias_map_path and alias_map_path.is_file():
+        amap = yaml.safe_load(
+            alias_map_path.read_text(encoding="utf-8"),
+        )
+        by_id = {n.node_id: n for n in all_nodes}
+        added = 0
+        for old_slug, m in (amap or {}).items():
+            node = by_id.get((m or {}).get("node_id") or "")
+            if node and old_slug not in node.aliases \
+                    and old_slug != node.title:
+                node.aliases.append(old_slug)
+                added += 1
+        print(f"[index] legacy aliases added: {added}")
+
+    # ── Summary reuse: stable node_ids make prior LLM output
+    # transferable across rebuilds (no re-spend) ─────────────
+    reused = 0
+    if reuse_summaries_from and reuse_summaries_from.is_file():
+        prior = ManualIndex.load_yaml(reuse_summaries_from)
+        prior_map = {
+            n.node_id: n.summary
+            for n in prior.all_nodes() if n.summary.strip()
+        }
+        for node in all_nodes:
+            if node.node_id in prior_map:
+                node.summary = prior_map[node.node_id]
+                reused += 1
+
     summary_stats = None
     if with_summaries:
         api_key = os.environ.get("OPENROUTER_API_KEY", "")
@@ -86,8 +139,11 @@ def run_index_build(
                 file=sys.stderr,
             )
             return False
+        pending = [
+            n for n in all_nodes if not n.summary.strip()
+        ]
         summary_stats = enrich_summaries(
-            all_nodes, items, api_key, model,
+            pending, items, api_key, model,
         )
 
     index = ManualIndex(
@@ -146,6 +202,7 @@ def run_index_build(
         "summaries": (
             summary_stats.__dict__ if summary_stats else None
         ),
+        "summaries_reused": reused,
     }
     out_dir.mkdir(parents=True, exist_ok=True)
     report_path.write_text(
@@ -193,12 +250,24 @@ def main() -> int:
     parser.add_argument(
         "--model", default="deepseek/deepseek-chat",
     )
+    parser.add_argument(
+        "--item-lines", type=Path, default=None,
+    )
+    parser.add_argument(
+        "--reuse-summaries-from", type=Path, default=None,
+    )
+    parser.add_argument(
+        "--alias-map", type=Path, default=None,
+    )
     args = parser.parse_args()
     ok = run_index_build(
         args.mineru_dir, args.content_md, args.manual_id,
         args.out,
         with_summaries=args.summaries,
         model=args.model,
+        item_lines_path=args.item_lines,
+        reuse_summaries_from=args.reuse_summaries_from,
+        alias_map_path=args.alias_map,
     )
     return 0 if ok else 1
 

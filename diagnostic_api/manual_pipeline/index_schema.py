@@ -114,6 +114,9 @@ class IndexNode(BaseModel):
     subsystem: str
     span: Tuple[int, int]  # [start_item, end_item) in the stream
     page_range: Tuple[int, int]
+    md_lines: Optional[Tuple[int, int]] = None
+    """[start, end) line range in the content markdown — the
+    runtime's content-slicing anchor (stamped from item_lines)."""
     summary: str = ""      # filled by S2.5 enrichment
     children: List["IndexNode"] = Field(default_factory=list)
 

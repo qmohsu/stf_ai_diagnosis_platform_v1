@@ -1,10 +1,10 @@
-# Manual Storage & Index Specification (v0.3 — DRAFT for review)
+# Manual Storage & Index Specification (v0.4)
 
 | | |
 |---|---|
-| Status | **DRAFT** — under active review with user, not yet ticketed |
+| Status | ACTIVE — implemented through Phase 3 (HARNESS-30, #218); cutover pending checkpoint B |
 | Author | Xiangzhu Yan |
-| Date | 2026-07-23 (v0.1 2026-07-23, v0.2 same-day: storage/index decoupling; v0.3 same-day: storage requirements S1–S5, authority-separation architecture, golden makeup procedure, validator trustworthiness) |
+| Date | 2026-07-28 (v0.4: post-implementation revisions — see §11; v0.1–v0.3 2026-07-23) |
 | Supersedes | runtime heading-tree parsing in `app/harness_tools/manual_fs.py` as the *index source*; the module's reader utilities remain |
 | Evidence base | Defect scan 2026-07-21 (5 defect classes); cross-006 root cause; engine bake-off + fidelity audits 2026-07-22/23 (marker 1.10 / marker 2.0 / MinerU 3.4 medium+high / Docling) |
 
@@ -76,6 +76,13 @@ inline refs), marker's failure degradation is safest.  Hence §1.3.
                      not sampling)
 ```
 
+**Table-enhancement ladder verdict (2026-07-28, S3.4 probe set):**
+20/20 cell-level probes passed on rung 1 (`find_tables`) — rungs 2–4
+(pdfplumber → camelot → Docling) are **DORMANT, never deleted**:
+not installed, but reactivated by (a) a probe-set pass rate < 85%
+on any manual, or (b) any production table-reading incident.  The
+evaluation data behind each rung stays in §1.2; do not re-research.
+
 Engine choice becomes a quality knob (how often rescue triggers), not
 a correctness decision.  Note that in this composition the engines'
 raw *numeric/text recall* differences largely vanish — text always
@@ -107,7 +114,7 @@ content items ──repair──> logical tree ──enrich──> classified no
 ### 3.1 Top level
 
 ```yaml
-spec_version: "0.3"
+spec_version: "0.4"
 manual_id: "0a2ba199-…"
 source:
   content_file: "0a2ba199-….md"
@@ -136,7 +143,12 @@ node_type: "fault-isolation"     # description | operation | inspection |
 subsystem: "electrical"          # controlled vocab (§3.5)
 span: {start_item: 6112, end_item: 6139}
 page_range: [350, 352]
-summary: "…"                     # OPTIONAL in v0.x — deferred post-M3
+md_lines: [8364, 8388]           # [start,end) lines in content.md —
+                                 # the runtime content-slicing anchor
+summary: "…"                     # REQUIRED since v0.4 — generated in
+                                 # M2 (DeepSeek via OpenRouter) behind
+                                 # two mechanical gates; reused across
+                                 # rebuilds by stable node_id
 children: []
 ```
 
@@ -239,7 +251,17 @@ Reviewed on spot-check basis; required attachment for index publication.
   index generated from `entities.faults` (complete by I3); else current
   behavior.
 - `read_manual_section`: accepts `node_id`, alias, or legacy slug;
-  substring fallback only within same subsystem, listing all matches.
+  ambiguous substring queries LIST all candidates; node-id-shaped
+  GUESSES (models fabricate plausible ids in the canonical format)
+  salvage via their longest CJK run, and final misses return
+  bigram-closest suggestions instead of a dead end (Phase-3 A/B
+  finding).  Content sliced by `md_lines` from the v2 markdown.
+- `search_manual_text` (index track): hits attributed to the
+  deepest enclosing node; the manual's own TOC rows (dotted
+  leaders) and `參閱` cross-reference lines are ranked LAST — they
+  match every title and carry no content (Phase-3 A/B finding).
+- Eval bookkeeping records the RESOLVED node_id, not the raw query
+  (anchor-currency artifact, measured at 1/30 goldens).
 - **Absence-claim guard (M0, ships first, engine-independent)**: DTC
   with body occurrences but no navigation target → tools answer
   "present in manual, N occurrences, no indexed section — use full-text
@@ -258,6 +280,11 @@ workshop time; migration MUST NOT spend that asset again.
 | Semantic asset (untouchable) | `question(_zh)`, `golden_summary(_zh)`, `pitfall_directives`, `category`, `difficulty`, `requires_image`, `notes` | zero changes |
 | Positional anchors | `golden_citations` (24), `expected_recall_slugs` (24), `expected_tool_trace` (30, slug args) | automated remap |
 | Content-literal strings | `must_contain` (30) | verify literal presence in new content; character-variant fixes only, flagged for human confirm (opportunity to clean legacy mojibake transcription artifacts) |
+
+**Alias backflow:** every slug_map entry is fed back into the
+sidecar as a node alias at index build (`--alias-map`), so legacy
+slugs — and the natural titles models actually type — resolve at
+runtime.  The makeup table and the runtime index never diverge.
 
 **Procedure:** (1) archive current locked file immutably, new file
 carries provenance (source sha + remap-table version); (2) automated
@@ -286,9 +313,28 @@ non-index work items).
 ## 10. Open questions
 
 1. ~~Final substrate choice~~ **RESOLVED 2026-07-23**: MinerU medium
-   sole substrate; Docling shelved as table-authority upgrade; marker
-   retired (§1.3).
+   sole substrate; Docling dormant per the ladder clause (§1.3);
+   marker retired.
 2. ~~Table format~~ **RESOLVED**: HTML tables (MinerU) in content;
    renderer adapts; rescue regions carry image + flat text.
 3. Scanned-manual path (future): per-page OCR fallback policy — out of
-   scope v0.3, flagged for the first scanned manual.
+   scope, placeholder issue #220, triggers on the first scanned manual.
+4. Summary language: some CJK sections receive English summaries —
+   candidate mechanical gate (CJK-ratio check on CJK-content nodes).
+5. Three unheaded-title sections (the #186 family) have no own nodes
+   in the v2 tree — covered by enclosing-node aliases + search;
+   candidate repair rule: promote bare-title lines at the stream level.
+
+## 11. Revision log
+
+- **v0.4 (2026-07-28)**: summaries are REQUIRED and generated in M2
+  via OpenRouter DeepSeek behind two mechanical gates (user decision;
+  §3.2 summary no longer deferred); `md_lines` runtime anchor added
+  to IndexNode; table-ladder verdict + dormancy clause (§1.3); alias
+  backflow (§8); Phase-3 runtime findings folded into §7 (node-id
+  guess salvage, low-value hit demotion, resolved-id recording);
+  open questions 4–5 added.
+- v0.3 (2026-07-23): storage requirements S1–S5, authority
+  separation, golden makeup, validator trustworthiness.
+- v0.2 (2026-07-23): storage/index decoupling, MinerU-only substrate.
+- v0.1 (2026-07-23): initial draft.
