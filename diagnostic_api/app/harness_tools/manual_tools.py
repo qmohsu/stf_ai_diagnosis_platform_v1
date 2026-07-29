@@ -709,11 +709,20 @@ async def search_manual_text(
     rt_index = load_runtime_index(manual_id)
     if rt_index is not None:
         needle = query.casefold()
-        hits = [
+        # The manual's own TOC pages (dotted-leader lines) match
+        # every section title but are never useful evidence —
+        # rank real content hits first, listing lines last.
+        raw_hits = [
             (idx, line.strip())
             for idx, line in enumerate(rt_index.content_lines)
             if needle in line.casefold()
         ]
+        hits = (
+            [h for h in raw_hits
+             if not re.search(r"\.{3,}", h[1])]
+            + [h for h in raw_hits
+               if re.search(r"\.{3,}", h[1])]
+        )
         if not hits:
             return (
                 f"0 matches for '{query}' in manual "
