@@ -98,6 +98,23 @@ md),或设 `MANUAL_INDEX_TRACK=off`。
 **纪律**:规则改动必须带单测;改完全量重跑第 2、3 步;已发布的
 其他手册索引不受词表扩展影响(版本化隔离)。
 
+## 5b. 自动接入(生产上传通道,两阶段)
+
+上传通道的 `marker_worker` 现在是**两阶段**:marker 快速转换让
+手册几分钟内先在旧轨可用;随后自动派生"升级阶段"
+(`manual_pipeline.onboard`,即本 runbook 第 1-4 步的一键版),
+sidecar 落地后手册无缝切换到索引轨。手工接入等价命令:
+
+```bash
+PYTHONPATH=<repo>/diagnostic_api <venv-audit>/bin/python   -m manual_pipeline.onboard   --pdf <volume>/uploads/<id>.pdf   --model-dir "<volume>/<Model Dir>"   # [--skip-convert 复用已有转换]
+```
+
+worker 环境变量:`ONBOARD_UPGRADE=1`(总开关)、
+`ONBOARD_PY`(构建 venv 的 python)、`ONBOARD_PYTHONPATH`
+(仓库 `diagnostic_api` 目录)。升级日志:
+`<volume>/.queue/<id>.onboard.log`。升级失败不影响已提交的
+marker 结果(手册停留在旧轨,按日志排查后手工重跑)。
+
 ## 6. 历史经验速查
 
 - 表格增强阶梯**休眠不删除**:`find_tables` 不够时按
