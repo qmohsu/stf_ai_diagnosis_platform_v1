@@ -93,18 +93,18 @@
         },
         {
           "old": "冷卻液溫度感知器的檢查",
-          "new": "general-insp-汽油油面感應器的檢查",
-          "method": "content-locate"
+          "new": "general-insp-冷卻液溫度感知器的檢查",
+          "method": "title-exact"
         },
         {
           "old": "冷卻液溫度感知器的檢查",
-          "new": "general-insp-汽油油面感應器的檢查",
-          "method": "content-locate"
+          "new": "general-insp-冷卻液溫度感知器的檢查",
+          "method": "title-exact"
         },
         {
           "old": "冷卻液溫度感知器的檢查",
-          "new": "general-insp-汽油油面感應器的檢查",
-          "method": "content-locate"
+          "new": "general-insp-冷卻液溫度感知器的檢查",
+          "method": "title-exact"
         }
       ],
       "must_contain_missing": [],
@@ -177,13 +177,13 @@
       "slugs": [
         {
           "old": "液壓煞車系統空氣的釋放",
-          "new": "brakes-insp-煞車液量的檢查",
-          "method": "content-locate"
+          "new": "brakes-op-液壓煞車系統空氣的釋放",
+          "method": "title-exact"
         },
         {
           "old": "液壓煞車系統空氣的釋放",
-          "new": "brakes-insp-煞車液量的檢查",
-          "method": "content-locate"
+          "new": "brakes-op-液壓煞車系統空氣的釋放",
+          "method": "title-exact"
         },
         {
           "old": "車體規格",
@@ -209,17 +209,17 @@
         {
           "old": "自我診斷功能表",
           "new": "general-desc-車體規格",
-          "method": "quote-locate"
+          "method": "title-exact"
         },
         {
           "old": "自我診斷功能表",
           "new": "general-desc-車體規格",
-          "method": "quote-locate"
+          "method": "title-exact"
         },
         {
           "old": "自我診斷功能表",
           "new": "general-desc-車體規格",
-          "method": "quote-locate"
+          "method": "title-exact"
         }
       ],
       "must_contain_missing": []
@@ -266,8 +266,8 @@
       "slugs": [
         {
           "old": "汽門間隙的調整",
-          "new": "ignition-insp-火星塞的檢查",
-          "method": "content-locate"
+          "new": "maintenance-op-汽門間隙的調整",
+          "method": "title-exact"
         },
         {
           "old": "汽缸頭的拆卸",
@@ -360,18 +360,18 @@
       "slugs": [
         {
           "old": "液壓煞車系統空氣的釋放",
-          "new": "brakes-insp-煞車液量的檢查",
-          "method": "content-locate"
+          "new": "brakes-op-液壓煞車系統空氣的釋放",
+          "method": "title-exact"
         },
         {
           "old": "液壓煞車系統空氣的釋放",
-          "new": "brakes-insp-煞車液量的檢查",
-          "method": "content-locate"
+          "new": "brakes-op-液壓煞車系統空氣的釋放",
+          "method": "title-exact"
         },
         {
           "old": "液壓煞車系統空氣的釋放",
-          "new": "brakes-insp-煞車液量的檢查",
-          "method": "content-locate"
+          "new": "brakes-op-液壓煞車系統空氣的釋放",
+          "method": "title-exact"
         }
       ],
       "must_contain_missing": []
@@ -539,27 +539,27 @@
         {
           "old": "故障代碼編號-p0107、p0108",
           "new": "fuel-fault-故障代碼編號-p0107",
-          "method": "quote-locate"
+          "method": "title-exact"
         },
         {
           "old": "故障代碼編號-p0107、p0108",
           "new": "fuel-fault-故障代碼編號-p0107",
-          "method": "quote-locate"
+          "method": "title-exact"
         },
         {
           "old": "故障代碼編號-p0107、p0108",
           "new": "fuel-fault-故障代碼編號-p0107",
-          "method": "quote-locate"
+          "method": "title-exact"
         },
         {
           "old": "故障代碼編號-p0107、p0108",
           "new": "fuel-fault-故障代碼編號-p0107",
-          "method": "quote-locate"
+          "method": "title-exact"
         },
         {
           "old": "故障代碼編號-p0107、p0108",
           "new": "fuel-fault-故障代碼編號-p0107",
-          "method": "quote-locate"
+          "method": "title-exact"
         }
       ],
       "must_contain_missing": [],
@@ -637,23 +637,23 @@
       "slugs": [
         {
           "old": "液壓煞車系統空氣的釋放",
-          "new": "brakes-insp-煞車液量的檢查",
-          "method": "content-locate"
+          "new": "brakes-op-液壓煞車系統空氣的釋放",
+          "method": "title-exact"
         },
         {
           "old": "液壓煞車系統空氣的釋放",
-          "new": "brakes-insp-煞車液量的檢查",
-          "method": "content-locate"
+          "new": "brakes-op-液壓煞車系統空氣的釋放",
+          "method": "title-exact"
         },
         {
           "old": "液壓煞車系統空氣的釋放",
-          "new": "brakes-insp-煞車液量的檢查",
-          "method": "content-locate"
+          "new": "brakes-op-液壓煞車系統空氣的釋放",
+          "method": "title-exact"
         },
         {
           "old": "液壓煞車系統空氣的釋放",
-          "new": "brakes-insp-煞車液量的檢查",
-          "method": "content-locate"
+          "new": "brakes-op-液壓煞車系統空氣的釋放",
+          "method": "title-exact"
         }
       ],
       "must_contain_missing": []

@@ -26,6 +26,35 @@ _DTC_OR_NUM_RE = re.compile(
     r"\b[PCBU]\d[0-9A-F]{3}\b|\d+(?:\.\d+)?",
     re.IGNORECASE,
 )
+_CJK_RE = re.compile(r"[⺀-鿿豈-﫿]")
+_CJK_SECTION_THRESHOLD = 0.10
+_CJK_SUMMARY_MIN_RATIO = 0.15
+
+
+def _cjk_dominant(text: str) -> bool:
+    """True when the text is CJK content (not incidental refs)."""
+    if not text:
+        return False
+    return (
+        len(_CJK_RE.findall(text)) / len(text)
+        >= _CJK_SECTION_THRESHOLD
+    )
+
+
+def summary_conforms(summary: str, section: str) -> bool:
+    """Language gate (spec §10.4, mechanical): a CJK-dominant
+    section must get a CJK summary — measured 348/496 English
+    summaries on TRICITY before this gate.  Also used to filter
+    summary REUSE across rebuilds."""
+    s = summary.strip()
+    if not s:
+        return False
+    if _cjk_dominant(section):
+        ratio = len(_CJK_RE.findall(s)) / len(s)
+        if ratio < _CJK_SUMMARY_MIN_RATIO:
+            return False
+    return True
+
 
 _SYSTEM = (
     "You summarize one service-manual section for an AI "
@@ -62,9 +91,12 @@ def _section_text(
 
 def _mechanical_gates(summary: str, section: str) -> bool:
     """Gate 1: non-empty + bounded.  Gate 2: every DTC/number in
-    the summary must literally exist in the section text."""
+    the summary must literally exist in the section text.
+    Gate 3: language conformance (CJK section → CJK summary)."""
     s = summary.strip()
     if not s or len(s) > _MAX_SUMMARY_CHARS:
+        return False
+    if not summary_conforms(s, section):
         return False
     for token in _DTC_OR_NUM_RE.findall(s):
         if token not in section:
@@ -138,11 +170,19 @@ def enrich_summaries(
                 flush=True,
             )
         section = _section_text(node, items)
+        # Hard language instruction: DeepSeek ignored the soft
+        # "section's own language" phrasing on 70% of zh-TW
+        # sections — make it explicit per call.
+        payload = section
+        if _cjk_dominant(section):
+            payload = (
+                "(必須用繁體中文回答,一句話)\n" + section
+            )
         accepted = ""
         for _ in range(retries + 1):
             try:
                 candidate = _call_openrouter(
-                    api_key, model, section,
+                    api_key, model, payload,
                 )
             except Exception:
                 time.sleep(1.0)

@@ -33,7 +33,10 @@ from manual_pipeline.entities import (
 from manual_pipeline.index_schema import ManualIndex, Vocab
 from manual_pipeline.invariants import validate
 from manual_pipeline.stream import load_mineru_stream
-from manual_pipeline.summarize import enrich_summaries
+from manual_pipeline.summarize import (
+    enrich_summaries,
+    summary_conforms,
+)
 from manual_pipeline.tree_builder import build_tree
 
 
@@ -130,8 +133,21 @@ def run_index_build(
             n.node_id: n.summary
             for n in prior.all_nodes() if n.summary.strip()
         }
+        by_idx = {it.idx: it for it in items}
         for node in all_nodes:
-            if node.node_id in prior_map:
+            if node.node_id not in prior_map:
+                continue
+            section = " ".join(
+                by_idx[i].text
+                for i in range(node.span[0], node.span[1])
+                if i in by_idx
+            )
+            # Language gate applies to reuse too — nonconforming
+            # prior summaries (the 348 English-on-CJK batch) fall
+            # through to regeneration.
+            if summary_conforms(
+                prior_map[node.node_id], section,
+            ):
                 node.summary = prior_map[node.node_id]
                 reused += 1
 

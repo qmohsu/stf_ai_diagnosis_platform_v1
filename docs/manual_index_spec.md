@@ -1,10 +1,10 @@
-# Manual Storage & Index Specification (v0.4)
+# Manual Storage & Index Specification (v0.5)
 
 | | |
 |---|---|
-| Status | ACTIVE — implemented through Phase 3 (HARNESS-30, #218); cutover pending checkpoint B |
+| Status | ACTIVE — HARNESS-30 closed (#218): all phases merged, production cutover live 2026-07-29, two manuals on the index track |
 | Author | Xiangzhu Yan |
-| Date | 2026-07-28 (v0.4: post-implementation revisions — see §11; v0.1–v0.3 2026-07-23) |
+| Date | 2026-07-30 (v0.5 — see §11) |
 | Supersedes | runtime heading-tree parsing in `app/harness_tools/manual_fs.py` as the *index source*; the module's reader utilities remain |
 | Evidence base | Defect scan 2026-07-21 (5 defect classes); cross-006 root cause; engine bake-off + fidelity audits 2026-07-22/23 (marker 1.10 / marker 2.0 / MinerU 3.4 medium+high / Docling) |
 
@@ -114,7 +114,7 @@ content items ──repair──> logical tree ──enrich──> classified no
 ### 3.1 Top level
 
 ```yaml
-spec_version: "0.4"
+spec_version: "0.5"
 manual_id: "0a2ba199-…"
 source:
   content_file: "0a2ba199-….md"
@@ -203,7 +203,13 @@ recycle.
 - **R3 troubleshooting nesting**: known cause-group titles (vocab
   aliases) attach under nearest preceding symptom title.
 - **R4 chapter assembly from page headers**: running-header items
-  determine chapter membership (fixes inverted parents).
+  determine chapter membership (fixes inverted parents); v0.5:
+  name-like fragments in ANY script (CJK ≥2 chars or ≥2 alpha
+  words) anchor chapters.
+- **R6 bare-para title promotion (v0.5)**: short task-suffixed
+  paragraphs the engine missed as titles (的釋放/的調整/的檢查…)
+  open nodes; must survive the R1 noise filter (numbered steps
+  end in task suffixes too — the I5 catch).
 - **R5 known-structure templates**: self-diag table, DTC index, spec
   tables get fixed `node_type` by table-header patterns.
 
@@ -319,14 +325,25 @@ non-index work items).
    renderer adapts; rescue regions carry image + flat text.
 3. Scanned-manual path (future): per-page OCR fallback policy — out of
    scope, placeholder issue #220, triggers on the first scanned manual.
-4. Summary language: some CJK sections receive English summaries —
-   candidate mechanical gate (CJK-ratio check on CJK-content nodes).
-5. Three unheaded-title sections (the #186 family) have no own nodes
-   in the v2 tree — covered by enclosing-node aliases + search;
-   candidate repair rule: promote bare-title lines at the stream level.
+4. ~~Summary language~~ **RESOLVED (v0.5)**: mechanical language
+   gate (CJK-dominant section → CJK summary, threshold 0.15) on
+   generation AND reuse; hard per-call language instruction; the
+   348 nonconforming TRICITY summaries regenerated.
+5. ~~Unheaded-title sections~~ **RESOLVED (v0.5)**: repair rule R6
+   promotes short task-suffixed bare paragraphs to nodes (guarded
+   by the R1 noise filter); the three #186-family sections own
+   nodes, and the golden makeup collapsed to pure title-exact
+   matching (25/25).
 
 ## 11. Revision log
 
+- **v0.5 (2026-07-30)**: Phase-4/closure — R6 bare-para title
+  promotion + R4 Latin-header generalization (§5); vocab v2
+  (English aliases); summary language gate (§6, generation +
+  reuse); adaptive TOC depth for large trees; two-stage upload
+  onboarding (`onboard.py` + worker upgrade hook); open
+  questions 4-5 resolved.  M4 verdict: Corolla through the full
+  pipeline with schema+invariants unmodified.
 - **v0.4 (2026-07-28)**: summaries are REQUIRED and generated in M2
   via OpenRouter DeepSeek behind two mechanical gates (user decision;
   §3.2 summary no longer deferred); `md_lines` runtime anchor added
