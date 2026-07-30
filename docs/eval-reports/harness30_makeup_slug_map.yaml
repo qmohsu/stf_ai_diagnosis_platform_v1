@@ -1,6 +1,6 @@
 冷卻液溫度感知器的檢查:
-  method: content-locate
-  node_id: general-insp-汽油油面感應器的檢查
+  method: title-exact
+  node_id: general-insp-冷卻液溫度感知器的檢查
 冷卻液的更換:
   method: title-exact
   node_id: maintenance-op-冷卻液的更換
@@ -32,13 +32,13 @@
   method: title-exact
   node_id: general-desc-引擎規格
 引擎規格-2:
-  method: title-exact+desuffixed
+  method: title-exact
   node_id: general-desc-引擎規格
 惰轉排氣的檢查:
   method: title-exact
   node_id: maintenance-insp-惰轉排氣的檢查
 故障代碼編號-p0107、p0108:
-  method: quote-locate
+  method: title-exact
   node_id: fuel-fault-故障代碼編號-p0107
 故障代碼編號-p0117、p0118:
   method: title-exact
@@ -50,11 +50,11 @@
   method: title-exact
   node_id: engine-ri-汽缸頭的拆卸
 汽門間隙的調整:
-  method: content-locate
-  node_id: ignition-insp-火星塞的檢查
+  method: title-exact
+  node_id: maintenance-op-汽門間隙的調整
 液壓煞車系統空氣的釋放:
-  method: content-locate
-  node_id: brakes-insp-煞車液量的檢查
+  method: title-exact
+  node_id: brakes-op-液壓煞車系統空氣的釋放
 火星塞的檢查:
   method: title-exact
   node_id: ignition-insp-火星塞的檢查
@@ -62,7 +62,7 @@
   method: title-exact
   node_id: general-tree-無法起動-起動困難
 自我診斷功能表:
-  method: quote-locate
+  method: title-exact
   node_id: general-desc-車體規格
 車體規格:
   method: title-exact
