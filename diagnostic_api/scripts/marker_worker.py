@@ -37,6 +37,7 @@ import argparse
 import json
 import logging
 import os
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -523,11 +524,77 @@ def _process_request(
         used_llm,
     )
 
+    # ── HARNESS-30 Phase 4: two-stage onboarding ─────────────
+    # The marker output above makes the manual usable on the
+    # LEGACY track within minutes.  When ONBOARD_UPGRADE=1, the
+    # index-pipeline upgrade (MinerU → build → index → sidecar
+    # install) runs fire-and-forget in the background; the manual
+    # silently switches to the index track once the sidecar
+    # lands (dual-track runtime).  Failures never affect the
+    # already-committed marker result — check the log file.
+    _spawn_index_upgrade(pdf_abs, rel_output, output_dir)
+
     # Delete the request + progress files after processing.
     # The API polling loop also cleans up progress on its side
     # but we belt-and-braces here in case the API is slow.
     _safe_unlink(req_path)
     _safe_unlink(progress_path)
+
+
+def _spawn_index_upgrade(
+    pdf_abs: str,
+    rel_output: str,
+    output_dir: str,
+) -> None:
+    """Launch the index-pipeline upgrade stage (detached).
+
+    Gated on ``ONBOARD_UPGRADE=1``.  Requires ``ONBOARD_PY``
+    (the build venv python, e.g. ``~/bakeoff/venv-audit/bin/
+    python``) and ``ONBOARD_PYTHONPATH`` (the repo's
+    ``diagnostic_api`` dir) in the worker environment.
+    """
+    if os.getenv("ONBOARD_UPGRADE", "") != "1":
+        return
+    onboard_py = os.path.expanduser(
+        os.getenv("ONBOARD_PY", ""),
+    )
+    pythonpath = os.path.expanduser(
+        os.getenv("ONBOARD_PYTHONPATH", ""),
+    )
+    if not onboard_py or not pythonpath:
+        logger.warning(
+            "ONBOARD_UPGRADE=1 but ONBOARD_PY/"
+            "ONBOARD_PYTHONPATH unset — skipping upgrade",
+        )
+        return
+    model_dir = os.path.dirname(
+        os.path.join(output_dir, rel_output),
+    )
+    manual_id = Path(pdf_abs).stem
+    log_path = os.path.join(
+        output_dir, ".queue", f"{manual_id}.onboard.log",
+    )
+    env = dict(os.environ)
+    env["PYTHONPATH"] = pythonpath
+    try:
+        with open(log_path, "a", encoding="utf-8") as log_f:
+            subprocess.Popen(
+                [onboard_py, "-m", "manual_pipeline.onboard",
+                 "--pdf", pdf_abs,
+                 "--model-dir", model_dir],
+                stdout=log_f,
+                stderr=subprocess.STDOUT,
+                env=env,
+                start_new_session=True,
+            )
+        logger.info(
+            "Index-track upgrade spawned for %s (log: %s)",
+            manual_id, log_path,
+        )
+    except OSError as exc:
+        logger.warning(
+            "Failed to spawn index upgrade: %s", exc,
+        )
 
 
 def _write_result(path: Path, data: dict) -> None:
