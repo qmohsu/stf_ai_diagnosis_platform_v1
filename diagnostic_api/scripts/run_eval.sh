@@ -53,6 +53,12 @@
 # Environment:
 #   STF_REPO_DIR             Repo checkout on the server
 #                            (default: ~/stf_ai_diagnosis_platform_v1).
+#   EXTRA_EVAL_ENV           Extra env lines appended to the captured env
+#                            file, e.g. EVAL_AGENT_WALL_SECONDS=600 to
+#                            widen the per-golden runaway guard for
+#                            concurrent runs (HARNESS-31; the serial
+#                            baseline never hits the 240 s default, so
+#                            widening it does not affect comparability).
 #
 # Full both-lane run: ~65 min pre-HARNESS-31; judge pipelining moves the
 # judge phase off the critical path (expected ~10-15 min saving).  Still

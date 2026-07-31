@@ -20,6 +20,7 @@ Author: Li-Ta Hsu
 
 from __future__ import annotations
 
+import os
 import re
 import time
 from typing import List, Optional
@@ -63,16 +64,34 @@ def _build_default_deps() -> ManualAgentDeps:
     (HARNESS-23 / #144).  Production delegation is unaffected — it
     runs on the shared OpenRouter client.
 
+    HARNESS-31 (#225): ``EVAL_AGENT_WALL_SECONDS`` overrides the
+    per-golden wall-clock budget (default 240 s).  The wall is a
+    runaway guard, not a UX target — under concurrent runs
+    (``EVAL_RUN_CONCURRENCY`` > 1) every stream slows by the
+    batching factor, so an unchanged wall would time out entries
+    that complete comfortably in single-stream mode, corrupting
+    scores for a purely artificial reason.  The serial baseline
+    has zero timeouts, so raising the wall does not change
+    single-stream behaviour or score comparability.
+
     Returns:
         ``ManualAgentDeps`` ready to pass into
         ``run_manual_agent``.
     """
+    config = ManualAgentConfig()
+    wall_override = os.environ.get(
+        "EVAL_AGENT_WALL_SECONDS", "",
+    ).strip()
+    if wall_override:
+        config.timeout_seconds = float(wall_override)
     return ManualAgentDeps(
         llm_client=OllamaNativeLLMClient(
-            settings.llm_endpoint, think=False, timeout_seconds=300.0,
+            settings.llm_endpoint,
+            think=False,
+            timeout_seconds=max(300.0, config.timeout_seconds),
         ),
         tool_registry=create_manual_agent_registry(),
-        config=ManualAgentConfig(),
+        config=config,
     )
 
 
