@@ -59,6 +59,13 @@
 #                            concurrent runs (HARNESS-31; the serial
 #                            baseline never hits the 240 s default, so
 #                            widening it does not affect comparability).
+#                            EVAL_LLM_ENDPOINTS=<url1>,<url2> activates
+#                            the multi-endpoint deps pool (HARNESS-31
+#                            direction 2: one Ollama instance per GPU;
+#                            qwen35 on Ollama 0.17 cannot batch parallel
+#                            requests, so concurrency = one full model
+#                            copy per GPU).  Pair with --run-concurrency
+#                            >= the endpoint count.
 #
 # Full both-lane run: ~65 min pre-HARNESS-31; judge pipelining moves the
 # judge phase off the critical path (expected ~10-15 min saving).  Still

@@ -20,6 +20,7 @@ Author: Li-Ta Hsu
 
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 import time
@@ -46,8 +47,21 @@ logger = structlog.get_logger(__name__)
 # that need isolation pass their own ``deps`` kwarg.
 _cached_deps: Optional[ManualAgentDeps] = None
 
+# HARNESS-31 (#225) direction 2: pool of deps for multi-endpoint
+# concurrent runs.  Built lazily from ``EVAL_LLM_ENDPOINTS`` (a
+# comma-separated list of Ollama base URLs, one per dedicated
+# GPU/instance).  An ``asyncio.Queue`` acts as a checkout/checkin
+# pool so at most ONE in-flight agent run uses each endpoint —
+# guaranteeing dedicated single-stream GPU access per run even
+# when the orchestrator's ``EVAL_RUN_CONCURRENCY`` admits several
+# runs at once.  (Ollama 0.17's qwen35 architecture does not
+# support batched parallel requests — the scheduler forces
+# Parallel:1 — so concurrency comes from one full model copy per
+# GPU instead.)
+_deps_pool: Optional["asyncio.Queue[ManualAgentDeps]"] = None
 
-def _build_default_deps() -> ManualAgentDeps:
+
+def _build_deps_for_endpoint(base_url: str) -> ManualAgentDeps:
     """Construct deps pointing at local Ollama.
 
     The eval suite's primary target is the model that ships —
@@ -74,6 +88,9 @@ def _build_default_deps() -> ManualAgentDeps:
     has zero timeouts, so raising the wall does not change
     single-stream behaviour or score comparability.
 
+    Args:
+        base_url: Ollama root URL this deps instance talks to.
+
     Returns:
         ``ManualAgentDeps`` ready to pass into
         ``run_manual_agent``.
@@ -86,7 +103,7 @@ def _build_default_deps() -> ManualAgentDeps:
         config.timeout_seconds = float(wall_override)
     return ManualAgentDeps(
         llm_client=OllamaNativeLLMClient(
-            settings.llm_endpoint,
+            base_url,
             think=False,
             timeout_seconds=max(300.0, config.timeout_seconds),
         ),
@@ -95,12 +112,50 @@ def _build_default_deps() -> ManualAgentDeps:
     )
 
 
+def _build_default_deps() -> ManualAgentDeps:
+    """Construct deps pointing at the default local Ollama."""
+    return _build_deps_for_endpoint(settings.llm_endpoint)
+
+
 def _get_default_deps() -> ManualAgentDeps:
     """Return a process-cached default deps instance."""
     global _cached_deps
     if _cached_deps is None:
         _cached_deps = _build_default_deps()
     return _cached_deps
+
+
+def _get_deps_pool() -> Optional["asyncio.Queue[ManualAgentDeps]"]:
+    """Return the endpoint pool, or ``None`` when not configured.
+
+    Reads ``EVAL_LLM_ENDPOINTS`` once (comma-separated Ollama base
+    URLs) and materialises one ``ManualAgentDeps`` per endpoint in
+    an ``asyncio.Queue``.  Must be first called from inside the
+    event loop that will consume it (the orchestrator's
+    ``asyncio.run`` loop) — ``asyncio.Queue`` binds to the running
+    loop.
+
+    Returns:
+        The pool queue, or ``None`` when ``EVAL_LLM_ENDPOINTS`` is
+        unset/empty (single-endpoint default path).
+    """
+    global _deps_pool
+    if _deps_pool is None:
+        raw = os.environ.get("EVAL_LLM_ENDPOINTS", "").strip()
+        if not raw:
+            return None
+        urls = [u.strip() for u in raw.split(",") if u.strip()]
+        if not urls:
+            return None
+        pool: "asyncio.Queue[ManualAgentDeps]" = asyncio.Queue()
+        for url in urls:
+            pool.put_nowait(_build_deps_for_endpoint(url))
+        logger.info(
+            "manual_agent_endpoint_pool_built",
+            endpoints=urls,
+        )
+        _deps_pool = pool
+    return _deps_pool
 
 
 async def run_manual_agent(
@@ -115,9 +170,10 @@ async def run_manual_agent(
         question: The inquiry to answer.
         obd_context: Optional OBD context snippet.
         deps: Pre-built dependency container.  Tests use this to
-            inject a fake ``LLMClient``.  When ``None``, a
-            process-cached default pointing at local Ollama is
-            lazily constructed from ``settings``.
+            inject a fake ``LLMClient``.  When ``None``, deps come
+            from the ``EVAL_LLM_ENDPOINTS`` checkout pool if
+            configured (HARNESS-31 direction 2), else from a
+            process-cached default pointing at local Ollama.
         vehicle: Optional harness-verified vehicle identity for
             the ``## VEHICLE`` block (HARNESS-29, #213).
 
@@ -125,7 +181,14 @@ async def run_manual_agent(
         A ``ManualAgentResult`` with summary, citations,
         raw_sections, tool_trace, and diagnostics metadata.
     """
-    effective_deps = deps or _get_default_deps()
+    pool = _get_deps_pool() if deps is None else None
+    if pool is not None:
+        # Checkout blocks until an endpoint is free — combined
+        # with EVAL_RUN_CONCURRENCY >= pool size this keeps every
+        # endpoint busy while guaranteeing one stream per GPU.
+        effective_deps = await pool.get()
+    else:
+        effective_deps = deps or _get_default_deps()
 
     logger.info(
         "manual_agent_runner_invoked",
@@ -133,12 +196,17 @@ async def run_manual_agent(
         has_obd_context=obd_context is not None,
         vehicle=vehicle,
         model=effective_deps.config.model,
+        endpoint_pooled=pool is not None,
     )
 
-    return await _run_agent_loop(
-        question, obd_context, effective_deps,
-        vehicle=vehicle,
-    )
+    try:
+        return await _run_agent_loop(
+            question, obd_context, effective_deps,
+            vehicle=vehicle,
+        )
+    finally:
+        if pool is not None:
+            pool.put_nowait(effective_deps)
 
 
 _VISION_DESC_RE = re.compile(
@@ -403,10 +471,11 @@ async def run_manual_agent_unified(
 
 
 def _reset_cache_for_testing() -> None:
-    """Test-only helper: drop the cached deps.
+    """Test-only helper: drop the cached deps and endpoint pool.
 
     Tests that swap environment variables between cases must
     call this so a previously-built cached deps doesn't leak.
     """
-    global _cached_deps
+    global _cached_deps, _deps_pool
     _cached_deps = None
+    _deps_pool = None
