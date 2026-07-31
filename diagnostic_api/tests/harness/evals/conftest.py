@@ -17,6 +17,7 @@ Author: Li-Ta Hsu
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -92,10 +93,14 @@ class EvalReport:
     Attributes:
         started_at: Unix timestamp when the report was created.
         records: Accumulated eval triples.
+        meta: Run-level metadata (e.g. the HARNESS-31 pipeline
+            concurrency config) serialised alongside the records.
+            Consumers that don't know the key ignore it.
     """
 
     started_at: float = field(default_factory=time.time)
     records: List[Dict[str, Any]] = field(default_factory=list)
+    meta: Dict[str, Any] = field(default_factory=dict)
 
     def record(
         self,
@@ -123,6 +128,7 @@ class EvalReport:
             "started_at": self.started_at,
             "ended_at": time.time(),
             "count": len(self.records),
+            "meta": self.meta,
             "records": self.records,
         }
         with open(out_path, "w", encoding="utf-8") as handle:
@@ -565,6 +571,134 @@ def yamaha_session_id(
     # rather than a silent file-not-found later.
     _get_or_create_yamaha_session(session_uuid)
     return str(session_uuid)
+
+
+# ── Pipelined eval orchestration (HARNESS-31, #225) ──────────────
+
+
+# The two lane test functions whose parametrised items the
+# pipeline pre-executes.  The OBD lane (test_obd_agent_eval.py)
+# is NOT pipelined yet — it runs per-test as before.
+_PIPELINE_LANE_FUNCTIONS = ("test_manual_agent", "test_rag")
+
+
+def _read_concurrency_env(name: str, default: int) -> int:
+    """Parse a concurrency knob from the environment.
+
+    Args:
+        name: Environment variable name.
+        default: Value when unset/empty.
+
+    Returns:
+        Parsed integer, floored at 1.
+
+    Raises:
+        ValueError: If set but not an integer.
+    """
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError(
+            f"{name} must be an integer, got {raw!r}",
+        ) from exc
+    return max(1, value)
+
+
+@pytest.fixture(scope="session")
+def pipeline_results(
+    request: pytest.FixtureRequest,
+    eval_report: EvalReport,
+) -> Dict[Any, Any]:
+    """Run and grade every selected lane golden, pipelined.
+
+    Instantiated lazily by the first manual/RAG eval test.  Reads
+    the session's final (post ``-k`` / deselection) item list,
+    builds one ``WorkItem`` per parametrised lane test, and
+    executes them all via ``orchestrator.run_pipeline``: system
+    runs serialised (default) under ``EVAL_RUN_CONCURRENCY``,
+    judge calls pipelined under ``EVAL_JUDGE_CONCURRENCY`` so they
+    overlap subsequent runs (HARNESS-31, #225).
+
+    Item order follows pytest collection order (manual lane file
+    before RAG lane file), matching the pre-pipeline execution
+    order exactly when ``EVAL_RUN_CONCURRENCY=1``.
+
+    Args:
+        request: Injected by pytest; supplies the session item
+            list and CLI options (``--mock-agent`` /
+            ``--mock-judge``).
+        eval_report: Session report accumulator — the pipeline
+            config is recorded in its ``meta`` for comparability
+            audits.
+
+    Returns:
+        Mapping of ``(system_label, entry_id)`` to
+        ``orchestrator.PipelineOutcome``.
+    """
+    # Lazy imports: lanes.py pulls in the agent/app stack, which
+    # must not be imported at conftest module level (offline
+    # collection gotcha — tiktoken).
+    from tests.harness.evals import lanes, orchestrator
+
+    mock_agent = request.config.getoption("--mock-agent")
+    mock_judge = request.config.getoption("--mock-judge")
+    manual_deps = _build_mock_agent_deps() if mock_agent else None
+    judge_client = (
+        _build_mock_judge_client() if mock_judge else None
+    )
+
+    items: List[Any] = []
+    for item in request.session.items:
+        func_name = getattr(
+            getattr(item, "function", None), "__name__", "",
+        )
+        if func_name not in _PIPELINE_LANE_FUNCTIONS:
+            continue
+        if item.get_closest_marker("skip") is not None:
+            continue  # e.g. the empty-locked-tier placeholder
+        callspec = getattr(item, "callspec", None)
+        entry = (
+            callspec.params.get("entry")
+            if callspec is not None
+            else None
+        )
+        if not isinstance(entry, GoldenEntry):
+            continue
+        if func_name == "test_manual_agent":
+            items.append(orchestrator.WorkItem(
+                system_label="manual_agent",
+                entry=entry,
+                run_fn=lanes.build_manual_run(
+                    entry, deps=manual_deps,
+                ),
+            ))
+        else:
+            items.append(orchestrator.WorkItem(
+                system_label="rag",
+                entry=entry,
+                run_fn=lanes.build_rag_run(entry),
+            ))
+
+    run_concurrency = _read_concurrency_env(
+        "EVAL_RUN_CONCURRENCY", 1,
+    )
+    judge_concurrency = _read_concurrency_env(
+        "EVAL_JUDGE_CONCURRENCY", 4,
+    )
+    eval_report.meta["pipeline"] = {
+        "run_concurrency": run_concurrency,
+        "judge_concurrency": judge_concurrency,
+        "item_count": len(items),
+    }
+    return orchestrator.run_pipeline(
+        items,
+        run_concurrency=run_concurrency,
+        judge_concurrency=judge_concurrency,
+        judge_client=judge_client,
+    )
 
 
 @pytest.fixture(scope="session")

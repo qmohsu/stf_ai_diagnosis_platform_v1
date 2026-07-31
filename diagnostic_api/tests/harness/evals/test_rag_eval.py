@@ -4,18 +4,19 @@ Mirror of ``test_manual_agent_eval.py`` for the RAG retriever.
 Same locked-tier source (`golden/v2/locked/mws150a.jsonl`), same
 LLM judge (`grade_run` via z-ai/glm-5.1), same `Grade` envelope.
 
+Since HARNESS-31 (#225) execution is pipelined: the session-scoped
+``pipeline_results`` fixture runs BOTH lanes' selected goldens up
+front (manual lane first, mirroring collection order) with judge
+calls overlapping subsequent runs; this file's tests are thin
+assertions over the pre-computed outcomes.  The RAG-side knobs
+(top_k, vehicle_model, exact scan) moved to ``lanes.py`` where the
+orchestrator builds the run callables.
+
 Lets the eval suite produce an **agent-vs-RAG** comparison
 without changing the manual-agent suite — both files write into
 the same session-scoped ``eval_report`` fixture, so a single
 pytest invocation grades both lanes against the same 30 goldens
 and the resulting JSON report carries both sets of grades.
-
-Why a separate file (instead of parametrising the existing file
-over an extra `system` axis): the agent lane has its own
-mock-agent CLI flag + fixture; the RAG lane needs neither (it
-takes no `deps` parameter, just calls `retrieve_context`
-directly). Forking the file keeps each lane's parametrize axis
-focused on `entry` only and keeps mock plumbing per-lane.
 
 Run both lanes against the locked corpus::
 
@@ -28,7 +29,7 @@ Author: Li-Ta Hsu
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Dict
 
 import pytest
 
@@ -36,8 +37,6 @@ from tests.harness.evals.conftest import (
     EvalReport,
     load_golden,
 )
-from tests.harness.evals.judge import grade_run
-from tests.harness.evals.rag_runner import run_rag
 from tests.harness.evals.schemas import GoldenEntry
 
 
@@ -82,45 +81,18 @@ _PARAM_ENTRIES = (
 )
 
 
-# RAG-side knobs.  ``top_k=5`` matches the production endpoint
-# default.
-#
-# ``vehicle_model="TRICITY155"``: HARNESS-23 found the corpus had
-# drifted since the issue was written — the goldens' Yamaha manual
-# ("MWS150-A 中文SERVICE MANUAL.pdf") is stored under vehicle_model
-# ``TRICITY155``, and a second manual (``Corolla E11``, Toyota) was
-# ingested into the same pgvector table.  The old ``"MWS150-A"``
-# label matched zero rows.
-#
-# ``_RAG_EXACT_SCAN``: with two manuals sharing the HNSW index, a
-# hard single-manual filter is starved to zero rows — HNSW selects
-# the approximate nearest neighbours first (all from the larger
-# English Corolla manual for cross-language queries) and only then
-# applies the filter, so nothing survives even at the max
-# ef_search=1000.  The exact sequential-scan path makes the filter
-# faithful again so the RAG lane actually retrieves Yamaha content.
-# See ``rag_runner._sync_exact_vector_query`` for the full rationale.
-#
-# Bumping the corpus to N>2 manuals would lift this to a parametrize
-# axis (recall@k per manual scope).
-_RAG_TOP_K = 5
-_RAG_VEHICLE_MODEL = "TRICITY155"
-_RAG_EXACT_SCAN = True
-
-
 @pytest.mark.eval
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "entry",
     _PARAM_ENTRIES,
     ids=lambda e: e.id if _LOCKED_ENTRIES else None,
 )
-async def test_rag(
+def test_rag(
     entry: GoldenEntry,
     eval_report: EvalReport,
-    judge_client: Optional[Any],
+    pipeline_results: Dict[Any, Any],
 ) -> None:
-    """Run RAG retrieval and grade it against the golden entry.
+    """Assert the pipelined RAG outcome for one golden.
 
     Args:
         entry: One ``GoldenEntry`` from
@@ -128,20 +100,24 @@ async def test_rag(
         eval_report: Session-scoped report accumulator.  Shared
             with the agent lane so a single pytest invocation
             produces one combined report covering both systems.
-        judge_client: ``None`` for the real GLM 5.1 judge, or a
-            mock client when ``--mock-judge`` is passed.
+        pipeline_results: Session-scoped mapping of
+            ``(system_label, entry_id)`` to pre-computed
+            ``PipelineOutcome`` (HARNESS-31).
     """
-    run = await run_rag(
-        question=entry.question,
-        top_k=_RAG_TOP_K,
-        vehicle_model=_RAG_VEHICLE_MODEL,
-        exact=_RAG_EXACT_SCAN,
+    outcome = pipeline_results.get(("rag", entry.id))
+    assert outcome is not None, (
+        f"[{entry.id} / rag] missing from pipeline results — the "
+        f"orchestrator did not schedule this item (conftest "
+        f"item-selection bug?)"
     )
-    grade = await grade_run(entry, run, client=judge_client)
-    eval_report.record(entry, run, grade)  # type: ignore[arg-type]
+    if outcome.error is not None:
+        raise outcome.error
+    eval_report.record(
+        entry, outcome.run, outcome.grade,  # type: ignore[arg-type]
+    )
 
-    assert grade.overall >= _PASS_THRESHOLD, (
-        f"[{entry.id} / rag] overall={grade.overall:.2f} "
+    assert outcome.grade.overall >= _PASS_THRESHOLD, (
+        f"[{entry.id} / rag] overall={outcome.grade.overall:.2f} "
         f"below threshold {_PASS_THRESHOLD}: "
-        f"{grade.reasoning}"
+        f"{outcome.grade.reasoning}"
     )
