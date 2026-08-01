@@ -31,7 +31,11 @@ import structlog
 from openai import AsyncOpenAI
 
 from app.config import settings
-from app.harness.deps import OllamaNativeLLMClient, OpenAILLMClient
+from app.harness.deps import (
+    OllamaNativeLLMClient,
+    OpenAILLMClient,
+    _flatten_tool_content,
+)
 from app.harness_agents.manual_agent import (
     ManualAgentConfig,
     ManualAgentDeps,
@@ -96,6 +100,39 @@ def _build_eval_config() -> ManualAgentConfig:
     return config
 
 
+class _FlattenImagesClient:
+    """Wrapper that strips image blocks before delegating.
+
+    For text-only hosted models (e.g. ``z-ai/glm-5.2`` on
+    OpenRouter, whose providers 404 on image input), multimodal
+    tool results must be reduced to their text parts — exactly
+    what the Ollama-native path has always done via
+    ``_flatten_tool_content`` (the manual markdown embeds a
+    ``Vision description:`` paragraph per image, so the text
+    carries the evidence).  Enabled per-run via
+    ``EVAL_LLM_FLATTEN_IMAGES=1``; keeps the ceiling run
+    comparable with the local baseline, which never saw raw
+    image bytes either.
+    """
+
+    def __init__(self, inner: Any) -> None:
+        self._inner = inner
+
+    async def chat(self, **kwargs: Any) -> Any:
+        messages = kwargs.pop("messages")
+        flattened = []
+        for msg in messages:
+            if isinstance(msg.get("content"), list):
+                msg = dict(
+                    msg,
+                    content=_flatten_tool_content(msg["content"]),
+                )
+            flattened.append(msg)
+        return await self._inner.chat(
+            messages=flattened, **kwargs,
+        )
+
+
 def _build_deps_for_endpoint(base_url: str) -> ManualAgentDeps:
     """Construct deps pointing at local Ollama.
 
@@ -147,16 +184,38 @@ def _build_deps_for_endpoint(base_url: str) -> ManualAgentDeps:
         ``run_manual_agent``.
     """
     config = _build_eval_config()
-    timeout = max(300.0, config.timeout_seconds)
+    # Per-HTTP-call timeout: follows the wall budget but capped at
+    # 900 s — with the wall effectively disabled for hosted-SOTA
+    # ceiling runs (EVAL_AGENT_WALL_SECONDS=3600), one hung
+    # request must not block its stream for an hour.  Reasoning
+    # models legitimately take minutes per call; 900 s is generous.
+    timeout = min(900.0, max(300.0, config.timeout_seconds))
     backend = os.environ.get(
         "EVAL_LLM_BACKEND", "ollama",
     ).strip().lower()
     if backend == "openai":
+        # Key resolution: explicit EVAL_LLM_API_KEY, else the
+        # premium (OpenRouter) key already in the eval container's
+        # env — hosted ceiling runs reuse it; local vLLM ignores
+        # whatever is sent.
+        api_key = (
+            os.environ.get("EVAL_LLM_API_KEY", "").strip()
+            or settings.premium_llm_api_key
+            or "eval-local-no-auth"
+        )
         llm_client: Any = OpenAILLMClient(AsyncOpenAI(
             base_url=base_url.rstrip("/") + "/v1",
-            api_key="eval-local-no-auth",
+            api_key=api_key,
             timeout=timeout,
+            default_headers={
+                "HTTP-Referer": "https://stf-diagnosis.dev",
+                "X-Title": "STF eval ceiling run",
+            },
         ))
+        if os.environ.get(
+            "EVAL_LLM_FLATTEN_IMAGES", "",
+        ).strip() == "1":
+            llm_client = _FlattenImagesClient(llm_client)
     elif backend == "ollama":
         llm_client = OllamaNativeLLMClient(
             base_url,
