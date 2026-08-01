@@ -70,20 +70,47 @@ def _load_records(
     ]
 
 
+def _load_golden_overrides(path: str) -> Dict[str, GoldenEntry]:
+    """Load a golden JSONL keyed by entry id (#234 cross-grading).
+
+    Lets the tool grade STORED system outputs against a DIFFERENT
+    golden file than the one embedded in the report — e.g. today's
+    legacy-graded control run against the node-id makeup overlay,
+    predicting the post-fix score without a GPU run.
+
+    Args:
+        path: Golden JSONL file path.
+
+    Returns:
+        Mapping of entry id to validated ``GoldenEntry``.
+    """
+    overrides: Dict[str, GoldenEntry] = {}
+    with open(path, "r", encoding="utf-8") as handle:
+        for line in handle:
+            if line.strip():
+                entry = GoldenEntry.model_validate_json(line)
+                overrides[entry.id] = entry
+    return overrides
+
+
 async def _regrade_one(
     rec: Dict[str, Any],
     sema: asyncio.Semaphore,
+    overrides: Dict[str, GoldenEntry],
 ) -> Tuple[str, float, Grade]:
     """Re-grade one stored record with the current judge.
 
     Args:
         rec: Raw ``{entry, result, grade}`` record.
         sema: Concurrency limiter.
+        overrides: Optional per-id golden replacements; falls back
+            to the report-embedded entry.
 
     Returns:
         ``(entry_id, stored_overall, fresh_grade)``.
     """
     entry = GoldenEntry.model_validate(rec["entry"])
+    entry = overrides.get(entry.id, entry)
     run = SystemRunResult.model_validate(rec["result"])
     stored = float(rec["grade"]["overall"])
     async with sema:
@@ -107,9 +134,13 @@ async def _main_async(args: argparse.Namespace) -> int:
         print(f"no '{args.lane}' records in {args.report}")
         return 1
 
+    overrides: Dict[str, GoldenEntry] = {}
+    if args.golden_file:
+        overrides = _load_golden_overrides(args.golden_file)
+
     sema = asyncio.Semaphore(_JUDGE_CONCURRENCY)
     results = await asyncio.gather(*(
-        _regrade_one(rec, sema) for rec in records
+        _regrade_one(rec, sema, overrides) for rec in records
     ))
 
     stored_all: List[float] = []
@@ -156,6 +187,15 @@ def main() -> int:
         type=int,
         default=0,
         help="Re-grade only the first N records (0 = all).",
+    )
+    parser.add_argument(
+        "--golden-file",
+        default="",
+        help=(
+            "Grade against this golden JSONL (matched by entry "
+            "id) instead of the report-embedded entries — "
+            "cross-grading for #234."
+        ),
     )
     return asyncio.run(_main_async(parser.parse_args()))
 
