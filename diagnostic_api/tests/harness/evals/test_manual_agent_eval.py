@@ -1,10 +1,16 @@
 """Parametrized entry point for the manual-agent eval suite.
 
 One test per ``GoldenEntry`` loaded from
-``golden/v2/locked/mws150a.jsonl``.  Each test runs the manual
-sub-agent against the entry's question, grades the output via
-the LLM judge, records the triple in the session-scoped
-``eval_report``, and asserts ``grade.overall >= 0.7``.
+``golden/v2/locked/mws150a.jsonl``.  Since HARNESS-31 (#225) the
+actual execution is pipelined: the session-scoped
+``pipeline_results`` fixture (see ``conftest.py`` +
+``orchestrator.py``) runs the manual sub-agent for every selected
+golden — serially by default, preserving single-stream GPU access
+— while judge calls overlap subsequent agent runs.  Each
+parametrised test here just looks up its entry's outcome, records
+it in the session report, and asserts the pass threshold.  Test
+ids, ``-k`` filtering, report format, and thresholds are
+unchanged from the pre-pipeline suite.
 
 HARNESS-20 moved the source from the v1 set (mutable, drifted
 from production) to the locked tier of v2.  The locked tier is
@@ -26,7 +32,7 @@ Author: Li-Ta Hsu
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Dict
 
 import pytest
 
@@ -34,8 +40,6 @@ from tests.harness.evals.conftest import (
     EvalReport,
     load_golden,
 )
-from tests.harness.evals.judge import grade_run
-from tests.harness.evals.runner import run_manual_agent_unified
 from tests.harness.evals.schemas import GoldenEntry
 
 
@@ -50,15 +54,6 @@ from tests.harness.evals.schemas import GoldenEntry
 # comparable (rubric/weights changed in #148/#153).  See
 # docs/harness_14_phase6_baseline.md.
 _PASS_THRESHOLD = 0.4
-
-
-# HARNESS-29 (#213): the harness-verified vehicle identity for
-# this corpus, injected as the ``## VEHICLE`` block — mirroring
-# what production ``delegate_to_manual_agent`` resolves from the
-# upload session row (APP-60 make/model).  Entries may override
-# via ``GoldenEntry.vehicle`` (empty string = deliberately no
-# vehicle, exercising the legacy inference path).
-_CORPUS_VEHICLE = "Yamaha TRICITY155 (factory code MWS-150-A)"
 
 
 # Load goldens at import time so pytest parametrization shows one
@@ -91,51 +86,40 @@ _PARAM_ENTRIES = (
 
 
 @pytest.mark.eval
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "entry",
     _PARAM_ENTRIES,
     ids=lambda e: e.id if _LOCKED_ENTRIES else None,
 )
-async def test_manual_agent(
+def test_manual_agent(
     entry: GoldenEntry,
     eval_report: EvalReport,
-    judge_client: Optional[Any],
-    manual_agent_deps: Optional[Any],
+    pipeline_results: Dict[Any, Any],
 ) -> None:
-    """Run the manual agent and grade it against the golden entry.
+    """Assert the pipelined manual-agent outcome for one golden.
 
     Args:
         entry: One ``GoldenEntry`` from
             ``golden/v2/locked/mws150a.jsonl``.
         eval_report: Session-scoped report accumulator.
-        judge_client: ``None`` for the real GLM 5.1 judge, or a
-            mock client when ``--mock-judge`` is passed.
-        manual_agent_deps: ``None`` for real deps pointing at
-            local Ollama, or a stub deps object when
-            ``--mock-agent`` is passed.
+        pipeline_results: Session-scoped mapping of
+            ``(system_label, entry_id)`` to pre-computed
+            ``PipelineOutcome`` (HARNESS-31).
     """
-    # Mirror the OBD eval's pattern: produce a unified
-    # SystemRunResult so the shared judge (grade_run) can grade
-    # the manual agent and RAG on the same rubric.  The legacy
-    # judge_result helper that took a ManualAgentResult directly
-    # was removed during HARNESS-21's judge rewrite when the
-    # grader was generalised across systems.
-    vehicle = (
-        entry.vehicle
-        if entry.vehicle is not None
-        else _CORPUS_VEHICLE
+    outcome = pipeline_results.get(("manual_agent", entry.id))
+    assert outcome is not None, (
+        f"[{entry.id}] missing from pipeline results — the "
+        f"orchestrator did not schedule this item (conftest "
+        f"item-selection bug?)"
     )
-    run = await run_manual_agent_unified(
-        entry.question, entry.obd_context,
-        deps=manual_agent_deps,
-        vehicle=vehicle,
+    if outcome.error is not None:
+        raise outcome.error
+    eval_report.record(
+        entry, outcome.run, outcome.grade,  # type: ignore[arg-type]
     )
-    grade = await grade_run(entry, run, client=judge_client)
-    eval_report.record(entry, run, grade)  # type: ignore[arg-type]
 
-    assert grade.overall >= _PASS_THRESHOLD, (
-        f"[{entry.id}] overall={grade.overall:.2f} "
+    assert outcome.grade.overall >= _PASS_THRESHOLD, (
+        f"[{entry.id}] overall={outcome.grade.overall:.2f} "
         f"below threshold {_PASS_THRESHOLD}: "
-        f"{grade.reasoning}"
+        f"{outcome.grade.reasoning}"
     )

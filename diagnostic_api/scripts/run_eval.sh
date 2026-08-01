@@ -21,7 +21,8 @@
 # This script therefore does NOT treat pytest failure as a script failure.
 #
 # Usage:
-#   ./run_eval.sh [--lane manual|rag|both] [--smoke | -k EXPR] [--dry-run]
+#   ./run_eval.sh [--lane manual|rag|both] [--smoke | -k EXPR]
+#                 [--run-concurrency N] [--judge-concurrency N] [--dry-run]
 #
 #   --lane manual|rag|both   Which lane(s) to run (default: both, one
 #                            shared report — the comparable configuration).
@@ -36,15 +37,40 @@
 #                              adversarial-001  (adversarial)
 #   -k EXPR                  Raw pytest -k passthrough (mutually exclusive
 #                            with --smoke), e.g. -k lookup-002.
+#   --run-concurrency N      HARNESS-31 (#225): max system runs in flight
+#                            (EVAL_RUN_CONCURRENCY).  Default 1 — the
+#                            score-comparable single-stream config.  >1
+#                            needs OLLAMA_NUM_PARALLEL>1 server-side to
+#                            help, and per-run latency metrics stop
+#                            reflecting single-user latency.
+#   --judge-concurrency N    HARNESS-31: max judge calls in flight
+#                            (EVAL_JUDGE_CONCURRENCY, default 4).  Judge
+#                            calls are pipelined off the critical path —
+#                            they overlap subsequent agent runs.
 #   --dry-run                Print every command instead of executing
 #                            (testable off-server; no podman required).
 #
 # Environment:
 #   STF_REPO_DIR             Repo checkout on the server
 #                            (default: ~/stf_ai_diagnosis_platform_v1).
+#   EXTRA_EVAL_ENV           Extra env lines appended to the captured env
+#                            file, e.g. EVAL_AGENT_WALL_SECONDS=600 to
+#                            widen the per-golden runaway guard for
+#                            concurrent runs (HARNESS-31; the serial
+#                            baseline never hits the 240 s default, so
+#                            widening it does not affect comparability).
+#                            EVAL_LLM_ENDPOINTS=<url1>,<url2> activates
+#                            the multi-endpoint deps pool (HARNESS-31
+#                            direction 2: one Ollama instance per GPU;
+#                            qwen35 on Ollama 0.17 cannot batch parallel
+#                            requests, so concurrency = one full model
+#                            copy per GPU).  Pair with --run-concurrency
+#                            >= the endpoint count.
 #
-# Full both-lane run is long (~65 min at the 2026-07-12 re-baseline) —
-# launch detached (nohup/tmux) and poll for the report file.
+# Full both-lane run: ~65 min pre-HARNESS-31; judge pipelining moves the
+# judge phase off the critical path (expected ~10-15 min saving).  Still
+# long — launch detached (nohup/tmux) and poll for the report file.  Live
+# per-golden progress lines ([pipeline] i/N ...) stream to the run log.
 #
 # Author: Li-Ta Hsu
 
@@ -74,7 +100,7 @@ log() { printf '[run_eval] %s\n' "$*" >&2; }
 die() { printf '[run_eval] ERROR: %s\n' "$*" >&2; exit 1; }
 
 usage() {
-  sed -n '2,50p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,62p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 # Execute the given command, or echo it (shell-quoted) under --dry-run.
@@ -94,6 +120,8 @@ LANE="both"
 K_EXPR=""
 SMOKE=0
 DRY_RUN=0
+RUN_CONCURRENCY=""
+JUDGE_CONCURRENCY=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -109,6 +137,16 @@ while [ $# -gt 0 ]; do
       K_EXPR="$2"; shift 2 ;;
     -k=*)
       K_EXPR="${1#*=}"; shift ;;
+    --run-concurrency)
+      [ $# -ge 2 ] || die "--run-concurrency requires an integer"
+      RUN_CONCURRENCY="$2"; shift 2 ;;
+    --run-concurrency=*)
+      RUN_CONCURRENCY="${1#*=}"; shift ;;
+    --judge-concurrency)
+      [ $# -ge 2 ] || die "--judge-concurrency requires an integer"
+      JUDGE_CONCURRENCY="$2"; shift 2 ;;
+    --judge-concurrency=*)
+      JUDGE_CONCURRENCY="${1#*=}"; shift ;;
     --dry-run)
       DRY_RUN=1; shift ;;
     -h|--help)
@@ -129,6 +167,15 @@ fi
 if [ "$SMOKE" -eq 1 ]; then
   K_EXPR="$SMOKE_K"
 fi
+
+case "$RUN_CONCURRENCY" in
+  ""|[1-9]|[1-9][0-9]) ;;
+  *) die "--run-concurrency must be a positive integer, got '$RUN_CONCURRENCY'" ;;
+esac
+case "$JUDGE_CONCURRENCY" in
+  ""|[1-9]|[1-9][0-9]) ;;
+  *) die "--judge-concurrency must be a positive integer, got '$JUDGE_CONCURRENCY'" ;;
+esac
 
 # --- Preflight ---------------------------------------------------------------
 
@@ -176,6 +223,16 @@ else
     printf '%s\n' "$EXTRA_EVAL_ENV" >> "$ENV_FILE"
     log "appended EXTRA_EVAL_ENV: $EXTRA_EVAL_ENV"
   fi
+  # HARNESS-31 (#225): pipeline concurrency knobs for the eval
+  # orchestrator (tests/harness/evals/orchestrator.py).
+  if [ -n "$RUN_CONCURRENCY" ]; then
+    printf 'EVAL_RUN_CONCURRENCY=%s\n' "$RUN_CONCURRENCY" >> "$ENV_FILE"
+    log "run concurrency: $RUN_CONCURRENCY"
+  fi
+  if [ -n "$JUDGE_CONCURRENCY" ]; then
+    printf 'EVAL_JUDGE_CONCURRENCY=%s\n' "$JUDGE_CONCURRENCY" >> "$ENV_FILE"
+    log "judge concurrency: $JUDGE_CONCURRENCY"
+  fi
   log "captured $(wc -l < "$ENV_FILE") env vars from $CONTAINER -> $ENV_FILE"
 fi
 
@@ -188,7 +245,11 @@ case "$LANE" in
   both)   TEST_FILES=("$MANUAL_TEST" "$RAG_TEST") ;;
 esac
 
-PYTEST_ARGS=(pytest --run-eval -p no:cacheprovider
+# -s (capture=no): the HARNESS-31 orchestrator emits live
+# [pipeline] progress lines to stderr during the first test's
+# fixture setup — pytest capture would swallow them for the
+# whole ~30 min session.
+PYTEST_ARGS=(pytest --run-eval -p no:cacheprovider -s
   "${TEST_FILES[@]}" --tb=short)
 if [ -n "$K_EXPR" ]; then
   PYTEST_ARGS+=(-k "$K_EXPR")
