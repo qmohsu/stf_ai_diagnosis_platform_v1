@@ -60,6 +60,14 @@ _PASS_THRESHOLD = 0.1
 # lane: a single skipped placeholder when no entries have been
 # promoted yet, instead of a parametrize-with-empty-list
 # collection crash.
+#
+# #234: deliberately NOT track-selected (unlike the manual lane).
+# RAG retrieves pgvector chunks whose metadata carries legacy
+# heading slugs regardless of the manual tools' index track, so
+# grading it against the makeup overlay's node-id anchors would
+# structurally zero its ``section_recall``.  This lane stays on
+# the legacy-slug file — comparable with its own history
+# (HARNESS-23 re-baseline 0.239).
 _LOCKED_ENTRIES = load_golden("v2/locked/mws150a.jsonl")
 
 _NO_LOCKED_REASON = (
