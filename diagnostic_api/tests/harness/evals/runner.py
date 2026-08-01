@@ -31,7 +31,11 @@ import structlog
 from openai import AsyncOpenAI
 
 from app.config import settings
-from app.harness.deps import OllamaNativeLLMClient, OpenAILLMClient
+from app.harness.deps import (
+    OllamaNativeLLMClient,
+    OpenAILLMClient,
+    _flatten_tool_content,
+)
 from app.harness_agents.manual_agent import (
     ManualAgentConfig,
     ManualAgentDeps,
@@ -94,6 +98,39 @@ def _build_eval_config() -> ManualAgentConfig:
     if overrides:
         config = dataclasses.replace(config, **overrides)
     return config
+
+
+class _FlattenImagesClient:
+    """Wrapper that strips image blocks before delegating.
+
+    For text-only hosted models (e.g. ``z-ai/glm-5.2`` on
+    OpenRouter, whose providers 404 on image input), multimodal
+    tool results must be reduced to their text parts — exactly
+    what the Ollama-native path has always done via
+    ``_flatten_tool_content`` (the manual markdown embeds a
+    ``Vision description:`` paragraph per image, so the text
+    carries the evidence).  Enabled per-run via
+    ``EVAL_LLM_FLATTEN_IMAGES=1``; keeps the ceiling run
+    comparable with the local baseline, which never saw raw
+    image bytes either.
+    """
+
+    def __init__(self, inner: Any) -> None:
+        self._inner = inner
+
+    async def chat(self, **kwargs: Any) -> Any:
+        messages = kwargs.pop("messages")
+        flattened = []
+        for msg in messages:
+            if isinstance(msg.get("content"), list):
+                msg = dict(
+                    msg,
+                    content=_flatten_tool_content(msg["content"]),
+                )
+            flattened.append(msg)
+        return await self._inner.chat(
+            messages=flattened, **kwargs,
+        )
 
 
 def _build_deps_for_endpoint(base_url: str) -> ManualAgentDeps:
@@ -175,6 +212,10 @@ def _build_deps_for_endpoint(base_url: str) -> ManualAgentDeps:
                 "X-Title": "STF eval ceiling run",
             },
         ))
+        if os.environ.get(
+            "EVAL_LLM_FLATTEN_IMAGES", "",
+        ).strip() == "1":
+            llm_client = _FlattenImagesClient(llm_client)
     elif backend == "ollama":
         llm_client = OllamaNativeLLMClient(
             base_url,
