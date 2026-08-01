@@ -39,6 +39,7 @@ import pytest
 from tests.harness.evals.conftest import (
     EvalReport,
     load_golden,
+    resolve_manual_golden_path,
 )
 from tests.harness.evals.schemas import GoldenEntry
 
@@ -59,7 +60,11 @@ _PASS_THRESHOLD = 0.4
 # Load goldens at import time so pytest parametrization shows one
 # test id per entry.  HARNESS-20: the locked tier is the canonical
 # source — promote_golden.py is the only way an entry lands here.
-_LOCKED_ENTRIES = load_golden("v2/locked/mws150a.jsonl")
+# #234: the file is track-selected — the index track (production
+# default since the HARNESS-30 cutover) grades against the makeup
+# overlay's node-id anchors; MANUAL_INDEX_TRACK=off grades against
+# the legacy-slug file (the A/B lane switch).
+_LOCKED_ENTRIES = load_golden(resolve_manual_golden_path())
 
 # An empty locked file is the shipped initial state (no entries
 # promoted yet).  Parametrising on an empty list crashes pytest's

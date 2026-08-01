@@ -39,6 +39,48 @@ _GOLDEN_DIR = _EVAL_DIR / "golden"
 _REPORTS_DIR = _EVAL_DIR / "reports"
 
 
+# ── Track-aware golden selection (#234) ──────────────────────────
+
+
+_LOCKED_LEGACY = "v2/locked/mws150a.jsonl"
+_LOCKED_INDEXED = "v2/locked/mws150a_indexed.jsonl"
+
+
+def resolve_manual_golden_path() -> str:
+    """Pick the locked golden file matching the active manual track.
+
+    Root cause of #234: the index-track cutover (HARNESS-30 #226)
+    made the manual agent cite ``{subsystem}-{type}-{slug}`` node
+    ids, and the A/B + fair-baseline runs (2026-07-28/29) were
+    graded against the makeup overlay
+    (``mws150a_indexed.jsonl``, node-id anchors) — but that
+    selection only ever existed as server-side file state, never
+    in code.  Once the checkout was cleaned, every subsequent run
+    silently graded node-id citations against the legacy-slug
+    file: ``section_recall`` collapsed 0.93 → 0.55 while
+    ``answer_quality`` actually rose, faking a 0.891 → 0.790
+    regression.
+
+    Selection mirrors ``app.harness_tools.manual_index``'s track
+    semantics (``MANUAL_INDEX_TRACK`` — anything but ``off``
+    enables the index track) and falls back to the legacy file
+    when the makeup overlay is absent, matching the tools' own
+    no-sidecar fallback.
+
+    Only the MANUAL lane follows the track: the RAG lane retrieves
+    pgvector chunks whose metadata carries legacy heading slugs
+    regardless of the manual tools' track, so it stays on the
+    legacy-slug goldens (see ``test_rag_eval.py``).
+
+    Returns:
+        Path relative to ``golden/`` for ``load_golden``.
+    """
+    track = os.environ.get("MANUAL_INDEX_TRACK", "auto").lower()
+    if track != "off" and (_GOLDEN_DIR / _LOCKED_INDEXED).exists():
+        return _LOCKED_INDEXED
+    return _LOCKED_LEGACY
+
+
 # ── Golden loader ─────────────────────────────────────────────────
 
 
