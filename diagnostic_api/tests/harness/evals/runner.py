@@ -21,15 +21,17 @@ Author: Li-Ta Hsu
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import os
 import re
 import time
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import structlog
+from openai import AsyncOpenAI
 
 from app.config import settings
-from app.harness.deps import OllamaNativeLLMClient
+from app.harness.deps import OllamaNativeLLMClient, OpenAILLMClient
 from app.harness_agents.manual_agent import (
     ManualAgentConfig,
     ManualAgentDeps,
@@ -61,6 +63,39 @@ _cached_deps: Optional[ManualAgentDeps] = None
 _deps_pool: Optional["asyncio.Queue[ManualAgentDeps]"] = None
 
 
+def _build_eval_config() -> ManualAgentConfig:
+    """Build an agent config with eval-time env overrides applied.
+
+    - ``EVAL_LLM_MODEL``: model identifier override (model
+      bake-offs — e.g. ``Qwen/Qwen3.6-27B-FP8`` served by vLLM).
+    - ``EVAL_AGENT_WALL_SECONDS``: per-golden wall budget
+      (HARNESS-31; runaway guard, not a UX target).
+
+    ``ManualAgentConfig`` is a frozen dataclass, so overrides are
+    applied by construction via ``dataclasses.replace`` — the
+    original HARNESS-31 wall-knob code assigned to the field and
+    would have raised ``FrozenInstanceError`` the first time the
+    env var was actually set (latent; the knob was never exercised
+    on a real run before this).
+
+    Returns:
+        Config with any overrides applied.
+    """
+    overrides: dict = {}
+    model_override = os.environ.get("EVAL_LLM_MODEL", "").strip()
+    if model_override:
+        overrides["model"] = model_override
+    wall_override = os.environ.get(
+        "EVAL_AGENT_WALL_SECONDS", "",
+    ).strip()
+    if wall_override:
+        overrides["timeout_seconds"] = float(wall_override)
+    config = ManualAgentConfig()
+    if overrides:
+        config = dataclasses.replace(config, **overrides)
+    return config
+
+
 def _build_deps_for_endpoint(base_url: str) -> ManualAgentDeps:
     """Construct deps pointing at local Ollama.
 
@@ -88,33 +123,72 @@ def _build_deps_for_endpoint(base_url: str) -> ManualAgentDeps:
     has zero timeouts, so raising the wall does not change
     single-stream behaviour or score comparability.
 
+    Backend selection (``EVAL_LLM_BACKEND``, model bake-offs):
+
+    - ``ollama`` (default): ``OllamaNativeLLMClient`` — native
+      ``/api/chat`` with ``think=False`` (the only mechanism that
+      suppresses qwen3.5's reasoning channel on Ollama, #144).
+    - ``openai``: ``OpenAILLMClient`` against any OpenAI-
+      compatible ``/v1`` server — the vLLM path.  Thinking
+      suppression is handled SERVER-side there
+      (``--default-chat-template-kwargs
+      '{"enable_thinking": false}'``), so the client stays a
+      plain chat-completions adapter.  Pair with
+      ``EVAL_LLM_MODEL`` (the served model id) and
+      ``EVAL_LLM_ENDPOINT``.
+
     Args:
-        base_url: Ollama root URL this deps instance talks to.
+        base_url: LLM server root URL this deps instance talks
+            to (no ``/v1`` suffix — added here for the openai
+            backend).
 
     Returns:
         ``ManualAgentDeps`` ready to pass into
         ``run_manual_agent``.
     """
-    config = ManualAgentConfig()
-    wall_override = os.environ.get(
-        "EVAL_AGENT_WALL_SECONDS", "",
-    ).strip()
-    if wall_override:
-        config.timeout_seconds = float(wall_override)
-    return ManualAgentDeps(
-        llm_client=OllamaNativeLLMClient(
+    config = _build_eval_config()
+    timeout = max(300.0, config.timeout_seconds)
+    backend = os.environ.get(
+        "EVAL_LLM_BACKEND", "ollama",
+    ).strip().lower()
+    if backend == "openai":
+        llm_client: Any = OpenAILLMClient(AsyncOpenAI(
+            base_url=base_url.rstrip("/") + "/v1",
+            api_key="eval-local-no-auth",
+            timeout=timeout,
+        ))
+    elif backend == "ollama":
+        llm_client = OllamaNativeLLMClient(
             base_url,
             think=False,
-            timeout_seconds=max(300.0, config.timeout_seconds),
-        ),
+            timeout_seconds=timeout,
+        )
+    else:
+        raise ValueError(
+            f"unknown EVAL_LLM_BACKEND {backend!r} "
+            f"(expected 'ollama' or 'openai')",
+        )
+    return ManualAgentDeps(
+        llm_client=llm_client,
         tool_registry=create_manual_agent_registry(),
         config=config,
     )
 
 
 def _build_default_deps() -> ManualAgentDeps:
-    """Construct deps pointing at the default local Ollama."""
-    return _build_deps_for_endpoint(settings.llm_endpoint)
+    """Construct deps pointing at the default eval LLM server.
+
+    ``EVAL_LLM_ENDPOINT`` overrides ``settings.llm_endpoint`` —
+    a SINGLE shared endpoint (e.g. a vLLM server that batches
+    internally, so any ``EVAL_RUN_CONCURRENCY`` fans into one
+    server).  Distinct from ``EVAL_LLM_ENDPOINTS`` (plural),
+    the one-run-per-endpoint checkout pool for the Ollama
+    dual-instance path.
+    """
+    endpoint = os.environ.get("EVAL_LLM_ENDPOINT", "").strip()
+    return _build_deps_for_endpoint(
+        endpoint or settings.llm_endpoint,
+    )
 
 
 def _get_default_deps() -> ManualAgentDeps:
