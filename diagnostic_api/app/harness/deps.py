@@ -243,13 +243,24 @@ class OpenAILLMClient:
         Raises:
             openai.PermissionDeniedError: Model blocked in region.
         """
+        # Omit tools/tool_choice entirely when the caller passes
+        # an empty list: the OpenAI spec (and strict servers like
+        # vLLM) reject `"tools": []` with a 400 — "provide at
+        # least one tool or omit the field".  The manual agent's
+        # forced-synthesis backstop (HARNESS-23 T2) deliberately
+        # withholds tools on the final turn, which is exactly the
+        # empty-list case.  Ollama tolerated it; vLLM does not.
+        kwargs: Dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if tools:
+            kwargs["tools"] = tools
+            kwargs["tool_choice"] = "auto"
         response = await self._client.chat.completions.create(
-            model=model,
-            messages=messages,
-            tools=tools,
-            tool_choice="auto",
-            temperature=temperature,
-            max_tokens=max_tokens,
+            **kwargs,
         )
 
         if not response.choices:
