@@ -101,3 +101,4 @@ diagnostic_api/app/logs/
 obd_agent/.env
 obd_agent/venv/
 obd_agent/__pycache__/
+.lavish/

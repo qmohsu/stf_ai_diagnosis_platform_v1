@@ -164,7 +164,18 @@ obd_agent/        # OBD-II edge agent
 - Frontend agent visualization (tool-call cards, iteration counter)
 - Sub-agents, skill loading, background tasks (future)
 
-**Both doc sets** — update both if the change touches:
+**V3 docs** (`docs/v3_design_doc.md`, ticket prefix `PROD‑XX`) — the
+productized client version (finalized 2026-09-01 via Lavish decision
+board; V1/V2 will eventually be deprecated in its favor):
+- V3 backend (Pydantic AI runtime, tools copied from V2, invite-code
+  auth, task queue), V3 frontend (Next.js 15 + shadcn/ui), V3
+  independent database (vehicles/conversations/messages/reports/
+  audit_events schema), vehicle-anchored interaction (Stage 1–4)
+- Update the relevant section and add a changelog entry; bump version
+  and date in document control. Decision provenance archives live in
+  `.lavish/` (local, not committed).
+
+**Both doc sets (V1/V2)** — update both if the change touches:
 - `models_db.py` (shared DB models)
 - `config.py` (shared configuration)
 - `main.py` (router registration)
