@@ -174,6 +174,12 @@ board; V1/V2 will eventually be deprecated in its favor):
 - Update the relevant section and add a changelog entry; bump version
   and date in document control. Decision provenance archives live in
   `.lavish/` (local, not committed).
+- **Diagram sync rule (mandatory)**: any V3 doc change that alters the
+  architecture must update
+  `docs/diagrams/stf_v3_final_architecture.excalidraw` **and** its
+  `_preview.svg` in the SAME commit, noting "图已同步" in the
+  changelog. The diagram is the user's command-and-review view — doc
+  and diagram must never diverge.
 
 **Both doc sets (V1/V2)** — update both if the change touches:
 - `models_db.py` (shared DB models)
