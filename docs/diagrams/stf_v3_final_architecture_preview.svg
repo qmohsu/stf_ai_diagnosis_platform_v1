@@ -1,114 +1,116 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -75 1440 1260" font-family="Segoe UI, Microsoft YaHei, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-25 -75 1505 1257.5" font-family="Segoe UI, Microsoft YaHei, sans-serif">
 <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ced4da"/></marker></defs>
-<rect x="0" y="-75" width="1440" height="1260" fill="#121212"/>
+<rect x="-25" y="-75" width="1505" height="1257.5" fill="#121212"/>
 <rect x="60" y="0" width="220" height="40" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2"/>
 <rect x="300" y="0" width="240" height="40" rx="8" fill="#3d3106" stroke="#fcc419" stroke-width="2"/>
 <rect x="560" y="0" width="200" height="40" rx="8" fill="#0f3620" stroke="#51cf66" stroke-width="2"/>
 <rect x="780" y="0" width="240" height="40" rx="8" fill="#102a43" stroke="#4dabf7" stroke-width="2" stroke-dasharray="8 6"/>
 <rect x="1040" y="0" width="260" height="40" rx="8" fill="#33260a" stroke="#ff922b" stroke-width="2" stroke-dasharray="8 6"/>
-<rect x="60" y="60" width="1320" height="150" rx="8" fill="none" stroke="#4dabf7" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="60" y="60" width="1320" height="150" rx="8" fill="transparent" stroke="#4dabf7" stroke-width="2" stroke-dasharray="8 6"/>
 <rect x="90" y="100" width="220" height="90" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2"/>
-<rect x="360" y="100" width="340" height="90" rx="8" fill="#0f3620" stroke="#51cf66" stroke-width="2"/>
+<rect x="360" y="100" width="340" height="90" rx="8" fill="#33260a" stroke="#ff922b" stroke-width="2" stroke-dasharray="8 6"/>
 <rect x="740" y="100" width="290" height="90" rx="8" fill="#0f3620" stroke="#51cf66" stroke-width="2"/>
 <rect x="1060" y="100" width="280" height="90" rx="8" fill="#3d3106" stroke="#fcc419" stroke-width="2"/>
-<polyline points="310,145 360,145" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
-<polyline points="530,190 530,320" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
-<polyline points="1200,190 600,320" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
-<rect x="60" y="260" width="1320" height="160" rx="8" fill="none" stroke="#ffa94d" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="60" y="260" width="1320" height="160" rx="8" fill="transparent" stroke="#ffa94d" stroke-width="2" stroke-dasharray="8 6"/>
 <rect x="90" y="320" width="280" height="90" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2"/>
 <rect x="400" y="320" width="320" height="90" rx="8" fill="#3d3106" stroke="#fcc419" stroke-width="2"/>
 <rect x="750" y="320" width="300" height="90" rx="8" fill="#0f3620" stroke="#51cf66" stroke-width="2"/>
 <rect x="1080" y="320" width="260" height="90" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2"/>
-<polyline points="780,410 240,510" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
-<rect x="60" y="460" width="1320" height="230" rx="8" fill="none" stroke="#b197fc" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="60" y="460" width="1320" height="230" rx="8" fill="transparent" stroke="#b197fc" stroke-width="2" stroke-dasharray="8 6"/>
 <rect x="90" y="510" width="300" height="100" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2"/>
 <rect x="420" y="510" width="290" height="100" rx="8" fill="#0f3620" stroke="#51cf66" stroke-width="2"/>
 <rect x="740" y="510" width="300" height="100" rx="8" fill="#3d3106" stroke="#fcc419" stroke-width="2"/>
 <rect x="1070" y="510" width="270" height="100" rx="8" fill="#102a43" stroke="#4dabf7" stroke-width="2" stroke-dasharray="8 6"/>
 <rect x="420" y="620" width="290" height="50" rx="8" fill="#33260a" stroke="#ff922b" stroke-width="2" stroke-dasharray="8 6"/>
-<polyline points="390,560 420,560" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
-<rect x="60" y="730" width="1320" height="200" rx="8" fill="none" stroke="#51cf66" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="60" y="730" width="1320" height="200" rx="8" fill="transparent" stroke="#51cf66" stroke-width="2" stroke-dasharray="8 6"/>
 <rect x="90" y="790" width="340" height="110" rx="8" fill="#0f3620" stroke="#51cf66" stroke-width="2"/>
 <rect x="460" y="790" width="270" height="110" rx="8" fill="#3d3106" stroke="#fcc419" stroke-width="2"/>
 <rect x="760" y="790" width="250" height="110" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2"/>
 <rect x="1040" y="790" width="300" height="110" rx="8" fill="#33260a" stroke="#ff922b" stroke-width="2" stroke-dasharray="8 6"/>
-<polyline points="240,610 240,790" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
-<polyline points="890,610 880,790" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
 <rect x="90" y="970" width="320" height="90" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2"/>
 <rect x="450" y="970" width="280" height="90" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2" stroke-dasharray="8 6"/>
 <rect x="770" y="970" width="380" height="90" rx="8" fill="#3d3106" stroke="#fcc419" stroke-width="2"/>
+<polyline points="310,145 360,145" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="530,190 530,320" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="1200,190 600,320" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="780,410 240,510" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="390,560 420,560" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="240,610 240,790" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
+<polyline points="890,610 880,790" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
 <polyline points="90,580 35,580 35,1015 90,1015" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
-<text x="60" y="-21.0" font-size="24" fill="#f8f9fa">STF V3 产品化架构 — Final（设计文档 v1.0 · 2026-09-01 定稿）</text>
+<text x="60" y="-21.60" font-size="24" fill="#f8f9fa">STF V3 产品化架构 — Final（设计文档 v1.2 · 2026-09-08 · 开发计划 v1.0）</text>
 <text x="170.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">开源 / 第三方采用</text>
 <text x="420.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">沿用 V1/V2 资产</text>
 <text x="660.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">V3 新做</text>
 <text x="900.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">预留接口</text>
 <text x="1170.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">第二批 / 暂缓</text>
-<text x="80" y="83.0" font-size="15" fill="#4dabf7">用户与前端（初版范围 = Stage 1 一键报告）</text>
-<text x="200.0" y="134.2" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">用户</text>
-<text x="200.0" y="149.2" text-anchor="middle" font-size="12" fill="#f1f3f5">车队管理者 / 维修技师</text>
-<text x="200.0" y="164.2" text-anchor="middle" font-size="12" fill="#f1f3f5">手机 · 电脑浏览器</text>
-<text x="530.0" y="134.2" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">obd-ui-v3 客户版 UI (新做)</text>
-<text x="530.0" y="149.2" text-anchor="middle" font-size="12" fill="#f1f3f5">Next.js 15 + Tailwind v4</text>
-<text x="530.0" y="164.2" text-anchor="middle" font-size="12" fill="#f1f3f5">shadcn/ui + TanStack Query</text>
-<text x="885.0" y="134.2" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">移动优先 + PWA</text>
-<text x="885.0" y="149.2" text-anchor="middle" font-size="12" fill="#f1f3f5">双视图:</text>
-<text x="885.0" y="164.2" text-anchor="middle" font-size="12" fill="#f1f3f5">客户叙事 / 高级透视</text>
-<text x="1200.0" y="134.2" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">边缘端 Jetson (沿用)</text>
-<text x="1200.0" y="149.2" text-anchor="middle" font-size="12" fill="#f1f3f5">jetson_uploader</text>
-<text x="1200.0" y="164.2" text-anchor="middle" font-size="12" fill="#f1f3f5">行程结束上传</text>
-<text x="540" y="247.0" font-size="12" fill="#ced4da">REST + SSE</text>
-<text x="900" y="242.0" font-size="12" fill="#ced4da">行程日志上传</text>
-<text x="80" y="283.0" font-size="15" fill="#ffa94d">后端服务（FastAPI）</text>
-<text x="230.0" y="354.2" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">Auth: 开源方案 (选型待定)</text>
-<text x="230.0" y="369.2" text-anchor="middle" font-size="12" fill="#f1f3f5">邀请码注册核销 · JWT</text>
-<text x="230.0" y="384.2" text-anchor="middle" font-size="12" fill="#f1f3f5">用户隔离</text>
-<text x="560.0" y="354.2" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">上传薄层 (沿用逻辑)</text>
-<text x="560.0" y="369.2" text-anchor="middle" font-size="12" fill="#f1f3f5">sha256 去重 · 只入库不诊断</text>
-<text x="560.0" y="384.2" text-anchor="middle" font-size="12" fill="#f1f3f5">format ∈ {tsv, yamaha} 否则 422</text>
-<text x="900.0" y="354.2" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">诊断编排薄层 (新做)</text>
-<text x="900.0" y="369.2" text-anchor="middle" font-size="12" fill="#f1f3f5">SSE 事件适配</text>
-<text x="900.0" y="384.2" text-anchor="middle" font-size="12" fill="#f1f3f5">审计 / 会话回写胶水</text>
-<text x="1210.0" y="361.7" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">任务队列 (开源, 选型后议)</text>
-<text x="1210.0" y="376.7" text-anchor="middle" font-size="12" fill="#f1f3f5">驱动 Manual 入库流水线</text>
-<text x="430" y="457.0" font-size="12" fill="#ced4da">每次诊断请求</text>
-<text x="80" y="483.0" font-size="15" fill="#b197fc">Agent 核心</text>
-<text x="240.0" y="549.2" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">Agent Runtime: Pydantic AI</text>
-<text x="240.0" y="564.2" text-anchor="middle" font-size="12" fill="#f1f3f5">loop / retry / 流式 / 压缩框架</text>
-<text x="240.0" y="579.2" text-anchor="middle" font-size="12" fill="#f1f3f5">子代理 = agent-as-tool</text>
-<text x="565.0" y="549.2" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">Context / Memory 策略 (新做)</text>
-<text x="565.0" y="564.2" text-anchor="middle" font-size="12" fill="#f1f3f5">会话记忆 · 压缩触发</text>
-<text x="565.0" y="579.2" text-anchor="middle" font-size="12" fill="#f1f3f5">车辆/用户历史注入</text>
-<text x="890.0" y="549.2" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">工具组 (复制自 V2)</text>
-<text x="890.0" y="564.2" text-anchor="middle" font-size="12" fill="#f1f3f5">OBD 原始读取 · 信号 · DTC</text>
-<text x="890.0" y="579.2" text-anchor="middle" font-size="12" fill="#f1f3f5">Manual 导航 (manual_fs)</text>
-<text x="1205.0" y="549.2" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">车队历史工具 (预留)</text>
-<text x="1205.0" y="564.2" text-anchor="middle" font-size="12" fill="#f1f3f5">→ vehicle_data_twin</text>
-<text x="1205.0" y="579.2" text-anchor="middle" font-size="12" fill="#f1f3f5">(学生项目 · 外部 · 只读)</text>
-<text x="565.0" y="649.2" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">相似案例工具 (第二批)</text>
-<text x="80" y="753.0" font-size="15" fill="#51cf66">数据层（独立新库 —— V3 专属）</text>
-<text x="260.0" y="826.7" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">PostgreSQL + pgvector (新建库)</text>
-<text x="260.0" y="841.7" text-anchor="middle" font-size="12" fill="#f1f3f5">users · invite_codes · vehicles · obd_logs</text>
-<text x="260.0" y="856.7" text-anchor="middle" font-size="12" fill="#f1f3f5">conversations · messages · reports</text>
-<text x="260.0" y="871.7" text-anchor="middle" font-size="12" fill="#f1f3f5">audit_events (append-only 黑匣子)</text>
-<text x="595.0" y="834.2" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">manuals + rag_chunks</text>
-<text x="595.0" y="849.2" text-anchor="middle" font-size="12" fill="#f1f3f5">V2 schema 复制 · 公共知识库</text>
-<text x="595.0" y="864.2" text-anchor="middle" font-size="12" fill="#f1f3f5">Manual 入库流水线沿用</text>
-<text x="885.0" y="841.7" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">文件存储</text>
-<text x="885.0" y="856.7" text-anchor="middle" font-size="12" fill="#f1f3f5">原始日志 · Manual MD/图</text>
-<text x="1190.0" y="826.7" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">预留不建</text>
-<text x="1190.0" y="841.7" text-anchor="middle" font-size="12" fill="#f1f3f5">case_vectors (第二批)</text>
-<text x="1190.0" y="856.7" text-anchor="middle" font-size="12" fill="#f1f3f5">fleets / 权限表</text>
-<text x="1190.0" y="871.7" text-anchor="middle" font-size="12" fill="#f1f3f5">(需求出现再加, 迁移已评估)</text>
-<text x="250" y="711.0" font-size="11" fill="#ced4da">会话/审计回写 + 业务读写</text>
-<text x="895" y="711.0" font-size="11" fill="#ced4da">读原始字节 / Manual MD</text>
-<text x="250.0" y="1011.7" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">本地 vLLM + Qwen3.6-27B</text>
-<text x="250.0" y="1026.7" text-anchor="middle" font-size="12" fill="#f1f3f5">默认主力 (含嵌入)</text>
-<text x="590.0" y="1011.7" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">云端接口 (保留)</text>
-<text x="590.0" y="1026.7" text-anchor="middle" font-size="12" fill="#f1f3f5">仅供对比测试用</text>
-<text x="960.0" y="1011.7" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">Golden 评测 Gate (沿用)</text>
-<text x="960.0" y="1026.7" text-anchor="middle" font-size="12" fill="#f1f3f5">0.831 / 0.938 基线 · 一切改动的验收</text>
-<text x="95" y="952.0" font-size="12" fill="#ced4da">LLM 调用（quirks 收敛在 Runtime 模型适配层）</text>
-<text x="60" y="1103.0" font-size="13" fill="#adb5bd">交互四阶段 S1 一键报告 → S2 报告内追问 → S3 车辆级对话 → S4 主动触发（详见 v3_design_doc.md §2）。</text>
-<text x="60" y="1119.25" font-size="13" fill="#adb5bd">V1/V2 并行运行直至废弃；clue YAML 规则暂存不进初版；VIN 暂存明文、择机模糊化；配额限流暂不做。</text>
+<text x="80" y="82.62" font-size="15" fill="#4dabf7" font-weight="600">用户与前端（初版范围 = Stage 1 一键报告）</text>
+<text x="200.0" y="134.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">用户</text>
+<text x="200.0" y="149.20" text-anchor="middle" font-size="12" fill="#f1f3f5">车队管理者 / 维修技师</text>
+<text x="200.0" y="164.20" text-anchor="middle" font-size="12" fill="#f1f3f5">手机 · 电脑浏览器</text>
+<text x="530.0" y="134.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">obd-ui-v3 客户版 UI (归属待定)</text>
+<text x="530.0" y="149.20" text-anchor="middle" font-size="12" fill="#f1f3f5">Next.js 15 + shadcn/ui (建议栈)</text>
+<text x="530.0" y="164.20" text-anchor="middle" font-size="12" fill="#f1f3f5">后端交付 OpenAPI 契约供对接</text>
+<text x="885.0" y="134.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">移动优先 + PWA</text>
+<text x="885.0" y="149.20" text-anchor="middle" font-size="12" fill="#f1f3f5">双视图:</text>
+<text x="885.0" y="164.20" text-anchor="middle" font-size="12" fill="#f1f3f5">客户叙事 / 高级透视</text>
+<text x="1200.0" y="134.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">边缘端 Jetson (沿用)</text>
+<text x="1200.0" y="149.20" text-anchor="middle" font-size="12" fill="#f1f3f5">jetson_uploader</text>
+<text x="1200.0" y="164.20" text-anchor="middle" font-size="12" fill="#f1f3f5">每笔上传绑定唯一车档</text>
+<text x="540" y="246.70" font-size="12" fill="#ced4da">REST + SSE</text>
+<text x="900" y="241.70" font-size="12" fill="#ced4da">行程日志上传</text>
+<text x="80" y="282.62" font-size="15" fill="#ffa94d" font-weight="600">后端服务（FastAPI）</text>
+<text x="230.0" y="354.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">Auth: fastapi-users</text>
+<text x="230.0" y="369.20" text-anchor="middle" font-size="12" fill="#f1f3f5">邀请码注册核销 · JWT</text>
+<text x="230.0" y="384.20" text-anchor="middle" font-size="12" fill="#f1f3f5">workshop 成员隔离</text>
+<text x="560.0" y="354.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">上传薄层 (沿用逻辑)</text>
+<text x="560.0" y="369.20" text-anchor="middle" font-size="12" fill="#f1f3f5">sha256 去重 · 只入库不诊断</text>
+<text x="560.0" y="384.20" text-anchor="middle" font-size="12" fill="#f1f3f5">format ∈ {tsv, yamaha} 否则 422</text>
+<text x="900.0" y="354.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">诊断编排薄层 (新做)</text>
+<text x="900.0" y="369.20" text-anchor="middle" font-size="12" fill="#f1f3f5">SSE 事件适配</text>
+<text x="900.0" y="384.20" text-anchor="middle" font-size="12" fill="#f1f3f5">审计 / 会话回写胶水</text>
+<text x="1210.0" y="354.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">任务队列: procrastinate</text>
+<text x="1210.0" y="369.20" text-anchor="middle" font-size="12" fill="#f1f3f5">(Postgres 表 · 零新组件)</text>
+<text x="1210.0" y="384.20" text-anchor="middle" font-size="12" fill="#f1f3f5">jobs: 手册入库 · 诊断 · 定时</text>
+<text x="430" y="456.70" font-size="12" fill="#ced4da">每次诊断请求</text>
+<text x="80" y="482.62" font-size="15" fill="#b197fc" font-weight="600">Agent 核心</text>
+<text x="240.0" y="549.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">Agent Runtime: Pydantic AI</text>
+<text x="240.0" y="564.20" text-anchor="middle" font-size="12" fill="#f1f3f5">loop / retry / 流式 / 压缩框架</text>
+<text x="240.0" y="579.20" text-anchor="middle" font-size="12" fill="#f1f3f5">子代理 = agent-as-tool</text>
+<text x="565.0" y="549.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">Context / Memory 策略 (新做)</text>
+<text x="565.0" y="564.20" text-anchor="middle" font-size="12" fill="#f1f3f5">会话记忆 · 压缩触发</text>
+<text x="565.0" y="579.20" text-anchor="middle" font-size="12" fill="#f1f3f5">车辆/用户历史注入</text>
+<text x="890.0" y="549.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">工具组 (复制自 V2)</text>
+<text x="890.0" y="564.20" text-anchor="middle" font-size="12" fill="#f1f3f5">OBD 原始读取 · 信号 · DTC</text>
+<text x="890.0" y="579.20" text-anchor="middle" font-size="12" fill="#f1f3f5">Manual 导航 (manual_fs)</text>
+<text x="1205.0" y="549.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">车队历史工具 (预留)</text>
+<text x="1205.0" y="564.20" text-anchor="middle" font-size="12" fill="#f1f3f5">→ vehicle_data_twin</text>
+<text x="1205.0" y="579.20" text-anchor="middle" font-size="12" fill="#f1f3f5">(学生项目 · 外部 · 只读)</text>
+<text x="565.0" y="649.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">相似案例工具 (第二批)</text>
+<text x="80" y="752.62" font-size="15" fill="#51cf66" font-weight="600">数据层（独立新库 —— V3 专属）</text>
+<text x="260.0" y="819.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">PostgreSQL + pgvector (新建库 stf_v3)</text>
+<text x="260.0" y="834.20" text-anchor="middle" font-size="12" fill="#f1f3f5">workshops · memberships · users · invite_codes</text>
+<text x="260.0" y="849.20" text-anchor="middle" font-size="12" fill="#f1f3f5">vehicles (VIN=身份 · 车牌=标签) · obd_logs</text>
+<text x="260.0" y="864.20" text-anchor="middle" font-size="12" fill="#f1f3f5">conversations · messages · reports · audit_events</text>
+<text x="260.0" y="879.20" text-anchor="middle" font-size="12" fill="#f1f3f5">+ procrastinate 任务表</text>
+<text x="595.0" y="834.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">manuals + rag_chunks</text>
+<text x="595.0" y="849.20" text-anchor="middle" font-size="12" fill="#f1f3f5">V2 schema 复制 · 公共知识库</text>
+<text x="595.0" y="864.20" text-anchor="middle" font-size="12" fill="#f1f3f5">Manual 入库流水线沿用</text>
+<text x="885.0" y="841.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">文件存储</text>
+<text x="885.0" y="856.70" text-anchor="middle" font-size="12" fill="#f1f3f5">原始日志 · Manual MD/图</text>
+<text x="1190.0" y="826.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">预留不建</text>
+<text x="1190.0" y="841.70" text-anchor="middle" font-size="12" fill="#f1f3f5">case_vectors (第二批)</text>
+<text x="1190.0" y="856.70" text-anchor="middle" font-size="12" fill="#f1f3f5">细粒度权限表 · vehicle_events (S4)</text>
+<text x="1190.0" y="871.70" text-anchor="middle" font-size="12" fill="#f1f3f5">(回头条件见开发计划 §4)</text>
+<text x="250" y="710.73" font-size="11" fill="#ced4da">会话/审计回写 + 业务读写</text>
+<text x="895" y="710.73" font-size="11" fill="#ced4da">读原始字节 / Manual MD</text>
+<text x="250.0" y="1011.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">本地 vLLM + Qwen3.6-27B</text>
+<text x="250.0" y="1026.70" text-anchor="middle" font-size="12" fill="#f1f3f5">唯一模型来源 · V1/V2/V3 共用</text>
+<text x="590.0" y="1011.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">云端接口 (保留)</text>
+<text x="590.0" y="1026.70" text-anchor="middle" font-size="12" fill="#f1f3f5">仅供对比测试用</text>
+<text x="960.0" y="1011.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">Golden 评测 Gate (沿用)</text>
+<text x="960.0" y="1026.70" text-anchor="middle" font-size="12" fill="#f1f3f5">0.831 / 0.938 基线 · 一切改动的验收</text>
+<text x="95" y="951.70" font-size="12" fill="#ced4da">LLM 调用（quirks 收敛在 Runtime 模型适配层）</text>
+<text x="60" y="1102.67" font-size="13" fill="#adb5bd">交互四阶段 S1 一键报告 → S2 报告内追问 → S3 车辆级对话 → S4 主动触发（详见 v3_design_doc.md §1.2）。</text>
+<text x="60" y="1118.92" font-size="13" fill="#adb5bd">V1/V2 并行运行直至废弃；不做清单见设计文档 A3 / 开发计划 §4；每笔原始数据必须绑定车档（不允许 V-UNKNOWN）。</text>
 </svg>

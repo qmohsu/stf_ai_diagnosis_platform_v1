@@ -164,9 +164,10 @@ obd_agent/        # OBD-II edge agent
 - Frontend agent visualization (tool-call cards, iteration counter)
 - Sub-agents, skill loading, background tasks (future)
 
-**V3 docs** (`docs/v3_design_doc.md`, ticket prefix `PROD‑XX`) — the
-productized client version (finalized 2026-09-01 via Lavish decision
-board; V1/V2 will eventually be deprecated in its favor):
+**V3 docs** (`docs/v3_design_doc.md` + `docs/v3_dev_plan.md`, ticket
+prefix `PROD‑XX`) — the productized client version (design doc finalized
+2026-09-01, dev plan v1.0 finalized 2026-09-08, both via Lavish decision
+boards; V1/V2 will eventually be deprecated in its favor):
 - V3 backend (Pydantic AI runtime, tools copied from V2, invite-code
   auth, task queue), V3 frontend (Next.js 15 + shadcn/ui), V3
   independent database (vehicles/conversations/messages/reports/
@@ -179,7 +180,11 @@ board; V1/V2 will eventually be deprecated in its favor):
   `docs/diagrams/stf_v3_final_architecture.excalidraw` **and** its
   `_preview.svg` in the SAME commit, noting "图已同步" in the
   changelog. The diagram is the user's command-and-review view — doc
-  and diagram must never diverge.
+  and diagram must never diverge. Regenerate the preview with
+  `python docs/diagrams/render_excalidraw.py <in.excalidraw> <out.svg>`
+  (never hand-edit the SVG).
+- `docs/v3_dev_plan.md`: update the ticket (PROD‑XX) status/acceptance,
+  §4 "暂缓事项与回头条件" if scope moves, and add a changelog entry.
 
 **Both doc sets (V1/V2)** — update both if the change touches:
 - `models_db.py` (shared DB models)

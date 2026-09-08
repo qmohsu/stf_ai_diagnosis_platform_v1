@@ -2,10 +2,10 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | **v1.1（已定稿）** |
-| 日期 | 2026-09-01 |
+| 版本 | **v1.2（已定稿 + 开发计划决策板修订）** |
+| 日期 | 2026-09-08 |
 | 作者 | Xiangzhu Yan |
-| 状态 | **已定稿** —— 按 G2 标准（全部拍板 + 三交付物确认）达成；进入代码设计阶段（PROD-XX） |
+| 状态 | **已定稿** —— 开发计划 `docs/v3_dev_plan.md` v1.0 的 9 项决策（D1–D9，`.lavish/v3_dev_plan_decisions.html`）已并入；进入 PROD-01 代码设计 |
 
 ## 总架构图（本文档的第一视图，与正文强制同步）
 
@@ -50,16 +50,30 @@ S4 系统主动触发。
   风险最低。LangGraph 判定为编排层框架，与我们"单 Agent 动态委托"
   档位不符（HARNESS-23：自主循环 0.670 vs 固定流程 0.239），
   留作远期 Stage 4 编排层选项。
-- **前端（C2，已定 2026-09-01）**：**Next.js 15（App Router）+
-  TypeScript + Tailwind CSS v4 + shadcn/ui + TanStack Query**，
-  移动优先响应式 + PWA。与 obd-ui 同源技术栈零学习成本；"美观"
-  由 shadcn/ui + 定制主题承担（见 `.lavish/frontend_recommendation.html`）。
-- **Auth（C3 + C3b）**：**换开源方案**（具体选型待定）；注册验证
+- **前端（C2，已定 2026-09-01；归属变更 2026-09-08 · D6）**：技术栈
+  **Next.js 15（App Router）+ TypeScript + Tailwind CSS v4 + shadcn/ui +
+  TanStack Query**，移动优先响应式 + PWA（见
+  `.lavish/frontend_recommendation.html`）。**归属待定**：PM 已将前端分配
+  给一名学生，前端需求下周到位、实现归属下次会议再定。在此之前技术栈
+  决定保留为建议，后端从 M1 起交付 OpenAPI 契约供任何一方对接，自测走
+  Swagger + curl，不做临时前端。
+- **Auth（C3 + C3b；选型已定 2026-09-08 · D4）**：**fastapi-users**
+  （注册 / 登录 / JWT / 密码哈希开箱即用，同进程无新服务）；注册验证
   采用**邀请码制**（我们发码才能注册，pilot 期最可控、不依赖外网
-  邮件服务）。
-- **任务队列（C4）**：**引入**（具体选型后议）。
-- **LLM 供给（C5）**：**默认本地 vLLM**；云端保留一个接口，
-  仅供对比测试用。
+  邮件服务），邀请码核销逻辑自加一层；用户按 workshop 成员关系隔离
+  （见 §1.8）。
+- **任务队列（C4；选型已定 2026-09-08 · D5）**：**procrastinate**
+  （Postgres 上的任务队列：任务表就在 `stf_v3` 库里，零新组件，
+  "建会话 + 投任务"同一事务）。模块名 `jobs`，装三类任务：手册入库
+  （PDF 转换 → 切块 → 向量化，由宿主机 GPU worker 消费、并发 1，
+  替代 V2 的共享卷文件协议）、诊断运行（独立于 HTTP 连接跑完，
+  支撑断线回放）、定时维护（audit 归档、孤儿文件清理、模型预热）；
+  将来 S4 主动触发也走它。选型理由与备选（Kafka / arq / Celery）
+  的通俗对比见 2026-09-08 会话记录。
+- **LLM 供给（C5；补充 2026-09-08 · D7）**：**唯一一个本地 vLLM 实例
+  是模型来源**，V1/V2/V3 共用（vLLM 无状态、三版本不并发抢资源）；
+  换模型统一换，换前分别用 V2 与 V3 的 golden 基准各跑一遍作门槛。
+  V3 只通过配置指向该服务。云端保留一个接口，仅供对比测试用。
 
 ### 1.5 组件取舍
 
@@ -74,6 +88,15 @@ S4 系统主动触发。
 - **相似案例功能（D4）**：**第二批**再做，不进初版。
 - **车队历史系统接口（D5）**：等与学生（vehicle_data_twin）对齐
   API 形态后再写入文档。
+- **V3 代码落位（开发计划 D3，2026-09-08）**：**同仓新目录**
+  `stf_v3/`（后端）+ `obd-ui-v3/`（前端），附两条硬约束——
+  **A 可迁出**：两目录各自自包含（依赖清单、Dockerfile、Alembic、
+  测试、golden 数据副本、CI job），**禁止 import** `diagnostic_api/`、
+  `obd_agent/` 的任何东西，只准复制；**B 不绑死**：与 V1/V2 只在
+  基础设施层共享（同一 Postgres 实例的不同 database、同一 vLLM、
+  同一 nginx），全部通过配置连接，代码里零引用；Compose 用独立文件
+  `infra/docker-compose.v3.yml`。两条都有自动化验收（拷到空目录测试
+  全绿；删掉老目录 V3 照常构建），写入开发计划 DoD。
 
 ### 1.6 数据与隐私
 
@@ -91,26 +114,46 @@ S4 系统主动触发。
 - **继续部署在 PolyU GPU 服务器**（Cloudflare 隧道对外）。
 - **配额/限流不做**：用户量很小，真遇到问题再说。
 
-### 1.8 数据模型（E1 交付物③，已确认 2026-09-01）
+### 1.8 数据模型（E1 交付物③，已确认 2026-09-01；v1.2 按开发计划 D1/D2/D8 修订）
 
-独立新库，Stage 1 共 8 张表（详图与逐表字段见
-`.lavish/data_model.html` 决策存档）：
+独立新库 `stf_v3`（同一 Postgres 实例新建 database），Stage 1 共
+10 张业务表 + procrastinate 任务表（v1.0 原 8 张见
+`.lavish/data_model.html`；修订决策见 `.lavish/v3_dev_plan_decisions.html`）：
 
-- `users` / `invite_codes`（邀请码注册核销）
-- `vehicles`（**锚点**；(user_id, vin) 唯一；VIN 暂存明文；软删除）
+- `workshops`（**所有权主体** · D1）：车挂在 workshop 名下；pilot 期
+  一个 workshop。第二个车队接入 = 加一行。
+- `memberships(user_id, workshop_id, role)`（D1）：系统用户 = workshop
+  成员；`role ∈ {manager, technician}`；成员可访问本 workshop **全部**
+  车辆。**车主在 Stage 1 不是系统用户，不建模。**
+- `users` / `invite_codes`（邀请码注册核销；fastapi-users 用户模型）
+- `vehicles`（**锚点**；D2 修订）：`workshop_id` 必填；**`vin` = 身份，
+  必填**，(workshop_id, vin) 唯一，建档时从行驶证 / 车架铭牌抄 17 位码；
+  **`plate` = 可选标签**（只显示、可随时改、无唯一约束、不参与鉴权或
+  匹配，为对接按车牌建档的 vehicle_data_twin 保留对应字段）；
+  `manufacturer` / `model` 必填（诊断时凭它找手册）；`nickname` 可空；
+  软删除。VIN 暂存明文（E3）。
 - `obd_logs`（上传只入库；format ∈ {tsv, yamaha}，其余 422；
-  (vehicle_id, sha256) 唯一防重）
+  (vehicle_id, sha256) 唯一防重）。**数据归属不变量（D8）：
+  `vehicle_id` NOT NULL，每一笔原始数据必须绑定唯一车档，任何转存 /
+  导出 / 迁移以此外键为准；不允许 "V-UNKNOWN"。** 日志内读到 VIN 时
+  与车档核对，不一致告警。设备如何表明"我是哪台车"属实现细节，
+  在 PROD-01 代码设计中定。
 - `diagnosis_conversations`（**容器**；引用 vehicle + 本次依据的
   obd_log；S2 追问零迁移）
 - `messages`（Pydantic AI 消息原样 JSONB 序列化）
 - `reports`（会话的产物；content_md + citations）
 - `audit_events`（append-only 黑匣子，事件名与 SSE 一致；继承 V2
-  harness_event_log 经验；保留策略列为 PROD 待办）
+  harness_event_log 经验；保留策略由 `jobs` 定时任务执行，PROD-15 落地）
 - `manuals` + `rag_chunks` 按 V2 schema 复制进新库（公共知识库）
-- 预留不建：`case_vectors`（D4 第二批）、fleets、权限表
+- procrastinate 任务表（D5；由库自带迁移创建）
+- 预留不建：`case_vectors`（D4 第二批）、细粒度权限表、`vehicle_events`
+  （S4 时事件先落表再投任务）。回头条件见开发计划 §4。
 
-**编码约定**：鉴权收敛为唯一函数 `can_access_vehicle()`，为将来
-权限表预留单点改造位。
+**诊断时的车辆信息用法（D8 要求）**：`manufacturer + model` → 找手册；
+`vin` → 找历史维修记录（vehicle_data_twin）与历史原始数据（`obd_logs`）。
+
+**编码约定**：鉴权收敛为唯一函数 `can_access_vehicle()`，Stage 1 的
+实现 = "当前用户是否为该车 workshop 的成员"；将来细粒度权限只改此一处。
 
 ### 1.9 流程（G，Round 3）
 
@@ -124,13 +167,35 @@ S4 系统主动触发。
 
 按建议顺序推进：A → B3 → D1/D3 → C1 → E → 其余。
 
+### 1.11 非目标清单（A3，2026-09-08 · 开发计划 D9 补齐）
+
+V3 第一版只做"点一下出诊断报告"。以下**明确不做**；每一项的
+"什么条件出现时回头做"记录在 `docs/v3_dev_plan.md` §4，每个里程碑
+结束时复查：
+
+| 不做什么 | 说明 |
+|---|---|
+| 报告内追问、车辆级自由对话、系统主动触发 | Stage 2–4，第一版不能对话 |
+| 车队病历接入（vehicle_data_twin）、车队总览 Dashboard、相似案例 | 底座之上的下一批 |
+| 实时遥测 / 时序数据库 | 只收行程结束后的日志文件 |
+| 通用日志格式转换层 | 只认 Jetson TSV + Yamaha CSV，新格式针对性加 |
+| 细粒度权限 | workshop 成员看本 workshop 全部车 |
+| 微服务 / 消息总线 / Kubernetes | 一个后端进程 + 一个 worker |
+| 配额 / 限流 | 用户几十个 |
+| VIN 模糊化 | 明文存；正式对外前再做 |
+| 模型微调 / LoRA | 只用现成 Qwen |
+| V1/V2 用户数据迁移 | 新库从零开始 |
+| 前端语言 / 样式等需求 | 前端归属未定（D6），不在本文档定 |
+
 ## 2. 开放项
 
 | # | 问题 | 状态 |
 |---|---|---|
-| A3 | 非目标清单 | 用户暂未想到，不阻塞定稿，可后补 |
+| A3 | 非目标清单 | ✅ 已补（§1.11，2026-09-08） |
+| FE | 前端实现归属（学生 vs 我们） | 🔴 等下次会议；前端需求 2026-09-14 当周到位 |
 
-决策看板全部 🔴 项已拍板完毕（2026-08-31，3 轮）。
+决策看板全部 🔴 项已拍板完毕（2026-08-31，3 轮）；开发计划决策板
+9 项已拍板完毕（2026-09-08）。
 
 ## 3. 待办交付物（决策产生的）
 
@@ -154,3 +219,4 @@ S4 系统主动触发。
 | v0.5 | 2026-09-01 | 交付物②完成并拍板：前端 = Next.js 15 + Tailwind v4 + shadcn/ui + TanStack Query（移动优先 + PWA）。新增编码约定：鉴权收敛为单一 can_access_vehicle 函数（为将来权限表预留） |
 | **v1.0** | 2026-09-01 | **定稿**：交付物③数据模型通过并并入 §1.8；三交付物齐 → 满足 G2 定稿标准。审计/会话双持久化定型（Runtime 产生 + Postgres 存 + 薄胶水回写）。进入代码设计阶段（PROD-XX） |
 | v1.1 | 2026-09-01 | 总架构图嵌入文档首部并确立**图文强制同步规则**（同一提交内更新图；图已同步） |
+| v1.2 | 2026-09-08 | 并入开发计划 v1.0 决策板 D1–D9：所有权挂 workshop（workshops/memberships）；VIN 为身份、车牌为标签；代码落位同仓新目录 + 可迁出/不绑死约束；Auth = fastapi-users；队列 = procrastinate（jobs 模块）；前端归属待定（外部）；唯一本地 vLLM；数据归属不变量（不允许 V-UNKNOWN）；A3 非目标清单补齐（§1.11）。**图已同步**（前端框改为橙虚线"归属待定"，数据层/队列/Auth/vLLM/Jetson 文字更新；新增 `diagrams/render_excalidraw.py` 使预览 SVG 可复现） |
