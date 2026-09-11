@@ -4,9 +4,15 @@
 |---|---|
 | Ticket | PROD-01 |
 | 依据 | `docs/v3_design_doc.md` v1.2 · `docs/v3_dev_plan.md` v1.0 |
-| 状态 | 草案 v0.1，待 Lavish 评审 |
+| 状态 | **v1.0 已通过**（Lavish 评审 2026-09-11，`.lavish/v3_code_design_review.html`）；进入 M1 / PROD-02 |
 | 作者 | Xiangzhu Yan |
-| 日期 | 2026-09-08 |
+| 日期 | 2026-09-08（评审通过 2026-09-11） |
+
+**评审时确认的两处产品层默认**（用户未反对，按此执行）：
+① 角色权限：technician 能做全部日常操作（建车档、上传、发起诊断、看报告）；
+manager 独占删车、发邀请码、发设备凭证、传 / 删手册。② 登录用**用户名**而非邮箱
+（`users.username` 唯一；`email` 可空，仅作联系方式）；忘记密码 = manager 发新邀请码
+重建账号，pilot 期不做邮件找回。
 
 **怎么读**：评审只需要看 §3（API 契约）和 §11（底座验证表）。其余各节是给
 PROD-02 ~ PROD-11 施工用的，细节不必逐条拍，看到不对的圈选批注即可。
@@ -142,8 +148,8 @@ Python 3.11（与 V2 镜像一致）。宿主机 GPU worker 额外装 `marker-pd
 
 | 方法 | 路径 | 谁能调 | 说明 |
 |---|---|---|---|
-| POST | `/v3/auth/register` | 任何人 | body `{email, password, invite_code}`；邀请码有效 → 建 user + membership（workshop 与 role 来自邀请码）+ 核销；无效/已用 → 422 `invite_code_invalid` |
-| POST | `/v3/auth/login` | 任何人 | form `username`(=email) / `password` → `{access_token, token_type}`（fastapi-users 标准） |
+| POST | `/v3/auth/register` | 任何人 | body `{username, password, invite_code, email?}`；邀请码有效 → 建 user + membership（workshop 与 role 来自邀请码）+ 核销；无效/已用 → 422 `invite_code_invalid`；用户名重复 → 409 |
+| POST | `/v3/auth/login` | 任何人 | form `username` / `password` → `{access_token, token_type}`（fastapi-users 标准 transport，登录字段为 username） |
 | POST | `/v3/auth/logout` | 登录用户 | |
 | GET | `/v3/users/me` | 登录用户 | `{id, email, memberships:[{workshop_id, workshop_name, role}]}` |
 | POST | `/v3/workshops/{wid}/invite-codes` | 该 workshop 的 manager | body `{role, count}` → 明文码列表（只此一次可见） |
@@ -236,9 +242,10 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;   -- gen_random_uuid()
 
 -- ---------- auth ----------
-CREATE TABLE users (                         -- fastapi-users 基础字段 + 无额外
+CREATE TABLE users (                         -- fastapi-users 基础字段 + username
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email         VARCHAR(320) NOT NULL UNIQUE,
+  username      VARCHAR(50) NOT NULL UNIQUE,   -- 登录名（评审确认②）
+  email         VARCHAR(320) UNIQUE,           -- 可空，仅联系方式，不发邮件
   hashed_password VARCHAR(1024) NOT NULL,
   is_active     BOOLEAN NOT NULL DEFAULT TRUE,
   is_superuser  BOOLEAN NOT NULL DEFAULT FALSE,
@@ -655,7 +662,7 @@ main_agent = Agent(model, deps_type=DiagDeps, output_type=DiagnosisReport,
 | R2 | 宿主机 GPU worker 要 `pip install -e stf_v3[gpu]`，宿主机 Python 版本需 ≥ 3.10 | PROD-06 第一步核实；不满足则退回"薄脚本 + procrastinate 客户端" |
 | R3 | procrastinate 与 SQLAlchemy 共享连接池的事务边界（defer 与业务写同事务） | 用 `PsycopgConnector` + 传入同一 connection 的 `defer_async`；PROD-02 写一个事务回滚测试 |
 | R4 | token 事件按段聚合的粒度影响前端流式体验 | 先 1 s / 段落，前端归属定了再调 |
-| R5 | `users.email` 作为登录名，pilot 用户可能没有邮箱习惯 | 允许任意 `name@workshop.local` 形式；仅字符串，不发邮件 |
+| R5 | ~~`users.email` 作为登录名~~ | 已解决（评审确认②）：登录用 `username`，email 可空 |
 | O1 | 前端归属（D6） | 下次会议 |
 | O2 | Yamaha CSV 的 `recorded_start/end` 能否从文件读出 | PROD-05 嗅探时确认，读不到置空 |
 

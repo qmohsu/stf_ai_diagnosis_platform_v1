@@ -2,10 +2,10 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | **v1.2（已定稿 + 开发计划决策板修订）** |
-| 日期 | 2026-09-08 |
+| 版本 | **v1.3（PROD-01 代码设计蓝图通过，机制层并入）** |
+| 日期 | 2026-09-11 |
 | 作者 | Xiangzhu Yan |
-| 状态 | **已定稿** —— 开发计划 `docs/v3_dev_plan.md` v1.0 的 9 项决策（D1–D9，`.lavish/v3_dev_plan_decisions.html`）已并入；进入 PROD-01 代码设计 |
+| 状态 | **已定稿** —— 开发计划 v1.1；代码设计蓝图 `docs/plans/2026-09-08-v3-code-design.md` v1.0 已通过（2026-09-11），M1 / PROD-02 开工 |
 
 ## 总架构图（本文档的第一视图，与正文强制同步）
 
@@ -152,6 +152,14 @@ S4 系统主动触发。
 **诊断时的车辆信息用法（D8 要求）**：`manufacturer + model` → 找手册；
 `vin` → 找历史维修记录（vehicle_data_twin）与历史原始数据（`obd_logs`）。
 
+**机制层表与字段（PROD-01 蓝图 §4–§5，2026-09-11）**：`vehicle_devices`
+（每台车的设备凭证，只存哈希；Jetson 装机时持有，上传即绑定车档）；
+`obd_logs.source / device_id / vin_from_log / vin_mismatch`（来源与 VIN 核对结果）；
+`diagnosis_conversations.job_id / cancel_requested`、`manuals.job_id`（队列关联）；
+`invite_codes.workshop_id / role`（邀请码即入组）；`users.username`（登录名，
+email 可空）。角色权限：technician 可做全部日常操作，manager 独占删车 / 发码 /
+设备凭证 / 手册管理。完整 DDL 以蓝图 §4 为准。
+
 **编码约定**：鉴权收敛为唯一函数 `can_access_vehicle()`，Stage 1 的
 实现 = "当前用户是否为该车 workshop 的成员"；将来细粒度权限只改此一处。
 
@@ -219,4 +227,5 @@ V3 第一版只做"点一下出诊断报告"。以下**明确不做**；每一�
 | v0.5 | 2026-09-01 | 交付物②完成并拍板：前端 = Next.js 15 + Tailwind v4 + shadcn/ui + TanStack Query（移动优先 + PWA）。新增编码约定：鉴权收敛为单一 can_access_vehicle 函数（为将来权限表预留） |
 | **v1.0** | 2026-09-01 | **定稿**：交付物③数据模型通过并并入 §1.8；三交付物齐 → 满足 G2 定稿标准。审计/会话双持久化定型（Runtime 产生 + Postgres 存 + 薄胶水回写）。进入代码设计阶段（PROD-XX） |
 | v1.1 | 2026-09-01 | 总架构图嵌入文档首部并确立**图文强制同步规则**（同一提交内更新图；图已同步） |
+| v1.3 | 2026-09-11 | PROD-01 代码设计蓝图 v1.0 通过：§1.8 追加机制层表与字段（`vehicle_devices`、`obd_logs` 来源/VIN 核对列、队列关联列、`users.username`）与角色权限口径。**图已同步**（数据层框加 `vehicle_devices`，Jetson 框注明"每车设备凭证"，标题版本号） |
 | v1.2 | 2026-09-08 | 并入开发计划 v1.0 决策板 D1–D9：所有权挂 workshop（workshops/memberships）；VIN 为身份、车牌为标签；代码落位同仓新目录 + 可迁出/不绑死约束；Auth = fastapi-users；队列 = procrastinate（jobs 模块）；前端归属待定（外部）；唯一本地 vLLM；数据归属不变量（不允许 V-UNKNOWN）；A3 非目标清单补齐（§1.11）。**图已同步**（前端框改为橙虚线"归属待定"，数据层/队列/Auth/vLLM/Jetson 文字更新；新增 `diagrams/render_excalidraw.py` 使预览 SVG 可复现） |

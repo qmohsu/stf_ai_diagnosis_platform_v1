@@ -38,7 +38,7 @@
 <polyline points="240,610 240,790" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
 <polyline points="890,610 880,790" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
 <polyline points="90,580 35,580 35,1015 90,1015" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
-<text x="60" y="-21.60" font-size="24" fill="#f8f9fa">STF V3 产品化架构 — Final（设计文档 v1.2 · 2026-09-08 · 开发计划 v1.0）</text>
+<text x="60" y="-21.60" font-size="24" fill="#f8f9fa">STF V3 产品化架构 — Final（设计文档 v1.3 · 2026-09-11 · 开发计划 v1.1 · PROD-01 已通过）</text>
 <text x="170.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">开源 / 第三方采用</text>
 <text x="420.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">沿用 V1/V2 资产</text>
 <text x="660.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">V3 新做</text>
@@ -55,7 +55,7 @@
 <text x="885.0" y="149.20" text-anchor="middle" font-size="12" fill="#f1f3f5">双视图:</text>
 <text x="885.0" y="164.20" text-anchor="middle" font-size="12" fill="#f1f3f5">客户叙事 / 高级透视</text>
 <text x="1200.0" y="134.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">边缘端 Jetson (沿用)</text>
-<text x="1200.0" y="149.20" text-anchor="middle" font-size="12" fill="#f1f3f5">jetson_uploader</text>
+<text x="1200.0" y="149.20" text-anchor="middle" font-size="12" fill="#f1f3f5">jetson_uploader + 每车设备凭证</text>
 <text x="1200.0" y="164.20" text-anchor="middle" font-size="12" fill="#f1f3f5">每笔上传绑定唯一车档</text>
 <text x="540" y="246.70" font-size="12" fill="#ced4da">REST + SSE</text>
 <text x="900" y="241.70" font-size="12" fill="#ced4da">行程日志上传</text>
@@ -90,9 +90,9 @@
 <text x="80" y="752.62" font-size="15" fill="#51cf66" font-weight="600">数据层（独立新库 —— V3 专属）</text>
 <text x="260.0" y="819.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">PostgreSQL + pgvector (新建库 stf_v3)</text>
 <text x="260.0" y="834.20" text-anchor="middle" font-size="12" fill="#f1f3f5">workshops · memberships · users · invite_codes</text>
-<text x="260.0" y="849.20" text-anchor="middle" font-size="12" fill="#f1f3f5">vehicles (VIN=身份 · 车牌=标签) · obd_logs</text>
-<text x="260.0" y="864.20" text-anchor="middle" font-size="12" fill="#f1f3f5">conversations · messages · reports · audit_events</text>
-<text x="260.0" y="879.20" text-anchor="middle" font-size="12" fill="#f1f3f5">+ procrastinate 任务表</text>
+<text x="260.0" y="849.20" text-anchor="middle" font-size="12" fill="#f1f3f5">vehicles (VIN=身份 · 车牌=标签) · vehicle_devices</text>
+<text x="260.0" y="864.20" text-anchor="middle" font-size="12" fill="#f1f3f5">obd_logs · conversations · messages · reports</text>
+<text x="260.0" y="879.20" text-anchor="middle" font-size="12" fill="#f1f3f5">audit_events · procrastinate 任务表</text>
 <text x="595.0" y="834.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">manuals + rag_chunks</text>
 <text x="595.0" y="849.20" text-anchor="middle" font-size="12" fill="#f1f3f5">V2 schema 复制 · 公共知识库</text>
 <text x="595.0" y="864.20" text-anchor="middle" font-size="12" fill="#f1f3f5">Manual 入库流水线沿用</text>
