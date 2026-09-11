@@ -80,16 +80,21 @@ def check_invariant(engine: sa.Engine) -> bool:
         "INSERT INTO obd_logs (vehicle_id, sha256, raw_path, source, format, "
         "size_bytes) VALUES (NULL, repeat('0', 64), '/x', 'web', 'tsv', 1)"
     )
+    name = "obd_logs without vehicle_id rejected"
     with engine.connect() as conn:
         trans = conn.begin()
         try:
             conn.execute(stmt)
         except IntegrityError as exc:
             trans.rollback()
-            ok = "vehicle_id" in str(exc.orig) and "null" in str(exc.orig).lower()
-            return _report("obd_logs without vehicle_id rejected", ok, str(exc.orig).splitlines()[0])
+            msg = str(exc.orig).splitlines()[0]
+            ok = "vehicle_id" in msg and "null" in msg.lower()
+            return _report(name, ok, msg)
+        except DBAPIError as exc:
+            trans.rollback()
+            return _report(name, False, str(exc.orig).splitlines()[0])
         trans.rollback()
-    return _report("obd_logs without vehicle_id rejected", False, "insert succeeded")
+    return _report(name, False, "insert succeeded")
 
 
 def check_append_only(app_url: Optional[str]) -> bool:

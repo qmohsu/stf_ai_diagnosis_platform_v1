@@ -435,10 +435,15 @@ def downgrade() -> None:
                      AND p.proname LIKE 'procrastinate\\_%' LOOP
             EXECUTE format('DROP FUNCTION IF EXISTS %s CASCADE', r.sig);
           END LOOP;
+          -- enums, standalone composites (e.g. procrastinate_job_to_defer_v1)
+          -- and domains; table row-types are already gone with the tables.
           FOR r IN SELECT t.typname
                    FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
-                   WHERE n.nspname = 'public' AND t.typtype = 'e'
-                     AND t.typname LIKE 'procrastinate\\_%' LOOP
+                   WHERE n.nspname = 'public' AND t.typtype IN ('e', 'c', 'd')
+                     AND t.typname LIKE 'procrastinate\\_%'
+                     AND NOT EXISTS (SELECT 1 FROM pg_class c
+                                     WHERE c.oid = t.typrelid
+                                       AND c.relkind <> 'c') LOOP
             EXECUTE format('DROP TYPE IF EXISTS %I CASCADE', r.typname);
           END LOOP;
         END $$;
