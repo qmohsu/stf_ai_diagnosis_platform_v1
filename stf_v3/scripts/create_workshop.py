@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(_HERE), "src"))
 
 from sqlalchemy import select  # noqa: E402
 
+import stf_v3.metadata  # noqa: E402,F401  (registers every model for FK resolution)
 from stf_v3.db import SessionLocal  # noqa: E402
 from stf_v3.workshops import service  # noqa: E402
 from stf_v3.workshops.models import Workshop  # noqa: E402
