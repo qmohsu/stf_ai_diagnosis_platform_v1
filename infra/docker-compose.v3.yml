@@ -1,0 +1,23 @@
+# STF V3 services — independent Compose file (dev plan D3, constraint B).
+# Shares ONLY infrastructure with V1/V2 (Postgres instance, vLLM, nginx),
+# all via configuration.  Never merge this into docker-compose.yml.
+#
+# PROD-02 scope: image build + one-shot migration job.
+# PROD-03/04 add stf-v3-api and stf-v3-worker as long-running services.
+#
+#   podman-compose -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml \
+#     build stf-v3-migrate
+#   podman-compose -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml \
+#     run --rm stf-v3-migrate alembic upgrade head
+
+services:
+  stf-v3-migrate:
+    build:
+      context: ../stf_v3
+      dockerfile: Dockerfile
+    image: stf-v3:local
+    container_name: stf-v3-migrate
+    environment:
+      STF_V3_DATABASE_URL: ${STF_V3_DATABASE_URL:?set STF_V3_DATABASE_URL}
+    command: ["alembic", "current"]
+    profiles: ["migrate"]

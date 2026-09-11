@@ -28,22 +28,28 @@ procrastinate（D5）；后端从 M1 起交付 OpenAPI 契约（D6）；唯一�
 
 ### 1.1 目录
 
+> **PROD-02 实施注记（2026-09-11）**：实际采用 **src 布局** `stf_v3/src/stf_v3/…`
+> （比下图少一层 `app/`），模块导入路径为 `stf_v3.auth`、`stf_v3.jobs.app` 等；
+> `metadata.py` 汇总全部模型供 Alembic 使用。Stage 1 **不装 pgvector、不建
+> rag_chunks**（见 §4 注记）。
+
 ```
 stf_v3/                          # 后端，自包含（D3 约束 A）
   pyproject.toml                 # 自己的依赖清单（不复用 diagnostic_api/requirements.txt）
-  Dockerfile                     # python:3.11-slim，两阶段
+  Dockerfile                     # python:3.11-slim
   alembic.ini
   alembic/                       # 自己的迁移链，初始迁移 = §4 全部 DDL
-  app/
-    main.py                      # FastAPI 装配：挂路由、structlog、/health、OpenAPI 导出
+  src/stf_v3/
+    main.py                      # FastAPI 装配：挂路由、structlog、/health、OpenAPI 导出（PROD-03）
     settings.py                  # pydantic-settings；全部外部连接只在这里（D3 约束 B）
-    db.py                        # SQLAlchemy 2.0 async engine/session（postgresql+psycopg）
+    db.py                        # SQLAlchemy 2.0 async engine/session（postgresql+psycopg）+ Base
+    metadata.py                  # 注册全部模型；EXPECTED_TABLES
     auth/                        # fastapi-users 装配 + 邀请码注册
     workshops/                   # workshops、memberships、can_access_vehicle()
     vehicles/                    # 车档 CRUD、vehicle_devices（D8 机制）
     ingest/                      # 上传薄层、格式嗅探、文件存储、VIN 核对
       parsers/                   # jetson_tsv.py（复制自 obd_agent/log_parser.py）、yamaha_csv.py
-    knowledge/                   # manuals/rag_chunks 模型、手册入库流水线、marker_convert（复制）
+    knowledge/                   # manuals 模型、手册转换流水线、marker_convert（复制）；无向量化
     diagnosis/                   # 会话/消息/报告/审计模型、诊断 job、SSE、回放
       agent/                     # Pydantic AI：主 Agent、manual 子 Agent、toolsets、模型适配
       tools/                     # 复制自 V2 harness_tools（见 §7）
@@ -78,8 +84,8 @@ docs/api/v3_openapi.json         # CI 生成并 diff（DoD）
 | Auth | fastapi-users[sqlalchemy] | 15.0.5 | JWT + Bearer transport |
 | ORM | sqlalchemy[asyncio] | 2.0.x | `postgresql+psycopg` 异步方言 |
 | DB 驱动 | psycopg[binary,pool] | 3.x | **一个驱动同时服务 SQLAlchemy 与 procrastinate** |
-| 向量 | pgvector | 0.3.x | `Vector(768)` |
-| 迁移 | alembic | 1.13.x | |
+| ~~向量~~ | ~~pgvector~~ | — | Stage 1 不用（2026-09-11）；相似案例时再加 |
+| 迁移 | alembic | 1.14.x | |
 | 队列 | procrastinate | 3.9.0 | `PsycopgConnector` |
 | 日志 | structlog | 24.x | JSON 到文件 |
 | HTTP | httpx | 0.27.x | |
@@ -238,8 +244,7 @@ SSE 帧格式：`event: <event_type>\nid: <seq>\ndata: <json>\n\n`；客户端�
 ## 4. DDL（初始迁移，database `stf_v3`）
 
 ```sql
-CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS pgcrypto;   -- gen_random_uuid()
+-- No extensions needed: gen_random_uuid() is built into PG13+; no pgvector.
 
 -- ---------- auth ----------
 CREATE TABLE users (                         -- fastapi-users 基础字段 + username
@@ -400,24 +405,10 @@ CREATE TABLE manuals (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE rag_chunks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  manual_id UUID NOT NULL REFERENCES manuals(id) ON DELETE CASCADE,
-  text TEXT NOT NULL,
-  doc_id VARCHAR(255) NOT NULL,
-  source_type VARCHAR(50) NOT NULL CHECK (source_type = 'manual'),
-  section_title TEXT, vehicle_model VARCHAR(100), manufacturer VARCHAR(100),
-  chunk_index INTEGER NOT NULL,
-  checksum VARCHAR(64) NOT NULL UNIQUE,
-  metadata_json JSONB,
-  embedding vector(768) NOT NULL,
-  tsv tsvector GENERATED ALWAYS AS (to_tsvector('english', text)) STORED,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX ix_rag_chunks_manual ON rag_chunks(manual_id);
-CREATE INDEX ix_rag_chunks_doc_id ON rag_chunks(doc_id);
-CREATE INDEX ix_rag_chunks_embedding ON rag_chunks USING hnsw (embedding vector_cosine_ops);
-CREATE INDEX ix_rag_chunks_tsv ON rag_chunks USING GIN (tsv);
+-- rag_chunks / pgvector: REMOVED from Stage 1 (2026-09-11).  The agent reads
+-- manual Markdown via manual_fs; vectors return with 相似案例 (dev plan §4).
+-- manuals.status values are therefore: uploading, queued, converting,
+-- ingested, failed (no 'chunking' / 'embedding').
 
 -- ---------- jobs ----------
 -- procrastinate 自带 schema（procrastinate_jobs / _events / _periodic_defers）：
@@ -482,7 +473,6 @@ app = procrastinate.App(
 | 队列 | 任务 | 触发 | 重试 | 超时 | 谁消费 |
 |---|---|---|---|---|---|
 | `default` | `diagnosis.run_diagnosis(conversation_id)` | API 202 | **0**（诊断不自动重跑，失败落 error 让人看） | 15 min | `stf-v3-worker` 容器，concurrency 2 |
-| `default` | `knowledge.chunk_and_embed(manual_id)` | 转换完成后由 gpu 任务 defer | 3，退避 | 30 min | 同上 |
 | `default` | `maintenance.archive_audit_events()` | 每天 03:00 | 1 | 10 min | 同上 |
 | `default` | `maintenance.cleanup_orphan_files()` | 每天 03:30 | 1 | 10 min | 同上 |
 | `default` | `maintenance.prewarm_llm()` | 启动 + 每小时 | 0 | 5 min | 同上 |
@@ -577,9 +567,9 @@ main_agent = Agent(model, deps_type=DiagDeps, output_type=DiagnosisReport,
   cancel 检查。提示词里 `Vehicle: {manufacturer} {model} (VIN {vin})` 来自车档，不来自日志。
 - 子代理委托：`ask_manual_agent(question)` 工具内部 `await manual_agent.run(question, deps=…, usage=ctx.usage)`，用量合并；事件流里表现为一次 `tool_call/tool_result`。
 - 测试：`TestModel` / `FunctionModel` 驱动整轮诊断离线跑通（PROD-08 验收）。
-- 设置项（全部在 `settings.py`）：`LLM_BASE_URL`、`LLM_MODEL`、`LLM_API_KEY`、
-  `EMBEDDING_MODEL`（同一 vLLM 的 `/v1/embeddings`）、`CLOUD_LLM_ENABLED/BASE_URL/MODEL/API_KEY`、
-  `MANUAL_STORAGE_PATH`、`OBD_LOG_STORAGE_PATH`、`DATABASE_URL`、`JWT_SECRET`。
+- 设置项（全部在 `settings.py`，环境变量前缀 `STF_V3_`）：`LLM_BASE_URL`、`LLM_MODEL`、
+  `LLM_API_KEY`、`CLOUD_LLM_ENABLED/BASE_URL/MODEL/API_KEY`、`MANUAL_STORAGE_PATH`、
+  `OBD_LOG_STORAGE_PATH`、`DATABASE_URL`、`JWT_SECRET`。（无嵌入模型：Stage 1 不做向量化。）
 
 ---
 
