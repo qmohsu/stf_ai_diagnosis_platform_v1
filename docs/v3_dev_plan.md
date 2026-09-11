@@ -8,7 +8,7 @@
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.2（PROD-02 进行中；Stage 1 去掉 pgvector / rag_chunks） |
+| **版本** | v1.3（PROD-03 DONE；§2.4 测试策略；OpenAPI 契约 v1 落盘） |
 | **作者** | Xiangzhu Yan |
 | **最后更新** | 2026-09-11 |
 
@@ -125,7 +125,26 @@ M6 PROD-15 (Pilot 上线)
 - **可迁出 / 不绑死（D3）**：`stf_v3/`、`obd-ui-v3/` 不 import 老代码；两条自动化检查（拷到空目录测试全绿；删掉 `diagnostic_api/ obd_agent/ obd-ui/` 后 V3 照常构建）通过
 - OpenAPI 契约与代码一致（CI 生成并 diff）
 - 走 CLAUDE.md 验证闭环：PR → 分支部署 PolyU → 线上 E2E（后端 ticket 用 Swagger / curl，前端 ticket 用浏览器）→ 用户拍板合并
+- **测试补齐（§2.4）**：新功能同时扩展 `scripts/smoke_e2e.py`；接口级集成测试覆盖新端点；部署前后跑 `scripts/isolation_check.sh snapshot / compare`
+- **PR 附"挑战清单"**：3–5 条"你可以试什么、预期看到什么"，供用户在 Swagger / curl 上挑战
 - V1/V2 在服务器上继续正常运行（并存不互扰）
+
+### 2.4 测试策略（2026-09-11 对齐；所有测试都要补齐）
+
+八类测试，前四类跑在代码上，后四类跑在部署上。明确不做：压测、混沌、覆盖率 KPI。
+
+| 类别 | 回答什么 | 在哪跑 | V3 落点 |
+|---|---|---|---|
+| 单元 | 这段逻辑本身对不对 | CI，每 PR，秒级 | `stf_v3/tests/test_unit_*.py` |
+| 集成 | 和真实 Postgres / 队列一起对不对 | CI 临时 Postgres（PROD-04）或服务器一次性库 | `tests/test_migrations.py`、`tests/test_api_*.py`（ASGI 客户端 + 真库） |
+| 契约 | 接口形状、表结构、模块边界有没有悄悄变 | CI，秒级 | `scripts/export_openapi.py --check`、`alembic check`、import-linter |
+| Golden 评测 | 换提示词 / 模型后诊断质量有没有掉 | 服务器 GPU，只在动 Agent 时 | PROD-10 移植 |
+| 端到端冒烟 | 真实用户流程在线上能否走完 | 分支部署后 | `scripts/smoke_e2e.py`（每张 ticket 追加步骤） |
+| 部署核验 | 部署完的东西是不是预期的那份 | 每次部署后 | `scripts/check_schema.py`；PROD-04 补 `deploy_check.sh`（容器新鲜度、head、worker、health） |
+| 隔离回归 | V1/V2 有没有被 V3 碰坏 | 每次部署前后 | `scripts/isolation_check.sh snapshot` / `compare` |
+| 运维演练 | 备份能恢复吗、队列卡了能救吗 | 每个里程碑一次，人工按手册 | PROD-06、PROD-15 |
+
+CI 两层（PROD-04）：GitHub 上跑单元 + 契约 + 集成；服务器上跑冒烟 + 部署核验 + 隔离回归，结果以一张表进 PR。
 
 ## 3. Tickets
 
@@ -178,9 +197,10 @@ Status: **✅ DONE**（2026-09-11，分支 `prod-02-db-migration`；服务器上
 
 #### PROD-03 — 后端骨架、Auth、workshop 与车辆模块
 
-**目标**：模块化单体骨架成形，用户能注册、登录、在 workshop 里建车档。
-**方法**：FastAPI 应用按模块分包；`auth`（fastapi-users + 邀请码核销）；`workshops` / `memberships`；`vehicles`（建档：VIN 必填唯一、车牌可选、品牌型号必填；软删除；`can_access_vehicle()` = 成员判断）；structlog；`/health`；**OpenAPI 契约 v1 导出到 `docs/api/v3_openapi.json`**。
-**验收**：邀请码 → 注册 → 登录 → 建车档 → 列车 → 删车（软删）全链路 API 测试通过；非本 workshop 成员访问返回 403；全后端只有一处权限判断入口；缺 VIN 或 VIN 重复被 422 拒绝；改车牌不影响任何查询。
+Status: **✅ DONE**（2026-09-11，分支 `prod-03-backend-skeleton`；服务器：19 个 pytest 全过、冒烟 23 步全过、隔离回归通过；详见 PR）
+**目标**：模块化单体骨架成形，用户能注册、登录、在 workshop 里建车档、发设备凭证；OpenAPI 契约 v1 落盘。
+**方法**：FastAPI 应用按模块分包（src 布局）；`auth`（fastapi-users JWT，用户名登录，自写邀请码注册：锁码 → 建用户 → 入组 → 核销同一事务）；`workshops`（成员、角色、邀请码；因分层需要其端点由 auth 路由提供）；`vehicles`（车档 CRUD、VIN 不可改、软删除、设备凭证只存哈希、`can_access_vehicle()` 唯一鉴权入口，无权一律 404）；structlog JSON；`/health` 含队列积压；`scripts/export_openapi.py` → `docs/api/v3_openapi.json`（12 个路径）；`scripts/create_workshop.py`；`scripts/smoke_e2e.py`；`scripts/isolation_check.sh`。
+**验收（已达成）**：邀请码 → 注册 → 登录 → 建车 → 列车 → 改车牌 → 发码 → 技师注册 → 设备凭证 → 吊销 → 软删全链路（冒烟 23 步）；非成员访问返回 404、角色不足 403；全后端只有一处权限判断入口；无效 / 重复邀请码 422；VIN 重复 409、格式错误 422；OpenAPI 可用。
 
 #### PROD-04 — 并存部署、CI 与迁移性检查
 
@@ -292,6 +312,7 @@ Status: **✅ DONE**（2026-09-11，分支 `prod-02-db-migration`；服务器上
 | 版本 | 日期 | 变更 |
 |---|---|---|
 | v0.1 | 2026-09-07 | 初稿：7 个里程碑、15 张 PROD ticket（PROD-01 到验收级，其余到目标/方法/验收层）、非目标清单草案、9 项待决策 |
+| v1.3 | 2026-09-11 | PROD-03 DONE（FastAPI 骨架、fastapi-users + 邀请码、workshop / 车档 / 设备凭证 API、OpenAPI 契约 v1 `docs/api/v3_openapi.json`）；新增 §2.4 测试策略（八类测试、CI 两层）；DoD 加"测试补齐 + 挑战清单"；新增可复用脚本 `smoke_e2e.py`、`isolation_check.sh`、`export_openapi.py`、`create_workshop.py`。设计文档同步至 v1.5（无架构变化，图无需改动） |
 | v1.2 | 2026-09-11 | PROD-02 开工（分支 `prod-02-db-migration`）：**Stage 1 去掉 pgvector / rag_chunks / 向量化**（§1.1、PROD-02、PROD-06 改写；§4 新增"向量检索 / RAG"暂缓项与回头条件）。设计文档同步至 v1.4，架构图已同步 |
 | v1.1 | 2026-09-11 | PROD-01 DONE：代码设计蓝图 v1.0 评审通过；M0 状态更新；§2.1 M0 改为"已完成"。设计文档同步至 v1.3（机制层表 `vehicle_devices` 等），架构图已同步 |
 | **v1.0** | 2026-09-08 | **定稿**：D1–D9 全部拍板并并入（§0.1）；所有权挂 workshop、VIN 身份 / 车牌标签、同仓新目录 + 可迁出/不绑死约束与自动化检查、fastapi-users、procrastinate `jobs`、前端暂缓（M5 待定 · 外部）、唯一 vLLM、数据归属不变量入 DoD；M1 起交付 OpenAPI 契约；PROD-06 增加队列运维演练；§4 改为"暂缓事项与回头条件"（逐项触发条件 / 动作 / 状态）。设计文档同步至 v1.2，架构图已同步 |

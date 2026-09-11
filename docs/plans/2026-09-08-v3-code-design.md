@@ -124,6 +124,13 @@ Python 3.11（与 V2 镜像一致）。宿主机 GPU worker 额外装 `marker-pd
             └──────────────────────────────────────┘
 ```
 
+> **PROD-03 实施注记（2026-09-11）**：分层实际定为
+> `diagnosis → ingest → vehicles → auth → workshops`（auth 高于 workshops：邀请码
+> 注册要建成员关系；`InviteCode` 模型因此放在 workshops）。workshops **无独立
+> 路由**，其端点（我的 workshop、成员、邀请码）由 `auth/router.py` 提供。
+> `can_access_vehicle()` 落在 `vehicles/service.py`（需要 Vehicle 模型）。
+> 脚本须 `import stf_v3.metadata` 以注册全部模型，否则跨模块外键无法解析。
+
 **允许的依赖方向（import-linter 合同）**：
 
 | 模块 | 可以 import | 不可以 import |
