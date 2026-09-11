@@ -2,7 +2,7 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | **v1.3（PROD-01 代码设计蓝图通过，机制层并入）** |
+| 版本 | **v1.4（PROD-02：Stage 1 去掉 pgvector / rag_chunks）** |
 | 日期 | 2026-09-11 |
 | 作者 | Xiangzhu Yan |
 | 状态 | **已定稿** —— 开发计划 v1.1；代码设计蓝图 `docs/plans/2026-09-08-v3-code-design.md` v1.0 已通过（2026-09-11），M1 / PROD-02 开工 |
@@ -144,8 +144,12 @@ S4 系统主动触发。
 - `reports`（会话的产物；content_md + citations）
 - `audit_events`（append-only 黑匣子，事件名与 SSE 一致；继承 V2
   harness_event_log 经验；保留策略由 `jobs` 定时任务执行，PROD-15 落地）
-- `manuals` + `rag_chunks` 按 V2 schema 复制进新库（公共知识库）
-- procrastinate 任务表（D5；由库自带迁移创建）
+- `manuals`（公共知识库的**元数据**：身份、转换状态、进度；手册正文是磁盘上的
+  Markdown 文件，由 manual_fs 工具直接读取）。**Stage 1 不装 pgvector、不建
+  `rag_chunks`、不做向量化**（决定 2026-09-11）：V2 的 Agent 路径从不读向量表，
+  `rag_chunks` 只被已废弃的旧 RAG 工具与评测对照组使用；将来做相似案例时再用
+  一条迁移加回扩展与表（开发计划 §4）。
+- procrastinate 任务表（D5；由库自带 schema 在初始迁移中创建）
 - 预留不建：`case_vectors`（D4 第二批）、细粒度权限表、`vehicle_events`
   （S4 时事件先落表再投任务）。回头条件见开发计划 §4。
 
@@ -227,5 +231,6 @@ V3 第一版只做"点一下出诊断报告"。以下**明确不做**；每一�
 | v0.5 | 2026-09-01 | 交付物②完成并拍板：前端 = Next.js 15 + Tailwind v4 + shadcn/ui + TanStack Query（移动优先 + PWA）。新增编码约定：鉴权收敛为单一 can_access_vehicle 函数（为将来权限表预留） |
 | **v1.0** | 2026-09-01 | **定稿**：交付物③数据模型通过并并入 §1.8；三交付物齐 → 满足 G2 定稿标准。审计/会话双持久化定型（Runtime 产生 + Postgres 存 + 薄胶水回写）。进入代码设计阶段（PROD-XX） |
 | v1.1 | 2026-09-01 | 总架构图嵌入文档首部并确立**图文强制同步规则**（同一提交内更新图；图已同步） |
+| v1.4 | 2026-09-11 | PROD-02 开工前决定：**Stage 1 不装 pgvector、不建 rag_chunks、不做向量化**（Agent 只读 Markdown 手册；向量表在 V2 已无人使用）；§1.8 知识库条目改写。**图已同步**（数据层去掉 pgvector 字样，知识库框改为"manuals 元数据 + Markdown 文件 · 无向量库"） |
 | v1.3 | 2026-09-11 | PROD-01 代码设计蓝图 v1.0 通过：§1.8 追加机制层表与字段（`vehicle_devices`、`obd_logs` 来源/VIN 核对列、队列关联列、`users.username`）与角色权限口径。**图已同步**（数据层框加 `vehicle_devices`，Jetson 框注明"每车设备凭证"，标题版本号） |
 | v1.2 | 2026-09-08 | 并入开发计划 v1.0 决策板 D1–D9：所有权挂 workshop（workshops/memberships）；VIN 为身份、车牌为标签；代码落位同仓新目录 + 可迁出/不绑死约束；Auth = fastapi-users；队列 = procrastinate（jobs 模块）；前端归属待定（外部）；唯一本地 vLLM；数据归属不变量（不允许 V-UNKNOWN）；A3 非目标清单补齐（§1.11）。**图已同步**（前端框改为橙虚线"归属待定"，数据层/队列/Auth/vLLM/Jetson 文字更新；新增 `diagrams/render_excalidraw.py` 使预览 SVG 可复现） |

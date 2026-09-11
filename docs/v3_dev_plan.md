@@ -8,7 +8,7 @@
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.1（PROD-01 已通过；代码设计蓝图 `docs/plans/2026-09-08-v3-code-design.md` v1.0 成为 M1–M4 施工依据） |
+| **版本** | v1.2（PROD-02 进行中；Stage 1 去掉 pgvector / rag_chunks） |
 | **作者** | Xiangzhu Yan |
 | **最后更新** | 2026-09-11 |
 
@@ -46,7 +46,7 @@ V3 是最终产品形态，V1/V2 是学习版并将废弃。本计划要交付�
 - fastapi-users + 邀请码注册 + JWT；workshop 成员隔离，鉴权唯一入口 `can_access_vehicle()`
 - 车档：VIN 身份、车牌标签、品牌型号必填
 - 上传薄层：Jetson 原生 TSV + Yamaha 双通道 CSV，sha256 去重，其余 422；只入库不诊断；**每笔绑定车档**
-- 知识库：manuals + rag_chunks 从 V2 一次性拷贝；Manual 入库走 `jobs`（宿主机 GPU worker 消费，替代共享卷文件协议）
+- 知识库：`manuals` 元数据 + Markdown/图片文件从 V2 一次性拷贝；**无 pgvector、无 rag_chunks、无向量化**（2026-09-11 决定）；手册转换走 `jobs`（宿主机 GPU worker 消费，替代共享卷文件协议）
 - Agent 核心：Pydantic AI 运行时，V2 工具组复制进 V3，子代理 = agent-as-tool，vLLM/qwen 适配层，云端接口仅供对比
 - 诊断编排：诊断作为 job 独立于 HTTP 连接运行；SSE 订阅进度；messages / audit_events / reports 回写；断线回放
 - **OpenAPI 契约**：M1 起每个里程碑交付（自动生成 + 人工注释），供任何一方做前端
@@ -171,9 +171,10 @@ Status: **✅ DONE**（决策 2026-09-08；蓝图 v1.0 经 Lavish 评审通过 2
 
 #### PROD-02 — 新库与初始 Alembic 迁移
 
-**目标**：`stf_v3` 数据库建立，全部 Stage 1 表一次迁移到位。
-**方法**：同一 Postgres 实例新建 database；按 PROD-01 的 DDL 写初始迁移；pgvector 扩展 + manuals/rag_chunks 表结构（768 维 + HNSW）；procrastinate 自带迁移；单一 Alembic head 预检脚本沿用 CLAUDE.md。
-**验收**：`alembic upgrade head` 在空库一次通过；`downgrade base` 可回滚；表与约束与设计文档 §1.8（v1.2）逐一对应；`obd_logs.vehicle_id` NOT NULL；单 head。
+Status: **IN PROGRESS**（分支 `prod-02-db-migration`，2026-09-11）
+**目标**：`stf_v3` 数据库建立，全部 Stage 1 表一次迁移到位；`stf_v3/` 包骨架成形（src 布局，自带依赖 / Dockerfile / Alembic / 测试）。
+**方法**：同一 Postgres 实例新建 database（`scripts/create_database.sh`，两个角色：owner `stf_v3`、runtime `stf_v3_app`）；按蓝图 §4 手写初始迁移（12 张业务表，**无 pgvector / rag_chunks**）+ procrastinate 自带 schema + 运行角色授权（audit_events 只给 INSERT/SELECT）；`alembic check` 保证模型与迁移一致；校验脚本 `scripts/check_schema.py` 四项检查；import-linter 合同。
+**验收**：空库 `upgrade head` 一次通过；`alembic check` 无漂移；`downgrade base` 后表全部消失、再 `upgrade` 成功；表与列与模型逐一对应；插入无车档的 `obd_logs` 被数据库拒绝；`stf_v3_app` 对 `audit_events` UPDATE/DELETE 被拒；单 head；V1/V2 健康检查与迁移版本不变。
 
 #### PROD-03 — 后端骨架、Auth、workshop 与车辆模块
 
@@ -197,9 +198,9 @@ Status: **✅ DONE**（决策 2026-09-08；蓝图 v1.0 经 Lavish 评审通过 2
 
 #### PROD-06 — 知识库拷贝与 jobs 队列
 
-**目标**：V2 的手册知识库在 V3 可用；procrastinate 队列上线，Manual 入库改由队列异步执行；完成一次队列运维演练。
-**方法**：一次性脚本拷贝 manuals + rag_chunks（含向量）到 `stf_v3`；`jobs` 模块（procrastinate app、队列划分、重试策略）；`stf-v3-worker` 容器；宿主机 GPU worker 直连库消费 `gpu` 队列（并发 1），V2 文件协议退役；Manual 入库流水线包成 job，进度写库供 UI 查询。
-**验收**：V3 库中 manuals / rag_chunks 行数与 V2 一致，抽样向量相等；提交一份新手册 → job 完成 → 可检索；**运维演练四项各做一遍并写进运维手册**：查积压与卡点（SQL）、手动重试失败任务、查看死信、worker 重启后进行中的任务被正确回收。
+**目标**：V2 的手册知识库在 V3 可用；procrastinate 队列上线，手册转换改由队列异步执行；完成一次队列运维演练。
+**方法**：一次性脚本拷贝 `manuals` 元数据行 + Markdown/图片文件到 `stf_v3`（**不拷 rag_chunks，不做向量化**）；`jobs` 模块（procrastinate app、队列划分、重试策略）；`stf-v3-worker` 容器；宿主机 GPU worker 直连库消费 `gpu` 队列（并发 1），V2 文件协议退役；手册转换（PDF → Markdown）包成 job，进度写库供 UI 查询。
+**验收**：V3 库中 manuals 行数与 V2 一致，Markdown 文件逐本可被 manual_fs 读取；提交一份新手册 → job 完成 → 可被 `list_manuals` / `search_manual_text` 命中；**运维演练四项各做一遍并写进运维手册**：查积压与卡点（SQL）、手动重试失败任务、查看死信、worker 重启后进行中的任务被正确回收。
 
 #### PROD-07 — Jetson 上传器接入
 
@@ -268,6 +269,7 @@ Status: **✅ DONE**（决策 2026-09-08；蓝图 v1.0 经 Lavish 评审通过 2
 | S3 车辆级自由对话 | S2 稳定后 | 输入护栏 + 会话复用 | 否 | 暂缓 |
 | S4 系统主动触发 | 上传频率稳定、有明确触发规则 | `vehicle_events` 表 + `jobs` 事件类型（上传完成 → 规则 → 诊断） | 否 | 暂缓 |
 | 相似案例 | 会话数 ≥ 100 | `case_vectors` 表 + `find_similar_cases` 工具 | 否 | 暂缓 |
+| 向量检索 / RAG（pgvector + rag_chunks） | 出现"手册全文字符串搜索不够用"的真实用例，或相似案例开工 | 一条迁移加 `vector` 扩展 + 表；入库流水线加切块向量化步骤 | 否 | 暂缓（2026-09-11 从 Stage 1 移除） |
 | VIN 模糊化 | 正式对外 / 出现非内部用户 | 展示层脱敏 + 导出脱敏 | 否 | 暂缓（对外前必做） |
 | 第二个 workshop / 多租户 | 第二个车队确认接入 | `workshops` 加一行 | 否 | 暂缓 |
 | 细粒度权限 | 出现"某台车只给某人看"的真实需求 | 权限表 + 改 `can_access_vehicle()` 一处 | 否 | 暂缓 |
@@ -290,5 +292,6 @@ Status: **✅ DONE**（决策 2026-09-08；蓝图 v1.0 经 Lavish 评审通过 2
 | 版本 | 日期 | 变更 |
 |---|---|---|
 | v0.1 | 2026-09-07 | 初稿：7 个里程碑、15 张 PROD ticket（PROD-01 到验收级，其余到目标/方法/验收层）、非目标清单草案、9 项待决策 |
+| v1.2 | 2026-09-11 | PROD-02 开工（分支 `prod-02-db-migration`）：**Stage 1 去掉 pgvector / rag_chunks / 向量化**（§1.1、PROD-02、PROD-06 改写；§4 新增"向量检索 / RAG"暂缓项与回头条件）。设计文档同步至 v1.4，架构图已同步 |
 | v1.1 | 2026-09-11 | PROD-01 DONE：代码设计蓝图 v1.0 评审通过；M0 状态更新；§2.1 M0 改为"已完成"。设计文档同步至 v1.3（机制层表 `vehicle_devices` 等），架构图已同步 |
 | **v1.0** | 2026-09-08 | **定稿**：D1–D9 全部拍板并并入（§0.1）；所有权挂 workshop、VIN 身份 / 车牌标签、同仓新目录 + 可迁出/不绑死约束与自动化检查、fastapi-users、procrastinate `jobs`、前端暂缓（M5 待定 · 外部）、唯一 vLLM、数据归属不变量入 DoD；M1 起交付 OpenAPI 契约；PROD-06 增加队列运维演练；§4 改为"暂缓事项与回头条件"（逐项触发条件 / 动作 / 状态）。设计文档同步至 v1.2，架构图已同步 |

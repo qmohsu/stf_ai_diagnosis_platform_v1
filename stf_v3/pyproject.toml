@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stf-v3"
+version = "0.1.0"
+description = "STF V3 productized backend (vehicle-anchored AI diagnosis)"
+requires-python = ">=3.11"
+authors = [{ name = "Xiangzhu Yan" }]
+# Self-contained by design (dev plan D3): nothing here may import
+# diagnostic_api/, obd_agent/ or the V1/V2 `app` package.  Enforced by
+# import-linter (see [tool.importlinter]) and tests/test_import_hygiene.py.
+dependencies = [
+    "fastapi==0.141.1",
+    "uvicorn[standard]==0.34.0",
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.6,<3",
+    "sqlalchemy[asyncio]==2.0.36",
+    "psycopg[binary,pool]==3.2.3",
+    "alembic==1.14.0",
+    "procrastinate==3.9.0",
+    "structlog==24.4.0",
+    "httpx==0.27.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.4",
+    "pytest-asyncio==0.24.0",
+    "import-linter==2.1",
+]
+# gpu = ["marker-pdf"]  # host-side GPU worker extra; pinned in PROD-06
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.importlinter]
+root_package = "stf_v3"
+
+[[tool.importlinter.contracts]]
+name = "V3 must not import V1/V2 code (dev plan D3)"
+type = "forbidden"
+source_modules = ["stf_v3"]
+forbidden_modules = ["diagnostic_api", "obd_agent", "app"]
+
+[[tool.importlinter.contracts]]
+name = "Module dependency direction (code design §2)"
+type = "layers"
+layers = [
+    "stf_v3.diagnosis",
+    "stf_v3.ingest",
+    "stf_v3.vehicles",
+    "stf_v3.workshops",
+    "stf_v3.auth",
+]
