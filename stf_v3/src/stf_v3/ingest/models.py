@@ -36,12 +36,7 @@ class ObdLog(Base):
         UniqueConstraint("vehicle_id", "sha256", name="uq_obd_logs_vehicle_sha"),
         CheckConstraint("source IN ('web','device')", name="source_values"),
         CheckConstraint("format IN ('tsv','yamaha')", name="format_values"),
-        Index(
-            "ix_obd_logs_vehicle_time",
-            "vehicle_id",
-            "uploaded_at",
-            postgresql_ops={"uploaded_at": "DESC"},
-        ),
+        Index("ix_obd_logs_vehicle_time", "vehicle_id", "uploaded_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

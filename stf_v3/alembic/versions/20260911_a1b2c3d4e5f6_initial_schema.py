@@ -243,8 +243,7 @@ def upgrade() -> None:
         ),
     )
     op.create_index(
-        "ix_obd_logs_vehicle_time", "obd_logs", ["vehicle_id", "uploaded_at"],
-        postgresql_ops={"uploaded_at": "DESC"},
+        "ix_obd_logs_vehicle_time", "obd_logs", ["vehicle_id", "uploaded_at"]
     )
 
     # ---------- diagnosis ----------
@@ -287,7 +286,7 @@ def upgrade() -> None:
     )
     op.create_index(
         "ix_conversations_vehicle_time", "diagnosis_conversations",
-        ["vehicle_id", "created_at"], postgresql_ops={"created_at": "DESC"},
+        ["vehicle_id", "created_at"],
     )
 
     op.create_table(

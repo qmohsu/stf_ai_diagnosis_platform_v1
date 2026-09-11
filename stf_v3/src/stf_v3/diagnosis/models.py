@@ -36,12 +36,7 @@ class DiagnosisConversation(Base):
             "status IN ('queued','running','done','error','cancelled')",
             name="status_values",
         ),
-        Index(
-            "ix_conversations_vehicle_time",
-            "vehicle_id",
-            "created_at",
-            postgresql_ops={"created_at": "DESC"},
-        ),
+        Index("ix_conversations_vehicle_time", "vehicle_id", "created_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
