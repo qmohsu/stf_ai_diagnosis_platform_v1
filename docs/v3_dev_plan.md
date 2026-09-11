@@ -171,7 +171,7 @@ Status: **✅ DONE**（决策 2026-09-08；蓝图 v1.0 经 Lavish 评审通过 2
 
 #### PROD-02 — 新库与初始 Alembic 迁移
 
-Status: **IN PROGRESS**（分支 `prod-02-db-migration`，2026-09-11）
+Status: **✅ DONE**（2026-09-11，分支 `prod-02-db-migration`；服务器上 `stf_v3` 库已建并升级到 `a1b2c3d4e5f6`，四项校验全过，V1/V2 基线不变；详见 PR）
 **目标**：`stf_v3` 数据库建立，全部 Stage 1 表一次迁移到位；`stf_v3/` 包骨架成形（src 布局，自带依赖 / Dockerfile / Alembic / 测试）。
 **方法**：同一 Postgres 实例新建 database（`scripts/create_database.sh`，两个角色：owner `stf_v3`、runtime `stf_v3_app`）；按蓝图 §4 手写初始迁移（12 张业务表，**无 pgvector / rag_chunks**）+ procrastinate 自带 schema + 运行角色授权（audit_events 只给 INSERT/SELECT）；`alembic check` 保证模型与迁移一致；校验脚本 `scripts/check_schema.py` 四项检查；import-linter 合同。
 **验收**：空库 `upgrade head` 一次通过；`alembic check` 无漂移；`downgrade base` 后表全部消失、再 `upgrade` 成功；表与列与模型逐一对应；插入无车档的 `obd_logs` 被数据库拒绝；`stf_v3_app` 对 `audit_events` UPDATE/DELETE 被拒；单 head；V1/V2 健康检查与迁移版本不变。
