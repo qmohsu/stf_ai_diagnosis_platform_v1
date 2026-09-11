@@ -51,10 +51,13 @@ forbidden_modules = ["diagnostic_api", "obd_agent", "app"]
 [[tool.importlinter.contracts]]
 name = "Module dependency direction (code design §2)"
 type = "layers"
+# Higher layers may import lower ones, never the reverse.  ``auth`` sits
+# above ``workshops`` because invite-code registration creates memberships;
+# ``workshops`` therefore has no router of its own (endpoints live in auth).
 layers = [
     "stf_v3.diagnosis",
     "stf_v3.ingest",
     "stf_v3.vehicles",
-    "stf_v3.workshops",
     "stf_v3.auth",
+    "stf_v3.workshops",
 ]
