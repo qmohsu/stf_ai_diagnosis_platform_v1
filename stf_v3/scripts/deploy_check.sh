@@ -31,8 +31,10 @@ report() {  # name ok detail
 for c in stf-v3-api stf-v3-worker; do
   if ! podman inspect "$c" >/dev/null 2>&1; then report "container $c running" 0 "not found"; continue; fi
   state="$(podman inspect -f '{{.State.Status}}' "$c")"
-  created="$(podman inspect -f '{{.Created}}' "$c" | cut -d. -f1 | tr 'T' ' ' | cut -d+ -f1)"
-  age_min=$(( ( $(date -u +%s) - $(date -u -d "$created" +%s) ) / 60 ))
+  # Podman prints e.g. "2026-09-12 23:05:12.123456789 +0800 HKT"; keep the
+  # numeric offset, drop nanoseconds and the zone name so GNU date parses it.
+  created="$(podman inspect -f '{{.Created}}' "$c" | sed -E 's/\.[0-9]+//' | awk '{print $1" "$2" "$3}')"
+  age_min=$(( ( $(date +%s) - $(date -d "$created" +%s) ) / 60 ))
   if [ "$state" = "running" ] && [ "$age_min" -le "$MAX_AGE_MIN" ]; then
     report "container $c fresh" 1 "running, created ${age_min} min ago"
   else

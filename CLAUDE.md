@@ -302,9 +302,9 @@ the server's `infra/.env` (`STF_V3_DATABASE_URL`, `STF_V3_APP_DATABASE_URL`,
 ```
 cd ~/stf_ai_diagnosis_platform_v1 && git fetch origin && git checkout <branch> && git pull origin <branch>
 bash stf_v3/scripts/isolation_check.sh snapshot                       # V1/V2 baseline
-cd infra && GIT_COMMIT=$(git rev-parse HEAD) ~/.local/bin/podman-compose -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml build && cd ..
-~/.local/bin/podman-compose -f infra/docker-compose.v3.yml -f infra/docker-compose.v3.polyu.yml run --rm stf-v3-migrate alembic upgrade head
-cd infra && ~/.local/bin/podman-compose -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down &&   ~/.local/bin/podman-compose -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker && cd ..
+cd infra && GIT_COMMIT=$(git rev-parse HEAD) ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml build && cd ..
+~/.local/bin/podman-compose -p stf_v3 -f infra/docker-compose.v3.yml -f infra/docker-compose.v3.polyu.yml run --rm stf-v3-migrate alembic upgrade head
+cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down &&   ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker && cd ..
 podman exec stf-nginx nginx -t && podman exec stf-nginx nginx -s reload   # only if nginx.conf changed
 bash stf_v3/scripts/deploy_check.sh                                    # 5 checks, exit 1 on any failure
 # E2E smoke on a throwaway DB + port 8003 (keeps the real stf_v3 DB clean):
@@ -313,6 +313,10 @@ bash stf_v3/scripts/deploy_check.sh                                    # 5 check
 bash stf_v3/scripts/isolation_check.sh compare                        # must print PASS
 git checkout main && git pull origin main                              # restore; containers stay on the branch build until main is deployed
 ```
+**Always pass `-p stf_v3`**: without a project name podman-compose uses the
+directory name (`infra`) and puts V3 into the SAME pod as V1/V2, so `down`
+tries to tear down the shared pod (found 2026-09-12). With `-p stf_v3` V3
+gets its own pod and `down`/`up` never touch V1/V2.
 Podman 3.4 gotcha applies: always `down` + `up`, never trust `up -d --build`.
 `deploy_check.sh` fails on stale containers (created > 30 min ago) and on an
 image whose commit label differs from `git rev-parse HEAD`.
