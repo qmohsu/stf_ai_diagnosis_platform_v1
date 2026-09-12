@@ -14,6 +14,8 @@ authors = [{ name = "Xiangzhu Yan" }]
 dependencies = [
     "fastapi==0.141.1",
     "uvicorn[standard]==0.34.0",
+    "fastapi-users[sqlalchemy]==15.0.5",
+    "python-multipart>=0.0.18",
     "pydantic>=2.9,<3",
     "pydantic-settings>=2.6,<3",
     "sqlalchemy[asyncio]==2.0.36",
@@ -38,6 +40,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.importlinter]
 root_package = "stf_v3"
@@ -51,10 +54,13 @@ forbidden_modules = ["diagnostic_api", "obd_agent", "app"]
 [[tool.importlinter.contracts]]
 name = "Module dependency direction (code design §2)"
 type = "layers"
+# Higher layers may import lower ones, never the reverse.  ``auth`` sits
+# above ``workshops`` because invite-code registration creates memberships;
+# ``workshops`` therefore has no router of its own (endpoints live in auth).
 layers = [
     "stf_v3.diagnosis",
     "stf_v3.ingest",
     "stf_v3.vehicles",
-    "stf_v3.workshops",
     "stf_v3.auth",
+    "stf_v3.workshops",
 ]

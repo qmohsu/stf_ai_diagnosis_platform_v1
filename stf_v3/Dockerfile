@@ -19,6 +19,6 @@ COPY alembic ./alembic
 COPY scripts ./scripts
 COPY tests ./tests
 
-# PROD-02: the image only carries the schema tooling.  PROD-03 switches the
-# default command to uvicorn; the worker uses `procrastinate ... worker`.
-CMD ["alembic", "current"]
+EXPOSE 8002
+# API by default; the worker container overrides with `procrastinate ... worker`.
+CMD ["uvicorn", "stf_v3.main:app", "--host", "0.0.0.0", "--port", "8002"]

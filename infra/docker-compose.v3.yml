@@ -2,19 +2,35 @@
 # Shares ONLY infrastructure with V1/V2 (Postgres instance, vLLM, nginx),
 # all via configuration.  Never merge this into docker-compose.yml.
 #
-# PROD-02 scope: image build + one-shot migration job.
-# PROD-03/04 add stf-v3-api and stf-v3-worker as long-running services.
-#
-#   podman-compose -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml \
-#     build stf-v3-migrate
+#   podman-compose -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml build
 #   podman-compose -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml \
 #     run --rm stf-v3-migrate alembic upgrade head
+#   podman-compose -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api
+#
+# PROD-04 adds stf-v3-worker and the nginx /v3/ route.
 
 services:
-  stf-v3-migrate:
+  stf-v3-api:
     build:
       context: ../stf_v3
       dockerfile: Dockerfile
+    image: stf-v3:local
+    container_name: stf-v3-api
+    environment:
+      STF_V3_DATABASE_URL: ${STF_V3_APP_DATABASE_URL:?set STF_V3_APP_DATABASE_URL}
+      STF_V3_JWT_SECRET: ${STF_V3_JWT_SECRET:?set STF_V3_JWT_SECRET}
+      STF_V3_ENVIRONMENT: ${STF_V3_ENVIRONMENT:-prod}
+      STF_V3_LOG_LEVEL: ${STF_V3_LOG_LEVEL:-INFO}
+    ports:
+      - "${BIND_HOST:-127.0.0.1}:${STF_V3_API_PORT:-8002}:8002"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8002/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  stf-v3-migrate:
     image: stf-v3:local
     container_name: stf-v3-migrate
     environment:

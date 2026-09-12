@@ -1,16 +1,19 @@
-"""Workshop tables: workshops and memberships (dev plan D1).
+"""Workshop tables: workshops, memberships, invite_codes (dev plan D1).
 
 Author: Xiangzhu Yan
 """
 
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from stf_v3.db import Base
+
+ROLES = ("manager", "technician")
 
 
 class Workshop(Base):
@@ -49,6 +52,38 @@ class Membership(Base):
         primary_key=True,
     )
     role: Mapped[str] = mapped_column(String(20), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class InviteCode(Base):
+    """An invite code; registering with it joins the workshop it names."""
+
+    __tablename__ = "invite_codes"
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('manager','technician')", name="role_values"
+        ),
+    )
+
+    code: Mapped[str] = mapped_column(String(32), primary_key=True)
+    workshop_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("workshops.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    role: Mapped[str] = mapped_column(String(20), nullable=False)
+    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id")
+    )
+    used_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id")
+    )
+    used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

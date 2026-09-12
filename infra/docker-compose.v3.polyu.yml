@@ -1,5 +1,9 @@
 # PolyU overrides for V3 (Podman rootless, host networking like V1/V2).
-# Postgres is reachable at 127.0.0.1:5432 on the host network.
+# Postgres is reachable at 127.0.0.1:5432 on the host network; the API
+# listens on 127.0.0.1:8002 and nginx (PROD-04) proxies /v3/ to it.
 services:
+  stf-v3-api:
+    network_mode: host
+    ports: !reset []
   stf-v3-migrate:
     network_mode: host
