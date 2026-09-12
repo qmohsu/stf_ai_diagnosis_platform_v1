@@ -34,11 +34,11 @@ for c in stf-v3-api stf-v3-worker; do
   # Podman prints e.g. "2026-09-12 23:05:12.123456789 +0800 HKT"; keep the
   # numeric offset, drop nanoseconds and the zone name so GNU date parses it.
   created="$(podman inspect -f '{{.Created}}' "$c" | sed -E 's/\.[0-9]+//' | awk '{print $1" "$2" "$3}')"
-  age_min=$(( ( $(date +%s) - $(date -d "$created" +%s) ) / 60 ))
-  if [ "$state" = "running" ] && [ "$age_min" -le "$MAX_AGE_MIN" ]; then
-    report "container $c fresh" 1 "running, created ${age_min} min ago"
+  age_sec=$(( $(date +%s) - $(date -d "$created" +%s) ))
+  if [ "$state" = "running" ] && [ "$age_sec" -le $(( MAX_AGE_MIN * 60 )) ]; then
+    report "container $c fresh" 1 "running, created ${age_sec}s ago"
   else
-    report "container $c fresh" 0 "state=$state, created ${age_min} min ago (limit ${MAX_AGE_MIN})"
+    report "container $c fresh" 0 "state=$state, created ${age_sec}s ago (limit ${MAX_AGE_MIN} min)"
   fi
 done
 

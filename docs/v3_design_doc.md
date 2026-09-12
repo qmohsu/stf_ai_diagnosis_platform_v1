@@ -2,8 +2,8 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | **v1.5（PROD-03：API 契约 v1 落盘，鉴权入口与分层定型）** |
-| 日期 | 2026-09-11 |
+| 版本 | **v1.6（PROD-04：V3 常驻上线、/v3/ 经 nginx 对外、CI）** |
+| 日期 | 2026-09-13 |
 | 作者 | Xiangzhu Yan |
 | 状态 | **已定稿** —— 开发计划 v1.1；代码设计蓝图 `docs/plans/2026-09-08-v3-code-design.md` v1.0 已通过（2026-09-11），M1 / PROD-02 开工 |
 
@@ -231,6 +231,7 @@ V3 第一版只做"点一下出诊断报告"。以下**明确不做**；每一�
 | v0.5 | 2026-09-01 | 交付物②完成并拍板：前端 = Next.js 15 + Tailwind v4 + shadcn/ui + TanStack Query（移动优先 + PWA）。新增编码约定：鉴权收敛为单一 can_access_vehicle 函数（为将来权限表预留） |
 | **v1.0** | 2026-09-01 | **定稿**：交付物③数据模型通过并并入 §1.8；三交付物齐 → 满足 G2 定稿标准。审计/会话双持久化定型（Runtime 产生 + Postgres 存 + 薄胶水回写）。进入代码设计阶段（PROD-XX） |
 | v1.1 | 2026-09-01 | 总架构图嵌入文档首部并确立**图文强制同步规则**（同一提交内更新图；图已同步） |
+| v1.6 | 2026-09-13 | PROD-04 交付：`stf-v3-api` / `stf-v3-worker` 常驻（独立 Compose 项目），nginx `/v3/` 路由（登录复用 auth 限流、SSE 参数预置），公网 `stf-diagnosis.dev/v3/` 可达（决策 D1），GitHub Actions CI（决策 D2），`deploy_check.sh` 部署核验，OpenAPI 契约 13 路径。部署拓扑变化不改架构框图，**图无需改动** |
 | v1.5 | 2026-09-11 | PROD-03 交付：API 契约 v1 `docs/api/v3_openapi.json`（12 路径，CI 比对）；鉴权唯一入口落在 `stf_v3.vehicles.service.can_access_vehicle()`（无权一律 404）；模块分层定型为 diagnosis → ingest → vehicles → auth → workshops（auth 高于 workshops，邀请码注册需建成员关系；workshops 无独立路由）；登录名 `username`。无架构变化，**图无需改动** |
 | v1.4 | 2026-09-11 | PROD-02 开工前决定：**Stage 1 不装 pgvector、不建 rag_chunks、不做向量化**（Agent 只读 Markdown 手册；向量表在 V2 已无人使用）；§1.8 知识库条目改写。**图已同步**（数据层去掉 pgvector 字样，知识库框改为"manuals 元数据 + Markdown 文件 · 无向量库"） |
 | v1.3 | 2026-09-11 | PROD-01 代码设计蓝图 v1.0 通过：§1.8 追加机制层表与字段（`vehicle_devices`、`obd_logs` 来源/VIN 核对列、队列关联列、`users.username`）与角色权限口径。**图已同步**（数据层框加 `vehicle_devices`，Jetson 框注明"每车设备凭证"，标题版本号） |

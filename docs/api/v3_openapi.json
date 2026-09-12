@@ -775,7 +775,7 @@
   "paths": {
     "/health": {
       "get": {
-        "description": "Liveness + DB reachability + queue backlog.",
+        "description": "Liveness + DB reachability + queue backlog + deployed commit.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
         "operationId": "health_health_get",
         "responses": {
           "200": {
@@ -975,6 +975,30 @@
         "tags": [
           "vehicles",
           "devices"
+        ]
+      }
+    },
+    "/v3/health": {
+      "get": {
+        "description": "Liveness + DB reachability + queue backlog + deployed commit.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
+        "operationId": "health_v3_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Health V3 Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "system"
         ]
       }
     },

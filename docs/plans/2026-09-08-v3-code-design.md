@@ -595,6 +595,8 @@ main_agent = Agent(model, deps_type=DiagDeps, output_type=DiagnosisReport,
 
 ## 9. 并存部署
 
+> **PROD-04 实施注记（2026-09-13）**：① podman-compose 必须带 `-p stf_v3`，否则项目名取目录名 `infra`，V3 容器会进 V1/V2 的同一个 pod；② `infra/nginx/nginx.conf` 是单文件 bind 挂载，`git pull` 后容器内仍是旧 inode，改配置要重建 `stf-nginx` 容器而非 reload；③ 镜像以 `GIT_COMMIT` 构建参数打 `org.opencontainers.image.revision` 标签，`deploy_check.sh` 用它比对 checkout；④ 冒烟在 8003 + 一次性库上跑，正式库零残留。
+
 `infra/docker-compose.v3.yml`（独立文件，不改动现有 compose）：
 
 | 服务 | 镜像 | 端口（PolyU host 网络） | 说明 |

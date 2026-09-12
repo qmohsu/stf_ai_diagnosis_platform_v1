@@ -8,7 +8,7 @@
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.3（PROD-03 DONE；§2.4 测试策略；OpenAPI 契约 v1 落盘） |
+| **版本** | v1.4（PROD-04 DONE：V3 长期在线、/v3/ 对外可达、GitHub CI、部署核验） |
 | **作者** | Xiangzhu Yan |
 | **最后更新** | 2026-09-11 |
 
@@ -204,6 +204,11 @@ Status: **✅ DONE**（2026-09-11，分支 `prod-03-backend-skeleton`；服务�
 
 #### PROD-04 — 并存部署、CI 与迁移性检查
 
+Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lavish/prod04_plan_review.html` D1 = 对外可达、D2 = GitHub Actions）
+**做了**：`stf-v3-api` + `stf-v3-worker` 常驻（独立 Compose 项目 `-p stf_v3`，镜像带 git commit 标签；worker 跑空的 procrastinate 应用 + 每分钟心跳）；nginx 新增 `upstream api_v3` + `/v3/auth/`（复用 auth 限流）+ `/v3/`（SSE 参数），V1/V2 块未动；`/v3/health` 别名（含 commit）；`.github/workflows/v3.yml` 四个 job（unit+contract、integration 临时 Postgres 15、portable、unbound 每晚）；`scripts/deploy_check.sh`（5 项）、`check_portable.sh`、`check_unbound.sh`；冒烟改走 `/v3/health` 并在 8003 + 一次性库上跑；CLAUDE.md 新增 V3 部署段；服务器 `infra/.env` 补三项密钥（不入库）。
+**服务器结果**：deploy_check 5/5 PASS；失败演练：commit 不匹配 FAIL（推脚本未重建时自然出现）、worker 停止 FAIL（心跳 + 容器状态）；`/v3/health`、`/v3/docs` 服务器内与公网（stf-diagnosis.dev）均 200，V1 `/health` 与旧前端 200；API 重启 3 s 恢复；冒烟 23/23 PASS（8003 + stf_v3_test），正式库 smoke 残留 0；只读探测 openapi 200 / 错密码 400 / 无 token 401；日志无密钥；隔离回归 PASS。
+**抓到的问题（已修）**：① podman-compose 默认项目名 = 目录名 `infra`，V3 被放进 V1/V2 同一个 pod，`down` 试图拆共享 pod → 一律 `-p stf_v3`；② nginx.conf 是单文件 bind 挂载，`git pull` 换 inode 后容器内仍是旧文件，`nginx -s reload` 无效 → 改配置必须重建 nginx 容器；③ deploy_check 容器年龄计算丢时区 → 修。
+
 **目标**：V3 后端在 PolyU 服务器上与 V1/V2 并存运行；每个 PR 自动跑测试和两条迁移性检查。
 **方法**：`infra/docker-compose.v3.yml`（`stf-v3-api`、`stf-v3-worker`，独立端口）+ nginx 路由前缀；共用 Postgres 实例与 vLLM（配置连接）；GitHub Actions：pytest（离线）+ OpenAPI diff + 可迁出检查（拷贝两目录到空目录跑测试）+ 不绑死检查（临时检出删除老目录后构建）；部署步骤追加到 CLAUDE.md。
 **验收**：服务器上 V1/V2/V3 健康检查同时通过；Cloudflare 隧道能访问 V3 `/health`；CI 四项在 PR 上绿灯。
@@ -312,6 +317,7 @@ Status: **✅ DONE**（2026-09-11，分支 `prod-03-backend-skeleton`；服务�
 | 版本 | 日期 | 变更 |
 |---|---|---|
 | v0.1 | 2026-09-07 | 初稿：7 个里程碑、15 张 PROD ticket（PROD-01 到验收级，其余到目标/方法/验收层）、非目标清单草案、9 项待决策 |
+| v1.4 | 2026-09-13 | PROD-04 DONE（V3 常驻 + 对外可达 + CI + 部署核验；三个部署坑记入 CLAUDE.md）。设计文档同步至 v1.6（nginx 路由属部署拓扑，图无需改动） |
 | v1.3 | 2026-09-11 | PROD-03 DONE（FastAPI 骨架、fastapi-users + 邀请码、workshop / 车档 / 设备凭证 API、OpenAPI 契约 v1 `docs/api/v3_openapi.json`）；新增 §2.4 测试策略（八类测试、CI 两层）；DoD 加"测试补齐 + 挑战清单"；新增可复用脚本 `smoke_e2e.py`、`isolation_check.sh`、`export_openapi.py`、`create_workshop.py`。设计文档同步至 v1.5（无架构变化，图无需改动） |
 | v1.2 | 2026-09-11 | PROD-02 开工（分支 `prod-02-db-migration`）：**Stage 1 去掉 pgvector / rag_chunks / 向量化**（§1.1、PROD-02、PROD-06 改写；§4 新增"向量检索 / RAG"暂缓项与回头条件）。设计文档同步至 v1.4，架构图已同步 |
 | v1.1 | 2026-09-11 | PROD-01 DONE：代码设计蓝图 v1.0 评审通过；M0 状态更新；§2.1 M0 改为"已完成"。设计文档同步至 v1.3（机制层表 `vehicle_devices` 等），架构图已同步 |
