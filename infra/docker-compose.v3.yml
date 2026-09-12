@@ -2,18 +2,26 @@
 # Shares ONLY infrastructure with V1/V2 (Postgres instance, vLLM, nginx),
 # all via configuration.  Never merge this into docker-compose.yml.
 #
-#   podman-compose -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml build
+# Build (GIT_COMMIT is baked into the image label for deploy_check.sh):
+#   GIT_COMMIT=$(git rev-parse HEAD) podman-compose \
+#     -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml build
+# Migrate (owner role):
 #   podman-compose -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml \
 #     run --rm stf-v3-migrate alembic upgrade head
-#   podman-compose -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api
+# Run (runtime role):
+#   podman-compose -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml \
+#     up -d stf-v3-api stf-v3-worker
 #
-# PROD-04 adds stf-v3-worker and the nginx /v3/ route.
+# Variables come from infra/.env on the server (never committed):
+#   STF_V3_DATABASE_URL, STF_V3_APP_DATABASE_URL, STF_V3_JWT_SECRET
 
 services:
   stf-v3-api:
     build:
       context: ../stf_v3
       dockerfile: Dockerfile
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     image: stf-v3:local
     container_name: stf-v3-api
     environment:
@@ -28,6 +36,16 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    restart: unless-stopped
+
+  stf-v3-worker:
+    image: stf-v3:local
+    container_name: stf-v3-worker
+    command: ["procrastinate", "--app", "stf_v3.jobs.app.app", "worker",
+              "-q", "default", "--concurrency", "2"]
+    environment:
+      STF_V3_DATABASE_URL: ${STF_V3_APP_DATABASE_URL:?set STF_V3_APP_DATABASE_URL}
+      STF_V3_LOG_LEVEL: ${STF_V3_LOG_LEVEL:-INFO}
     restart: unless-stopped
 
   stf-v3-migrate:

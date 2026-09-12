@@ -1,0 +1,93 @@
+# V3 CI (dev plan §2.4, code design §10).  Triggers only on V3 paths so
+# V1/V2 commits are unaffected.  Secrets: none — the integration job uses a
+# throwaway Postgres with a dummy password.
+name: v3
+
+on:
+  pull_request:
+    paths:
+      - "stf_v3/**"
+      - "infra/docker-compose.v3*"
+      - "docs/api/**"
+      - ".github/workflows/v3.yml"
+  push:
+    branches: [main]
+    paths:
+      - "stf_v3/**"
+      - "infra/docker-compose.v3*"
+      - "docs/api/**"
+      - ".github/workflows/v3.yml"
+  schedule:
+    - cron: "0 19 * * *"   # nightly 03:00 HKT: unbound check
+  workflow_dispatch:
+
+jobs:
+  unit-contract:
+    name: unit + contract (offline)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -e "stf_v3[dev]"
+      - name: offline pytest (DB tests skip)
+        run: pytest -q -p no:cacheprovider stf_v3/tests
+      - name: import-linter contracts (no V1/V2 imports; layer direction)
+        working-directory: stf_v3
+        run: lint-imports
+      - name: OpenAPI contract up to date
+        run: python stf_v3/scripts/export_openapi.py --check
+
+  integration:
+    name: integration (throwaway Postgres 15)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: stf_v3
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: stf_v3_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U stf_v3" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      STF_V3_TEST_DATABASE_URL: postgresql+psycopg://stf_v3:ci@localhost:5432/stf_v3_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -e "stf_v3[dev]"
+      - name: create runtime role (migration grants to it)
+        run: |
+          sudo apt-get install -y -q postgresql-client >/dev/null
+          PGPASSWORD=ci psql -h localhost -U stf_v3 -d stf_v3_test \
+            -c "CREATE ROLE stf_v3_app LOGIN PASSWORD 'ci'"
+      - name: migration round-trip + API tests
+        working-directory: stf_v3
+        run: pytest -q -p no:cacheprovider
+      - name: schema acceptance checks
+        working-directory: stf_v3
+        run: |
+          STF_V3_DATABASE_URL="$STF_V3_TEST_DATABASE_URL" alembic upgrade head
+          python scripts/check_schema.py --url "$STF_V3_TEST_DATABASE_URL" \
+            --app-url postgresql+psycopg://stf_v3_app:ci@localhost:5432/stf_v3_test
+
+  portable:
+    name: portable (D3 ①)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: bash stf_v3/scripts/check_portable.sh
+
+  unbound:
+    name: unbound (D3 ②, nightly)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - run: bash stf_v3/scripts/check_unbound.sh

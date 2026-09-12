@@ -48,8 +48,13 @@ app.include_router(vehicles_router)
 
 
 @app.get("/health", tags=["system"])
+@app.get("/v3/health", tags=["system"])
 async def health() -> Dict[str, Any]:
-    """Liveness + DB reachability + queue backlog."""
+    """Liveness + DB reachability + queue backlog + deployed commit.
+
+    Served at both ``/health`` (container healthcheck) and ``/v3/health``
+    (through nginx, where bare ``/health`` belongs to V1).
+    """
     async with engine.connect() as conn:
         await conn.execute(text("SELECT 1"))
         backlog = (
@@ -57,4 +62,9 @@ async def health() -> Dict[str, Any]:
                 text("SELECT count(*) FROM procrastinate_jobs WHERE status = 'todo'")
             )
         ).scalar()
-    return {"status": "ok", "db": "ok", "queue_backlog": backlog}
+    return {
+        "status": "ok",
+        "db": "ok",
+        "queue_backlog": backlog,
+        "commit": settings.git_commit,
+    }

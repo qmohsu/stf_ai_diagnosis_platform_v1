@@ -19,6 +19,12 @@ COPY alembic ./alembic
 COPY scripts ./scripts
 COPY tests ./tests
 
+# Build-time commit stamp, read by deploy_check.sh and reported by /health.
+ARG GIT_COMMIT=unknown
+ENV STF_V3_GIT_COMMIT=${GIT_COMMIT}
+LABEL org.opencontainers.image.revision=${GIT_COMMIT} \
+      org.opencontainers.image.title="stf-v3"
+
 EXPOSE 8002
 # API by default; the worker container overrides with `procrastinate ... worker`.
 CMD ["uvicorn", "stf_v3.main:app", "--host", "0.0.0.0", "--port", "8002"]

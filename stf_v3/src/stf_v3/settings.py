@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     jwt_lifetime_seconds: int = 12 * 3600
     log_level: str = "INFO"
     environment: str = "dev"
+    git_commit: str = "unknown"   # baked into the image by the Dockerfile
 
 
 settings = Settings()
