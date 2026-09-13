@@ -189,7 +189,7 @@ Workshop 本身由 `scripts/create_workshop.py` 建（Stage 1 无超级管理员
 
 | 方法 | 路径 | 谁能调 | 说明 |
 |---|---|---|---|
-| POST | `/v3/vehicles/{id}/logs` | 成员 | multipart `file`（或 raw body + `X-Filename`）；嗅探格式 ∈ {tsv, yamaha} 否则 422 `unsupported_format`；sha256 重复 → 200 返回已有记录 + `duplicate: true`；成功 201 `{log_id, format, size_bytes, vin_from_log, vin_mismatch}` |
+| POST | `/v3/vehicles/{id}/logs` | 成员 | multipart `file`（**PROD-05 实现：只收 multipart，不做 raw body 变体**）；> 50 MB → 413 `file_too_large`；嗅探格式 ∈ {tsv, yamaha} 否则 422 `unsupported_format`；sha256 重复 → 200 返回已有记录 + `duplicate: true`；文件 VIN ≠ 车档 VIN → **422 `vin_mismatch`，不落盘不入库（决策 D2，2026-09-13）**；成功 201 = `ObdLogOut` + `duplicate` |
 | POST | `/v3/ingest/device` | 持有效 `X-Device-Token` 的设备 | 同上，车由 token 决定（§5）；token 无效/吊销 → 401 |
 | GET | `/v3/vehicles/{id}/logs` | 成员 | 列表 |
 | GET | `/v3/logs/{id}` | 成员 | 元数据 |
@@ -442,8 +442,11 @@ cancel_requested`、`manuals.job_id`、`invite_codes.workshop_id / role`。
    `sha256` → 查 `vehicle_devices`（未吊销）→ 得到 `vehicle_id` → 走与网页上传**同一个**
    `ingest.service.store_log()`。设备上**不存用户密码**，也不用手打车牌 / VIN。
 4. **VIN 核对**：Jetson 原生 TSV 有 VIN 列，嗅探时读出 `vin_from_log`；与车档 `vin`
-   不一致 → 照常入库但 `vin_mismatch = TRUE`，structlog `warning`，车辆页显示角标。
-   Yamaha CSV 无 VIN → `vin_from_log` 为空、不核对。
+   不一致 → **拒收 422 `vin_mismatch`，不落盘不入库**，structlog `warning`
+   `ingest.vin_mismatch`，错误信息指出文件 VIN 属于同车队哪台车（决策 D2，
+   2026-09-13；原设计"照常入库 + 角标"作废，`vin_mismatch` 列保留但恒为 FALSE）。
+   Yamaha CSV 无 VIN → `vin_from_log` 为空、不核对；若头部 `# vehicle_id:` 是合法
+   17 位 VIN 则同样核对。两个入口（成员 / 设备）走同一个 `ingest.service.store_log()`。
 5. 吊销 = `revoked_at` 置值；旧 token 立即 401。丢失设备就吊销重发。
 
 **为什么不用车牌参数**：手打会错；车牌会换（D2 已把它降为标签）。
@@ -663,7 +666,7 @@ main_agent = Agent(model, deps_type=DiagDeps, output_type=DiagnosisReport,
 | R4 | token 事件按段聚合的粒度影响前端流式体验 | 先 1 s / 段落，前端归属定了再调 |
 | R5 | ~~`users.email` 作为登录名~~ | 已解决（评审确认②）：登录用 `username`，email 可空 |
 | O1 | 前端归属（D6） | 下次会议 |
-| O2 | Yamaha CSV 的 `recorded_start/end` 能否从文件读出 | PROD-05 嗅探时确认，读不到置空 |
+| O2 | ~~Yamaha CSV 的 `recorded_start/end` 能否从文件读出~~ | 已解决（PROD-05，2026-09-13）：头部 `# Start:`、尾部 `# End:` 均可读；缺尾部时取最后一行数据时间戳；都读不到置空 |
 
 ---
 

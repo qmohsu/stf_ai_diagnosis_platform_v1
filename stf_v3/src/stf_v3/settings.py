@@ -27,6 +27,9 @@ class Settings(BaseSettings):
         log_level: structlog / uvicorn log level.
         environment: ``dev`` | ``test`` | ``prod``; ``prod`` enforces a
             non-default JWT secret.
+        obd_log_storage_path: Root directory for uploaded raw logs
+            (``<root>/<vehicle_id>/<log_id>.<ext>``).
+        max_upload_bytes: Reject uploads larger than this (413).
     """
 
     model_config = SettingsConfigDict(
@@ -42,6 +45,10 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     environment: str = "dev"
     git_commit: str = "unknown"   # baked into the image by the Dockerfile
+    # PROD-05: raw log storage root (a named volume in Compose) and the
+    # per-file upload ceiling (50 MB; real logs are KB–MB).
+    obd_log_storage_path: str = "./data/obd_logs"
+    max_upload_bytes: int = 50 * 1024 * 1024
 
 
 settings = Settings()

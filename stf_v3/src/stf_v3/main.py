@@ -13,6 +13,8 @@ from sqlalchemy import text
 from stf_v3.auth.router import router as auth_router
 from stf_v3.db import engine
 from stf_v3.errors import install_error_handlers
+from stf_v3.ingest.router import router as ingest_router
+from stf_v3.ingest.storage import LogStorage
 from stf_v3.logging_config import configure_logging
 from stf_v3.settings import settings
 from stf_v3.vehicles.router import router as vehicles_router
@@ -28,7 +30,16 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         raise RuntimeError("STF_V3_JWT_SECRET must be set in prod")
     async with engine.connect() as conn:
         await conn.execute(text("SELECT 1"))
-    log.info("startup", environment=settings.environment)
+    # PROD-05: the raw-log root must exist and be writable, or uploads
+    # would fail at first use instead of at startup.
+    storage_root = LogStorage(settings.obd_log_storage_path).root
+    storage_root.mkdir(parents=True, exist_ok=True)
+    probe = storage_root / ".writable"
+    probe.touch()
+    probe.unlink()
+    log.info(
+        "startup", environment=settings.environment, storage=str(storage_root)
+    )
     yield
     await engine.dispose()
 
@@ -45,6 +56,7 @@ app = FastAPI(
 install_error_handlers(app)
 app.include_router(auth_router)
 app.include_router(vehicles_router)
+app.include_router(ingest_router)
 
 
 @app.get("/health", tags=["system"])

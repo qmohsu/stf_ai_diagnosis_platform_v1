@@ -15,6 +15,8 @@ Author: Xiangzhu Yan
 """
 
 import argparse
+import hashlib
+import pathlib
 import sys
 import time
 from typing import Any, Dict, List, Optional
@@ -22,6 +24,9 @@ from typing import Any, Dict, List, Optional
 import httpx
 
 _FAILS: List[str] = []
+# Trimmed sample logs with fake VINs (also baked into the image under
+# /app/tests/fixtures, so the script works inside the container).
+_FIXTURES = pathlib.Path(__file__).resolve().parents[1] / "tests" / "fixtures"
 
 
 def _step(name: str, ok: bool, detail: str = "") -> None:
@@ -120,10 +125,48 @@ def run(base_url: str, invite_code: str) -> int:
         _step("manager issues device credential (token shown once)",
               r.status_code == 201 and len(r.json().get("token", "")) > 20)
         device_id = r.json().get("id") if r.status_code == 201 else None
+        device_token = r.json().get("token", "") if r.status_code == 201 else ""
 
         r = c.get(f"/v3/vehicles/{vehicle_id}/devices", headers=_auth(token_t))
         _step("device list hides token", r.status_code == 200
               and "token" not in r.json()[0])
+
+        # ---- PROD-05: upload / VIN check / device upload / download ----
+        tsv_ok = (_FIXTURES / "jetson_tsv_ok.tsv").read_bytes()
+        tsv_other = (_FIXTURES / "jetson_tsv_other_vin.tsv").read_bytes()
+        yamaha = (_FIXTURES / "yamaha_dual.csv").read_bytes()
+        r = c.post(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t),
+                   files={"file": ("trip.tsv", tsv_ok)})
+        _step("technician uploads Jetson TSV (201, VIN read)", r.status_code == 201
+              and r.json().get("vin_from_log") == "JHMGK5830HX202404", r.text[:120])
+        log_id = r.json().get("id") if r.status_code == 201 else None
+        r = c.post(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t),
+                   files={"file": ("y.csv", yamaha)})
+        _step("upload Yamaha CSV (201, no VIN)", r.status_code == 201
+              and r.json().get("format") == "yamaha", r.text[:120])
+        r = c.post(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t),
+                   files={"file": ("x.json", b'{"a": 1}')})
+        _step("unsupported format rejected (422)", r.status_code == 422
+              and r.json().get("code") == "unsupported_format")
+        r = c.post(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t),
+                   files={"file": ("again.tsv", tsv_ok)})
+        _step("same file again → 200 duplicate", r.status_code == 200
+              and r.json().get("duplicate") is True and r.json().get("id") == log_id)
+        r = c.post(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t),
+                   files={"file": ("other.tsv", tsv_other)})
+        _step("VIN mismatch rejected (422, D2)", r.status_code == 422
+              and r.json().get("code") == "vin_mismatch", r.text[:120])
+        r = c.post("/v3/ingest/device", headers={"X-Device-Token": device_token},
+                   files={"file": ("device.csv", yamaha + b"# smoke device copy\n")})
+        _step("device upload with token (201, source=device)", r.status_code == 201
+              and r.json().get("source") == "device", r.text[:120])
+        r = c.get(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t))
+        _step("log list shows 3 uploads", r.status_code == 200 and len(r.json()) == 3)
+        if log_id:
+            r = c.get(f"/v3/logs/{log_id}/raw", headers=_auth(token_t))
+            _step("download returns identical bytes", r.status_code == 200
+                  and hashlib.sha256(r.content).hexdigest()
+                  == hashlib.sha256(tsv_ok).hexdigest())
 
         r = c.delete(f"/v3/vehicles/{vehicle_id}", headers=_auth(token_t))
         _step("technician cannot delete vehicle (403)", r.status_code == 403)
@@ -140,6 +183,8 @@ def run(base_url: str, invite_code: str) -> int:
         _step("manager soft-deletes vehicle", r.status_code == 204)
         r = c.get(f"/v3/vehicles/{vehicle_id}", headers=_auth(token_m))
         _step("deleted vehicle is gone (404)", r.status_code == 404)
+        r = c.get(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_m))
+        _step("deleted vehicle's logs hidden (404)", r.status_code == 404)
 
         r = c.get("/v3/openapi.json")
         _step("OpenAPI served", r.status_code == 200 and "/v3/auth/register" in r.text)

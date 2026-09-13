@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Post-deploy verification for V3 on the PolyU server (code design §10).
-# Answers "is what is running the thing I meant to deploy?"  Five checks;
-# exits non-zero if any fails.
+# Answers "is what is running the thing I meant to deploy?"  Six checks
+# (containers fresh, image commit, alembic head, /v3/health via nginx,
+# worker heartbeat, storage volume writable); exits non-zero if any fails.
 #
 #   bash stf_v3/scripts/deploy_check.sh [--max-age-min N] [--expect-commit SHA]
 #
@@ -77,6 +78,15 @@ if [ "${beats:-0}" -ge 1 ]; then
   report "worker heartbeat" 1 "$beats heartbeat(s) in last 3 min"
 else
   report "worker heartbeat" 0 "no heartbeat in last 3 min"
+fi
+
+# 6. raw-log storage volume mounted and writable (PROD-05)
+STORAGE_PATH="${STORAGE_PATH:-/app/data/obd_logs}"
+mount_src="$(podman inspect -f '{{range .Mounts}}{{if eq .Destination "'"$STORAGE_PATH"'"}}{{.Name}}{{end}}{{end}}' stf-v3-api 2>/dev/null)"
+if [ -n "$mount_src" ] && podman exec stf-v3-api sh -c "touch $STORAGE_PATH/.deploy_check && rm $STORAGE_PATH/.deploy_check" >/dev/null 2>&1; then
+  report "storage volume writable" 1 "volume $mount_src at $STORAGE_PATH"
+else
+  report "storage volume writable" 0 "mount=${mount_src:-<none>} at $STORAGE_PATH"
 fi
 
 if [ "$FAILS" -eq 0 ]; then echo "DEPLOY CHECK ALL PASS"; exit 0; fi

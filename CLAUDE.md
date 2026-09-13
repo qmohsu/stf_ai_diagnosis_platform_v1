@@ -297,6 +297,9 @@ V3 runs beside V1/V2 as two long-running containers (`stf-v3-api` on
 It never touches the V1/V2 containers or database. Variables live only in
 the server's `infra/.env` (`STF_V3_DATABASE_URL`, `STF_V3_APP_DATABASE_URL`,
 `STF_V3_JWT_SECRET`); the compose file refuses to start without them.
+Raw uploaded logs live in the named volume `stf_v3_obd_logs` (mounted at
+`/app/data/obd_logs` in api + worker, PROD-05) — separate from V1's
+`diagnostic_api_obd_logs`; `deploy_check.sh` check 6 proves it is writable.
 
 **Branch verification (every V3 PR)** — run on the server:
 ```
@@ -306,7 +309,7 @@ cd infra && GIT_COMMIT=$(git rev-parse HEAD) ~/.local/bin/podman-compose -p stf_
 ~/.local/bin/podman-compose -p stf_v3 -f infra/docker-compose.v3.yml -f infra/docker-compose.v3.polyu.yml run --rm stf-v3-migrate alembic upgrade head
 cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down &&   ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker && cd ..
 podman exec stf-nginx nginx -t && podman exec stf-nginx nginx -s reload   # only if nginx.conf changed
-bash stf_v3/scripts/deploy_check.sh                                    # 5 checks, exit 1 on any failure
+bash stf_v3/scripts/deploy_check.sh                                    # 6 checks, exit 1 on any failure
 # E2E smoke on a throwaway DB + port 8003 (keeps the real stf_v3 DB clean):
 #   create_database.sh stf_v3_test → alembic upgrade → podman run -d --name stf-v3-api-test --network host #   -e STF_V3_DATABASE_URL=<app url to stf_v3_test> -e STF_V3_JWT_SECRET=<random> stf-v3:local #   uvicorn stf_v3.main:app --host 127.0.0.1 --port 8003 → create_workshop.py → smoke_e2e.py --base-url http://127.0.0.1:8003
 #   → rm container, DROP DATABASE stf_v3_test
