@@ -29,6 +29,9 @@ services:
       STF_V3_JWT_SECRET: ${STF_V3_JWT_SECRET:?set STF_V3_JWT_SECRET}
       STF_V3_ENVIRONMENT: ${STF_V3_ENVIRONMENT:-prod}
       STF_V3_LOG_LEVEL: ${STF_V3_LOG_LEVEL:-INFO}
+      STF_V3_OBD_LOG_STORAGE_PATH: /app/data/obd_logs
+    volumes:
+      - obd_logs:/app/data/obd_logs   # PROD-05: raw uploads, <vehicle_id>/<log_id>.<ext>
     ports:
       - "${BIND_HOST:-127.0.0.1}:${STF_V3_API_PORT:-8002}:8002"
     healthcheck:
@@ -46,6 +49,9 @@ services:
     environment:
       STF_V3_DATABASE_URL: ${STF_V3_APP_DATABASE_URL:?set STF_V3_APP_DATABASE_URL}
       STF_V3_LOG_LEVEL: ${STF_V3_LOG_LEVEL:-INFO}
+      STF_V3_OBD_LOG_STORAGE_PATH: /app/data/obd_logs
+    volumes:
+      - obd_logs:/app/data/obd_logs   # diagnosis jobs read raw logs here (PROD-08)
     restart: unless-stopped
 
   stf-v3-migrate:
@@ -55,3 +61,8 @@ services:
       STF_V3_DATABASE_URL: ${STF_V3_DATABASE_URL:?set STF_V3_DATABASE_URL}
     command: ["alembic", "current"]
     profiles: ["migrate"]
+
+# Named volume; with `-p stf_v3` podman-compose names it `stf_v3_obd_logs`.
+# Distinct from V1's `diagnostic_api_obd_logs` (constraint B: never shared).
+volumes:
+  obd_logs:

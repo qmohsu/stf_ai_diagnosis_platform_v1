@@ -2,7 +2,7 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | **v1.6（PROD-04：V3 常驻上线、/v3/ 经 nginx 对外、CI）** |
+| 版本 | **v1.7（PROD-05：上传薄层、设备上传、VIN 不一致拒收、文件存储卷）** |
 | 日期 | 2026-09-13 |
 | 作者 | Xiangzhu Yan |
 | 状态 | **已定稿** —— 开发计划 v1.1；代码设计蓝图 `docs/plans/2026-09-08-v3-code-design.md` v1.0 已通过（2026-09-11），M1 / PROD-02 开工 |
@@ -136,8 +136,11 @@ S4 系统主动触发。
   (vehicle_id, sha256) 唯一防重）。**数据归属不变量（D8）：
   `vehicle_id` NOT NULL，每一笔原始数据必须绑定唯一车档，任何转存 /
   导出 / 迁移以此外键为准；不允许 "V-UNKNOWN"。** 日志内读到 VIN 时
-  与车档核对，不一致告警。设备如何表明"我是哪台车"属实现细节，
-  在 PROD-01 代码设计中定。
+  与车档核对，**不一致直接拒收（422 `vin_mismatch`，不落盘不入库；
+  决策 D2，2026-09-13，PROD-05）**——错车的数据永远进不了库；文件里
+  读不到 VIN（Yamaha 常见）则不核对，归属仍由车档保证。设备如何表明
+  "我是哪台车"见蓝图 §5（设备凭证）。原始字节存独立具名卷
+  `stf_v3_obd_logs`，路径 `<vehicle_id>/<log_id>.<ext>`（目录名即车）。
 - `diagnosis_conversations`（**容器**；引用 vehicle + 本次依据的
   obd_log；S2 追问零迁移）
 - `messages`（Pydantic AI 消息原样 JSONB 序列化）
@@ -231,6 +234,7 @@ V3 第一版只做"点一下出诊断报告"。以下**明确不做**；每一�
 | v0.5 | 2026-09-01 | 交付物②完成并拍板：前端 = Next.js 15 + Tailwind v4 + shadcn/ui + TanStack Query（移动优先 + PWA）。新增编码约定：鉴权收敛为单一 can_access_vehicle 函数（为将来权限表预留） |
 | **v1.0** | 2026-09-01 | **定稿**：交付物③数据模型通过并并入 §1.8；三交付物齐 → 满足 G2 定稿标准。审计/会话双持久化定型（Runtime 产生 + Postgres 存 + 薄胶水回写）。进入代码设计阶段（PROD-XX） |
 | v1.1 | 2026-09-01 | 总架构图嵌入文档首部并确立**图文强制同步规则**（同一提交内更新图；图已同步） |
+| v1.7 | 2026-09-13 | PROD-05 交付：`ingest` 模块上线（成员上传 `POST /v3/vehicles/{id}/logs`、设备上传 `POST /v3/ingest/device` + `X-Device-Token`、列表 / 元数据 / 原字节下载），格式嗅探仅 tsv / yamaha，sha256 按车去重，原始字节存独立具名卷 `stf_v3_obd_logs`；**§1.8 `obd_logs` 口径改动：VIN 不一致由"入库 + 告警"改为拒收**（决策 D2）；真 Jetson 切换与备份分别推后（D1、D3）。OpenAPI 契约 18 路径。无架构变化，**图无需改动** |
 | v1.6 | 2026-09-13 | PROD-04 交付：`stf-v3-api` / `stf-v3-worker` 常驻（独立 Compose 项目），nginx `/v3/` 路由（登录复用 auth 限流、SSE 参数预置），公网 `stf-diagnosis.dev/v3/` 可达（决策 D1），GitHub Actions CI（决策 D2），`deploy_check.sh` 部署核验，OpenAPI 契约 13 路径。部署拓扑变化不改架构框图，**图无需改动** |
 | v1.5 | 2026-09-11 | PROD-03 交付：API 契约 v1 `docs/api/v3_openapi.json`（12 路径，CI 比对）；鉴权唯一入口落在 `stf_v3.vehicles.service.can_access_vehicle()`（无权一律 404）；模块分层定型为 diagnosis → ingest → vehicles → auth → workshops（auth 高于 workshops，邀请码注册需建成员关系；workshops 无独立路由）；登录名 `username`。无架构变化，**图无需改动** |
 | v1.4 | 2026-09-11 | PROD-02 开工前决定：**Stage 1 不装 pgvector、不建 rag_chunks、不做向量化**（Agent 只读 Markdown 手册；向量表在 V2 已无人使用）；§1.8 知识库条目改写。**图已同步**（数据层去掉 pgvector 字样，知识库框改为"manuals 元数据 + Markdown 文件 · 无向量库"） |

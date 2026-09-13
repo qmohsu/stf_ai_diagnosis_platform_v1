@@ -24,6 +24,8 @@ collect() {
      UNION ALL SELECT 'harness_event_log='||count(*) FROM harness_event_log
      UNION ALL SELECT 'rag_chunks='||count(*) FROM rag_chunks
      UNION ALL SELECT 'tables='||count(*) FROM pg_tables WHERE schemaname='public'"
+  # PROD-05: V3 has its own log volume; V1's must keep exactly its files.
+  echo "v1_obd_log_files=$(podman exec "$API_CONTAINER" sh -c 'find /app/data/obd_logs -type f 2>/dev/null | wc -l' | tr -d ' ')"
   echo "health_v12=$(curl -sf http://127.0.0.1:8001/health | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')"
   echo "nginx=$(curl -sf -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/health)"
 }

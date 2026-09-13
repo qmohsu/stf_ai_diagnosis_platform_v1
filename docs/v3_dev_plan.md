@@ -8,9 +8,9 @@
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.4（PROD-04 DONE：V3 长期在线、/v3/ 对外可达、GitHub CI、部署核验） |
+| **版本** | v1.5（PROD-05 DONE：上传薄层、设备上传、VIN 不一致拒收、文件存储卷） |
 | **作者** | Xiangzhu Yan |
-| **最后更新** | 2026-09-11 |
+| **最后更新** | 2026-09-13 |
 
 ## 0. 本计划的定位
 
@@ -215,11 +215,14 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 
 ### 3.3 M2 — 数据入口
 
-#### PROD-05 — 上传薄层与文件存储
+#### PROD-05 — 上传薄层与文件存储 — **DONE（2026-09-13，PR #243）**
 
 **目标**：日志文件能上传入库并绑定车档，不触发诊断。
-**方法**：`ingest` 模块：上传端点挂在车辆之下；格式嗅探（仅 tsv / yamaha，其余 422）、sha256、`(vehicle_id, sha256)` 唯一、原始字节落文件存储、`obd_logs` 记录；日志内读到 VIN 时与车档核对，不一致记告警。
-**验收**：两种格式上传成功并可下载原字节；第三种格式 422；同文件二次上传返回已存在；上传后 `diagnosis_conversations` 无新增行；每条 `obd_logs` 都能 join 到车档；VIN 不一致的日志有告警记录。
+**方法**：`ingest` 模块：上传端点挂在车辆之下；格式嗅探（仅 tsv / yamaha，其余 422）、sha256、`(vehicle_id, sha256)` 唯一、原始字节落文件存储、`obd_logs` 记录；日志内读到 VIN 时与车档核对，**不一致直接拒收 422 `vin_mismatch`、不落盘不入库**（决策 D2，2026-09-13：原"照常入库 + 告警"改为拒收，错车数据永远进不了库；错误信息指出文件 VIN 对应同车队哪台车）。
+**验收**：两种格式上传成功并可下载原字节；第三种格式 422；同文件二次上传返回已存在；上传后 `diagnosis_conversations` 无新增行；每条 `obd_logs` 都能 join 到车档；VIN 不一致的日志被拒且有 `ingest.vin_mismatch` 告警日志。
+**开工前决策（Lavish `.lavish/prod05_plan_review.html`，2026-09-13）**：D1 本轮不碰真 Jetson（curl 模拟设备验收；Jetson 双推待 PROD-06 后单开小 ticket）；D2 VIN 不一致拒收；D3 备份按原计划等 PROD-15（此前 V3 只装测试数据）。
+**实现**：`stf_v3/src/stf_v3/ingest/{parsers/,schemas,storage,service,router}.py`；5 个端点（成员上传 / 设备上传 `X-Device-Token` / 列表 / 元数据 / 原字节下载）；解析器从 V2 复制（`jetson_tsv.py`、`yamaha_csv.py`，去 VIN 假名化，只嗅探前 64 行；Yamaha 判定收紧为首行 `# Yamaha Dual`）；存储 `<卷>/<vehicle_id>/<log_id>.<ext>`，具名卷 `stf_v3_obd_logs`（api + worker 挂载）；单文件上限 50 MB（413）；只收 multipart；删车不删文件；**无新迁移**。蓝图 O2 已解：Yamaha 起止时间取 `# Start:` / `# End:` 行。
+**测试**：`test_unit_ingest.py` 13 个（嗅探 / 解析器 / 存储 / 反例）、`test_api_ingest.py` 11 个（两格式、422、重复、413、非成员 404、D2 拒收两入口、设备 token 三种 401、下载比对、删车 404、归属不变量）；夹具 `tests/fixtures/`（假 VIN，≤ 40 行）；`smoke_e2e.py` 23 → 32 步；`deploy_check.sh` 第 6 项（存储卷可写）；`isolation_check.sh` 快照加 V1 日志卷文件数；OpenAPI 13 → 18 路径。
 
 #### PROD-06 — 知识库拷贝与 jobs 队列
 
@@ -317,6 +320,7 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 | 版本 | 日期 | 变更 |
 |---|---|---|
 | v0.1 | 2026-09-07 | 初稿：7 个里程碑、15 张 PROD ticket（PROD-01 到验收级，其余到目标/方法/验收层）、非目标清单草案、9 项待决策 |
+| v1.5 | 2026-09-13 | PROD-05 DONE（`ingest` 模块：成员 / 设备上传、格式嗅探、sha256 去重、文件存储卷、VIN 核对）。开工前决策 D1–D3：不碰真 Jetson、**VIN 不一致改为拒收**（验收条款随之改写）、备份等 PROD-15。§4 无新增暂缓项（Jetson 双推 = PROD-06 后小 ticket，见 PROD-05 决策）。设计文档同步至 v1.7（§1.8 `obd_logs` 口径改为拒收；无架构变化，图无需改动） |
 | v1.4 | 2026-09-13 | PROD-04 DONE（V3 常驻 + 对外可达 + CI + 部署核验；三个部署坑记入 CLAUDE.md）。设计文档同步至 v1.6（nginx 路由属部署拓扑，图无需改动） |
 | v1.3 | 2026-09-11 | PROD-03 DONE（FastAPI 骨架、fastapi-users + 邀请码、workshop / 车档 / 设备凭证 API、OpenAPI 契约 v1 `docs/api/v3_openapi.json`）；新增 §2.4 测试策略（八类测试、CI 两层）；DoD 加"测试补齐 + 挑战清单"；新增可复用脚本 `smoke_e2e.py`、`isolation_check.sh`、`export_openapi.py`、`create_workshop.py`。设计文档同步至 v1.5（无架构变化，图无需改动） |
 | v1.2 | 2026-09-11 | PROD-02 开工（分支 `prod-02-db-migration`）：**Stage 1 去掉 pgvector / rag_chunks / 向量化**（§1.1、PROD-02、PROD-06 改写；§4 新增"向量检索 / RAG"暂缓项与回头条件）。设计文档同步至 v1.4，架构图已同步 |
