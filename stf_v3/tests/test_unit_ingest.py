@@ -50,9 +50,11 @@ def test_tsv_end_falls_back_to_last_row_without_footer() -> None:
     """Without ``Log End Time:`` the last data row's timestamp is used."""
     text = decode(TSV_OK)
     lines = [l for l in text.splitlines() if not l.startswith("Log End")]
+    last_row = [l for l in lines if l[:4].isdigit()][-1]
     meta = sniff("\n".join(lines).encode())
     assert meta is not None
-    assert meta.recorded_end == _utc("2025-07-23 14:42:35")
+    assert meta.recorded_end == parse_timestamp(last_row.split("\t", 1)[0])
+    assert meta.recorded_end >= meta.recorded_start  # type: ignore[operator]
 
 
 def test_tsv_without_banner_is_not_recognised() -> None:

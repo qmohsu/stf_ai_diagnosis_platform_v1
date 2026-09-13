@@ -222,7 +222,7 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 **验收**：两种格式上传成功并可下载原字节；第三种格式 422；同文件二次上传返回已存在；上传后 `diagnosis_conversations` 无新增行；每条 `obd_logs` 都能 join 到车档；VIN 不一致的日志被拒且有 `ingest.vin_mismatch` 告警日志。
 **开工前决策（Lavish `.lavish/prod05_plan_review.html`，2026-09-13）**：D1 本轮不碰真 Jetson（curl 模拟设备验收；Jetson 双推待 PROD-06 后单开小 ticket）；D2 VIN 不一致拒收；D3 备份按原计划等 PROD-15（此前 V3 只装测试数据）。
 **实现**：`stf_v3/src/stf_v3/ingest/{parsers/,schemas,storage,service,router}.py`；5 个端点（成员上传 / 设备上传 `X-Device-Token` / 列表 / 元数据 / 原字节下载）；解析器从 V2 复制（`jetson_tsv.py`、`yamaha_csv.py`，去 VIN 假名化，只嗅探前 64 行；Yamaha 判定收紧为首行 `# Yamaha Dual`）；存储 `<卷>/<vehicle_id>/<log_id>.<ext>`，具名卷 `stf_v3_obd_logs`（api + worker 挂载）；单文件上限 50 MB（413）；只收 multipart；删车不删文件；**无新迁移**。蓝图 O2 已解：Yamaha 起止时间取 `# Start:` / `# End:` 行。
-**测试**：`test_unit_ingest.py` 13 个（嗅探 / 解析器 / 存储 / 反例）、`test_api_ingest.py` 11 个（两格式、422、重复、413、非成员 404、D2 拒收两入口、设备 token 三种 401、下载比对、删车 404、归属不变量）；夹具 `tests/fixtures/`（假 VIN，≤ 40 行）；`smoke_e2e.py` 23 → 32 步；`deploy_check.sh` 第 6 项（存储卷可写）；`isolation_check.sh` 快照加 V1 日志卷文件数；OpenAPI 13 → 18 路径。
+**测试**：`test_unit_ingest.py` 12 个函数 16 用例（嗅探 / 解析器 / 存储 / 反例）、`test_api_ingest.py` 11 个（两格式、422、重复、413、非成员 404、D2 拒收两入口、设备 token 三种 401、下载比对、删车 404、归属不变量）；夹具 `tests/fixtures/`（假 VIN，≤ 40 行）；`smoke_e2e.py` 23 → 32 步；`deploy_check.sh` 第 6 项（存储卷可写）；`isolation_check.sh` 快照加 V1 日志卷文件数；OpenAPI 13 → 17 路径。
 
 #### PROD-06 — 知识库拷贝与 jobs 队列
 
