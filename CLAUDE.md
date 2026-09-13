@@ -290,6 +290,45 @@ When the user says **"deploy to server"** or **"update the server"**, follow thi
 - **Duplicate revision ids silently break the whole chain.** If two migration files declare the same `revision = "..."` value, Alembic refuses every upgrade with `Revision X is present more than once`. The wrong way to find out is when prod 500s. The preflight in step 2 catches this — always check `ScriptDirectory.get_heads()` before pushing a migration. When authoring a new migration, copy an unused 12-char hex/alphanum id; don't crib from an old filename.
 - **Lossy downgrades are normal here.** Several migrations (including `b1c2d3e4f5a6` and `c2d3e4f5a6b7`) deliberately drop columns whose data has no meaningful pre-migration form. Don't expect `alembic downgrade` to round-trip cleanly. Use downgrades only to roll back schema, never to roll back data.
 
+## V3 Deployment (stf_v3 — independent service, PROD-04)
+
+V3 runs beside V1/V2 as two long-running containers (`stf-v3-api` on
+127.0.0.1:8002, `stf-v3-worker`) behind the existing nginx (`/v3/`).
+It never touches the V1/V2 containers or database. Variables live only in
+the server's `infra/.env` (`STF_V3_DATABASE_URL`, `STF_V3_APP_DATABASE_URL`,
+`STF_V3_JWT_SECRET`); the compose file refuses to start without them.
+
+**Branch verification (every V3 PR)** — run on the server:
+```
+cd ~/stf_ai_diagnosis_platform_v1 && git fetch origin && git checkout <branch> && git pull origin <branch>
+bash stf_v3/scripts/isolation_check.sh snapshot                       # V1/V2 baseline
+cd infra && GIT_COMMIT=$(git rev-parse HEAD) ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml build && cd ..
+~/.local/bin/podman-compose -p stf_v3 -f infra/docker-compose.v3.yml -f infra/docker-compose.v3.polyu.yml run --rm stf-v3-migrate alembic upgrade head
+cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down &&   ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker && cd ..
+podman exec stf-nginx nginx -t && podman exec stf-nginx nginx -s reload   # only if nginx.conf changed
+bash stf_v3/scripts/deploy_check.sh                                    # 5 checks, exit 1 on any failure
+# E2E smoke on a throwaway DB + port 8003 (keeps the real stf_v3 DB clean):
+#   create_database.sh stf_v3_test → alembic upgrade → podman run -d --name stf-v3-api-test --network host #   -e STF_V3_DATABASE_URL=<app url to stf_v3_test> -e STF_V3_JWT_SECRET=<random> stf-v3:local #   uvicorn stf_v3.main:app --host 127.0.0.1 --port 8003 → create_workshop.py → smoke_e2e.py --base-url http://127.0.0.1:8003
+#   → rm container, DROP DATABASE stf_v3_test
+bash stf_v3/scripts/isolation_check.sh compare                        # must print PASS
+git checkout main && git pull origin main                              # restore; containers stay on the branch build until main is deployed
+```
+**Always pass `-p stf_v3`**: without a project name podman-compose uses the
+directory name (`infra`) and puts V3 into the SAME pod as V1/V2, so `down`
+tries to tear down the shared pod (found 2026-09-12). With `-p stf_v3` V3
+gets its own pod and `down`/`up` never touch V1/V2.
+Podman 3.4 gotcha applies: always `down` + `up`, never trust `up -d --build`.
+`deploy_check.sh` fails on stale containers (created > 30 min ago) and on an
+image whose commit label differs from `git rev-parse HEAD`.
+
+**Main deployment** — same as above minus the smoke DB, after merging:
+pull main → build with `GIT_COMMIT` → `run --rm stf-v3-migrate alembic upgrade head`
+→ `down` + `up -d stf-v3-api stf-v3-worker` → `deploy_check.sh` → `isolation_check.sh compare`.
+
+**CI** (`.github/workflows/v3.yml`, V3 paths only): unit + contract
+(pytest offline, import-linter, OpenAPI `--check`), integration (throwaway
+Postgres 15), portable (`check_portable.sh`); `check_unbound.sh` nightly.
+
 ## Memory Management
 
 When you discover something valuable for future sessions — architectural decisions, bug fixes, gotchas, environment quirks — immediately append it to .claude/memory.md

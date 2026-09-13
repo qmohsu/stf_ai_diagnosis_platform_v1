@@ -44,6 +44,7 @@ asyncio_default_fixture_loop_scope = "function"
 
 [tool.importlinter]
 root_package = "stf_v3"
+include_external_packages = true   # needed to forbid non-stf_v3 modules
 
 [[tool.importlinter.contracts]]
 name = "V3 must not import V1/V2 code (dev plan D3)"

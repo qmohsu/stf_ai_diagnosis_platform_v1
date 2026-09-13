@@ -50,7 +50,7 @@ def run(base_url: str, invite_code: str) -> int:
     manager = f"smoke_{ts}_manager"
     tech = f"smoke_{ts}_tech"
     with httpx.Client(base_url=base_url, timeout=30) as c:
-        r = c.get("/health")
+        r = c.get("/v3/health")   # /v3/ prefix so the same script works through nginx
         _step("health", r.status_code == 200 and r.json().get("db") == "ok", r.text[:80])
 
         r = c.post("/v3/auth/register", json={
