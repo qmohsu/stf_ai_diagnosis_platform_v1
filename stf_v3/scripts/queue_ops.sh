@@ -74,8 +74,8 @@ asyncio.run(m())")
     echo "== restarting stf-v3-worker while the job runs =="
     podman restart stf-v3-worker >/dev/null; sleep 5
     sql -c "SELECT id, status, attempts FROM procrastinate_jobs WHERE id = $JOB"
-    echo "== waiting up to 3 min for completion =="
-    for _ in $(seq 1 18); do
+    echo "== waiting up to 6 min for completion (recover_stalled runs every 2 min, stall threshold 120 s) =="
+    for _ in $(seq 1 36); do
       st=$(sql -tA -c "SELECT status FROM procrastinate_jobs WHERE id = $JOB")
       [ "$st" = "succeeded" ] && break; sleep 10
     done
