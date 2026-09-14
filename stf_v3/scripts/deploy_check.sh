@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Post-deploy verification for V3 on the PolyU server (code design §10).
-# Answers "is what is running the thing I meant to deploy?"  Six checks
+# Answers "is what is running the thing I meant to deploy?"  Eight checks
 # (containers fresh, image commit, alembic head, /v3/health via nginx,
-# worker heartbeat, storage volume writable); exits non-zero if any fails.
+# worker heartbeat, storage volume writable, host GPU worker alive on the
+# same commit, disk headroom); exits non-zero if any fails.
 #
 #   bash stf_v3/scripts/deploy_check.sh [--max-age-min N] [--expect-commit SHA]
 #
@@ -87,6 +88,28 @@ if [ -n "$mount_src" ] && podman exec stf-v3-api sh -c "touch $STORAGE_PATH/.dep
   report "storage volume writable" 1 "volume $mount_src at $STORAGE_PATH"
 else
   report "storage volume writable" 0 "mount=${mount_src:-<none>} at $STORAGE_PATH"
+fi
+
+# 7. host GPU worker alive and on the same commit (PROD-06, FM-16/18/19)
+if systemctl --user is-active --quiet stf-v3-gpu-worker 2>/dev/null; then
+  gw="$(curl -sf "$NGINX_URL/v3/health" 2>/dev/null | python3 -c 'import json,sys; d=json.load(sys.stdin)["gpu_worker"]; print(d["alive"], d["age_s"], d["commit"])' 2>/dev/null)"
+  set -- $gw
+  if [ "${1:-}" = "True" ] && [ "${3:-}" = "$EXPECT_COMMIT" ]; then
+    report "host gpu worker alive + commit" 1 "heartbeat ${2}s ago, commit ${3:0:12}"
+  else
+    report "host gpu worker alive + commit" 0 "alive=${1:-?} age=${2:-?} commit=${3:-?} expected=${EXPECT_COMMIT:0:12}"
+  fi
+else
+  report "host gpu worker alive + commit" 0 "systemd user service stf-v3-gpu-worker not active"
+fi
+
+# 8. disk headroom for conversions (PROD-06, FM-13): shared disk with V1/V2
+MIN_FREE_GB="${MIN_FREE_GB:-30}"
+free_gb="$(curl -sf "$NGINX_URL/v3/health" 2>/dev/null | python3 -c 'import json,sys; print(int(json.load(sys.stdin)["disk_free_gb"]))' 2>/dev/null || echo 0)"
+if [ "$free_gb" -ge "$MIN_FREE_GB" ]; then
+  report "disk free >= ${MIN_FREE_GB} GB" 1 "${free_gb} GB free"
+else
+  report "disk free >= ${MIN_FREE_GB} GB" 0 "${free_gb} GB free (conversions will refuse to start)"
 fi
 
 if [ "$FAILS" -eq 0 ]; then echo "DEPLOY CHECK ALL PASS"; exit 0; fi

@@ -48,6 +48,20 @@ def _auth(token: str) -> Dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _tiny_pdf(pages: int) -> bytes:
+    """A valid blank PDF (pypdf ships with the image) for upload steps."""
+    import io
+
+    from pypdf import PdfWriter
+
+    w = PdfWriter()
+    for _ in range(pages):
+        w.add_blank_page(width=200, height=200)
+    buf = io.BytesIO()
+    w.write(buf)
+    return buf.getvalue()
+
+
 def run(base_url: str, invite_code: str) -> int:
     """Runs the smoke flow.  Returns 0 if every step passed."""
     ts = int(time.time())
@@ -185,6 +199,34 @@ def run(base_url: str, invite_code: str) -> int:
         _step("deleted vehicle is gone (404)", r.status_code == 404)
         r = c.get(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_m))
         _step("deleted vehicle's logs hidden (404)", r.status_code == 404)
+
+        # ---- PROD-06: manual library (no GPU worker on the smoke DB: stop at queued) ----
+        r = c.get("/v3/manuals", headers=_auth(token_t))
+        _step("technician lists manual library", r.status_code == 200, r.text[:80])
+        seeds = [m for m in r.json()] if r.status_code == 200 else []
+        if seeds:
+            r = c.get(f"/v3/manuals/{seeds[0]['id']}/toc", headers=_auth(token_t), params={"max_depth": 2})
+            _step("manual toc readable", r.status_code == 200 and len(r.json().get("toc", "")) > 50)
+        pdf = _tiny_pdf(3)
+        r = c.post("/v3/manuals", headers=_auth(token_t), files={"file": ("t.pdf", pdf)},
+                   data={"manufacturer": "Honda", "model": "x", "vehicle_model": "Jazz"})
+        _step("technician cannot upload manual (403)", r.status_code == 403)
+        r = c.post("/v3/manuals", headers=_auth(token_m), files={"file": ("x.json", b"{}")},
+                   data={"manufacturer": "Honda", "vehicle_model": "Jazz"})
+        _step("non-PDF manual rejected (422)", r.status_code == 422)
+        r = c.post("/v3/manuals", headers=_auth(token_m), files={"file": ("smoke.pdf", pdf)},
+                   data={"manufacturer": "Honda", "vehicle_model": "Jazz", "factory_code": "GK5"})
+        _step("manager uploads PDF → queued with job id", r.status_code == 201
+              and r.json().get("status") == "queued" and r.json().get("job_id"), r.text[:120])
+        manual_id = r.json().get("id") if r.status_code == 201 else None
+        if manual_id:
+            r = c.get(f"/v3/manuals/{manual_id}", headers=_auth(token_t))
+            _step("manual status visible to technician", r.status_code == 200
+                  and r.json().get("pages_phase") == "queued")
+            r = c.delete(f"/v3/manuals/{manual_id}", headers=_auth(token_m))
+            _step("manager deletes own queued manual (204)", r.status_code == 204)
+            r = c.get(f"/v3/manuals/{manual_id}", headers=_auth(token_m))
+            _step("deleted manual gone (404)", r.status_code == 404)
 
         r = c.get("/v3/openapi.json")
         _step("OpenAPI served", r.status_code == 200 and "/v3/auth/register" in r.text)

@@ -32,11 +32,15 @@ def conninfo_from_sqlalchemy_url(url: str) -> str:
     return f"{scheme.split('+', 1)[0]}://{rest}"
 
 
+# Task modules are listed here so BOTH workers (container: ``default``
+# queue; host GPU worker: ``gpu`` queue) know every task definition.
+# ``knowledge.tasks`` imports no heavy dependency at module level — the
+# pipeline is imported inside the task body (FM-29).
 app = procrastinate.App(
     connector=procrastinate.PsycopgConnector(
         conninfo=conninfo_from_sqlalchemy_url(settings.database_url)
     ),
-    import_paths=[],
+    import_paths=["stf_v3.knowledge.tasks", "stf_v3.jobs.drill"],
 )
 
 

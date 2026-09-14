@@ -30,8 +30,10 @@ services:
       STF_V3_ENVIRONMENT: ${STF_V3_ENVIRONMENT:-prod}
       STF_V3_LOG_LEVEL: ${STF_V3_LOG_LEVEL:-INFO}
       STF_V3_OBD_LOG_STORAGE_PATH: /app/data/obd_logs
+      STF_V3_MANUAL_STORAGE_PATH: /app/data/manuals
     volumes:
       - obd_logs:/app/data/obd_logs   # PROD-05: raw uploads, <vehicle_id>/<log_id>.<ext>
+      - manuals:/app/data/manuals     # PROD-06: public manual library (shared with host GPU worker)
     ports:
       - "${BIND_HOST:-127.0.0.1}:${STF_V3_API_PORT:-8002}:8002"
     healthcheck:
@@ -50,8 +52,10 @@ services:
       STF_V3_DATABASE_URL: ${STF_V3_APP_DATABASE_URL:?set STF_V3_APP_DATABASE_URL}
       STF_V3_LOG_LEVEL: ${STF_V3_LOG_LEVEL:-INFO}
       STF_V3_OBD_LOG_STORAGE_PATH: /app/data/obd_logs
+      STF_V3_MANUAL_STORAGE_PATH: /app/data/manuals
     volumes:
       - obd_logs:/app/data/obd_logs   # diagnosis jobs read raw logs here (PROD-08)
+      - manuals:/app/data/manuals     # diagnosis jobs read manuals here (PROD-08)
     restart: unless-stopped
 
   stf-v3-migrate:
@@ -66,3 +70,4 @@ services:
 # Distinct from V1's `diagnostic_api_obd_logs` (constraint B: never shared).
 volumes:
   obd_logs:
+  manuals:      # `stf_v3_manuals`; the host GPU worker writes into its _data dir
