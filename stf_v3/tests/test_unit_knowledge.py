@@ -38,7 +38,7 @@ def make_pdf(pages: int = 2) -> bytes:
 # ── T-1 / T-16: readers work on a small Markdown, nothing heavy imported ──
 
 
-def test_manual_fs_parses_fixture_tree_and_sections() -> None:
+def test_manual_fs_parses_fixture_tree_and_sections(tmp_path: pathlib.Path) -> None:
     """Frontmatter, heading tree, section extraction and image refs resolve."""
     from stf_v3.knowledge import manual_fs
 
@@ -50,7 +50,11 @@ def test_manual_fs_parses_fixture_tree_and_sections() -> None:
     assert len(flat) == 8
     section = manual_fs.extract_section(SMALL_MD, flat[2].slug)   # 1.2 Maintenance Schedule
     assert section is not None and "spark plugs" in section
-    refs = manual_fs.resolve_image_refs(SMALL_MD, FIXTURES)
+    # image refs resolve only when the file exists next to the manual
+    img_dir = tmp_path / "images" / "manual_small"
+    img_dir.mkdir(parents=True)
+    (img_dir / "p3-1.png").write_bytes(b"\x89PNG")
+    refs = manual_fs.resolve_image_refs(SMALL_MD, tmp_path)
     assert any("p3-1.png" in str(r) for r in refs)
 
 
