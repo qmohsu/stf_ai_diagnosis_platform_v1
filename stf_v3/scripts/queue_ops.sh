@@ -46,9 +46,11 @@ case "$CMD" in
     sql -c "SELECT id, filename, job_id, left(error_message, 120) AS reason, updated_at
               FROM manuals WHERE status = 'failed' ORDER BY updated_at DESC" ;;
   retry)
+    # procrastinate 3.x exposes retry through its admin shell (no top-level
+    # `retry` subcommand): feed the shell one command on stdin.
     JOB="${2:?job id}"
-    podman exec -e STF_V3_DATABASE_URL="$DB_URL" stf-v3-api \
-      procrastinate --app stf_v3.jobs.app.app retry "$JOB"
+    printf 'retry %s\nexit\n' "$JOB" | podman exec -i -e STF_V3_DATABASE_URL="$DB_URL" stf-v3-api \
+      procrastinate --app stf_v3.jobs.app.app shell | grep -vE "^\(Cmd\)|^$" | tail -3
     sql -c "SELECT id, status, attempts FROM procrastinate_jobs WHERE id = $JOB" ;;
   cancel)
     JOB="${2:?job id}"
