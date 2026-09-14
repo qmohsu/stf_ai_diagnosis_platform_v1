@@ -94,11 +94,12 @@ async def _seed_manual(root: pathlib.Path, with_index: bool = False) -> str:
     from stf_v3.db import SessionLocal
 
     mid = str(uuid.uuid4())
-    mdir = root / "Honda Jazz"
-    mdir.mkdir(parents=True)
+    dirname = f"Honda Jazz {mid[:8]}"
+    mdir = root / dirname
+    mdir.mkdir(parents=True, exist_ok=True)
     md = FIXTURES / "manual_small.md"
     shutil.copy(md, mdir / f"{mid}.md")
-    md_path = f"Honda Jazz/{mid}.md"
+    md_path = f"{dirname}/{mid}.md"
     if with_index:
         idx = mdir / "index"
         idx.mkdir()
@@ -111,7 +112,7 @@ async def _seed_manual(root: pathlib.Path, with_index: bool = False) -> str:
             "  page_range: [5, 9]\n  md_lines: [20, 30]\n  summary: fuel\n  children: []\n",
             encoding="utf-8",
         )
-        md_path = f"Honda Jazz/index/{mid}.md"
+        md_path = f"{dirname}/index/{mid}.md"
     async with SessionLocal() as s:
         await s.execute(text(
             "INSERT INTO manuals (id, uploaded_by, filename, file_hash, manufacturer, vehicle_model, status, "

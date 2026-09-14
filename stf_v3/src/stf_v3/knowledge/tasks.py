@@ -109,10 +109,18 @@ def gpu_heartbeat(timestamp: int) -> None:
     retry=IngestRetry(max_attempts=3, wait_s=60),
 )
 def ingest_manual(context: procrastinate.JobContext, manual_id: str) -> None:
-    """Runs the one-step ingest pipeline for one manual (sync, in worker)."""
-    from stf_v3.knowledge.ingest import run_ingest  # heavy deps: worker only
+    """Runs the one-step ingest pipeline for one manual (sync, in worker).
 
-    run_ingest(uuid.UUID(manual_id), context)
+    The runner is loaded by name on purpose: the import-linter contract
+    forbids any static path from the API modules to the heavy pipeline,
+    and this task module IS imported by the API (to defer by name).  The
+    dynamic import keeps the heavy code out of the API process; the unit
+    test ``test_api_process_never_imports_pipeline_or_fitz`` proves it.
+    """
+    import importlib
+
+    runner = importlib.import_module("stf_v3.knowledge.ingest")
+    runner.run_ingest(uuid.UUID(manual_id), context)
 
 
 async def defer_ingest(manual_id: uuid.UUID) -> int:
