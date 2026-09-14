@@ -280,7 +280,10 @@ def _run_ingest(manual_id: uuid.UUID, context: Any = None) -> None:
         _fail(manual_id, f"{exc}", permanent=True)
         raise
     except Exception as exc:  # noqa: BLE001 - transient: keep work dir for retry
-        _fail(manual_id, f"{type(exc).__name__}: {exc}", permanent=False)
+        # Last allowed run? Then the queue will not retry: label it final.
+        attempts = getattr(getattr(context, "job", None), "attempts", 0) or 0
+        last = attempts + 1 >= 3
+        _fail(manual_id, f"{type(exc).__name__}: {exc}", permanent=last)
         raise
 
 
