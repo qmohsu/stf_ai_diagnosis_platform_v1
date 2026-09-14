@@ -89,7 +89,7 @@ def to_out(row: Manual) -> ManualOut:
 
 async def require_member(session: AsyncSession, user_id: uuid.UUID) -> None:
     """Any workshop membership grants read access to the public library."""
-    stmt = select(Membership.id).where(Membership.user_id == user_id).limit(1)
+    stmt = select(Membership.user_id).where(Membership.user_id == user_id).limit(1)
     if (await session.execute(stmt)).first() is None:
         raise forbidden("membership_required", "Join a workshop first")
 
@@ -97,7 +97,7 @@ async def require_member(session: AsyncSession, user_id: uuid.UUID) -> None:
 async def require_manager(session: AsyncSession, user_id: uuid.UUID) -> None:
     """Upload / delete need a manager role in at least one workshop."""
     stmt = (
-        select(Membership.id)
+        select(Membership.user_id)
         .where(Membership.user_id == user_id, Membership.role == "manager")
         .limit(1)
     )
