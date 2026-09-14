@@ -1,0 +1,234 @@
+"""Node-summary enrichment via OpenRouter (S2.5).
+
+One-time build-cost pass (user decision 2026-07-23: DeepSeek via
+OpenRouter — same egress class as the production V2 agent, no new
+exposure).  LLM output is accepted ONLY through two mechanical
+gates; a rejected summary falls back to a deterministic extract so
+I6 can still pass and the failure is visible in the report.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+import time
+import urllib.request
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import List
+
+from stf_v3.knowledge.pipeline.index_schema import IndexNode
+from stf_v3.knowledge.pipeline.stream import NormalizedItem
+
+_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+_MAX_SUMMARY_CHARS = 300
+_MAX_SECTION_CHARS = 6000
+_DTC_OR_NUM_RE = re.compile(
+    r"\b[PCBU]\d[0-9A-F]{3}\b|\d+(?:\.\d+)?",
+    re.IGNORECASE,
+)
+_CJK_RE = re.compile(r"[⺀-鿿豈-﫿]")
+_CJK_SECTION_THRESHOLD = 0.10
+_CJK_SUMMARY_MIN_RATIO = 0.15
+
+
+def _cjk_dominant(text: str) -> bool:
+    """True when the text is CJK content (not incidental refs)."""
+    if not text:
+        return False
+    return (
+        len(_CJK_RE.findall(text)) / len(text)
+        >= _CJK_SECTION_THRESHOLD
+    )
+
+
+def summary_conforms(summary: str, section: str) -> bool:
+    """Language gate (spec §10.4, mechanical): a CJK-dominant
+    section must get a CJK summary — measured 348/496 English
+    summaries on TRICITY before this gate.  Also used to filter
+    summary REUSE across rebuilds."""
+    s = summary.strip()
+    if not s:
+        return False
+    if _cjk_dominant(section):
+        ratio = len(_CJK_RE.findall(s)) / len(s)
+        if ratio < _CJK_SUMMARY_MIN_RATIO:
+            return False
+    return True
+
+
+_SYSTEM = (
+    "You summarize one service-manual section for an AI "
+    "navigation index. Reply with ONE sentence (max 60 words / "
+    "120 CJK chars) in the section's own language stating what a "
+    "technician finds there: the task, component, and any DTC "
+    "codes or key spec values COPIED VERBATIM from the text. "
+    "Never add codes or numbers that are not in the text. No "
+    "preamble, no quotes, just the sentence."
+)
+
+
+@dataclass
+class SummaryStats:
+    """Enrichment provenance for the build report."""
+
+    generated: int = 0
+    gate_rejected: int = 0
+    fallback_extractive: int = 0
+    rejected_nodes: List[str] = field(default_factory=list)
+
+
+def _section_text(
+    node: IndexNode, items: List[NormalizedItem],
+) -> str:
+    parts = [node.title]
+    for it in items[node.span[0]:node.span[1]]:
+        if it.text:
+            parts.append(it.text)
+        if it.html:
+            parts.append(re.sub(r"<[^>]+>", " ", it.html))
+    return "\n".join(parts)[:_MAX_SECTION_CHARS]
+
+
+def _mechanical_gates(summary: str, section: str) -> bool:
+    """Gate 1: non-empty + bounded.  Gate 2: every DTC/number in
+    the summary must literally exist in the section text.
+    Gate 3: language conformance (CJK section → CJK summary)."""
+    s = summary.strip()
+    if not s or len(s) > _MAX_SUMMARY_CHARS:
+        return False
+    if not summary_conforms(s, section):
+        return False
+    for token in _DTC_OR_NUM_RE.findall(s):
+        if token not in section:
+            return False
+    return True
+
+
+def _extractive_fallback(section: str) -> str:
+    """Deterministic fallback: first content line, bounded."""
+    for line in section.split("\n")[1:]:
+        line = line.strip()
+        if len(line) >= 8:
+            return line[:_MAX_SUMMARY_CHARS]
+    return section.split("\n")[0][:_MAX_SUMMARY_CHARS]
+
+
+def _call_openrouter(
+    api_key: str, model: str, section: str,
+    timeout: float = 60.0,
+) -> str:
+    payload = json.dumps({
+        "model": model,
+        "temperature": 0.1,
+        "max_tokens": 200,
+        "messages": [
+            {"role": "system", "content": _SYSTEM},
+            {"role": "user", "content": section},
+        ],
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        _API_URL,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        body = json.loads(resp.read().decode("utf-8"))
+    return body["choices"][0]["message"]["content"].strip()
+
+
+def _load_cache(cache_path: "Path | None") -> dict:
+    if cache_path is None or not cache_path.is_file():
+        return {}
+    try:
+        return json.loads(cache_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_cache(cache_path: "Path | None", cache: dict) -> None:
+    if cache_path is None:
+        return
+    tmp = cache_path.with_suffix(".json.part")
+    tmp.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(cache_path)
+
+
+def enrich_summaries(
+    nodes: List[IndexNode],
+    items: List[NormalizedItem],
+    api_key: str,
+    model: str,
+    retries: int = 2,
+    throttle_s: float = 0.2,
+    cache_path: "Path | None" = None,
+) -> SummaryStats:
+    """Fill ``node.summary`` for every node, gated mechanically.
+
+    Args:
+        nodes: Flat node list (mutated in place).
+        items: Normalized stream for section text.
+        api_key: OpenRouter key.
+        model: Model slug (user decision: DeepSeek).
+        retries: Per-node retry count on API/gate failure.
+        throttle_s: Sleep between calls.
+        cache_path: V3 (PROD-06, FM-11/FM-12): per-manual JSON cache of
+            accepted summaries keyed by node_id, persisted after every
+            node so a retried job resumes instead of re-spending.  The
+            file lives in the manual's own work dir, so cache entries
+            can never cross manuals.
+
+    Returns:
+        SummaryStats for the build report.
+    """
+    stats = SummaryStats()
+    total = len(nodes)
+    cache = _load_cache(cache_path)
+    for pos, node in enumerate(nodes, 1):
+        if pos % 25 == 0 or pos == total:
+            print(
+                f"[summaries] {pos}/{total} "
+                f"(rejected={stats.gate_rejected})",
+                flush=True,
+            )
+        section = _section_text(node, items)
+        cached = cache.get(node.node_id)
+        if cached and _mechanical_gates(cached, section):
+            node.summary = cached
+            stats.generated += 1
+            continue
+        # Hard language instruction: DeepSeek ignored the soft
+        # "section's own language" phrasing on 70% of zh-TW
+        # sections — make it explicit per call.
+        payload = section
+        if _cjk_dominant(section):
+            payload = (
+                "(必須用繁體中文回答,一句話)\n" + section
+            )
+        accepted = ""
+        for _ in range(retries + 1):
+            try:
+                candidate = _call_openrouter(
+                    api_key, model, payload,
+                )
+            except Exception:
+                time.sleep(1.0)
+                continue
+            if _mechanical_gates(candidate, section):
+                accepted = candidate
+                break
+            stats.gate_rejected += 1
+        if accepted:
+            node.summary = accepted
+            stats.generated += 1
+            cache[node.node_id] = accepted
+            _save_cache(cache_path, cache)
+        else:
+            node.summary = _extractive_fallback(section)
+            stats.fallback_extractive += 1
+            stats.rejected_nodes.append(node.node_id)
+        time.sleep(throttle_s)
+    return stats

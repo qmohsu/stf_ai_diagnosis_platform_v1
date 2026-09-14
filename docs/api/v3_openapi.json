@@ -106,6 +106,46 @@
         "title": "Body_upload_log_v3_vehicles__vehicle_id__logs_post",
         "type": "object"
       },
+      "Body_upload_manual_v3_manuals_post": {
+        "properties": {
+          "factory_code": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Factory Code"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "manufacturer": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Manufacturer",
+            "type": "string"
+          },
+          "vehicle_model": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Vehicle Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "manufacturer",
+          "vehicle_model"
+        ],
+        "title": "Body_upload_manual_v3_manuals_post",
+        "type": "object"
+      },
       "DeviceCreatedOut": {
         "description": "Device credential with the plaintext token (returned exactly once).",
         "properties": {
@@ -367,6 +407,284 @@
         "title": "InviteCodesIn",
         "type": "object"
       },
+      "ManualOut": {
+        "description": "One manual's metadata and ingest progress.\n\n``pages_phase`` is the current pipeline stage while ingesting\n(``converting`` → ``building`` → ``indexing`` → ``summarizing`` →\n``gates`` → ``installing``); ``pages_processed`` / ``pages_total`` count\nstages (k of 6), not PDF pages.  ``page_count`` is the PDF page count.",
+        "properties": {
+          "canonical_name": {
+            "title": "Canonical Name",
+            "type": "string"
+          },
+          "converter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Converter"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "factory_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Factory Code"
+          },
+          "file_size_bytes": {
+            "title": "File Size Bytes",
+            "type": "integer"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "index_track": {
+            "title": "Index Track",
+            "type": "boolean"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "manufacturer": {
+            "title": "Manufacturer",
+            "type": "string"
+          },
+          "page_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Count"
+          },
+          "pages_phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages Phase"
+          },
+          "pages_processed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages Processed"
+          },
+          "pages_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages Total"
+          },
+          "section_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Count"
+          },
+          "seed": {
+            "title": "Seed",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "uploaded_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploaded By"
+          },
+          "vehicle_model": {
+            "title": "Vehicle Model",
+            "type": "string"
+          },
+          "warnings": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warnings"
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "manufacturer",
+          "vehicle_model",
+          "factory_code",
+          "canonical_name",
+          "status",
+          "file_size_bytes",
+          "page_count",
+          "section_count",
+          "language",
+          "converter",
+          "error_message",
+          "pages_processed",
+          "pages_total",
+          "pages_phase",
+          "warnings",
+          "job_id",
+          "index_track",
+          "seed",
+          "uploaded_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ManualOut",
+        "type": "object"
+      },
+      "ManualSearchOut": {
+        "description": "Literal full-text search result over one manual.",
+        "properties": {
+          "hits": {
+            "items": {
+              "$ref": "#/components/schemas/SearchHit"
+            },
+            "title": "Hits",
+            "type": "array"
+          },
+          "index_track": {
+            "title": "Index Track",
+            "type": "boolean"
+          },
+          "manual_id": {
+            "format": "uuid",
+            "title": "Manual Id",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "total_hits": {
+            "title": "Total Hits",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "manual_id",
+          "query",
+          "index_track",
+          "total_hits",
+          "hits"
+        ],
+        "title": "ManualSearchOut",
+        "type": "object"
+      },
+      "ManualTocOut": {
+        "description": "Heading tree rendered as indented text (what the agent tool sees).",
+        "properties": {
+          "index_track": {
+            "title": "Index Track",
+            "type": "boolean"
+          },
+          "manual_id": {
+            "format": "uuid",
+            "title": "Manual Id",
+            "type": "string"
+          },
+          "max_depth": {
+            "title": "Max Depth",
+            "type": "integer"
+          },
+          "toc": {
+            "title": "Toc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "manual_id",
+          "index_track",
+          "max_depth",
+          "toc"
+        ],
+        "title": "ManualTocOut",
+        "type": "object"
+      },
       "MemberOut": {
         "description": "A member of a workshop.",
         "properties": {
@@ -609,6 +927,25 @@
           "invite_code"
         ],
         "title": "RegisterIn",
+        "type": "object"
+      },
+      "SearchHit": {
+        "description": "One matching line and the section that encloses it.",
+        "properties": {
+          "line": {
+            "title": "Line",
+            "type": "string"
+          },
+          "section": {
+            "title": "Section",
+            "type": "string"
+          }
+        },
+        "required": [
+          "section",
+          "line"
+        ],
+        "title": "SearchHit",
         "type": "object"
       },
       "UploadOut": {
@@ -1064,7 +1401,7 @@
   "paths": {
     "/health": {
       "get": {
-        "description": "Liveness + DB reachability + queue backlog + deployed commit.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
+        "description": "Liveness + DB + queue backlog + host GPU worker + disk + commit.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
         "operationId": "health_health_get",
         "responses": {
           "200": {
@@ -1269,7 +1606,7 @@
     },
     "/v3/health": {
       "get": {
-        "description": "Liveness + DB reachability + queue backlog + deployed commit.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
+        "description": "Liveness + DB + queue backlog + host GPU worker + disk + commit.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
         "operationId": "health_v3_health_get",
         "responses": {
           "200": {
@@ -1452,6 +1789,333 @@
         "summary": "Download Log",
         "tags": [
           "ingest"
+        ]
+      }
+    },
+    "/v3/manuals": {
+      "get": {
+        "description": "Lists every manual in the public library (any workshop member).",
+        "operationId": "list_manuals_v3_manuals_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ManualOut"
+                  },
+                  "title": "Response List Manuals V3 Manuals Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Manuals",
+        "tags": [
+          "knowledge"
+        ]
+      },
+      "post": {
+        "description": "Manager upload: registers the PDF and queues the ingest job (201).",
+        "operationId": "upload_manual_v3_manuals_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_manual_v3_manuals_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Upload Manual",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/v3/manuals/search": {
+      "get": {
+        "description": "Literal full-text search in one manual (the agent's absence check).",
+        "operationId": "search_manuals_v3_manuals_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "manual_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manual Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_hits",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Max Hits",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualSearchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Search Manuals",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/v3/manuals/{manual_id}": {
+      "delete": {
+        "description": "Manager delete: cancels the job, removes row and files (seed: 403).",
+        "operationId": "delete_manual_v3_manuals__manual_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "manual_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manual Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Manual",
+        "tags": [
+          "knowledge"
+        ]
+      },
+      "get": {
+        "description": "Status and ingest progress of one manual.",
+        "operationId": "get_manual_v3_manuals__manual_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "manual_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manual Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Manual",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/v3/manuals/{manual_id}/toc": {
+      "get": {
+        "description": "Heading tree of one manual (index track when available).",
+        "operationId": "get_manual_toc_v3_manuals__manual_id__toc_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "manual_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manual Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_depth",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "maximum": 99,
+              "minimum": 1,
+              "title": "Max Depth",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualTocOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Manual Toc",
+        "tags": [
+          "knowledge"
         ]
       }
     },

@@ -512,10 +512,14 @@ Stage 1 负载下足够；将来可换 LISTEN/NOTIFY），直到读到 `done`/`e
 ### 6.4 worker 部署
 
 - `stf-v3-worker`（容器，与 api 同镜像）：`procrastinate --app stf_v3.app.jobs.app worker -q default --concurrency 2`
-- 宿主机 GPU worker（替代 V2 `marker_worker.py` + 文件协议）：`scripts/gpu_worker.sh` 在
-  宿主机 venv（含 marker-pdf、torch）里跑 `procrastinate --app stf_v3.app.jobs.app worker -q gpu --concurrency 1`，
-  systemd user service；连库 `127.0.0.1:5432/stf_v3`。它 import 的是 `stf_v3` 包（宿主机
-  `pip install -e ~/stf_ai_diagnosis_platform_v1/stf_v3[gpu]`）。
+- 宿主机 GPU worker（替代 V2 `marker_worker.py` + 文件协议）：**PROD-06 实现**
+  `stf_v3/gpu_worker/install.sh` 用用户级 `uv` 装独立 Python 3.11 → `~/venv-stf-v3` →
+  编辑式安装 `stf_v3[gpu]`（只多 PyMuPDF；MinerU 是外部 CLI，路径 `STF_V3_MINERU_BIN`），
+  systemd user unit `stf-v3-gpu-worker.service` 跑
+  `procrastinate --app stf_v3.jobs.app.app worker -q gpu --concurrency 1`（`CUDA_VISIBLE_DEVICES=1`，
+  EnvironmentFile = 服务器唯一的 `infra/.env`，连库用运行时角色）。心跳任务 + 入库期间的
+  ticker 线程把状态文件写进手册卷，`/v3/health.gpu_worker` 与 `deploy_check.sh` 第 7 项据此
+  判断"活着且提交号一致"。部署后必须 `systemctl --user restart stf-v3-gpu-worker`。
 - 关停回收：procrastinate 的 worker 收到 SIGTERM 等当前任务完成；被 kill -9 的任务在
   `stalled` 检测后重新入队（诊断任务 retry=0 → 直接 error，手册任务会重跑）。
 
@@ -661,7 +665,7 @@ main_agent = Agent(model, deps_type=DiagDeps, output_type=DiagnosisReport,
 | # | 风险 | 处理 |
 |---|---|---|
 | R1 | vLLM 端口 / #237 切换状态未核实 | PROD-04 部署前 `ssh polyu-gpu` 确认；`LLM_BASE_URL` 仅配置项 |
-| R2 | 宿主机 GPU worker 要 `pip install -e stf_v3[gpu]`，宿主机 Python 版本需 ≥ 3.10 | PROD-06 第一步核实；不满足则退回"薄脚本 + procrastinate 客户端" |
+| R2 | ~~宿主机 GPU worker 要 `pip install -e stf_v3[gpu]`，宿主机 Python 版本需 ≥ 3.10~~ | 已解决（PROD-06，2026-09-14）：宿主机只有 3.10 且无 root，但用用户级 `uv` 装独立 Python 3.11 + `venv-stf-v3`，编辑式安装 `stf_v3[gpu]`，worker 直接跑 V3 代码；"薄脚本"退路作废（用户：不为注定退役的东西写适配层）。MinerU 作为外部 CLI（`STF_V3_MINERU_BIN`），marker 不再使用 |
 | R3 | procrastinate 与 SQLAlchemy 共享连接池的事务边界（defer 与业务写同事务） | 用 `PsycopgConnector` + 传入同一 connection 的 `defer_async`；PROD-02 写一个事务回滚测试 |
 | R4 | token 事件按段聚合的粒度影响前端流式体验 | 先 1 s / 段落，前端归属定了再调 |
 | R5 | ~~`users.email` 作为登录名~~ | 已解决（评审确认②）：登录用 `username`，email 可空 |

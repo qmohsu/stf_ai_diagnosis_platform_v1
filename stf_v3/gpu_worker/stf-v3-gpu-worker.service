@@ -1,0 +1,32 @@
+# V3 host GPU worker (PROD-06) — user-level systemd unit template.
+# Placeholders (@HOME@ @REPO@ @VENV@ @VOLUME@) are filled by install.sh.
+# Runs the SAME stf_v3 package as the containers (editable install) and
+# consumes ONLY the `gpu` queue, one job at a time, on the spare GPU.
+# Secrets come from the server's single env file (FM-21); nothing here.
+[Unit]
+Description=STF V3 GPU worker (manual ingest, procrastinate gpu queue)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=@REPO@/stf_v3
+EnvironmentFile=@HOME@/stf_ai_diagnosis_platform_v1/infra/.env
+Environment=STF_V3_MANUAL_STORAGE_PATH=@VOLUME@
+Environment=STF_V3_MANUAL_WORK_DIR=@HOME@/stf_v3_manual_builds
+Environment=STF_V3_REPO_DIR=@REPO@
+Environment=STF_V3_ENVIRONMENT=prod
+Environment=STF_V3_GPU_DEVICE=1
+Environment=CUDA_VISIBLE_DEVICES=1
+Environment=PYTHONUNBUFFERED=1
+# systemd does not expand ${VAR} from EnvironmentFile inside Environment=,
+# so the shell maps the runtime-role URL (same role as the containers).
+ExecStart=/bin/sh -c 'STF_V3_DATABASE_URL="$STF_V3_APP_DATABASE_URL" exec @VENV@/bin/procrastinate --app stf_v3.jobs.app.app worker -q gpu --concurrency 1 --name gpu-worker'
+# SIGTERM: finish the current stage boundary, then exit (FM-34); a kill -9
+# leaves the job to procrastinate's stalled-job recovery.
+KillSignal=SIGTERM
+TimeoutStopSec=600
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

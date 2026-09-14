@@ -7,7 +7,7 @@ configuration (dev plan D3, constraint B).
 Author: Xiangzhu Yan
 """
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -49,6 +49,28 @@ class Settings(BaseSettings):
     # per-file upload ceiling (50 MB; real logs are KB–MB).
     obd_log_storage_path: str = "./data/obd_logs"
     max_upload_bytes: int = 50 * 1024 * 1024
+    # PROD-06: manual library (public) + one-step ingest pipeline.  The
+    # storage root is a named volume shared by api, worker and the host
+    # GPU worker; ``<root>/uploads/<id>.pdf`` holds sources and
+    # ``<root>/<manual dir>/index/`` the index-track artefacts.
+    manual_storage_path: str = "./data/manuals"
+    manual_max_upload_bytes: int = 200 * 1024 * 1024
+    manual_max_pages: int = 800
+    manual_min_free_gb: int = 30          # refuse to start a conversion below
+    manual_ingest_timeout_s: int = 3 * 3600
+    mineru_bin: str = "mineru"            # host GPU worker: absolute path
+    mineru_timeout_s: int = 3600
+    manual_work_dir: str = "./data/manual_builds"   # persistent work dirs
+    summary_model: str = "deepseek/deepseek-v3.2"
+    # Accepts STF_V3_OPENROUTER_API_KEY or the server's existing
+    # OPENROUTER_API_KEY (single source: infra/.env).
+    openrouter_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "STF_V3_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"
+        ),
+    )
+    repo_dir: str = ""                    # host worker: git checkout for commit stamp
 
 
 settings = Settings()

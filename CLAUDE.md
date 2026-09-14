@@ -300,6 +300,18 @@ the server's `infra/.env` (`STF_V3_DATABASE_URL`, `STF_V3_APP_DATABASE_URL`,
 Raw uploaded logs live in the named volume `stf_v3_obd_logs` (mounted at
 `/app/data/obd_logs` in api + worker, PROD-05) — separate from V1's
 `diagnostic_api_obd_logs`; `deploy_check.sh` check 6 proves it is writable.
+The manual library lives in `stf_v3_manuals` (`/app/data/manuals`, PROD-06),
+shared with a **host** GPU worker: systemd user service
+`stf-v3-gpu-worker` runs the SAME `stf_v3` package from a user-level
+Python 3.11 venv (`~/venv-stf-v3`, editable install of the checkout) and
+consumes only the `gpu` queue (manual ingest = MinerU external CLI at
+`STF_V3_MINERU_BIN` → index build → cloud summaries → gates). Install /
+re-check with `bash stf_v3/gpu_worker/install.sh [--check]`; **restart it
+after every deploy** (`systemctl --user restart stf-v3-gpu-worker`) or
+`deploy_check.sh` check 7 fails on a commit mismatch. Logs:
+`journalctl --user -u stf-v3-gpu-worker -n 50`. Never restart it while a
+manual is converting (`/v3/manuals` shows `converting`) — the job would be
+re-queued and rerun. Queue ops: `bash stf_v3/scripts/queue_ops.sh status|failed|retry|cancel|drill`.
 
 **Branch verification (every V3 PR)** — run on the server:
 ```
@@ -309,7 +321,8 @@ cd infra && GIT_COMMIT=$(git rev-parse HEAD) ~/.local/bin/podman-compose -p stf_
 ~/.local/bin/podman-compose -p stf_v3 -f infra/docker-compose.v3.yml -f infra/docker-compose.v3.polyu.yml run --rm stf-v3-migrate alembic upgrade head
 cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down &&   ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker && cd ..
 podman exec stf-nginx nginx -t && podman exec stf-nginx nginx -s reload   # only if nginx.conf changed
-bash stf_v3/scripts/deploy_check.sh                                    # 6 checks, exit 1 on any failure
+systemctl --user restart stf-v3-gpu-worker && bash stf_v3/gpu_worker/install.sh --check   # host worker on the new code (PROD-06)
+bash stf_v3/scripts/deploy_check.sh                                    # 8 checks, exit 1 on any failure
 # E2E smoke on a throwaway DB + port 8003 (keeps the real stf_v3 DB clean):
 #   create_database.sh stf_v3_test → alembic upgrade → podman run -d --name stf-v3-api-test --network host #   -e STF_V3_DATABASE_URL=<app url to stf_v3_test> -e STF_V3_JWT_SECRET=<random> stf-v3:local #   uvicorn stf_v3.main:app --host 127.0.0.1 --port 8003 → create_workshop.py → smoke_e2e.py --base-url http://127.0.0.1:8003
 #   → rm container, DROP DATABASE stf_v3_test
