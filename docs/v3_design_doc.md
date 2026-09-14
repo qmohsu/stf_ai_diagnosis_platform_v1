@@ -2,8 +2,8 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | **v1.7（PROD-05：上传薄层、设备上传、VIN 不一致拒收、文件存储卷）** |
-| 日期 | 2026-09-13 |
+| 版本 | **v1.8（PROD-06：知识库搬迁、一步到位入库、宿主机 GPU worker、队列运维）** |
+| 日期 | 2026-09-14 |
 | 作者 | Xiangzhu Yan |
 | 状态 | **已定稿** —— 开发计划 v1.1；代码设计蓝图 `docs/plans/2026-09-08-v3-code-design.md` v1.0 已通过（2026-09-11），M1 / PROD-02 开工 |
 
@@ -65,10 +65,14 @@ S4 系统主动触发。
 - **任务队列（C4；选型已定 2026-09-08 · D5）**：**procrastinate**
   （Postgres 上的任务队列：任务表就在 `stf_v3` 库里，零新组件，
   "建会话 + 投任务"同一事务）。模块名 `jobs`，装三类任务：手册入库
-  （PDF 转换 → 切块 → 向量化，由宿主机 GPU worker 消费、并发 1，
-  替代 V2 的共享卷文件协议）、诊断运行（独立于 HTTP 连接跑完，
-  支撑断线回放）、定时维护（audit 归档、孤儿文件清理、模型预热）；
-  将来 S4 主动触发也走它。选型理由与备选（Kafka / arq / Celery）
+  （**一步到位**：MinerU 转换 → 建目录树与索引 → 章节摘要 → 八道
+  质量门 → 全过才"已入库"，marker 与两段式在 V3 不再使用；由宿主机
+  GPU worker 消费 `gpu` 队列、并发 1，替代 V2 的共享卷文件协议；
+  PROD-06 决定 2026-09-14）、诊断运行（独立于 HTTP 连接跑完，
+  支撑断线回放）、定时维护（stalled 任务回收已上线；audit 归档、
+  孤儿文件清理、模型预热在 PROD-15）；将来 S4 主动触发也走它。
+  宿主机 worker 跑的是**同一份 V3 代码**（用户级 `uv` 装 Python 3.11
+  专属环境，编辑式安装），MinerU 是外部命令行工具、自带环境。选型理由与备选（Kafka / arq / Celery）
   的通俗对比见 2026-09-08 会话记录。
 - **LLM 供给（C5；补充 2026-09-08 · D7）**：**唯一一个本地 vLLM 实例
   是模型来源**，V1/V2/V3 共用（vLLM 无状态、三版本不并发抢资源）；
@@ -147,11 +151,15 @@ S4 系统主动触发。
 - `reports`（会话的产物；content_md + citations）
 - `audit_events`（append-only 黑匣子，事件名与 SSE 一致；继承 V2
   harness_event_log 经验；保留策略由 `jobs` 定时任务执行，PROD-15 落地）
-- `manuals`（公共知识库的**元数据**：身份、转换状态、进度；手册正文是磁盘上的
-  Markdown 文件，由 manual_fs 工具直接读取）。**Stage 1 不装 pgvector、不建
+- `manuals`（公共知识库的**元数据**：身份、入库状态、阶段进度；手册正文是磁盘上的
+  Markdown 文件 + HARNESS-30 索引 sidecar，由 manual_fs / manual_index 直接读取，
+  有索引走索引轨、没有退回标题树）。**Stage 1 不装 pgvector、不建
   `rag_chunks`、不做向量化**（决定 2026-09-11）：V2 的 Agent 路径从不读向量表，
   `rag_chunks` 只被已废弃的旧 RAG 工具与评测对照组使用；将来做相似案例时再用
-  一条迁移加回扩展与表（开发计划 §4）。
+  一条迁移加回扩展与表（开发计划 §4）。**PROD-06（2026-09-14）**：库是全车队
+  共享的公共库（成员可读，manager 可上传 / 删除；从 V2 搬来的两本为 seed，接口不可
+  删）；文件存独立具名卷 `stf_v3_manuals`，与 V2 目录结构一字不差；新手册只收 PDF
+  （≤ 200 MB、≤ 800 页、不加密），按内容哈希去重；入库一步到位（见 §1.4）。
 - procrastinate 任务表（D5；由库自带 schema 在初始迁移中创建）
 - 预留不建：`case_vectors`（D4 第二批）、细粒度权限表、`vehicle_events`
   （S4 时事件先落表再投任务）。回头条件见开发计划 §4。
@@ -234,6 +242,7 @@ V3 第一版只做"点一下出诊断报告"。以下**明确不做**；每一�
 | v0.5 | 2026-09-01 | 交付物②完成并拍板：前端 = Next.js 15 + Tailwind v4 + shadcn/ui + TanStack Query（移动优先 + PWA）。新增编码约定：鉴权收敛为单一 can_access_vehicle 函数（为将来权限表预留） |
 | **v1.0** | 2026-09-01 | **定稿**：交付物③数据模型通过并并入 §1.8；三交付物齐 → 满足 G2 定稿标准。审计/会话双持久化定型（Runtime 产生 + Postgres 存 + 薄胶水回写）。进入代码设计阶段（PROD-XX） |
 | v1.1 | 2026-09-01 | 总架构图嵌入文档首部并确立**图文强制同步规则**（同一提交内更新图；图已同步） |
+| v1.8 | 2026-09-14 | PROD-06 交付：`knowledge` 模块上线（手册库 6 个接口：列表 / 详情 / 目录树 / 搜索 / 上传投任务 / 删除），V2 的两本手册连同索引 sidecar 原样搬入 `stf_v3_manuals` 卷；**§1.4 队列口径改动：手册入库一步到位（MinerU → 索引 → 摘要 → 八道门），marker 与两段式退出 V3；宿主机 GPU worker 用 uv 装 Python 3.11 直接跑 V3 代码**（开工前三轮审核决定，2026-09-14）；§1.8 知识库口径补充（公共库、seed 保护、PDF 限制）。`jobs.recover_stalled` 回收 stalled 任务。OpenAPI 契约 21 路径。无架构变化，**图无需改动** |
 | v1.7 | 2026-09-13 | PROD-05 交付：`ingest` 模块上线（成员上传 `POST /v3/vehicles/{id}/logs`、设备上传 `POST /v3/ingest/device` + `X-Device-Token`、列表 / 元数据 / 原字节下载），格式嗅探仅 tsv / yamaha，sha256 按车去重，原始字节存独立具名卷 `stf_v3_obd_logs`；**§1.8 `obd_logs` 口径改动：VIN 不一致由"入库 + 告警"改为拒收**（决策 D2）；真 Jetson 切换与备份分别推后（D1、D3）。OpenAPI 契约 17 路径。无架构变化，**图无需改动** |
 | v1.6 | 2026-09-13 | PROD-04 交付：`stf-v3-api` / `stf-v3-worker` 常驻（独立 Compose 项目），nginx `/v3/` 路由（登录复用 auth 限流、SSE 参数预置），公网 `stf-diagnosis.dev/v3/` 可达（决策 D1），GitHub Actions CI（决策 D2），`deploy_check.sh` 部署核验，OpenAPI 契约 13 路径。部署拓扑变化不改架构框图，**图无需改动** |
 | v1.5 | 2026-09-11 | PROD-03 交付：API 契约 v1 `docs/api/v3_openapi.json`（12 路径，CI 比对）；鉴权唯一入口落在 `stf_v3.vehicles.service.can_access_vehicle()`（无权一律 404）；模块分层定型为 diagnosis → ingest → vehicles → auth → workshops（auth 高于 workshops，邀请码注册需建成员关系；workshops 无独立路由）；登录名 `username`。无架构变化，**图无需改动** |

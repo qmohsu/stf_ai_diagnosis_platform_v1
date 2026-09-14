@@ -83,13 +83,18 @@ def status_file_path() -> Path:
     return Path(settings.manual_storage_path).resolve() / STATUS_FILE
 
 
-@app.periodic(cron="* * * * *")
-@app.task(name=HEARTBEAT_TASK, queue=GPU_QUEUE, pass_context=False)
-def gpu_heartbeat(timestamp: int) -> None:
-    """Writes the host worker's liveness + commit into the manual volume."""
+def write_status(busy_with: Optional[str] = None, scheduled: Optional[int] = None) -> None:
+    """Atomically writes the host worker's liveness + commit status file.
+
+    Called by the periodic heartbeat job AND, while an ingest job occupies
+    the single-concurrency gpu queue, by a ticker thread inside that job —
+    otherwise the heartbeat jobs would queue behind the ingest and the
+    worker would look dead for the whole conversion.
+    """
     payload = {
         "ts": dt.datetime.now(dt.timezone.utc).isoformat(),
-        "scheduled": timestamp,
+        "scheduled": scheduled,
+        "busy_with": busy_with,
         "commit": worker_commit(),
         "host": socket.gethostname(),
         "pid": os.getpid(),
@@ -101,7 +106,14 @@ def gpu_heartbeat(timestamp: int) -> None:
     tmp = path.with_suffix(".json.part")
     tmp.write_text(json.dumps(payload), encoding="utf-8")
     os.replace(tmp, path)
-    log.info("gpu_worker.heartbeat", commit=payload["commit"][:12])
+
+
+@app.periodic(cron="* * * * *")
+@app.task(name=HEARTBEAT_TASK, queue=GPU_QUEUE, pass_context=False)
+def gpu_heartbeat(timestamp: int) -> None:
+    """Writes the host worker's liveness + commit into the manual volume."""
+    write_status(scheduled=timestamp)
+    log.info("gpu_worker.heartbeat", commit=worker_commit()[:12])
 
 
 @app.task(

@@ -83,6 +83,7 @@ def test_gpu_tasks_registered_on_gpu_queue_only() -> None:
     assert names[tasks.HEARTBEAT_TASK].queue == "gpu"
     assert names["jobs.heartbeat"].queue == "default"
     assert names["jobs.drill_sleep"].queue == "default"
+    assert names["jobs.recover_stalled"].queue == "default"   # FM-7 / T-18
 
 
 def test_compose_container_worker_listens_default_only() -> None:

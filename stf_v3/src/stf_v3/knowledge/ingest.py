@@ -33,6 +33,7 @@ import os
 import shutil
 import signal
 import subprocess
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -157,8 +158,39 @@ def _check_alive(manual_id: uuid.UUID, context: Any) -> None:
         raise IngestCancelled("manual row deleted during ingest")
 
 
+class _Ticker(threading.Thread):
+    """Keeps the worker status file fresh while a long ingest runs (FM-18)."""
+
+    def __init__(self, manual_id: uuid.UUID, interval_s: float = 30.0) -> None:
+        super().__init__(daemon=True, name="gpu-worker-ticker")
+        self.manual_id, self.interval_s = manual_id, interval_s
+        self._stop = threading.Event()
+
+    def run(self) -> None:
+        from stf_v3.knowledge.tasks import write_status
+
+        while not self._stop.is_set():
+            try:
+                write_status(busy_with=str(self.manual_id))
+            except OSError as exc:  # volume hiccup: log, keep going
+                log.warning("gpu_worker.status_write_failed", error=str(exc))
+            self._stop.wait(self.interval_s)
+
+    def stop(self) -> None:
+        self._stop.set()
+
+
 def run_ingest(manual_id: uuid.UUID, context: Any = None) -> None:
     """Executes the whole chain for one manual; raises on failure."""
+    ticker = _Ticker(manual_id)
+    ticker.start()
+    try:
+        _run_ingest(manual_id, context)
+    finally:
+        ticker.stop()
+
+
+def _run_ingest(manual_id: uuid.UUID, context: Any = None) -> None:
     root = Path(settings.manual_storage_path).resolve()
     work = Path(settings.manual_work_dir).resolve() / str(manual_id)
     started = time.monotonic()

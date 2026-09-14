@@ -40,7 +40,11 @@ app = procrastinate.App(
     connector=procrastinate.PsycopgConnector(
         conninfo=conninfo_from_sqlalchemy_url(settings.database_url)
     ),
-    import_paths=["stf_v3.knowledge.tasks", "stf_v3.jobs.drill"],
+    import_paths=[
+        "stf_v3.knowledge.tasks",
+        "stf_v3.jobs.maintenance",
+        "stf_v3.jobs.drill",
+    ],
 )
 
 

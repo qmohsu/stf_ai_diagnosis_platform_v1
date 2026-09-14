@@ -8,9 +8,9 @@
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.5（PROD-05 DONE：上传薄层、设备上传、VIN 不一致拒收、文件存储卷） |
+| **版本** | v1.7（PROD-06 DONE：知识库搬迁、一步到位入库、宿主机 GPU worker、队列运维演练） |
 | **作者** | Xiangzhu Yan |
-| **最后更新** | 2026-09-13 |
+| **最后更新** | 2026-09-14 |
 
 ## 0. 本计划的定位
 
@@ -224,11 +224,14 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 **实现**：`stf_v3/src/stf_v3/ingest/{parsers/,schemas,storage,service,router}.py`；5 个端点（成员上传 / 设备上传 `X-Device-Token` / 列表 / 元数据 / 原字节下载）；解析器从 V2 复制（`jetson_tsv.py`、`yamaha_csv.py`，去 VIN 假名化，只嗅探前 64 行；Yamaha 判定收紧为首行 `# Yamaha Dual`）；存储 `<卷>/<vehicle_id>/<log_id>.<ext>`，具名卷 `stf_v3_obd_logs`（api + worker 挂载）；单文件上限 50 MB（413）；只收 multipart；删车不删文件；**无新迁移**。蓝图 O2 已解：Yamaha 起止时间取 `# Start:` / `# End:` 行。
 **测试**：`test_unit_ingest.py` 12 个函数 16 用例（嗅探 / 解析器 / 存储 / 反例）、`test_api_ingest.py` 11 个（两格式、422、重复、413、非成员 404、D2 拒收两入口、设备 token 三种 401、下载比对、删车 404、归属不变量）；夹具 `tests/fixtures/`（假 VIN，≤ 40 行）；`smoke_e2e.py` 23 → 32 步；`deploy_check.sh` 第 6 项（存储卷可写）；`isolation_check.sh` 快照加 V1 日志卷文件数；OpenAPI 13 → 17 路径。
 
-#### PROD-06 — 知识库拷贝与 jobs 队列
+#### PROD-06 — 知识库拷贝与 jobs 队列 — **DONE（2026-09-14，PR #245）**
 
-**目标**：V2 的手册知识库在 V3 可用；procrastinate 队列上线，手册转换改由队列异步执行；完成一次队列运维演练。
-**方法**：一次性脚本拷贝 `manuals` 元数据行 + Markdown/图片文件到 `stf_v3`（**不拷 rag_chunks，不做向量化**）；`jobs` 模块（procrastinate app、队列划分、重试策略）；`stf-v3-worker` 容器；宿主机 GPU worker 直连库消费 `gpu` 队列（并发 1），V2 文件协议退役；手册转换（PDF → Markdown）包成 job，进度写库供 UI 查询。
-**验收**：V3 库中 manuals 行数与 V2 一致，Markdown 文件逐本可被 manual_fs 读取；提交一份新手册 → job 完成 → 可被 `list_manuals` / `search_manual_text` 命中；**运维演练四项各做一遍并写进运维手册**：查积压与卡点（SQL）、手动重试失败任务、查看死信、worker 重启后进行中的任务被正确回收。
+**目标**：V2 的手册知识库在 V3 可用；procrastinate 队列上线，手册入库改由队列异步执行；完成一次队列运维演练。
+**方法**：一次性脚本拷贝 `manuals` 元数据行 + 每本手册的**整个目录**（Markdown、图片、原始 PDF、HARNESS-30 索引 sidecar）到 `stf_v3`（**不拷 rag_chunks，不做向量化**）；`jobs` 模块（procrastinate app、队列划分、重试策略、stalled 回收）；`stf-v3-worker` 容器；宿主机 GPU worker 直连库消费 `gpu` 队列（并发 1），V2 文件协议退役；手册入库包成 job，进度写库供 UI 查询。
+**开工前三轮审核（§2.5 首次执行，`.lavish/prod06_plan_review.html`，2026-09-14）**：D1 **新手册入库一步到位**——MinerU 转换 → 建目录树与索引 → 章节摘要 → 八道质量门 → 全过才"已入库"，**marker 在 V3 不再使用**（用户否决两段式："没有几分钟内可读的 SLA，中间会读到粗版资料"）；宿主机 worker 不走蓝图 R2 的薄脚本退路，而是用用户级 `uv` 装 V3 专属 Python 3.11 环境直接跑 V3 代码（用户："不要为注定退役的东西写适配层"）；盲审子代理 27 条 + 代码细读 10 条失效模式，全部按推荐处置（处理 30 / 推迟 3 / 接受 4）；19 条测试 T-1 ~ T-19 每条对应 FM。
+**验收**：V3 库中 manuals 行数与 V2 一致（2），两本均以索引轨被 V3 读取器加载（目录树、章节、图片、搜索）；提交一份新手册 → job 完成 → 列表 / 目录树 / 搜索命中；损坏 PDF → 重试到上限后失败且原因可见；**运维演练四项各做一遍并写进运维手册**（`docs/v3_ops_runbook.md`）：查积压与卡点、看死信及原因、手动重试失败任务、worker 重启后进行中的任务被正确回收（`jobs.recover_stalled` 每 2 分钟回收 stalled 任务）。
+**实现**：`stf_v3/src/stf_v3/knowledge/{schemas,service,router,tasks,ingest}.py` + `knowledge/pipeline/`（从 V2 `manual_pipeline` 复制，加按手册隔离的摘要缓存）+ `knowledge/{manual_fs,manual_index}.py`（复制）；6 个端点（列表 / 详情 / 目录树 / 搜索 / 上传投任务 / 删除，公共库：成员可读、manager 可写、搬来的 seed 手册接口不可删）；任务 `knowledge.ingest_manual`（gpu 队列，永久性错误不重试，瞬时错误最多 3 次，MinerU 产物与摘要缓存持久化可续跑）、`knowledge.gpu_heartbeat`、`jobs.recover_stalled`；`stf_v3/gpu_worker/{install.sh,stf-v3-gpu-worker.service}`（uv → Python 3.11 → `venv-stf-v3` → `stf_v3[gpu]`；MinerU 为外部 CLI `STF_V3_MINERU_BIN`；11 项自检）；`scripts/copy_manuals_from_v2.py`（JSON 导出输入，逐文件 sha256 校验，V2 密码不经过 V3）；`scripts/queue_ops.sh`（status / failed / retry / cancel / drill）；具名卷 `stf_v3_manuals`；`/v3/health` 增加 gpu_worker、分队列积压、磁盘余量；`deploy_check.sh` 第 7 项（宿主机 worker 存活且提交号一致）、第 8 项（磁盘 ≥ 30 GB）；隔离快照加 V1 手册卷文件数与 V2 marker-worker 状态；**无新迁移**。
+**测试**：`test_unit_knowledge.py` 13、`test_api_manuals.py` 8；契约新增"接口层不许导入流水线"（import-linter）+ 运行时 sys.modules 检查；`smoke_e2e.py` 32 → 40 步；OpenAPI 17 → 21 路径；服务器实测见 PR #245 验证表（Corolla 277 页整条链耗时与费用、损坏 PDF 失败路径、运维四项 + kill -9 回收）。
 
 #### PROD-07 — Jetson 上传器接入
 
@@ -307,6 +310,9 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 | 配额 / 限流 | 出现滥用或资源争抢 | 网关层限流 | 否 | 暂缓 |
 | 模型微调 | golden 分数在提示词/工具优化后仍达不到目标 | 走 V1 §11 路线 | 否 | 暂缓 |
 | V1/V2 数据迁移 | 明确需要老数据在 V3 可见 | 一次性导入脚本 | 否 | 暂缓（默认放弃） |
+| 队列库升级（PROD-06 FM-17） | 升级 procrastinate 时 | 容器与宿主机 worker 同步升级到同一版本并跑它的库迁移；`install.sh` 版本校验改 pin | 否 | 暂缓（两边锁死 3.9.0） |
+| 手册摘要出境开关（PROD-06 FM-22） | 正式对外 / 出现非内部用户前（与 VIN 模糊化同批） | 设置项切换章节摘要到本地 vLLM，或关闭摘要 | 否 | 暂缓（对外前必做） |
+| CJK 手册质量门调参（PROD-06 FM-36） | 某本 CJK 手册反复过不了 I1–I8 | 单开小 ticket 调 MinerU / 门阈值，不改门 | 否 | 暂缓 |
 | 前端语言 / 样式 | 前端归属确定后 | 由前端需求文档定 | 否 | 等待外部 |
 
 ## 5. 待决策
@@ -320,6 +326,7 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 | 版本 | 日期 | 变更 |
 |---|---|---|
 | v0.1 | 2026-09-07 | 初稿：7 个里程碑、15 张 PROD ticket（PROD-01 到验收级，其余到目标/方法/验收层）、非目标清单草案、9 项待决策 |
+| v1.7 | 2026-09-14 | PROD-06 DONE（`knowledge` 模块：手册库接口、一步到位入库流水线、gpu 队列任务、宿主机 GPU worker、V2 知识库搬迁、队列运维演练四项 + stalled 回收）。三轮审核决策：入库一步到位、marker 退出 V3、宿主机 worker 用 uv 装 3.11 直接跑 V3 代码；§4 新增 3 条推迟项（FM-17 队列库升级、FM-22 摘要出境开关、FM-36 CJK 质量门）。设计文档同步至 v1.8（§1.4 队列口径、§1.8 知识库口径；无架构变化，图无需改动） |
 | v1.5 | 2026-09-13 | PROD-05 DONE（`ingest` 模块：成员 / 设备上传、格式嗅探、sha256 去重、文件存储卷、VIN 核对）。开工前决策 D1–D3：不碰真 Jetson、**VIN 不一致改为拒收**（验收条款随之改写）、备份等 PROD-15。§4 无新增暂缓项（Jetson 双推 = PROD-06 后小 ticket，见 PROD-05 决策）。设计文档同步至 v1.7（§1.8 `obd_logs` 口径改为拒收；无架构变化，图无需改动） |
 | v1.4 | 2026-09-13 | PROD-04 DONE（V3 常驻 + 对外可达 + CI + 部署核验；三个部署坑记入 CLAUDE.md）。设计文档同步至 v1.6（nginx 路由属部署拓扑，图无需改动） |
 | v1.3 | 2026-09-11 | PROD-03 DONE（FastAPI 骨架、fastapi-users + 邀请码、workshop / 车档 / 设备凭证 API、OpenAPI 契约 v1 `docs/api/v3_openapi.json`）；新增 §2.4 测试策略（八类测试、CI 两层）；DoD 加"测试补齐 + 挑战清单"；新增可复用脚本 `smoke_e2e.py`、`isolation_check.sh`、`export_openapi.py`、`create_workshop.py`。设计文档同步至 v1.5（无架构变化，图无需改动） |
