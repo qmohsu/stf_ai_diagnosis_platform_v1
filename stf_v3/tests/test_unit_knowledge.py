@@ -105,6 +105,8 @@ def test_retry_strategy_never_retries_permanent_errors() -> None:
     assert strategy.get_retry_decision(exception=PermanentIngestError("x"), job=job1) is None
     d = strategy.get_retry_decision(exception=RuntimeError("t"), job=job1)
     assert d is not None
+    # attempts is the count before the failing run: 2 prior + this one = 3 = limit
+    assert strategy.get_retry_decision(exception=RuntimeError("t"), job=SimpleNamespace(attempts=2)) is None
     assert strategy.get_retry_decision(exception=RuntimeError("t"), job=SimpleNamespace(attempts=3)) is None
 
 

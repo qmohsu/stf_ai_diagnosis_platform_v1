@@ -59,9 +59,11 @@ class IngestRetry(BaseRetryStrategy):
     ) -> Optional[RetryDecision]:
         if isinstance(exception, PermanentIngestError):
             return None
-        if job.attempts >= self.max_attempts:
+        # ``job.attempts`` is the count BEFORE the failing run is added, so
+        # the run that just failed is attempt ``attempts + 1``.
+        if job.attempts + 1 >= self.max_attempts:
             return None
-        delay = self.wait_s * (2 ** (job.attempts - 1))
+        delay = self.wait_s * (2 ** job.attempts)
         return RetryDecision(retry_in={"seconds": delay})
 
 
