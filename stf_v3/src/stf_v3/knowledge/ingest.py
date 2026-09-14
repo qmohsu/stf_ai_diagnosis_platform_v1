@@ -14,9 +14,10 @@ Failure handling (round-2 decisions):
 * preflight refuses to start when free disk < ``manual_min_free_gb``,
   MinerU binary missing (wrong worker), or the cloud key is absent —
   permanent errors, no retry (FM-8, FM-12, FM-13).
-* MinerU output persists in the manual's work dir, so a retry after a
-  later-stage failure skips the GPU pass (FM-12); the work dir is
-  removed on permanent failure and on success.
+* MinerU output and accepted summaries persist in the manual's work dir,
+  so a retry after a later-stage failure skips the GPU pass (FM-12); the
+  work dir is removed only on success and on cancel — a permanent
+  failure keeps it so a manual retry resumes instead of re-paying.
 * between stages the job checks the abort flag and that its row still
   exists (FM-10 / FM-34); on abort it cleans up and exits without retry.
 * install = write to ``<manual dir>/.staging-<id>`` then one ``rename``
@@ -233,6 +234,9 @@ def _run_ingest(manual_id: uuid.UUID, context: Any = None) -> None:
         prior = final_dir / f"{manual_id}.index.yaml"
         cache = work / "summaries.json"
         _set_stage(manual_id, "summarizing")
+        # The copied pipeline reads the cloud key straight from the process
+        # environment under V2's name; bridge V3's (aliased) setting to it.
+        os.environ.setdefault("OPENROUTER_API_KEY", settings.openrouter_api_key)
         ok = run_index_build(
             engine_dir, out_dir / f"{manual_id}.md", str(manual_id), out_dir,
             applicability={"manufacturer": row["manufacturer"], "models": [row["vehicle_model"]]},
@@ -245,6 +249,11 @@ def _run_ingest(manual_id: uuid.UUID, context: Any = None) -> None:
         report = _read_report(out_dir / "index_build_report.json")
         if not ok:
             failed = [g["gate"] for g in report.get("gates", []) if not g.get("passed")]
+            if not report:
+                raise RuntimeError(
+                    "index build aborted before validation (no build report; "
+                    "see worker log for the [index] line) — retryable"
+                )
             raise PermanentIngestError(f"index gates failed: {', '.join(failed) or 'unknown'}")
         _check_alive(manual_id, context)
 
@@ -265,8 +274,10 @@ def _run_ingest(manual_id: uuid.UUID, context: Any = None) -> None:
         log.warning("ingest.cancelled", manual_id=str(manual_id), reason=str(exc))
         raise
     except PermanentIngestError as exc:
+        # Work dir is KEPT: a 40-minute MinerU pass must survive a config
+        # mistake so `queue_ops.sh retry <job>` resumes instead of re-paying.
+        # Orphan work dirs are reclaimed by the PROD-15 cleanup task.
         _fail(manual_id, f"{exc}", permanent=True)
-        shutil.rmtree(work, ignore_errors=True)
         raise
     except Exception as exc:  # noqa: BLE001 - transient: keep work dir for retry
         _fail(manual_id, f"{type(exc).__name__}: {exc}", permanent=False)
