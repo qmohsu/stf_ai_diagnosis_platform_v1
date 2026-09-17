@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Callable, Dict, List
@@ -34,6 +35,7 @@ def _write_env(tmp_path: Path, **extra: str) -> Path:
     values.update(extra)
     env = tmp_path / "v3.env"
     env.write_text("".join(f"{k}={v}\n" for k, v in values.items()))
+    os.chmod(env, 0o600)   # else the posix permissions warning is the first log line
     return env
 
 
