@@ -2,7 +2,7 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.2（PROD-07：设备接入一章） |
+| 版本 | v0.3（PROD-08：诊断运行时一章） |
 | 日期 | 2026-09-17 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker` |
@@ -124,3 +124,42 @@ manager 在 API 上 `DELETE /v3/devices/{id}`（立即失效；设备端会得�
 ### 2.4 真机补录（FM-25）
 
 截止日在开发计划 §4；补录通过后在 PROD-07 条目加一行"真机验收通过 <日期>"。
+
+## 3. 诊断运行时（PROD-08）
+
+诊断接口要到 PROD-11 才有；现在服务器上"跑一次诊断"只有一条路：真跑脚本。
+
+### 3.1 跑一次诊断（等价验证 / 换模型对照）
+
+```
+cd ~/stf_ai_diagnosis_platform_v1
+podman exec stf-v3-api python scripts/diagnose_once.py \
+  --vehicle-id <车档 UUID> --log-id <日志 UUID> --out-dir /tmp/runs [--locale zh-TW] [--wall-clock-s 2400]
+podman cp stf-v3-api:/tmp/runs ~/prod08_runs/     # 报告 .report.md / .report.json / 事件 .events.jsonl / 消息 .messages.json
+```
+
+- 脚本先预检：模型端点 `GET /models` 必须列出配置的模型名，再做一次预热请求（冷加载在这里发生，不在诊断里）；预检失败退出码 4，跑完退出码 0，被闸门截断 2，模型错误 3，超过脚本总时限 5。
+- 事件逐条打印：`tool_call / tool_result` 带工具名、耗时、结果长度；`(in <id>)` 表示子代理内部的事件；`reasoning` 是模型思考（qwen3.5 在 Ollama 上关不掉，PROD-09 处理）。
+- 输出目录永远不能是日志卷或手册卷（脚本会拒绝）；文件名只含时间与日志编号前 8 位，不含 VIN；报告正文可能含 VIN，**不要把报告文件拷出服务器贴进 PR / issue**。
+- 用 qwen3.5 27B 一轮约 10–40 分钟；默认墙钟 20 分钟（`STF_V3_AGENT_WALL_CLOCK_S`），验证时可放宽到 40 分钟。
+
+### 3.2 配置项（全在 `infra/.env`，前缀 `STF_V3_`）
+
+| 变量 | 默认 | 说明 |
+|---|---|---|
+| `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | `http://127.0.0.1:11434/v1` / `qwen3.5:27b-q8_0` / `ollama` | 唯一模型来源（OpenAI 兼容口）；PROD-09 改指 vLLM |
+| `LLM_ALLOW_CLOUD` | false | 非本机地址一律拒绝启动，除非显式打开；打开后提示词里 VIN 自动换成 `V-xxxxxxxx` 假名 |
+| `CLOUD_LLM_ENABLED/BASE_URL/MODEL/API_KEY` | 关 | 云端对照口（PROD-09 接） |
+| `AGENT_WALL_CLOCK_S / AGENT_REQUEST_LIMIT / AGENT_TOOL_CALLS_LIMIT / AGENT_TOTAL_TOKENS_LIMIT` | 1200 / 80 / 120 / 600000 | 主 Agent 四道闸门；触发即以"部分报告"收尾 |
+| `SUBAGENT_WALL_CLOCK_S / SUBAGENT_REQUEST_LIMIT` | 240 / 12 | 子代理闸门；超预算返回带 `[delegation …]` 前缀的部分结果 |
+| `TOOL_RESULT_MAX_TOKENS / COMPACT_THRESHOLD_TOKENS` | 2000 / 60000 | 单条工具结果截断；对话压缩阈值（中日韩字符按 1 token 估） |
+| `MANUAL_IMAGES_ENABLED` | false | 手册图片是否进模型（本地模型确认支持图片前保持关） |
+| `DEFAULT_LOCALE` | zh-TW | 未指定语言时的报告语言 |
+
+### 3.3 出了问题看什么
+
+- 容器日志里每个事件一行 `agent.event`（类型、序号、工具、耗时、长度，**不含正文与 VIN**），每次工具调用一行 `agent.tool`，每轮结束一行 `agent.run_done`（`stopped_reason`：complete / timeout / budget / cancelled / error）。
+- `stopped_reason=error` 且 `error=` 以 `ModelHTTPError` / `ConnectError` 开头 → 模型服务问题：`curl -s http://127.0.0.1:11434/v1/models`、`podman exec stf-ollama ollama ps`。
+- 报告里出现 `NO_SOURCE` 的引用 = 正文提到但这一轮没读过的章节 / 没在日志里出现的故障码，是模型幻觉的标记，不是运行时错误。
+- 同参数重复调用工具在事件里标 `repeated=true`（结果从记忆化缓存返回）；很多 repeated 通常意味着模型在打转，配合 `context_compact` 事件看上下文是否已压缩。
+

@@ -309,6 +309,19 @@ vehicles / tokens with `stf_v3/scripts/onboard_first_workshop.py`
 hand devices `docs/v3_device_install.md`. Rejected device uploads are the
 `ingest.rejected` events in `podman logs stf-v3-api`. The uploader has its
 own CI job (py3.8 + 3.11, only `httpx`); never add a dependency to it.
+The diagnosis runtime (PROD-08) is `stf_v3/diagnosis/agent/` + `tools/`
+on Pydantic AI 2.44: main agent + manual / OBD sub-agents mounted as
+tools, 12 text-only tools, the 10 blueprint events, four budget gates
+that end a run with a PARTIAL report (never an exception), and
+`ingest/loader.py` reading all three raw log formats.  The only model
+source is `STF_V3_LLM_BASE_URL/MODEL/API_KEY` (Ollama today, vLLM after
+PROD-09); a non-local URL is refused unless `STF_V3_LLM_ALLOW_CLOUD=true`
+(prompts then carry a VIN pseudonym).  Run one diagnosis on the server
+with `podman exec stf-v3-api python scripts/diagnose_once.py --vehicle-id
+… --log-id … --out-dir /tmp/runs` (see `docs/v3_ops_runbook.md` §3);
+tests drive the agent with Pydantic AI's `TestModel` / `FunctionModel`
+(`tests/agent_helpers.py`), never a live model.  No diagnosis endpoint,
+job, SSE or persistence yet — that is PROD-11.
 The manual library lives in `stf_v3_manuals` (`/app/data/manuals`, PROD-06),
 shared with a **host** GPU worker: systemd user service
 `stf-v3-gpu-worker` runs the SAME `stf_v3` package from a user-level

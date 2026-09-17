@@ -102,3 +102,6 @@ obd_agent/.env
 obd_agent/venv/
 obd_agent/__pycache__/
 .lavish/
+
+# local virtualenv for stf_v3 (PROD-08 offline tests)
+stf_v3/.venv/
