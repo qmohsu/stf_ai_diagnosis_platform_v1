@@ -98,7 +98,9 @@ jobs:
       - run: pip install "httpx==0.26.0" "pytest==7.4.4"
       - name: uploader tests (offline) + install-guide contract
         run: |
-          python -m pytest -q -p no:cacheprovider \
+          # --noconftest: obd_agent/tests/conftest.py imports the analysis
+          # library (pydantic); the uploader tests need neither.
+          python -m pytest -q -p no:cacheprovider --noconftest \
             obd_agent/tests/test_jetson_uploader.py \
             obd_agent/tests/test_jetson_uploader_v3.py \
             obd_agent/tests/test_device_install_doc.py
