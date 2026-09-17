@@ -41,6 +41,20 @@ def _business_tables(engine: sa.Engine) -> set:
     }
 
 
+def _truncate_business(engine: sa.Engine) -> None:
+    """Empties every business table so a downgrade never trips a CHECK that
+    an earlier (API) test's rows would violate — the test must not depend
+    on which tests ran before it (PROD-08: a stored ``maxlog`` row broke
+    the downgrade past ``b2c3d4e5f6a7``)."""
+    from tests.conftest import _BUSINESS_TABLES
+
+    tables = [t for t in _BUSINESS_TABLES if t in _business_tables(engine)]
+    if not tables:
+        return
+    with engine.begin() as conn:
+        conn.execute(sa.text("TRUNCATE " + ", ".join(tables) + " RESTART IDENTITY CASCADE"))
+
+
 def test_upgrade_check_downgrade_roundtrip() -> None:
     """upgrade head builds every table, `alembic check` finds no drift
     between models and DB, downgrade base removes everything again."""
@@ -58,6 +72,7 @@ def test_upgrade_check_downgrade_roundtrip() -> None:
             for t in sa.inspect(engine).get_table_names()
         )
         command.check(cfg)  # raises if models and DB differ
+        _truncate_business(engine)
         command.downgrade(cfg, "base")
         assert _business_tables(engine) == set()
         assert not any(
