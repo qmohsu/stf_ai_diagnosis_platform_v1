@@ -271,7 +271,7 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 
 ### 3.4 M3 — Agent 核心
 
-#### PROD-08 — Pydantic AI 运行时与工具组 — **DONE（2026-09-17，PR 待开）**
+#### PROD-08 — Pydantic AI 运行时与工具组 — **DONE（2026-09-17，PR #247）**
 
 **目标**：V2 的诊断能力在 Pydantic AI 上复现。
 **方法**：复制 V2 `harness_tools/` 进 `stf_v3`（不抽共享包）；OBD 原始读取 / 信号 / DTC / manual_fs 工具注册；Manual 子代理 = agent-as-tool；Context/Memory 策略（会话记忆、压缩触发、车辆信息注入：品牌型号 → 手册匹配，VIN → 历史）；TestModel 离线测试。
@@ -285,12 +285,12 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 - 蓝图条件"V2 主循环仍在用 OBD 委托"成立 → **两个子代理都搬**（手册 + OBD），各以工具形式挂到主 Agent。
 
 **实现**（Pydantic AI 2.44.0，`pydantic-ai-slim[openai]`；零 numpy / pandas）：
-- `stf_v3/ingest/loader.py`：三种原始格式（Jetson TSV / Yamaha CSV / OBD Maximum CSV）读成同一内部形状；maxlog 元数据 DTC 行可读，Mode 43 原始帧解码（`430100AF` → P00AF）；读文件前先核对日志行归属车档（FM-4）。
+- `stf_v3/ingest/loader.py`：三种原始格式（Jetson TSV / Yamaha CSV / OBD Maximum CSV）读成同一内部形状；maxlog 元数据 DTC 行可读，Mode 43 / 47 / 4A 原始帧解码（`430100AF` → P00AF；空帧不列）；读文件前先核对日志行归属车档（FM-4）。
 - `stf_v3/diagnosis/tools/`：6 个 OBD 工具 + 4 个手册工具（函数体照抄 V2，参数描述逐字进 docstring）+ 2 个委托工具；统一执行路径（同参重复调用记忆化、结果截断、轨迹、只记大小的日志）；手册编号 = 数据库编号（索引轨按此命中）；手册图片默认不进模型（开关 `STF_V3_MANUAL_IMAGES_ENABLED`）；列手册标出"是否与本车车档匹配"。
 - `stf_v3/diagnosis/agent/`：依赖包（车辆信息来自车档；非本机模型时 VIN 用 `V-xxxxxxxx` 假名）、10 种事件（蓝图 §3.7 同名）+ 事件槽、上下文（中日韩字符按 1 token 估算；压缩为历史处理器——只改发给模型的内容、折叠后仍是合法历史）、记忆（消息列表 ⇄ JSON，二进制剥离）、手册子代理四道护栏（锁定手册 / 拦截外车手册 / 4 次读取后强制收尾 / 别名归一）、统一驱动器（`agent.iter` 逐节点出事件；墙钟 / 请求数 / 工具数 / 总 token 四道闸门 → 部分报告而非异常；取消回调）、主 Agent + 单次可迭代事件流、报告对象（正文 + 从工具轨迹确定性抽出的引用，正文里没读过的引用标 `NO_SOURCE`）、唯一模型来源（非本机地址须 `STF_V3_LLM_ALLOW_CLOUD`）、`bootstrap.py`（唯一的数据库访问：行 → 依赖包）。
 - `stf_v3/scripts/diagnose_once.py`：服务器真跑脚本（端点预检 + 预热、总超时、事件逐条打印、报告 / 事件 / 消息落独立目录且文件名不含 VIN）。
 - 设置：`STF_V3_LLM_BASE_URL / MODEL / API_KEY / ALLOW_CLOUD`、云端一组（默认关）、预算（`agent_*` / `subagent_*` / 截断 / 压缩阈值）、`default_locale`；compose 透传；import-linter"接口层不许导入流水线"契约把 diagnosis 纳入来源。**无新迁移、无新接口**（诊断接口在 PROD-11）。
-**测试**：`test_unit_loader` 7、`test_unit_tools_obd` 20、`test_unit_tools_manual` 12、`test_unit_agent_contract` 5、`test_unit_context_memory` 5、`test_unit_manual_guards` 6、`test_unit_agent_offline` 20（TestModel 三格式整轮、剧本 FunctionModel 嵌套委托 / 共享用量 / 文字+工具调用继续 / 引用 NO_SOURCE / 思考不进正文、四道闸门、模型断连、小助手超预算、取消、空回复、车档身份与假名、日志无内容无 VIN、记忆化）、`test_db_diagnosis` 1（行 → 依赖包 → 整轮）。服务器等价验证：见 PR 验证表（本行在验证完成后补齐）。
+**测试**：`test_unit_loader` 7、`test_unit_tools_obd` 20、`test_unit_tools_manual` 12、`test_unit_agent_contract` 5、`test_unit_context_memory` 5、`test_unit_manual_guards` 6、`test_unit_agent_offline` 20（TestModel 三格式整轮、剧本 FunctionModel 嵌套委托 / 共享用量 / 文字+工具调用继续 / 引用 NO_SOURCE / 思考不进正文、四道闸门、模型断连、小助手超预算、取消、空回复、车档身份与假名、日志无内容无 VIN、记忆化）、`test_db_diagnosis` 1（行 → 依赖包 → 整轮）。**服务器等价验证（2026-09-17，PR #247 验证表）**：镜像内 148 passed + lint-imports 3 kept；deploy_check 8/8、隔离 PASS；真跑两次（现有 Ollama qwen3.5，zh-TW）：健康 Hiace 行程 346 s / 8 请求 / 20 工具调用 / 104k token / 52 事件 / 报告 2034 字，P00AF 行程 309 s / 6 请求 / 12 工具调用 / 86k token / 34 事件 / 报告 2962 字（P00AF 解码为主故障）；运维演练四项（端口不通 / 模型名错 / 云端未允许 / 输出目录在卷内）均预检拒绝。发现并修正：空 Mode 43/47 帧不再列为故障码。两次真跑 qwen3.5 未选择委托（委托证据 = 离线剧本 T-9）。
 
 #### PROD-09 — 模型适配层与云端接口
 
