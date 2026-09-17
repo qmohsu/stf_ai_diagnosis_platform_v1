@@ -8,7 +8,8 @@
 Added for the real Jetson logger (maxlog): a ``Stored_DTCs`` value such
 as ``430100AF`` is a raw Mode 43 response frame; it is decoded to the
 standard codes it carries (``P00AF``) and reported alongside the raw
-frame, so the agent sees the code the workshop scanner would show.
+frame, so the agent sees the code the workshop scanner would show.  An
+empty frame (``4300`` / ``4700`` = no codes) is dropped, never listed.
 
 Author: Xiangzhu Yan
 """
@@ -26,7 +27,7 @@ from stf_v3.ingest.loader import MetadataDTC, OBDLogData, parse_dtc_list
 
 _STANDARD_RE = re.compile(r"^[PCBU][0-9][0-9A-F]{3}$", re.IGNORECASE)
 _YAMAHA_HEX_RE = re.compile(r"^[0-9A-F]{10,}$", re.IGNORECASE)
-_MODE43_RE = re.compile(r"^43[0-9A-F]{2}(?:[0-9A-F]{4})*$", re.IGNORECASE)
+_MODE43_RE = re.compile(r"^(?:43|47|4A)[0-9A-F]{2}(?:[0-9A-F]{4})*$", re.IGNORECASE)   # stored / pending / permanent
 
 _RELATED_PIDS: Dict[str, List[str]] = {
     "P0117": ["COOLANT_TEMP", "IAT", "CTRL_VOLT"],
@@ -57,7 +58,7 @@ def classify_code(code: str) -> str:
 
 
 def decode_mode43_frame(frame: str) -> List[str]:
-    """Standard codes inside a raw Mode 43 response (``4301 00AF`` → P00AF)."""
+    """Standard codes inside a raw Mode 43 / 47 / 4A response (``4301 00AF`` → P00AF)."""
     body = frame.strip().upper()[4:]   # drop "43" + count byte
     codes: List[str] = []
     for i in range(0, len(body) - 3, 4):
@@ -95,10 +96,12 @@ def _metadata_entries(entry: MetadataDTC) -> List[Dict[str, Any]]:
     if fmt != "mode43_frame":
         return [base]
     decoded = decode_mode43_frame(entry.code)
+    if not decoded:
+        # ``4300`` / ``4700`` = "no stored / pending codes": not a DTC, so it
+        # never reaches the model (the server smoke showed qwen looking it up).
+        return []
     out = [{"code": c, "status": entry.status, "ecu": entry.ecu, "format": "standard",
             "description": f"decoded from raw frame {entry.code}"} for c in decoded]
-    if not decoded:
-        base["description"] = "raw Mode 43 frame carrying no codes"
     return out + [base]
 
 

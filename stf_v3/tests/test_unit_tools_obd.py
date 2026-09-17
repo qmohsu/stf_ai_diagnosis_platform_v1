@@ -84,7 +84,9 @@ async def test_list_dtcs_per_format() -> None:
     assert "Yamaha-proprietary raw hex codes" in yam and "87F11043000000000000CB" in yam
     maxlog = await obd_dtcs.list_dtcs(stub_ctx(make_deps("maxlog")))
     assert "P00AF" in maxlog and "decoded from raw frame 430100AF" in maxlog
-    assert "Raw Mode 43 response frames" in maxlog
+    assert "Raw Mode 43 response frames" in maxlog and "4300" not in maxlog.split("Raw Mode 43")[0]
+    healthy = await obd_dtcs.list_dtcs(stub_ctx(make_deps("maxlog_no_vin")))   # only an empty "4300" frame
+    assert "No DTCs found" in healthy
     tsv = await obd_dtcs.list_dtcs(stub_ctx(make_deps("tsv")))
     assert "DTCs in log" in tsv
     stored_only = await obd_dtcs.list_dtcs(stub_ctx(make_deps("yamaha")), status="stored")
@@ -111,7 +113,8 @@ def test_mode43_frame_decoding() -> None:
     """``4301 00AF`` → P00AF; ``4300`` carries nothing; letters follow the
     2-bit class."""
     assert obd_dtcs.decode_mode43_frame("430100AF") == ["P00AF"]
-    assert obd_dtcs.decode_mode43_frame("4300") == []
+    assert obd_dtcs.decode_mode43_frame("4300") == [] and obd_dtcs.decode_mode43_frame("4700") == []
+    assert obd_dtcs.classify_code("4700") == "mode43_frame"
     assert obd_dtcs.decode_mode43_frame("43020117C123") == ["P0117", "U0123"]
     assert obd_dtcs.classify_code("P0117") == "standard"
     assert obd_dtcs.classify_code("430100AF") == "mode43_frame"
