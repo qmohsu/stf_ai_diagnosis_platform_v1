@@ -168,10 +168,10 @@ async def onboard(
         device, token = await vehicles.create_device(
             session, vehicle, f"{device_label} {spec.model}", created_by=None
         )
-        # FM-33: read back from the database and compare in memory only.
-        session.expire(vehicle)
-        fresh = await session.get(Vehicle, vehicle.id)
-        vin_ok = fresh is not None and fresh.vin == vin
+        # FM-33: re-select the row from the database and compare in memory
+        # only (async session: refresh, never a lazy attribute load).
+        await session.refresh(vehicle)
+        vin_ok = vehicle.vin == vin
         result["vehicles"].append({  # type: ignore[attr-defined]
             "id": str(vehicle.id), "label": spec.label(), "existing": existing,
             "device_id": str(device.id), "token": token, "vin_ok": vin_ok,
