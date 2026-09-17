@@ -271,11 +271,26 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 
 ### 3.4 M3 — Agent 核心
 
-#### PROD-08 — Pydantic AI 运行时与工具组
+#### PROD-08 — Pydantic AI 运行时与工具组 — **DONE（2026-09-17，PR #247）**
 
 **目标**：V2 的诊断能力在 Pydantic AI 上复现。
 **方法**：复制 V2 `harness_tools/` 进 `stf_v3`（不抽共享包）；OBD 原始读取 / 信号 / DTC / manual_fs 工具注册；Manual 子代理 = agent-as-tool；Context/Memory 策略（会话记忆、压缩触发、车辆信息注入：品牌型号 → 手册匹配，VIN → 历史）；TestModel 离线测试。
 **验收**：每个工具有单测且输出为文本摘要；TestModel 下完整一轮诊断可跑通；子代理委托可在事件流中观察到；提示词中的车辆信息来自车档而非日志。
+
+**开工前三轮审核（§2.5，`.lavish/prod08_plan_review.html`，2026-09-17）**：
+- D1 服务器"真跑一次"用现有 Ollama qwen3.5 27B（接受 thinking 关不掉的慢与杂质，只求链路通；模型适配与 vLLM 切换仍是 PROD-09 / #237）。
+- D2 报告默认语言 **繁体中文（zh-TW）**，请求可指定 en / zh-CN；PROD-10 评测固定 en 与 V2 同尺。
+- 第一轮纠正一个事实：旧系统"读得懂" OBD Maximum 是因为上传时先转成 TSV；V3 存原始字节，**PROD-08 的读取器直读三种原始格式**（信号名按 V2 转换规则去单位后缀、跳过状态列，与 V2 golden 一致）。
+- 第二轮 57 条失效模式（盲审 36 + 代码细读 21）全按推荐（处理 47 / 推迟 2 / 接受 8）；与盲审不同的一条：FM-26（读原始值窗口本质是原始数据）按 V2 已锁定决定（HARNESS-19）接受。第三轮 17 条测试 T-1 ~ T-17（CI 14 / 服务器 3），"处理"条目无一遗漏。
+- 蓝图条件"V2 主循环仍在用 OBD 委托"成立 → **两个子代理都搬**（手册 + OBD），各以工具形式挂到主 Agent。
+
+**实现**（Pydantic AI 2.44.0，`pydantic-ai-slim[openai]`；零 numpy / pandas）：
+- `stf_v3/ingest/loader.py`：三种原始格式（Jetson TSV / Yamaha CSV / OBD Maximum CSV）读成同一内部形状；maxlog 元数据 DTC 行可读，Mode 43 / 47 / 4A 原始帧解码（`430100AF` → P00AF；空帧不列）；读文件前先核对日志行归属车档（FM-4）。
+- `stf_v3/diagnosis/tools/`：6 个 OBD 工具 + 4 个手册工具（函数体照抄 V2，参数描述逐字进 docstring）+ 2 个委托工具；统一执行路径（同参重复调用记忆化、结果截断、轨迹、只记大小的日志）；手册编号 = 数据库编号（索引轨按此命中）；手册图片默认不进模型（开关 `STF_V3_MANUAL_IMAGES_ENABLED`）；列手册标出"是否与本车车档匹配"。
+- `stf_v3/diagnosis/agent/`：依赖包（车辆信息来自车档；非本机模型时 VIN 用 `V-xxxxxxxx` 假名）、10 种事件（蓝图 §3.7 同名）+ 事件槽、上下文（中日韩字符按 1 token 估算；压缩为历史处理器——只改发给模型的内容、折叠后仍是合法历史）、记忆（消息列表 ⇄ JSON，二进制剥离）、手册子代理四道护栏（锁定手册 / 拦截外车手册 / 4 次读取后强制收尾 / 别名归一）、统一驱动器（`agent.iter` 逐节点出事件；墙钟 / 请求数 / 工具数 / 总 token 四道闸门 → 部分报告而非异常；取消回调）、主 Agent + 单次可迭代事件流、报告对象（正文 + 从工具轨迹确定性抽出的引用，正文里没读过的引用标 `NO_SOURCE`）、唯一模型来源（非本机地址须 `STF_V3_LLM_ALLOW_CLOUD`）、`bootstrap.py`（唯一的数据库访问：行 → 依赖包）。
+- `stf_v3/scripts/diagnose_once.py`：服务器真跑脚本（端点预检 + 预热、总超时、事件逐条打印、报告 / 事件 / 消息落独立目录且文件名不含 VIN）。
+- 设置：`STF_V3_LLM_BASE_URL / MODEL / API_KEY / ALLOW_CLOUD`、云端一组（默认关）、预算（`agent_*` / `subagent_*` / 截断 / 压缩阈值）、`default_locale`；compose 透传；import-linter"接口层不许导入流水线"契约把 diagnosis 纳入来源。**无新迁移、无新接口**（诊断接口在 PROD-11）。
+**测试**：`test_unit_loader` 7、`test_unit_tools_obd` 20、`test_unit_tools_manual` 12、`test_unit_agent_contract` 5、`test_unit_context_memory` 5、`test_unit_manual_guards` 6、`test_unit_agent_offline` 20（TestModel 三格式整轮、剧本 FunctionModel 嵌套委托 / 共享用量 / 文字+工具调用继续 / 引用 NO_SOURCE / 思考不进正文、四道闸门、模型断连、小助手超预算、取消、空回复、车档身份与假名、日志无内容无 VIN、记忆化）、`test_db_diagnosis` 1（行 → 依赖包 → 整轮）。**服务器等价验证（2026-09-17，PR #247 验证表）**：镜像内 148 passed + lint-imports 3 kept；deploy_check 8/8、隔离 PASS；真跑两次（现有 Ollama qwen3.5，zh-TW）：健康 Hiace 行程 346 s / 8 请求 / 20 工具调用 / 104k token / 52 事件 / 报告 2034 字，P00AF 行程 309 s / 6 请求 / 12 工具调用 / 86k token / 34 事件 / 报告 2962 字（P00AF 解码为主故障）；运维演练四项（端口不通 / 模型名错 / 云端未允许 / 输出目录在卷内）均预检拒绝。发现并修正：空 Mode 43/47 帧不再列为故障码。两次真跑 qwen3.5 未选择委托（委托证据 = 离线剧本 T-9）。
 
 #### PROD-09 — 模型适配层与云端接口
 
@@ -346,6 +361,9 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 | 第二位 manager（PROD-07 FM-6） | pilot 上线前 | 同一车队再发一枚 manager 邀请码给第二个人（`create_workshop.py --manager-codes 1`） | 否 | 暂缓 |
 | 存储卷使用率巡检（PROD-07 FM-13） | 接入第三台车，或任一 V3 卷使用率过半 | 把 `stf_v3_obd_logs` / `stf_v3_manuals` 使用率加进日常巡检或 `deploy_check.sh` 报数 | 否 | 暂缓（deploy_check 第 8 项已看整盘余量） |
 | **真机补录（PROD-07 FM-25）** | **截止 2026-10-01**（PR 开出日 2026-09-17 + 14 天） | 协作者按 `docs/v3_device_install.md` 装机并跑一趟；我们在 PROD-07 条目补"真机验收通过"。到期未跑 → PROD-07 标"部分验收"并在下次汇报提出，不阻塞 PROD-08 | 否 | 等待外部 |
+| 并发诊断排队（PROD-08 FM-11） | PROD-11 建诊断队列时 | 诊断 job 并发设为 1（单模型串行），每次模型调用耗时已在事件里；出现真实并发需求再评估模型服务并发 | 否 | 暂缓 |
+| golden 手册编号映射（PROD-08 FM-56） | PROD-10 开工时 | golden 数据引用的是 V2 库的手册 UUID，V3 库编号不同：按厂方代号 / 文件哈希建 V2 → V3 映射，或评测按手册代号匹配引用 | 否 | 暂缓 |
+| Ollama 常驻显存（PROD-08） | PROD-09 起 vLLM 前 | 服务器 Ollama `keep_alive=-1`，qwen3.5 常驻 57 GB；起 vLLM 前先卸载（`ollama stop` 或停容器） | 否 | 暂缓（PROD-09 前置动作） |
 | 前端语言 / 样式 | 前端归属确定后 | 由前端需求文档定 | 否 | 等待外部 |
 
 ## 5. 待决策
@@ -359,6 +377,7 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 | 版本 | 日期 | 变更 |
 |---|---|---|
 | v0.1 | 2026-09-07 | 初稿：7 个里程碑、15 张 PROD ticket（PROD-01 到验收级，其余到目标/方法/验收层）、非目标清单草案、9 项待决策 |
+| v1.9 | 2026-09-17 | PROD-08 DONE（Pydantic AI 2.44 运行时：三格式直读器、12 个工具、两个子代理以工具形式挂载、10 种事件、四道预算闸门 → 部分报告、压缩 / 记忆、手册子代理护栏、报告引用抽取、唯一模型来源 + 云端守卫、`diagnose_once.py` 真跑脚本；无新迁移、无新接口）。三轮审核：D1 冒烟用现有 Ollama、D2 默认繁体中文；57 条 FM 全按推荐（FM-26 按 V2 锁定决定接受）。§4 新增 FM-11 并发排队、FM-56 golden 编号映射、Ollama 常驻显存。设计文档同步至 v1.10（§1.4 运行时口径落地；架构图已含 Pydantic AI 与子代理，无需改动） |
 | v1.8 | 2026-09-17 | PROD-07 DONE（**D3：真机日志是 "OBD Maximum" 格式，V3 针对性加 `maxlog` 解析器 + 迁移 `b2c3d4e5f6a7`**；Jetson 上传器双推：V2 腿不变、V3 腿由设备 env 文件开关；重试 + 待传目录 + `--drain` 退避补传 + 拒收目录 + 401 留待传；`--self-check`；退出码 0/1/2；V3 拒收结构化日志；`onboard_first_workshop.py` 建档脚本；装机手册 `docs/v3_device_install.md`；CI `uploader` job py3.8/3.11；冒烟 42 步）。三轮审核：D1 车队 "PolyU STF 实验车队" / 负责人 manager / Perry 技师，D2 服务器等价验证即完成、真机作补录；36 条 FM 全按推荐。§4 新增 FM-6 第二 manager、FM-13 卷巡检、FM-25 真机补录截止 2026-10-01。设计文档同步至 v1.9（§1.8 设备上传口径补充；无架构变化，图无需改动） |
 | v1.7 | 2026-09-14 | PROD-06 DONE（`knowledge` 模块：手册库接口、一步到位入库流水线、gpu 队列任务、宿主机 GPU worker、V2 知识库搬迁、队列运维演练四项 + stalled 回收）。三轮审核决策：入库一步到位、marker 退出 V3、宿主机 worker 用 uv 装 3.11 直接跑 V3 代码；§4 新增 3 条推迟项（FM-17 队列库升级、FM-22 摘要出境开关、FM-36 CJK 质量门）。设计文档同步至 v1.8（§1.4 队列口径、§1.8 知识库口径；无架构变化，图无需改动） |
 | v1.6 | 2026-09-14 | 新增 §2.5 **开工前三轮审核流程**（高层介绍 → 盲审失效模式 → 按失效模式推导测试 → 才开工；计划页不引用代码路径；核对板加 FM → T → 结果追溯）；技能 `.claude/skills/ticket-kickoff/SKILL.md`。自 PROD-06 起适用。无架构变化，图无需改动 |

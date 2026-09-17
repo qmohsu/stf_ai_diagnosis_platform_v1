@@ -1,0 +1,20 @@
+# OBD Maximum Data Log
+# Start Time: 2026-03-18 13:22:10
+# Log Interval: 1.0 seconds
+# Total Time-Series Parameters: 25
+# ────────────────────────────────────────────────────────────────────────────
+# VEHICLE INFORMATION (Mode 09)
+#   VIN: JHMGK5830HX202404
+#   Calibration_ID: 37805-58S-U530
+# ────────────────────────────────────────────────────────────────────────────
+# DIAGNOSTIC TROUBLE CODES — 0 entries
+#   Stored_DTCs: (none)
+#   Pending_DTCs: (none)
+# ════════════════════════════════════════════════════════════════════════════
+Timestamp,RPM (rpm),SPEED (km/h),THROTTLE_POS (%),ENGINE_LOAD (%),COOLANT_TEMP (°C),INTAKE_TEMP (°C),MAF (g/s),INTAKE_PRESSURE (kPa),BAROMETRIC_PRESSURE (kPa),SHORT_FUEL_TRIM_1 (%),LONG_FUEL_TRIM_1 (%),TIMING_ADVANCE (deg),CONTROL_MODULE_VOLTAGE (V),RUN_TIME (s),CATALYST_TEMP_B1S1 (°C),DTC_COUNT,MONITOR_MISFIRE_STATUS
+2026-03-18 13:22:10.123,745,0,14.5,31.76,32,45,2.61,99,99,1.5,-2.3,12,12.08,0,32,0,PASS
+2026-03-18 13:22:11.456,750,0,14.5,32.1,32,45,2.65,99,99,1.5,-2.3,12,12.1,1,32,0,PASS
+2026-03-18 13:22:12.789,1250,12,18.2,45.3,33,46,5.2,95,99,2.1,-1.8,15,12.15,2,35,0,PASS
+2026-03-18 13:22:13.012,2100,35,22.5,58.7,35,47,10.5,88,99,3.2,-1.2,22,12.2,3,120,0,PASS
+2026-03-18 13:22:14.345,2450,48,25.1,62.4,37,48,12.8,85,99,2.8,-1.5,25,12.22,4,180,0,PASS
+2026-03-18 13:25:30.678,720,0,14.2,28.5,85,52,2.31,99,99,1.2,-2.1,10,12.05,200,450,0,PASS

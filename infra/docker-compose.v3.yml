@@ -31,6 +31,16 @@ services:
       STF_V3_LOG_LEVEL: ${STF_V3_LOG_LEVEL:-INFO}
       STF_V3_OBD_LOG_STORAGE_PATH: /app/data/obd_logs
       STF_V3_MANUAL_STORAGE_PATH: /app/data/manuals
+      # Agent runtime (PROD-08): the single model source.  Defaults to the
+      # host's Ollama; PROD-09 points it at vLLM.  A non-local URL needs
+      # STF_V3_LLM_ALLOW_CLOUD=true (prompts then carry a VIN pseudonym).
+      STF_V3_LLM_BASE_URL: ${STF_V3_LLM_BASE_URL:-http://127.0.0.1:11434/v1}
+      STF_V3_LLM_MODEL: ${STF_V3_LLM_MODEL:-qwen3.5:27b-q8_0}
+      STF_V3_LLM_API_KEY: ${STF_V3_LLM_API_KEY:-ollama}
+      STF_V3_LLM_ALLOW_CLOUD: ${STF_V3_LLM_ALLOW_CLOUD:-false}
+      STF_V3_DEFAULT_LOCALE: ${STF_V3_DEFAULT_LOCALE:-zh-TW}
+      STF_V3_MANUAL_IMAGES_ENABLED: ${STF_V3_MANUAL_IMAGES_ENABLED:-false}
+      PYDANTIC_AI_NO_BANNER: "1"
     volumes:
       - obd_logs:/app/data/obd_logs   # PROD-05: raw uploads, <vehicle_id>/<log_id>.<ext>
       - manuals:/app/data/manuals     # PROD-06: public manual library (shared with host GPU worker)
@@ -53,6 +63,16 @@ services:
       STF_V3_LOG_LEVEL: ${STF_V3_LOG_LEVEL:-INFO}
       STF_V3_OBD_LOG_STORAGE_PATH: /app/data/obd_logs
       STF_V3_MANUAL_STORAGE_PATH: /app/data/manuals
+      # Agent runtime (PROD-08): the single model source.  Defaults to the
+      # host's Ollama; PROD-09 points it at vLLM.  A non-local URL needs
+      # STF_V3_LLM_ALLOW_CLOUD=true (prompts then carry a VIN pseudonym).
+      STF_V3_LLM_BASE_URL: ${STF_V3_LLM_BASE_URL:-http://127.0.0.1:11434/v1}
+      STF_V3_LLM_MODEL: ${STF_V3_LLM_MODEL:-qwen3.5:27b-q8_0}
+      STF_V3_LLM_API_KEY: ${STF_V3_LLM_API_KEY:-ollama}
+      STF_V3_LLM_ALLOW_CLOUD: ${STF_V3_LLM_ALLOW_CLOUD:-false}
+      STF_V3_DEFAULT_LOCALE: ${STF_V3_DEFAULT_LOCALE:-zh-TW}
+      STF_V3_MANUAL_IMAGES_ENABLED: ${STF_V3_MANUAL_IMAGES_ENABLED:-false}
+      PYDANTIC_AI_NO_BANNER: "1"
     volumes:
       - obd_logs:/app/data/obd_logs   # diagnosis jobs read raw logs here (PROD-08)
       - manuals:/app/data/manuals     # diagnosis jobs read manuals here (PROD-08)

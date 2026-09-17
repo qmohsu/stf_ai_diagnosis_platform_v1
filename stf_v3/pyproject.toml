@@ -26,6 +26,10 @@ dependencies = [
     "httpx==0.27.2",
     "pyyaml==6.0.2",        # manual index sidecars (knowledge)
     "pypdf==5.1.0",         # upload-time PDF validation (pure Python)
+    # Agent runtime (PROD-08): Pydantic AI + the OpenAI-compatible client
+    # used for the local vLLM / Ollama endpoint.  No numpy / pandas: the
+    # OBD tools are pure Python by design.
+    "pydantic-ai-slim[openai]==2.44.0",
 ]
 
 [project.optional-dependencies]
@@ -76,6 +80,7 @@ name = "API/service layer never imports the heavy ingest pipeline (PROD-06 FM-29
 type = "forbidden"
 source_modules = [
     "stf_v3.main",
+    "stf_v3.diagnosis",
     "stf_v3.knowledge.router",
     "stf_v3.knowledge.service",
     "stf_v3.knowledge.schemas",
