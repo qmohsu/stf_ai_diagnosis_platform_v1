@@ -158,6 +158,12 @@ def run(base_url: str, invite_code: str) -> int:
                    files={"file": ("y.csv", yamaha)})
         _step("upload Yamaha CSV (201, no VIN)", r.status_code == 201
               and r.json().get("format") == "yamaha", r.text[:120])
+        maxlog = (_FIXTURES / "obd_maxlog_hiace.csv").read_bytes()
+        r = c.post(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t),
+                   files={"file": ("trip_maxlog.csv", maxlog)})
+        _step("upload OBD Maximum CSV (201, format maxlog, VIN read; PROD-07 D3)",
+              r.status_code == 201 and r.json().get("format") == "maxlog"
+              and r.json().get("vin_from_log") == "JHMGK5830HX202404", r.text[:120])
         r = c.post(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t),
                    files={"file": ("x.json", b'{"a": 1}')})
         _step("unsupported format rejected (422)", r.status_code == 422
@@ -174,8 +180,21 @@ def run(base_url: str, invite_code: str) -> int:
                    files={"file": ("device.csv", yamaha + b"# smoke device copy\n")})
         _step("device upload with token (201, source=device)", r.status_code == 201
               and r.json().get("source") == "device", r.text[:120])
+        # ---- PROD-07: what the Jetson uploader relies on ----
+        r = c.post("/v3/ingest/device", headers={"X-Device-Token": device_token},
+                   files={"file": ("device-again.csv", yamaha + b"# smoke device copy\n")})
+        _step("device re-sends same file → 200 duplicate (drain idempotent)",
+              r.status_code == 200 and r.json().get("duplicate") is True, r.text[:120])
+        r = c.post("/v3/ingest/device", headers={"X-Device-Token": device_token},
+                   files={"file": ("other.tsv", tsv_other)})
+        _step("device upload with other car's VIN → 422 vin_mismatch (rejected dir)",
+              r.status_code == 422 and r.json().get("code") == "vin_mismatch")
+        r = c.post("/v3/ingest/device", headers={"X-Device-Token": "not-a-real-token"},
+                   files={"file": ("t.tsv", tsv_ok)})
+        _step("bogus device token → 401 (config error, file stays pending)",
+              r.status_code == 401 and r.json().get("code") == "device_token_invalid")
         r = c.get(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t))
-        _step("log list shows 3 uploads", r.status_code == 200 and len(r.json()) == 3)
+        _step("log list shows 4 uploads", r.status_code == 200 and len(r.json()) == 4)
         if log_id:
             r = c.get(f"/v3/logs/{log_id}/raw", headers=_auth(token_t))
             _step("download returns identical bytes", r.status_code == 200

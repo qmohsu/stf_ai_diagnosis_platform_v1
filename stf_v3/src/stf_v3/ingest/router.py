@@ -33,7 +33,9 @@ from stf_v3.vehicles import service as vehicles
 
 router = APIRouter(prefix="/v3", tags=["ingest"])
 
-_MEDIA_TYPES = {"tsv": "text/tab-separated-values", "yamaha": "text/csv"}
+_MEDIA_TYPES = {
+    "tsv": "text/tab-separated-values", "yamaha": "text/csv", "maxlog": "text/csv",
+}
 
 
 def _upload_out(row: ObdLog, duplicate: bool) -> UploadOut:

@@ -10,6 +10,10 @@ on:
       - "infra/docker-compose.v3*"
       - "docs/api/**"
       - ".github/workflows/v3.yml"
+      - "obd_agent/jetson_uploader.py"
+      - "obd_agent/tests/test_jetson_uploader*.py"
+      - "obd_agent/tests/test_device_install_doc.py"
+      - "docs/v3_device_install.md"
   push:
     branches: [main]
     paths:
@@ -17,6 +21,10 @@ on:
       - "infra/docker-compose.v3*"
       - "docs/api/**"
       - ".github/workflows/v3.yml"
+      - "obd_agent/jetson_uploader.py"
+      - "obd_agent/tests/test_jetson_uploader*.py"
+      - "obd_agent/tests/test_device_install_doc.py"
+      - "docs/v3_device_install.md"
   schedule:
     - cron: "0 19 * * *"   # nightly 03:00 HKT: unbound check
   workflow_dispatch:
@@ -73,6 +81,29 @@ jobs:
           STF_V3_DATABASE_URL="$STF_V3_TEST_DATABASE_URL" alembic upgrade head
           python scripts/check_schema.py --url "$STF_V3_TEST_DATABASE_URL" \
             --app-url postgresql+psycopg://stf_v3_app:ci@localhost:5432/stf_v3_test
+
+  uploader:
+    # PROD-07: the device-side script (V2 + V3 dual push).  Runs on the
+    # oldest interpreter the script must support AND the dev version, with
+    # only the dependency the device already has (httpx).
+    name: jetson uploader (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.8", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ matrix.python }}" }
+      - run: pip install "httpx==0.26.0" "pytest==7.4.4"
+      - name: uploader tests (offline) + install-guide contract
+        run: |
+          # --noconftest: obd_agent/tests/conftest.py imports the analysis
+          # library (pydantic); the uploader tests need neither.
+          python -m pytest -q -p no:cacheprovider --noconftest \
+            obd_agent/tests/test_jetson_uploader.py \
+            obd_agent/tests/test_jetson_uploader_v3.py \
+            obd_agent/tests/test_device_install_doc.py
 
   portable:
     name: portable (D3 ①)

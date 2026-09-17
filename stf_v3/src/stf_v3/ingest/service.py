@@ -96,16 +96,32 @@ async def store_log(
         ApiError: 413 ``file_too_large``, 422 ``unsupported_format``,
             422 ``vin_mismatch``.
     """
+    def _reject(status: int, code: str, message: str) -> ApiError:
+        # PROD-07 FM-19: every refusal is one structured event so a device
+        # that keeps getting rejected is visible server-side (the device's
+        # own log is out of our reach).  ``first_line`` is enough to tell a
+        # changed logger format from a wrong file.
+        log.warning(
+            "ingest.rejected",
+            reason=code, status=status, source=source,
+            vehicle_id=str(vehicle.id), device_id=str(device_id) if device_id else None,
+            uploaded_by=str(uploaded_by) if uploaded_by else None,
+            filename=original_filename, size_bytes=len(data),
+            first_line=data[:120].split(b"\n", 1)[0].decode("utf-8", "replace"),
+        )
+        return ApiError(status, code, message)
+
     if len(data) > settings.max_upload_bytes:
-        raise ApiError(
+        raise _reject(
             413, "file_too_large",
             f"File exceeds {settings.max_upload_bytes} bytes",
         )
     meta = sniff(data)
     if meta is None:
-        raise ApiError(
+        raise _reject(
             422, "unsupported_format",
-            "Only Jetson TSV and Yamaha dual-channel CSV logs are accepted",
+            "Only Jetson TSV, OBD Maximum Data Log CSV and Yamaha dual-channel "
+            "CSV logs are accepted",
         )
     sha = sha256_hex(data)
     existing = await find_by_sha(session, vehicle.id, sha)
@@ -120,7 +136,7 @@ async def store_log(
             vehicle_id=str(vehicle.id), vehicle_vin=vehicle.vin,
             vin_from_log=meta.vin, source=source, filename=original_filename,
         )
-        raise ApiError(
+        raise _reject(
             422, "vin_mismatch",
             f"Log VIN {meta.vin} does not match vehicle VIN {vehicle.vin}; {detail}",
         )

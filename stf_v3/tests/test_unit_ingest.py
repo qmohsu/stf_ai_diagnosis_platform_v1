@@ -92,6 +92,50 @@ def test_yamaha_end_falls_back_to_last_row() -> None:
     assert meta.recorded_end is not None and meta.recorded_end > meta.recorded_start  # type: ignore[operator]
 
 
+MAXLOG_HIACE = (FIXTURES / "obd_maxlog_hiace.csv").read_bytes()
+MAXLOG_NO_VIN = (FIXTURES / "obd_maxlog_no_vin.csv").read_bytes()
+
+
+def test_sniff_maxlog_reads_vin_and_window() -> None:
+    """PROD-07 D3: an OBD Maximum Data Log is recognised by its banner; VIN
+    from ``# vehicle_id:``, start from ``# Start Time:``, end from the
+    ``# Log End Time:`` trailer; stored as ``.csv`` with format ``maxlog``."""
+    meta = sniff(MAXLOG_HIACE)
+    assert meta is not None
+    assert meta.format == "maxlog" and meta.extension == "csv"
+    assert meta.vin == "JHMGK5830HX202404"
+    assert meta.recorded_start == _utc("2026-06-22 15:39:54")
+    assert meta.recorded_end == _utc("2026-06-22 15:41:19")
+
+
+def test_sniff_maxlog_without_vin_or_trailer() -> None:
+    """The Corolla shape: no ``# vehicle_id:``, no Mode 09 VIN, no trailer →
+    vin None (token decides the car), end = last data row's timestamp
+    (millisecond precision)."""
+    meta = sniff(MAXLOG_NO_VIN)
+    assert meta is not None
+    assert meta.format == "maxlog" and meta.vin is None
+    assert meta.recorded_start == _utc("2026-08-19 16:38:32")
+    assert meta.recorded_end == _utc("2026-08-19 16:39:14.103")
+
+
+def test_maxlog_vin_falls_back_to_mode09_line_and_rejects_garbage() -> None:
+    """Without ``# vehicle_id:`` the Mode 09 ``#   VIN:`` line is used; a
+    non-VIN value in either line yields None rather than a false mismatch."""
+    text = decode(MAXLOG_HIACE)
+    no_vehicle_id = "\n".join(l for l in text.splitlines() if not l.startswith("# vehicle_id:"))
+    assert sniff(no_vehicle_id.encode()).vin == "JHMGK5830HX202404"  # type: ignore[union-attr]
+    garbage = text.replace("# vehicle_id: JHMGK5830HX202404", "# vehicle_id: hiace-01")
+    garbage = garbage.replace("#   VIN: JHMGK5830HX202404", "#   VIN: N/A")
+    assert sniff(garbage.encode()).vin is None  # type: ignore[union-attr]
+
+
+def test_maxlog_banner_required_not_just_hash_metadata() -> None:
+    """A ``#``-commented CSV without the banner is not maxlog (nor anything)."""
+    lines = decode(MAXLOG_NO_VIN).splitlines()[1:]
+    assert sniff("\n".join(lines).encode()) is None
+
+
 @pytest.mark.parametrize(
     "payload",
     [NOT_OBD, b"{\"a\": 1}", b"", b"Timestamp\tRPM\n1\t2\n", b"\xff\xfe\x00binary"],

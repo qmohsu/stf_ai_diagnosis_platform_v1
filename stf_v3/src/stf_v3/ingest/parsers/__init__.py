@@ -1,9 +1,11 @@
 """Format sniffing for uploaded OBD logs (code design §3.3, PROD-05).
 
-Only two formats exist (design doc §1.5, D1): Jetson native TSV and Yamaha
-dual-channel CSV.  There is deliberately no generic format layer — a third
-format gets its own parser module and a new ``format`` CHECK value
-(dev plan §4).
+Three formats exist: Jetson native TSV and Yamaha dual-channel CSV (design
+doc §1.5, D1) plus OBD Maximum Data Log — the format the real Jetson
+logger actually writes (PROD-07 decision D3, 2026-09-17).  There is
+deliberately no generic format layer — a new format gets its own parser
+module and a new ``format`` CHECK value (dev plan §4), exactly as happened
+for ``maxlog``.
 
 Each parser answers exactly four questions about a file: is it mine, which
 VIN does it carry, when did recording start, when did it end.  Nothing here
@@ -15,7 +17,7 @@ Author: Xiangzhu Yan
 
 from typing import List, Optional
 
-from stf_v3.ingest.parsers import jetson_tsv, yamaha_csv
+from stf_v3.ingest.parsers import jetson_tsv, obd_maxlog, yamaha_csv
 from stf_v3.ingest.parsers.base import LogMeta
 
 __all__ = ["LogMeta", "SNIFF_LINES", "decode", "sniff"]
@@ -43,6 +45,8 @@ def sniff(data: bytes) -> Optional[LogMeta]:
     head: List[str] = text.splitlines()[:SNIFF_LINES]
     if yamaha_csv.is_format(head):
         return yamaha_csv.parse_meta(text)
+    if obd_maxlog.is_format(head):
+        return obd_maxlog.parse_meta(text)
     if jetson_tsv.is_format(head):
         return jetson_tsv.parse_meta(text)
     return None

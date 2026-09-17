@@ -2,8 +2,8 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.1（PROD-06：队列一章） |
-| 日期 | 2026-09-14 |
+| 版本 | v0.2（PROD-07：设备接入一章） |
+| 日期 | 2026-09-17 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker` |
 
@@ -91,3 +91,36 @@ bash stf_v3/gpu_worker/install.sh                    # 首次安装 / 升级环�
 ### 1.7 磁盘（FM-13）
 
 手册入库开始前检查手册卷所在盘余量，低于 `STF_V3_MANUAL_MIN_FREE_GB`（默认 30）直接标失败不开工；失败后工作目录清理；`deploy_check.sh` 第 8 项与 `/v3/health.disk_free_gb` 报水位。这块盘与 V1/V2 的 Postgres 共用——盘满会让旧系统一起停写。
+
+## 2. 设备接入（Jetson 上传器，PROD-07）
+
+设备侧手册：`docs/v3_device_install.md`（给装设备的人）。服务器侧我们能做的事：
+
+### 2.1 建车队 / 车档 / 发 token（首次或加车）
+
+```bash
+cd ~/stf_ai_diagnosis_platform_v1/stf_v3
+set -a && . ../infra/.env && set +a
+STF_V3_DATABASE_URL="$STF_V3_APP_DATABASE_URL" ~/venv-stf-v3/bin/python scripts/onboard_first_workshop.py \
+  --workshop "PolyU STF 实验车队" --manager-codes 1 --technician-codes 1 \
+  --vehicle "Toyota|Hiace|<车牌>|Hiace" --vehicle "Toyota|Corolla||Corolla" \
+  --env-out-dir ~/stf_v3_tokens
+```
+
+VIN 在隐藏提示里输两遍（`ssh -t` 才有 TTY），不打印、不进任何文件；每台车得到一个 600 权限的 env 文件（token 只在文件里），按车交付。重跑安全：车队按名字、车档按 VIN 复用，只新发邀请码和 token。加车也用它（`--manager-codes 0 --technician-codes 0`）。
+
+### 2.2 看设备被拒收了什么（FM-19）
+
+```bash
+podman logs --since 7d stf-v3-api 2>&1 | grep '"ingest.rejected"' | tail -20
+```
+
+每条含 `reason`（`vin_mismatch` / `unsupported_format` / `file_too_large`）、`device_id`、`filename`、`size_bytes`、`first_line`。`first_line` 不是 `# OBD Maximum Data Log`（真机记录脚本的格式，PROD-07 D3）/ `OBD Data Log` / `# Yamaha Dual` 说明设备固件换了格式；`vin_mismatch` 多半是配置文件装错车。车档"最近活跃"在拒收时也会刷新（FM-29）——判断入库要看 `GET /v3/vehicles/{id}/logs`。
+
+### 2.3 吊销 / 重发 token（换车、泄露）
+
+manager 在 API 上 `DELETE /v3/devices/{id}`（立即失效；设备端会得到 401，文件留在待传目录），再 `POST /v3/vehicles/{id}/devices` 发新 token，把新 env 文件交给装设备的人。
+
+### 2.4 真机补录（FM-25）
+
+截止日在开发计划 §4；补录通过后在 PROD-07 条目加一行"真机验收通过 <日期>"。

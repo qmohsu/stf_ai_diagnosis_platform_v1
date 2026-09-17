@@ -35,7 +35,7 @@ class ObdLog(Base):
     __table_args__ = (
         UniqueConstraint("vehicle_id", "sha256", name="uq_obd_logs_vehicle_sha"),
         CheckConstraint("source IN ('web','device')", name="source_values"),
-        CheckConstraint("format IN ('tsv','yamaha')", name="format_values"),
+        CheckConstraint("format IN ('tsv','yamaha','maxlog')", name="format_values"),
         Index("ix_obd_logs_vehicle_time", "vehicle_id", "uploaded_at"),
     )
 

@@ -42,6 +42,22 @@ python -m obd_agent.jetson_uploader \
 Programmatic use: `from obd_agent.jetson_uploader import login,
 upload_log, upload_trip`.
 
+### V3 dual push (PROD-07)
+
+When a V3 env file exists (default `~/.config/stf/v3_uploader.env`,
+override with `--v3-env-file` / `STF_V3_ENV_FILE`) the same file is also
+pushed to V3 (`POST /v3/ingest/device` with the per-vehicle device token
+from the env file) **after** the V2 upload; the two legs succeed or fail
+independently. V3 failures are retried (5 s / 15 s / 45 s), then spooled
+to `<spool>/pending/` and pushed by the next run or by
+`python -m obd_agent.jetson_uploader --drain` (cron-friendly). Files the
+server refuses (413/422) land in `<spool>/rejected/` with a reason file.
+`--self-check` verifies config and reachability without uploading. Exit
+codes: `0` ok, `1` V2 failed, `2` V2 ok but V3 rejected/misconfigured.
+Without the env file the script is byte-for-byte the V2-only client
+above (that is also the rollback). Step-by-step device instructions:
+[`docs/v3_device_install.md`](../docs/v3_device_install.md).
+
 ## Running tests
 
 ```bash

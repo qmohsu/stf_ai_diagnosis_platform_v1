@@ -300,6 +300,15 @@ the server's `infra/.env` (`STF_V3_DATABASE_URL`, `STF_V3_APP_DATABASE_URL`,
 Raw uploaded logs live in the named volume `stf_v3_obd_logs` (mounted at
 `/app/data/obd_logs` in api + worker, PROD-05) — separate from V1's
 `diagnostic_api_obd_logs`; `deploy_check.sh` check 6 proves it is writable.
+Devices reach it through the Jetson uploader's V3 leg (PROD-07):
+`obd_agent/jetson_uploader.py` pushes V2 first (unchanged) and then V3
+whenever a device env file with the per-vehicle token exists; failures
+spool on the device and `--drain` retries. Onboard a real workshop /
+vehicles / tokens with `stf_v3/scripts/onboard_first_workshop.py`
+(VINs typed twice, never printed; tokens written as 600-mode env files);
+hand devices `docs/v3_device_install.md`. Rejected device uploads are the
+`ingest.rejected` events in `podman logs stf-v3-api`. The uploader has its
+own CI job (py3.8 + 3.11, only `httpx`); never add a dependency to it.
 The manual library lives in `stf_v3_manuals` (`/app/data/manuals`, PROD-06),
 shared with a **host** GPU worker: systemd user service
 `stf-v3-gpu-worker` runs the SAME `stf_v3` package from a user-level
