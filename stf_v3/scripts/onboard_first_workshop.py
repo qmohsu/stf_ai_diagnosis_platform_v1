@@ -134,15 +134,16 @@ async def onboard(
         await session.execute(select(Workshop).where(Workshop.name == workshop_name))
     ).scalar_one_or_none()
     workshop = existing_ws or await workshops.create_workshop(session, workshop_name)
+    workshop_id = workshop.id   # captured now: a later rollback expires the row
     result: Dict[str, object] = {
-        "workshop_id": str(workshop.id),
+        "workshop_id": str(workshop_id),
         "created": existing_ws is None,
         "codes": [],
         "vehicles": [],
     }
     for role, count in (("manager", manager_codes), ("technician", technician_codes)):
         if count:
-            rows = await workshops.issue_invite_codes(session, workshop.id, role, count, None)
+            rows = await workshops.issue_invite_codes(session, workshop_id, role, count, None)
             result["codes"].extend((role, r.code) for r in rows)  # type: ignore[attr-defined]
 
     for spec, vin in zip(specs, vins):
@@ -152,7 +153,7 @@ async def onboard(
         )
         existing = False
         try:
-            vehicle = await vehicles.create_vehicle(session, workshop.id, body)
+            vehicle = await vehicles.create_vehicle(session, workshop_id, body)
         except ApiError as exc:
             if exc.code != "vin_exists":
                 raise
@@ -160,7 +161,7 @@ async def onboard(
             vehicle = (
                 await session.execute(
                     select(Vehicle).where(
-                        Vehicle.workshop_id == workshop.id, Vehicle.vin == vin,
+                        Vehicle.workshop_id == workshop_id, Vehicle.vin == vin,
                         Vehicle.deleted_at.is_(None),
                     )
                 )
