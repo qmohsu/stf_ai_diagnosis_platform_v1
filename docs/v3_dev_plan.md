@@ -8,7 +8,7 @@
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.7（PROD-06 DONE：知识库搬迁、一步到位入库、宿主机 GPU worker、队列运维演练） |
+| **版本** | v1.8（PROD-07 DONE：Jetson 上传器双推、断网补传、装机手册、首个真实车队建档） |
 | **作者** | Xiangzhu Yan |
 | **最后更新** | 2026-09-14 |
 
@@ -247,11 +247,26 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 **实现**：`stf_v3/src/stf_v3/knowledge/{schemas,service,router,tasks,ingest}.py` + `knowledge/pipeline/`（从 V2 `manual_pipeline` 复制，加按手册隔离的摘要缓存）+ `knowledge/{manual_fs,manual_index}.py`（复制）；6 个端点（列表 / 详情 / 目录树 / 搜索 / 上传投任务 / 删除，公共库：成员可读、manager 可写、搬来的 seed 手册接口不可删）；任务 `knowledge.ingest_manual`（gpu 队列，永久性错误不重试，瞬时错误最多 3 次，MinerU 产物与摘要缓存持久化可续跑）、`knowledge.gpu_heartbeat`、`jobs.recover_stalled`；`stf_v3/gpu_worker/{install.sh,stf-v3-gpu-worker.service}`（uv → Python 3.11 → `venv-stf-v3` → `stf_v3[gpu]`；MinerU 为外部 CLI `STF_V3_MINERU_BIN`；11 项自检）；`scripts/copy_manuals_from_v2.py`（JSON 导出输入，逐文件 sha256 校验，V2 密码不经过 V3）；`scripts/queue_ops.sh`（status / failed / retry / cancel / drill）；具名卷 `stf_v3_manuals`；`/v3/health` 增加 gpu_worker、分队列积压、磁盘余量；`deploy_check.sh` 第 7 项（宿主机 worker 存活且提交号一致）、第 8 项（磁盘 ≥ 30 GB）；隔离快照加 V1 手册卷文件数与 V2 marker-worker 状态；**无新迁移**。
 **测试**：`test_unit_knowledge.py` 13、`test_api_manuals.py` 8；契约新增"接口层不许导入流水线"（import-linter）+ 运行时 sys.modules 检查；`smoke_e2e.py` 32 → 39 步；OpenAPI 17 → 21 路径；服务器实测见 PR #245 验证表（Corolla 277 页整条链耗时与费用、损坏 PDF 失败路径、运维四项 + kill -9 回收）。
 
-#### PROD-07 — Jetson 上传器接入
+#### PROD-07 — Jetson 上传器接入 — **DONE（2026-09-17，PR #246；真机补录待协作者）**
 
 **目标**：行程结束自动上传到 V3，且每笔数据绑定唯一车档（D8）。
 **方法**：按 PROD-01 选定的机制改 `jetson_uploader`；过渡期同时推 V2（原参数）与 V3；失败重试。
 **验收**：真机一次行程结束后 `obd_logs` 出现新行且归属正确车档；断网重连后补传成功；V2 侧照常收到同一行程。
+
+**开工前三轮审核（§2.5，`.lavish/prod07_plan_review.html`，2026-09-17）**：
+- D1 第一个真实车队 = "PolyU STF 实验车队"；项目负责人注册 manager，Perry 一枚技师邀请码。
+- D2 完成边界 = 脚本 + 补传 + 装机手册 + 建档发 token + **服务器等价验证**全过；真机一趟作为**验收补录**，不阻塞 PROD-08（截止 2026-10-01，见 §4）。
+- 第二轮 36 条失效模式全按推荐（处理 27 / 推迟 2 / 接受 7）；两处修正第一轮：401（token 吊销）留在待传目录而非拒收目录；V3 后端加拒收结构化日志（不改接口）。
+- 第三轮 15 条测试 T-1 ~ T-15 全部实施，"处理"条目无一遗漏。
+
+**实现**：
+- `obd_agent/jetson_uploader.py`：V2 那腿逐字节不变（11 个旧测试原样通过）；V3 那腿只在设备上有 env 文件（`STF_V3_BASE_URL` / `STF_V3_DEVICE_TOKEN` / `STF_V3_VEHICLE_ID`，token 永不作命令行参数）时启用；先推 V2 再推 V3；V3 连接错误 / 5xx 重试 5 / 15 / 45 s 后进待传目录（临时名 + 原子改名，原始文件不动，上限 200 文件 / 500 MB）；`--drain` 逐文件补传、遇网络错误即停、退避 10 → 60 min；413 / 422 进拒收目录 + `.error.txt`；401 留在待传并停止；回应车档编号与配置不符即报错；文件锁；滚动运行日志；`--self-check`；退出码 0 / 1 / 2；写超时按文件大小放宽（≤ 10 min）。零新依赖，Python 3.8 语法（CI 双版本跑）。
+- `stf_v3/ingest/service.py`：每次拒收（413 / 422）写 `ingest.rejected` 结构化事件（原因、设备、文件名、大小、首行）。
+- `stf_v3/scripts/onboard_first_workshop.py`：建车队 / 邀请码 / 车档 / token；VIN 两次隐藏输入、库内读回核对、不打印；token 按车写成 600 权限的 env 文件。
+- `docs/v3_device_install.md`：装机手册（13 节，CI 契约测试锁定必需小节）；`infra/README_OBD_AGENT_SETUP.md` 加 V3 一节。
+- 冒烟追加 3 步（39 → 42）；CI 新增 `uploader` job（py3.8 + 3.11）。
+
+**服务器等价验证（2026-09-17）**：见 PR #246 验证表：真实 Hiace 日志双推（V2 新会话 + V3 201 绑定 Hiace 车档、二传 200 已存在、无 VIN 日志 201）；V3 指向不通端口 → 待传目录 1、V2 照常；恢复后 `--drain` → 0；再 drain 不重复；补传期间 V2 调用 0 次；正式库建档：1 车队 / manager + 技师邀请码 / 2 车档 / 2 token。**真机补录**：待协作者装机后在此补一行。
 
 ### 3.4 M3 — Agent 核心
 
@@ -327,6 +342,9 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 | 队列库升级（PROD-06 FM-17） | 升级 procrastinate 时 | 容器与宿主机 worker 同步升级到同一版本并跑它的库迁移；`install.sh` 版本校验改 pin | 否 | 暂缓（两边锁死 3.9.0） |
 | 手册摘要出境开关（PROD-06 FM-22） | 正式对外 / 出现非内部用户前（与 VIN 模糊化同批） | 设置项切换章节摘要到本地 vLLM，或关闭摘要 | 否 | 暂缓（对外前必做） |
 | CJK 手册质量门调参（PROD-06 FM-36） | 某本 CJK 手册反复过不了 I1–I8 | 单开小 ticket 调 MinerU / 门阈值，不改门 | 否 | 暂缓 |
+| 第二位 manager（PROD-07 FM-6） | pilot 上线前 | 同一车队再发一枚 manager 邀请码给第二个人（`create_workshop.py --manager-codes 1`） | 否 | 暂缓 |
+| 存储卷使用率巡检（PROD-07 FM-13） | 接入第三台车，或任一 V3 卷使用率过半 | 把 `stf_v3_obd_logs` / `stf_v3_manuals` 使用率加进日常巡检或 `deploy_check.sh` 报数 | 否 | 暂缓（deploy_check 第 8 项已看整盘余量） |
+| **真机补录（PROD-07 FM-25）** | **截止 2026-10-01**（PR 开出日 2026-09-17 + 14 天） | 协作者按 `docs/v3_device_install.md` 装机并跑一趟；我们在 PROD-07 条目补"真机验收通过"。到期未跑 → PROD-07 标"部分验收"并在下次汇报提出，不阻塞 PROD-08 | 否 | 等待外部 |
 | 前端语言 / 样式 | 前端归属确定后 | 由前端需求文档定 | 否 | 等待外部 |
 
 ## 5. 待决策
@@ -340,6 +358,7 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 | 版本 | 日期 | 变更 |
 |---|---|---|
 | v0.1 | 2026-09-07 | 初稿：7 个里程碑、15 张 PROD ticket（PROD-01 到验收级，其余到目标/方法/验收层）、非目标清单草案、9 项待决策 |
+| v1.8 | 2026-09-17 | PROD-07 DONE（Jetson 上传器双推：V2 腿不变、V3 腿由设备 env 文件开关；重试 + 待传目录 + `--drain` 退避补传 + 拒收目录 + 401 留待传；`--self-check`；退出码 0/1/2；V3 拒收结构化日志；`onboard_first_workshop.py` 建档脚本；装机手册 `docs/v3_device_install.md`；CI `uploader` job py3.8/3.11；冒烟 42 步）。三轮审核：D1 车队 "PolyU STF 实验车队" / 负责人 manager / Perry 技师，D2 服务器等价验证即完成、真机作补录；36 条 FM 全按推荐。§4 新增 FM-6 第二 manager、FM-13 卷巡检、FM-25 真机补录截止 2026-10-01。设计文档同步至 v1.9（§1.8 设备上传口径补充；无架构变化，图无需改动） |
 | v1.7 | 2026-09-14 | PROD-06 DONE（`knowledge` 模块：手册库接口、一步到位入库流水线、gpu 队列任务、宿主机 GPU worker、V2 知识库搬迁、队列运维演练四项 + stalled 回收）。三轮审核决策：入库一步到位、marker 退出 V3、宿主机 worker 用 uv 装 3.11 直接跑 V3 代码；§4 新增 3 条推迟项（FM-17 队列库升级、FM-22 摘要出境开关、FM-36 CJK 质量门）。设计文档同步至 v1.8（§1.4 队列口径、§1.8 知识库口径；无架构变化，图无需改动） |
 | v1.6 | 2026-09-14 | 新增 §2.5 **开工前三轮审核流程**（高层介绍 → 盲审失效模式 → 按失效模式推导测试 → 才开工；计划页不引用代码路径；核对板加 FM → T → 结果追溯）；技能 `.claude/skills/ticket-kickoff/SKILL.md`。自 PROD-06 起适用。无架构变化，图无需改动 |
 | v1.5 | 2026-09-13 | PROD-05 DONE（`ingest` 模块：成员 / 设备上传、格式嗅探、sha256 去重、文件存储卷、VIN 核对）。开工前决策 D1–D3：不碰真 Jetson、**VIN 不一致改为拒收**（验收条款随之改写）、备份等 PROD-15。§4 无新增暂缓项（Jetson 双推 = PROD-06 后小 ticket，见 PROD-05 决策）。设计文档同步至 v1.7（§1.8 `obd_logs` 口径改为拒收；无架构变化，图无需改动） |

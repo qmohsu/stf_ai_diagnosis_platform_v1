@@ -174,6 +174,19 @@ def run(base_url: str, invite_code: str) -> int:
                    files={"file": ("device.csv", yamaha + b"# smoke device copy\n")})
         _step("device upload with token (201, source=device)", r.status_code == 201
               and r.json().get("source") == "device", r.text[:120])
+        # ---- PROD-07: what the Jetson uploader relies on ----
+        r = c.post("/v3/ingest/device", headers={"X-Device-Token": device_token},
+                   files={"file": ("device-again.csv", yamaha + b"# smoke device copy\n")})
+        _step("device re-sends same file → 200 duplicate (drain idempotent)",
+              r.status_code == 200 and r.json().get("duplicate") is True, r.text[:120])
+        r = c.post("/v3/ingest/device", headers={"X-Device-Token": device_token},
+                   files={"file": ("other.tsv", tsv_other)})
+        _step("device upload with other car's VIN → 422 vin_mismatch (rejected dir)",
+              r.status_code == 422 and r.json().get("code") == "vin_mismatch")
+        r = c.post("/v3/ingest/device", headers={"X-Device-Token": "not-a-real-token"},
+                   files={"file": ("t.tsv", tsv_ok)})
+        _step("bogus device token → 401 (config error, file stays pending)",
+              r.status_code == 401 and r.json().get("code") == "device_token_invalid")
         r = c.get(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t))
         _step("log list shows 3 uploads", r.status_code == 200 and len(r.json()) == 3)
         if log_id:

@@ -2,7 +2,7 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | **v1.8（PROD-06：知识库搬迁、一步到位入库、宿主机 GPU worker、队列运维）** |
+| 版本 | **v1.9（PROD-07：Jetson 上传器双推、断网补传、设备拒收日志、首个真实车队）** |
 | 日期 | 2026-09-14 |
 | 作者 | Xiangzhu Yan |
 | 状态 | **已定稿** —— 开发计划 v1.1；代码设计蓝图 `docs/plans/2026-09-08-v3-code-design.md` v1.0 已通过（2026-09-11），M1 / PROD-02 开工 |
@@ -145,6 +145,12 @@ S4 系统主动触发。
   读不到 VIN（Yamaha 常见）则不核对，归属仍由车档保证。设备如何表明
   "我是哪台车"见蓝图 §5（设备凭证）。原始字节存独立具名卷
   `stf_v3_obd_logs`，路径 `<vehicle_id>/<log_id>.<ext>`（目录名即车）。
+  **设备侧（PROD-07）**：Jetson 上的上传脚本过渡期"双推"——先推 V2
+  （原样），再凭设备 token 推 V3；V3 腿失败进设备本地待传目录、按退避
+  补传，服务器按内容哈希去重使补传幂等；服务器拒收（413 / 422）不重试
+  而进拒收目录并在服务器端留 `ingest.rejected` 结构化事件（设备日志
+  我们看不到，这是唯一的服务器侧可见性）；token 被吊销（401）视为配置
+  问题，文件留在待传目录。装机手册 `docs/v3_device_install.md`。
 - `diagnosis_conversations`（**容器**；引用 vehicle + 本次依据的
   obd_log；S2 追问零迁移）
 - `messages`（Pydantic AI 消息原样 JSONB 序列化）
@@ -242,6 +248,7 @@ V3 第一版只做"点一下出诊断报告"。以下**明确不做**；每一�
 | v0.5 | 2026-09-01 | 交付物②完成并拍板：前端 = Next.js 15 + Tailwind v4 + shadcn/ui + TanStack Query（移动优先 + PWA）。新增编码约定：鉴权收敛为单一 can_access_vehicle 函数（为将来权限表预留） |
 | **v1.0** | 2026-09-01 | **定稿**：交付物③数据模型通过并并入 §1.8；三交付物齐 → 满足 G2 定稿标准。审计/会话双持久化定型（Runtime 产生 + Postgres 存 + 薄胶水回写）。进入代码设计阶段（PROD-XX） |
 | v1.1 | 2026-09-01 | 总架构图嵌入文档首部并确立**图文强制同步规则**（同一提交内更新图；图已同步） |
+| v1.9 | 2026-09-17 | PROD-07 交付：Jetson 上传器双推（V2 腿不变；V3 腿由设备 env 文件开关，重试 → 待传目录 → `--drain` 退避补传，拒收目录，401 留待传，`--self-check`，退出码 0/1/2）；**§1.8 设备侧口径补充**（服务器 `ingest.rejected` 结构化事件为唯一服务器侧可见性）；首个真实车队与两台车档建档（`onboard_first_workshop.py`，VIN 只进库）；装机手册 `docs/v3_device_install.md`。OpenAPI 契约仍 21 路径（接口未改）。无架构变化，**图无需改动** |
 | v1.8 | 2026-09-14 | PROD-06 交付：`knowledge` 模块上线（手册库 6 个接口：列表 / 详情 / 目录树 / 搜索 / 上传投任务 / 删除），V2 的两本手册连同索引 sidecar 原样搬入 `stf_v3_manuals` 卷；**§1.4 队列口径改动：手册入库一步到位（MinerU → 索引 → 摘要 → 八道门），marker 与两段式退出 V3；宿主机 GPU worker 用 uv 装 Python 3.11 直接跑 V3 代码**（开工前三轮审核决定，2026-09-14）；§1.8 知识库口径补充（公共库、seed 保护、PDF 限制）。`jobs.recover_stalled` 回收 stalled 任务。OpenAPI 契约 21 路径。无架构变化，**图无需改动** |
 | v1.7 | 2026-09-13 | PROD-05 交付：`ingest` 模块上线（成员上传 `POST /v3/vehicles/{id}/logs`、设备上传 `POST /v3/ingest/device` + `X-Device-Token`、列表 / 元数据 / 原字节下载），格式嗅探仅 tsv / yamaha，sha256 按车去重，原始字节存独立具名卷 `stf_v3_obd_logs`；**§1.8 `obd_logs` 口径改动：VIN 不一致由"入库 + 告警"改为拒收**（决策 D2）；真 Jetson 切换与备份分别推后（D1、D3）。OpenAPI 契约 17 路径。无架构变化，**图无需改动** |
 | v1.6 | 2026-09-13 | PROD-04 交付：`stf-v3-api` / `stf-v3-worker` 常驻（独立 Compose 项目），nginx `/v3/` 路由（登录复用 auth 限流、SSE 参数预置），公网 `stf-diagnosis.dev/v3/` 可达（决策 D1），GitHub Actions CI（决策 D2），`deploy_check.sh` 部署核验，OpenAPI 契约 13 路径。部署拓扑变化不改架构框图，**图无需改动** |

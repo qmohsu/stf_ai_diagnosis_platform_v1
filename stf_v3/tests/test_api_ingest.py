@@ -246,3 +246,43 @@ async def test_every_log_joins_to_a_vehicle(
         ))).scalar_one()
         total = (await s.execute(text("SELECT count(*) FROM obd_logs"))).scalar_one()
     assert total == 2 and orphans == 0
+
+
+async def test_device_rejections_are_logged_and_refresh_last_seen(
+    client, workshop_with_codes  # type: ignore[no-untyped-def]
+) -> None:
+    """PROD-07 T-9 (FM-19, FM-3, FM-29): every refused device upload emits
+    one ``ingest.rejected`` event naming reason, device, filename, size and
+    the first line; and ``last_seen_at`` moves even when the file is
+    refused — so "recently active" proves the token was used, not that a
+    log was stored (the install guide says so)."""
+    import structlog
+    from stf_v3.settings import settings
+
+    _, manager, _, vid = await _setup(client, workshop_with_codes)
+    r = await client.post(f"/v3/vehicles/{vid}/devices", headers=manager, json={"label": "J"})
+    device_id, token = r.json()["id"], r.json()["token"]
+    hdr = {"X-Device-Token": token}
+    seen_before = (await client.get(f"/v3/vehicles/{vid}/devices", headers=manager)).json()[0]["last_seen_at"]
+
+    big = b"OBD Data Log\n" + b"x" * (settings.max_upload_bytes + 1)
+    cases = [("o.tsv", TSV_OTHER, 422, "vin_mismatch"),
+             ("x.json", b'{"a": 1}\nmore', 422, "unsupported_format"),
+             ("big.tsv", big, 413, "file_too_large")]
+    with structlog.testing.capture_logs() as logs:
+        for name, data, status, code in cases:
+            r = await client.post("/v3/ingest/device", headers=hdr, files=_file(name, data))
+            assert r.status_code == status and r.json()["code"] == code, r.text
+    rejected = [e for e in logs if e["event"] == "ingest.rejected"]
+    assert [(e["reason"], e["status"]) for e in rejected] == [(c[3], c[2]) for c in cases]
+    for event, (name, data, _, _) in zip(rejected, cases):
+        assert event["source"] == "device" and event["device_id"] == device_id
+        assert event["vehicle_id"] == vid and event["filename"] == name
+        assert event["size_bytes"] == len(data)
+        assert event["first_line"] == data[:120].split(b"\n", 1)[0].decode()
+        assert token not in str(event)
+
+    seen_after = (await client.get(f"/v3/vehicles/{vid}/devices", headers=manager)).json()[0]["last_seen_at"]
+    assert seen_before is None and seen_after is not None
+    listed = (await client.get(f"/v3/vehicles/{vid}/logs", headers=manager)).json()
+    assert listed == []   # nothing stored despite three "active" attempts
