@@ -85,6 +85,7 @@ async def test_onboard_creates_rows_and_token_uploads(
                           files={"file": ("trip.tsv", tsv, "application/octet-stream")})
     assert r.status_code == 422 and r.json()["code"] == "vin_mismatch"
 
+    capsys.readouterr()   # drop the API's own structlog lines (they name the VIN)
     rc = onboard.report(result, "https://v3.test", str(tmp_path / "tokens"))
     out = capsys.readouterr().out
     assert rc == 0 and VIN_A not in out and VIN_B not in out
