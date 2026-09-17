@@ -158,6 +158,12 @@ def run(base_url: str, invite_code: str) -> int:
                    files={"file": ("y.csv", yamaha)})
         _step("upload Yamaha CSV (201, no VIN)", r.status_code == 201
               and r.json().get("format") == "yamaha", r.text[:120])
+        maxlog = (_FIXTURES / "obd_maxlog_hiace.csv").read_bytes()
+        r = c.post(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t),
+                   files={"file": ("trip_maxlog.csv", maxlog)})
+        _step("upload OBD Maximum CSV (201, format maxlog, VIN read; PROD-07 D3)",
+              r.status_code == 201 and r.json().get("format") == "maxlog"
+              and r.json().get("vin_from_log") == "JHMGK5830HX202404", r.text[:120])
         r = c.post(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t),
                    files={"file": ("x.json", b'{"a": 1}')})
         _step("unsupported format rejected (422)", r.status_code == 422
@@ -188,7 +194,7 @@ def run(base_url: str, invite_code: str) -> int:
         _step("bogus device token → 401 (config error, file stays pending)",
               r.status_code == 401 and r.json().get("code") == "device_token_invalid")
         r = c.get(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t))
-        _step("log list shows 3 uploads", r.status_code == 200 and len(r.json()) == 3)
+        _step("log list shows 4 uploads", r.status_code == 200 and len(r.json()) == 4)
         if log_id:
             r = c.get(f"/v3/logs/{log_id}/raw", headers=_auth(token_t))
             _step("download returns identical bytes", r.status_code == 200

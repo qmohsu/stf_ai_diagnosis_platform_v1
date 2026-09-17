@@ -120,7 +120,8 @@ async def store_log(
     if meta is None:
         raise _reject(
             422, "unsupported_format",
-            "Only Jetson TSV and Yamaha dual-channel CSV logs are accepted",
+            "Only Jetson TSV, OBD Maximum Data Log CSV and Yamaha dual-channel "
+            "CSV logs are accepted",
         )
     sha = sha256_hex(data)
     existing = await find_by_sha(session, vehicle.id, sha)

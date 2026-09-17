@@ -213,7 +213,7 @@ ls -la ~/.config/stf/spool/pending ~/.config/stf/spool/rejected
 | `v3: enabled but unusable: ... required` | 配置文件缺 `STF_V3_BASE_URL` 或 token | 用收到的文件覆盖 |
 | `v3_result: config_error status=401` | token 无效或已吊销 | 文件留在待传目录；联系我们重发 token |
 | `v3_result: rejected status=422 ... vin_mismatch` | 用了另一台车的配置 | 检查配置文件是哪台车的 |
-| `v3_result: rejected status=422 ... unsupported_format` | 文件不是 Jetson TSV / Yamaha CSV | 把文件发给我们看 |
+| `v3_result: rejected status=422 ... unsupported_format` | 文件不是 Jetson 原生 TSV / "OBD Maximum Data Log" CSV / Yamaha CSV（第一行不是 `# OBD Maximum Data Log` 之类的 banner） | 把文件发给我们看 |
 | `v3_result: rejected status=413` | 文件超过 50 MB | 联系我们 |
 | `v3_result: vehicle_mismatch` | 服务器把日志记到了别的车档 | 立刻联系我们（配置里的车档编号和 token 不是同一台车） |
 | `v3_spool_full` | 待传目录超过 500 MB / 200 个文件 | V3 长期不通，先查第 1 节 |

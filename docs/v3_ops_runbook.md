@@ -115,7 +115,7 @@ VIN 在隐藏提示里输两遍（`ssh -t` 才有 TTY），不打印、不进任
 podman logs --since 7d stf-v3-api 2>&1 | grep '"ingest.rejected"' | tail -20
 ```
 
-每条含 `reason`（`vin_mismatch` / `unsupported_format` / `file_too_large`）、`device_id`、`filename`、`size_bytes`、`first_line`。`first_line` 不是 `OBD Data Log` 说明设备固件换了格式；`vin_mismatch` 多半是配置文件装错车。车档"最近活跃"在拒收时也会刷新（FM-29）——判断入库要看 `GET /v3/vehicles/{id}/logs`。
+每条含 `reason`（`vin_mismatch` / `unsupported_format` / `file_too_large`）、`device_id`、`filename`、`size_bytes`、`first_line`。`first_line` 不是 `# OBD Maximum Data Log`（真机记录脚本的格式，PROD-07 D3）/ `OBD Data Log` / `# Yamaha Dual` 说明设备固件换了格式；`vin_mismatch` 多半是配置文件装错车。车档"最近活跃"在拒收时也会刷新（FM-29）——判断入库要看 `GET /v3/vehicles/{id}/logs`。
 
 ### 2.3 吊销 / 重发 token（换车、泄露）
 
