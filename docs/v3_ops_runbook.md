@@ -188,7 +188,7 @@ bash infra/vllm_ctl.sh install-unit   # 装用户级 systemd 单元 stf-llm.serv
 
 ### 4.2 显存分配（D2）
 
-两张 RTX 6000 Ada 各 46 GB；vLLM `--gpu-memory-utilization 0.80`（bake-off 用 0.90），每张卡留约 9 GB 给宿主机 GPU worker 的手册转换（MinerU，固定用第二张卡）。验收实测（T-11）：vLLM 常驻时重新入库库里最大的一本手册并同时跑一次诊断——结果见 §4.6。若某本手册转换在这个余量下失败：先 `vllm_ctl.sh stop` → 转完 → `start`（运维动作，不改配置）。
+两张 RTX 6000 Ada 各 46 GB；vLLM `--gpu-memory-utilization 0.80`（bake-off 用 0.90），每张卡留约 9 GB 给宿主机 GPU worker 的手册转换（MinerU，固定用第二张卡）。验收实测（T-11，2026-09-19）：vLLM 常驻（两卡各 36.8 GB）时用 GPU worker 同一个 MinerU 二进制在 GPU 1 转换库里最大的一本手册（34.6 MB，1736 页）并同时跑一次完整诊断：转换成功（2630 s），诊断 98 s 完成；GPU 1 峰值 **44.2 GB / 46 GB**（余量只剩 1.9 GB），GPU 0 不变。结论：D2 的 0.80 刚好够，**更大的手册可能装不下**——若某本手册转换在这个余量下失败（日志里 CUDA out of memory）：先 `vllm_ctl.sh stop` → 转完 → `start`（运维动作，不改配置），或把 `VLLM_GPU_MEMORY_UTILIZATION` 降到 0.75。
 
 ### 4.3 仓库配方 vs bake-off 配方（FM-10）
 
@@ -226,7 +226,16 @@ bash stf_v3/scripts/deploy_check.sh --max-age-min 5  # 第 9 项会对 Ollama �
 
 ### 4.6 实测（PROD-09 验收，2026-09-19）
 
-（服务器验证后填：本地 Qwen3.6 / 云端 deepseek / 云端 claude-sonnet 三轮的耗时、请求数、工具调用数、token、费用；T-11 显存峰值；冷启动耗时。）
+同一份 Hiace 日志（带 P00AF，4680 行）+ 同一道 golden 手册问题，2026-09-19：
+
+| 路径 | 诊断耗时 | 请求 | 工具调用 | token | 报告 | golden 问答 |
+|---|---|---|---|---|---|---|
+| 本地 Qwen3.6-27B-FP8 / vLLM（qwen-vllm 档） | 97 s | 22 | 34 | 31.8 万 | 2273 字，1 引用，reasoning 事件 0 | 18 s / 8 工具（首跑以规划文字收尾 → 已加补问） |
+| 云端 deepseek-v3.2（默认对照） | 66 s | 19 | 18 | 15.3 万 | 1788 字，1 引用 | 33 s / 9 工具 / 2 引用 |
+| 云端 kimi-k2.5（D3 第二模型，claude-sonnet 地区受限） | 45 s | 5 | 10 | 4.3 万（另有 6.8k 字思考，未回灌） | 2060 字，1 引用 | 160 s / 8 工具 / 1 引用 |
+| PROD-08 对照：Ollama qwen3.5（思考关不掉） | 309 s | 6 | 12 | 8.6 万 | 2962 字 | — |
+
+冷启动 599 s；T-11 显存：vLLM 两卡各 36.8 GB，MinerU 转 1736 页手册时 GPU 1 峰值 44.2 GB（余量 1.9 GB）。回退演练（T-12）：停 vLLM → 测试容器只改三个环境变量指向 Ollama qwen3.5 → 一轮完整（57 s / 2 请求 / 3 工具，档自动为 qwen-ollama、墙钟回到 1200 s、thinking_chars 1286 但报告无标签）→ `ollama stop` 卸载（ollama ps 空）→ vLLM 重启 528 s 就绪 → 再跑一轮完整（34 s / 8 请求 / 11 工具，qwen-vllm 档，thinking 0）；全程零代码改动（git status 无修改文件）。
 
 ### 4.7 出了问题看什么（FM-4 / FM-22 / FM-35 / FM-37）
 

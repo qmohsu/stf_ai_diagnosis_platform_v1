@@ -58,7 +58,8 @@ case "${1:-}" in
     ;;
   status)
     if podman inspect stf-vllm >/dev/null 2>&1; then
-      podman inspect -f 'container=stf-vllm state={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}} pod={{.Pod}} restarts={{.RestartCount}} image={{.ImageName}}' stf-vllm
+      podman inspect -f 'container=stf-vllm state={{.State.Status}} pod={{.Pod}} restarts={{.RestartCount}} image={{.ImageName}}' stf-vllm
+      echo "health: $(podman inspect -f '{{.State.Healthcheck.Status}}' stf-vllm 2>/dev/null || podman inspect -f '{{.State.Health.Status}}' stf-vllm 2>/dev/null || echo n/a)"
       podman pod ps --format '{{.Name}} {{.Id}}' | grep -q "$(podman inspect -f '{{.Pod}}' stf-vllm | cut -c1-12)" \
         && echo "pod name: $(podman pod ps --format '{{.Name}} {{.Id}}' | grep "$(podman inspect -f '{{.Pod}}' stf-vllm | cut -c1-12)" | awk '{print $1}')"
     else

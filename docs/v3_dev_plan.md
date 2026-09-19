@@ -292,7 +292,7 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 - 设置：`STF_V3_LLM_BASE_URL / MODEL / API_KEY / ALLOW_CLOUD`、云端一组（默认关）、预算（`agent_*` / `subagent_*` / 截断 / 压缩阈值）、`default_locale`；compose 透传；import-linter"接口层不许导入流水线"契约把 diagnosis 纳入来源。**无新迁移、无新接口**（诊断接口在 PROD-11）。
 **测试**：`test_unit_loader` 7、`test_unit_tools_obd` 20、`test_unit_tools_manual` 12、`test_unit_agent_contract` 5、`test_unit_context_memory` 5、`test_unit_manual_guards` 6、`test_unit_agent_offline` 20（TestModel 三格式整轮、剧本 FunctionModel 嵌套委托 / 共享用量 / 文字+工具调用继续 / 引用 NO_SOURCE / 思考不进正文、四道闸门、模型断连、小助手超预算、取消、空回复、车档身份与假名、日志无内容无 VIN、记忆化）、`test_db_diagnosis` 1（行 → 依赖包 → 整轮）。**服务器等价验证（2026-09-17，PR #247 验证表）**：镜像内 148 passed + lint-imports 3 kept；deploy_check 8/8、隔离 PASS；真跑两次（现有 Ollama qwen3.5，zh-TW）：健康 Hiace 行程 346 s / 8 请求 / 20 工具调用 / 104k token / 52 事件 / 报告 2034 字，P00AF 行程 309 s / 6 请求 / 12 工具调用 / 86k token / 34 事件 / 报告 2962 字（P00AF 解码为主故障）；运维演练四项（端口不通 / 模型名错 / 云端未允许 / 输出目录在卷内）均预检拒绝。发现并修正：空 Mode 43/47 帧不再列为故障码。两次真跑 qwen3.5 未选择委托（委托证据 = 离线剧本 T-9）。
 
-#### PROD-09 — 模型适配层与云端接口 — **DONE（2026-09-19，PR #__PR__）**
+#### PROD-09 — 模型适配层与云端接口 — **DONE（2026-09-19，PR #248）**
 
 **目标**：唯一本地 vLLM + Qwen3.6-27B 为默认，云端只作对比。
 **方法**：ModelProfile 收敛 qwen 工具调用怪癖与 thinking 抑制；OpenRouter 接口用配置开关；~~嵌入模型走同一 vLLM~~（D4 划掉：V3 无嵌入用途，见 §4）；模型地址只在配置里。
@@ -313,7 +313,7 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 - `scripts/diagnose_once.py`：`--cloud`、`--model-wait-s`（本机默认等 600 s，云端 0 且不预热）、落文件名 `_local` / `_cloud`、末行打印档与来源。
 - `scripts/deploy_check.sh` 第 9 项：主模型地址必须本机、`/models` 含配置名、30 s 内真生成一句、vLLM 容器不在 V1/V3 的 pod；只能 `LLM_CHECK=skip` 显式跳过并打印理由；失败时打印 nvidia-smi 占用。
 - 默认配置改指 vLLM（`settings.py`、`docker-compose.v3.yml`）；CI 路径加入 vLLM 部署文件与运维手册；`.env.example` 加 V3 段。**无新迁移、无新接口。**
-**测试**：`test_unit_model_profile` 17（T-1 选档表 + 别名 / 大小写 / 未知名告警、T-2 三档实际请求体、T-3 残留过滤 + done 计数、T-4 工具调用残留、T-5 密钥回退 / 云端守卫 / 假名、T-6 预算随档）、`test_scripts_diagnose_once` 6（T-7）、`test_infra_vllm_compose` 2（T-8）、`test_docs_prod09` 2（T-16）；既有 `test_unit_agent_contract` 默认模型名随之更新。**服务器验证（T-9 ~ T-15）**：__SERVER_RESULTS__
+**测试**：`test_unit_model_profile` 17（T-1 选档表 + 别名 / 大小写 / 未知名告警、T-2 三档实际请求体、T-3 残留过滤 + done 计数、T-4 工具调用残留、T-5 密钥回退 / 云端守卫 / 假名、T-6 预算随档）、`test_scripts_diagnose_once` 6（T-7）、`test_infra_vllm_compose` 2（T-8）、`test_docs_prod09` 2（T-16）；既有 `test_unit_agent_contract` 默认模型名随之更新。**服务器验证（2026-09-19，PR #248 验证表）**：镜像内 178 passed + lint-imports 3 kept；deploy_check **9/9**（第 9 项 generated="ready"，vLLM 在 pod_stf_llm）、`LLM_CHECK=skip` 打印 SKIP 行、隔离 PASS（vLLM 常驻）。T-10 从零冷启动 **599 s**（宽限改 900 s）。T-13 同一 Hiace 日志（P00AF）三路：本地 Qwen3.6/vLLM **97 s / 22 请求 / 34 工具 / 31.8 万 token**（主动委托了两个子代理）、云端 deepseek-v3.2 66 s / 19 / 18 / 15.3 万、云端 kimi-k2.5 45 s / 5 / 10 / 4.3 万（Anthropic / OpenAI / Google 模型从服务器 403 地区限制，运行时收成 error + 部分报告）；同一 golden 手册问题（cross-001）本地 18 s / deepseek 33 s / kimi 160 s 各跑通。T-14 vLLM 轮 reasoning 事件 0、thinking_chars 0、报告无标签；云端落文件原始 VIN 0 次、假名存在、密钥 0 次。T-11 vLLM 常驻 + MinerU 转 1736 页手册（2630 s 成功）+ 同时诊断 98 s 完成，GPU 1 峰值 44.2 / 46 GB（余量 1.9 GB，运维手册记“更大手册先停 vLLM”）。T-12 停 vLLM → 测试容器只改三个环境变量指向 Ollama qwen3.5 → 一轮完整（57 s / 2 请求 / 3 工具，档自动为 qwen-ollama、墙钟回到 1200 s、thinking_chars 1286 但报告无标签）→ `ollama stop` 卸载（ollama ps 空）→ vLLM 重启 528 s 就绪 → 再跑一轮完整（34 s / 8 请求 / 11 工具，qwen-vllm 档，thinking 0）；全程零代码改动（git status 无修改文件）。 T-9 反向：vLLM 停机时第 9 项 FAIL 并点名“configured model not served (served: <endpoint down>)”，附两卡占用摘要；真跑脚本对停机端点 30 s 等待上限内退出码 4（34 s），不挂起。 发现并修正：Qwen3.6 关思考后偶尔以规划文字收尾 → 子代理一次性补问（b556a3a）；首轮 31.8 万 token → vLLM 档 token 门 100 万。
 
 #### PROD-10 — Golden 评测移植与门槛
 
