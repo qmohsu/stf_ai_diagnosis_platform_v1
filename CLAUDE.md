@@ -314,14 +314,28 @@ on Pydantic AI 2.44: main agent + manual / OBD sub-agents mounted as
 tools, 12 text-only tools, the 10 blueprint events, four budget gates
 that end a run with a PARTIAL report (never an exception), and
 `ingest/loader.py` reading all three raw log formats.  The only model
-source is `STF_V3_LLM_BASE_URL/MODEL/API_KEY` (Ollama today, vLLM after
-PROD-09); a non-local URL is refused unless `STF_V3_LLM_ALLOW_CLOUD=true`
-(prompts then carry a VIN pseudonym).  Run one diagnosis on the server
+source is `STF_V3_LLM_BASE_URL/MODEL/API_KEY` — by default the server's
+**vLLM** (`Qwen/Qwen3.6-27B-FP8` on 127.0.0.1:8010, PROD-09); the
+adapter profile (`STF_V3_LLM_PROFILE=auto`: `qwen-vllm` / `qwen-ollama` /
+`generic`) switches thinking off per request on vLLM, never sends thinking
+back, and sets per-profile budgets; a non-local URL is refused unless
+`STF_V3_LLM_ALLOW_CLOUD=true` (prompts then carry a VIN pseudonym) and
+`deploy_check.sh` check 9 fails on it — the cloud comparison model is
+reached ONLY via `diagnose_once.py --cloud` (`STF_V3_CLOUD_LLM_*`, key
+falls back to `OPENROUTER_API_KEY`).  Run one diagnosis on the server
 with `podman exec stf-v3-api python scripts/diagnose_once.py --vehicle-id
 … --log-id … --out-dir /tmp/runs` (see `docs/v3_ops_runbook.md` §3);
 tests drive the agent with Pydantic AI's `TestModel` / `FunctionModel`
 (`tests/agent_helpers.py`), never a live model.  No diagnosis endpoint,
 job, SSE or persistence yet — that is PROD-11.
+**vLLM lifecycle is separate from V3 deploys**: `bash infra/vllm_ctl.sh
+start|wait|status|stop|logs|install-unit` (compose project `stf_llm`,
+file `infra/docker-compose.vllm.yml`, cold start ≈ 5 min, weights from the
+`vllm_hf_cache` volume offline, GPU share 0.80 so MinerU still fits on
+GPU 1).  Never start it any other way (it would land in V1/V2's pod).
+After a server reboot: vLLM → `stf-v3-gpu-worker` → V3 containers
+(runbook §4.1).  Fallback to Ollama and back = config only, but the two
+must never hold GPU memory at the same time (runbook §4.4).
 The manual library lives in `stf_v3_manuals` (`/app/data/manuals`, PROD-06),
 shared with a **host** GPU worker: systemd user service
 `stf-v3-gpu-worker` runs the SAME `stf_v3` package from a user-level
@@ -344,7 +358,7 @@ cd infra && GIT_COMMIT=$(git rev-parse HEAD) ~/.local/bin/podman-compose -p stf_
 cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down &&   ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker && cd ..
 podman exec stf-nginx nginx -t && podman exec stf-nginx nginx -s reload   # only if nginx.conf changed
 systemctl --user restart stf-v3-gpu-worker && bash stf_v3/gpu_worker/install.sh --check   # host worker on the new code (PROD-06)
-bash stf_v3/scripts/deploy_check.sh                                    # 8 checks, exit 1 on any failure
+bash stf_v3/scripts/deploy_check.sh                                    # 9 checks (9 = model service), exit 1 on any failure
 # E2E smoke on a throwaway DB + port 8003 (keeps the real stf_v3 DB clean):
 #   create_database.sh stf_v3_test → alembic upgrade → podman run -d --name stf-v3-api-test --network host #   -e STF_V3_DATABASE_URL=<app url to stf_v3_test> -e STF_V3_JWT_SECRET=<random> stf-v3:local #   uvicorn stf_v3.main:app --host 127.0.0.1 --port 8003 → create_workshop.py → smoke_e2e.py --base-url http://127.0.0.1:8003
 #   → rm container, DROP DATABASE stf_v3_test

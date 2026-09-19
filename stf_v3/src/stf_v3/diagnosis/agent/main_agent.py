@@ -24,7 +24,7 @@ from typing import Any, AsyncIterator, List, Optional, Sequence
 
 import structlog
 from pydantic_ai import Agent, Tool
-from pydantic_ai.messages import ModelMessage
+from pydantic_ai.messages import ModelMessage, ModelResponse, ThinkingPart
 from pydantic_ai.models import Model
 from pydantic_ai.usage import RunUsage
 
@@ -32,9 +32,15 @@ from stf_v3.diagnosis.agent import events as ev
 from stf_v3.diagnosis.agent.context import last_assistant_text
 from stf_v3.diagnosis.agent.deps import DiagDeps
 from stf_v3.diagnosis.agent.events import AgentEvent, EventSink
-from stf_v3.diagnosis.agent.model import describe, model_settings
+from stf_v3.diagnosis.agent.model import describe, model_settings, source_label, source_of
 from stf_v3.diagnosis.agent.prompts import SYSTEM_PROMPT, build_user_message
-from stf_v3.diagnosis.agent.report import DiagnosisReport, extract_citations
+from stf_v3.diagnosis.agent.report import (
+    TOOL_CALL_RESIDUE_LIMITATION,
+    DiagnosisReport,
+    extract_citations,
+    has_tool_call_residue,
+    strip_thinking_residue,
+)
 from stf_v3.diagnosis.agent.runner import RunOutcome, drive, make_limits
 from stf_v3.diagnosis.tools.delegation import DELEGATION_TOOLS
 from stf_v3.diagnosis.tools.manual_tools import MANUAL_TOOLS
@@ -52,6 +58,20 @@ _PARTIAL_NOTE = {
     "cancelled": "run cancelled",
     "error": "model or runtime error",
 }
+_TOOL_CALL_RESIDUE_HEADER = (
+    "> **Partial report** — the model's tool-call text was not parsed by the "
+    "endpoint, so the investigation did not run as intended. Treat the findings "
+    "below as unverified.\n\n"
+)
+
+
+def thinking_chars(messages: Sequence[ModelMessage]) -> int:
+    """Total characters of thinking parts in a run's messages (FM-18)."""
+    total = 0
+    for msg in messages:
+        if isinstance(msg, ModelResponse):
+            total += sum(len(p.content or "") for p in msg.parts if isinstance(p, ThinkingPart))
+    return total
 
 
 def build_main_agent() -> Agent[DiagDeps, str]:
@@ -111,6 +131,15 @@ def build_report(deps: DiagDeps, outcome: RunOutcome, model: Model) -> Diagnosis
         note = _PARTIAL_NOTE.get(outcome.stopped_reason, outcome.stopped_reason)
         header = f"> **Partial report** — {note}. The findings below are what the investigation had established.\n\n"
         text = header + (text or "_No diagnosis text was produced before the run stopped._")
+    # PROD-09 residue checks: thinking blocks are stripped (FM-1), unparsed
+    # tool-call markup makes the report partial (FM-41).
+    text, filter_hits, filter_removed = strip_thinking_residue(text or "")
+    limitations = list(outcome.limitations)
+    if has_tool_call_residue(text):
+        limitations.append(TOOL_CALL_RESIDUE_LIMITATION)
+        if not partial:
+            partial = True
+            text = _TOOL_CALL_RESIDUE_HEADER + text
     dtc_trace = any(t.name == "list_dtcs" and not t.is_error for t in deps.trace)
     citations = extract_citations(
         text or "", deps.trace, [m.id for m in deps.manuals],
@@ -119,7 +148,7 @@ def build_report(deps: DiagDeps, outcome: RunOutcome, model: Model) -> Diagnosis
     return DiagnosisReport(
         content_md=text or "",
         citations=citations,
-        limitations=list(outcome.limitations),
+        limitations=limitations,
         stopped_reason=outcome.stopped_reason,
         model=describe(model),
         total_tokens=outcome.usage.total_tokens,
@@ -127,6 +156,10 @@ def build_report(deps: DiagDeps, outcome: RunOutcome, model: Model) -> Diagnosis
         tool_calls=outcome.tool_calls,
         elapsed_s=outcome.elapsed_s,
         partial=partial,
+        model_source=source_label(model),
+        thinking_chars=thinking_chars(outcome.messages),
+        filter_hits=filter_hits,
+        filter_removed_chars=filter_removed,
     )
 
 
@@ -150,10 +183,15 @@ async def run_diagnosis(
     settings = settings or _default_settings
     sink = deps.events
     started = time.monotonic()
+    src = source_of(model)
     sink.emit(ev.SESSION_START, {
         "vehicle": deps.vehicle_label(), "vehicle_id": str(deps.vehicle.id),
         "log_id": str(deps.log.id), "log_format": deps.log.format,
         "model": describe(model), "locale": deps.locale,
+        "model_source": source_label(model),
+        "profile": src.profile if src else "test",
+        "endpoint": src.host if src else "test",
+        "local": src.is_local if src else True,
         "manuals": len(deps.manuals), "tools": list(MAIN_TOOL_NAMES),
     })
     log_line, time_range, dtc_codes = _case_context(deps)
@@ -162,7 +200,7 @@ async def run_diagnosis(
         MAIN_AGENT, prompt, model=model, deps=deps, sink=sink, parent_tool_call_id=None,
         usage_limits=make_limits(deps.budgets.request_limit, deps.budgets.tool_calls_limit,
                                  deps.budgets.total_tokens_limit),
-        model_settings=model_settings(settings),
+        model_settings=model_settings(settings, model=model),
         wall_clock_s=deps.budgets.wall_clock_s,
         message_history=message_history,
         compact_threshold=deps.budgets.compact_threshold_tokens,
@@ -186,7 +224,11 @@ async def run_diagnosis(
             })
     sink.emit(ev.DONE, {"stopped_reason": outcome.stopped_reason,
                         "elapsed_s": round(time.monotonic() - started, 1),
-                        "events": len(sink.events) + 1})
+                        "events": len(sink.events) + 1,
+                        "thinking_chars": report.thinking_chars,
+                        "filter_hits": report.filter_hits,
+                        "filter_removed_chars": report.filter_removed_chars,
+                        "partial": report.partial})
     await sink.drain()
     return DiagnosisOutcome(
         report=report, events=list(sink.events), messages=outcome.messages, usage=outcome.usage,

@@ -1,5 +1,6 @@
 # STF V3 services — independent Compose file (dev plan D3, constraint B).
-# Shares ONLY infrastructure with V1/V2 (Postgres instance, vLLM, nginx),
+# Shares ONLY infrastructure with V1/V2 (Postgres instance, vLLM =
+# docker-compose.vllm.yml, nginx),
 # all via configuration.  Never merge this into docker-compose.yml.
 #
 # Build (GIT_COMMIT is baked into the image label for deploy_check.sh):
@@ -32,12 +33,21 @@ services:
       STF_V3_OBD_LOG_STORAGE_PATH: /app/data/obd_logs
       STF_V3_MANUAL_STORAGE_PATH: /app/data/manuals
       # Agent runtime (PROD-08): the single model source.  Defaults to the
-      # host's Ollama; PROD-09 points it at vLLM.  A non-local URL needs
-      # STF_V3_LLM_ALLOW_CLOUD=true (prompts then carry a VIN pseudonym).
-      STF_V3_LLM_BASE_URL: ${STF_V3_LLM_BASE_URL:-http://127.0.0.1:11434/v1}
-      STF_V3_LLM_MODEL: ${STF_V3_LLM_MODEL:-qwen3.5:27b-q8_0}
-      STF_V3_LLM_API_KEY: ${STF_V3_LLM_API_KEY:-ollama}
+      # host's vLLM (docker-compose.vllm.yml, PROD-09); to fall back to
+      # Ollama set URL/MODEL/API_KEY in infra/.env (profile auto-selects).
+      # A non-local URL needs STF_V3_LLM_ALLOW_CLOUD=true (prompts then
+      # carry a VIN pseudonym) and deploy_check.sh check 9 fails on it.
+      STF_V3_LLM_BASE_URL: ${STF_V3_LLM_BASE_URL:-http://127.0.0.1:8010/v1}
+      STF_V3_LLM_MODEL: ${STF_V3_LLM_MODEL:-Qwen/Qwen3.6-27B-FP8}
+      STF_V3_LLM_API_KEY: ${STF_V3_LLM_API_KEY:-none}
+      STF_V3_LLM_PROFILE: ${STF_V3_LLM_PROFILE:-auto}
       STF_V3_LLM_ALLOW_CLOUD: ${STF_V3_LLM_ALLOW_CLOUD:-false}
+      # Cloud comparison (PROD-09 D3): off by default; key falls back to
+      # OPENROUTER_API_KEY (the manual-summary key) when empty.
+      STF_V3_CLOUD_LLM_ENABLED: ${STF_V3_CLOUD_LLM_ENABLED:-false}
+      STF_V3_CLOUD_LLM_MODEL: ${STF_V3_CLOUD_LLM_MODEL:-deepseek/deepseek-v3.2}
+      STF_V3_CLOUD_LLM_API_KEY: ${STF_V3_CLOUD_LLM_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       STF_V3_DEFAULT_LOCALE: ${STF_V3_DEFAULT_LOCALE:-zh-TW}
       STF_V3_MANUAL_IMAGES_ENABLED: ${STF_V3_MANUAL_IMAGES_ENABLED:-false}
       PYDANTIC_AI_NO_BANNER: "1"
@@ -64,12 +74,21 @@ services:
       STF_V3_OBD_LOG_STORAGE_PATH: /app/data/obd_logs
       STF_V3_MANUAL_STORAGE_PATH: /app/data/manuals
       # Agent runtime (PROD-08): the single model source.  Defaults to the
-      # host's Ollama; PROD-09 points it at vLLM.  A non-local URL needs
-      # STF_V3_LLM_ALLOW_CLOUD=true (prompts then carry a VIN pseudonym).
-      STF_V3_LLM_BASE_URL: ${STF_V3_LLM_BASE_URL:-http://127.0.0.1:11434/v1}
-      STF_V3_LLM_MODEL: ${STF_V3_LLM_MODEL:-qwen3.5:27b-q8_0}
-      STF_V3_LLM_API_KEY: ${STF_V3_LLM_API_KEY:-ollama}
+      # host's vLLM (docker-compose.vllm.yml, PROD-09); to fall back to
+      # Ollama set URL/MODEL/API_KEY in infra/.env (profile auto-selects).
+      # A non-local URL needs STF_V3_LLM_ALLOW_CLOUD=true (prompts then
+      # carry a VIN pseudonym) and deploy_check.sh check 9 fails on it.
+      STF_V3_LLM_BASE_URL: ${STF_V3_LLM_BASE_URL:-http://127.0.0.1:8010/v1}
+      STF_V3_LLM_MODEL: ${STF_V3_LLM_MODEL:-Qwen/Qwen3.6-27B-FP8}
+      STF_V3_LLM_API_KEY: ${STF_V3_LLM_API_KEY:-none}
+      STF_V3_LLM_PROFILE: ${STF_V3_LLM_PROFILE:-auto}
       STF_V3_LLM_ALLOW_CLOUD: ${STF_V3_LLM_ALLOW_CLOUD:-false}
+      # Cloud comparison (PROD-09 D3): off by default; key falls back to
+      # OPENROUTER_API_KEY (the manual-summary key) when empty.
+      STF_V3_CLOUD_LLM_ENABLED: ${STF_V3_CLOUD_LLM_ENABLED:-false}
+      STF_V3_CLOUD_LLM_MODEL: ${STF_V3_CLOUD_LLM_MODEL:-deepseek/deepseek-v3.2}
+      STF_V3_CLOUD_LLM_API_KEY: ${STF_V3_CLOUD_LLM_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       STF_V3_DEFAULT_LOCALE: ${STF_V3_DEFAULT_LOCALE:-zh-TW}
       STF_V3_MANUAL_IMAGES_ENABLED: ${STF_V3_MANUAL_IMAGES_ENABLED:-false}
       PYDANTIC_AI_NO_BANNER: "1"

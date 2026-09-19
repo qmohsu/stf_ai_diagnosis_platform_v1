@@ -1,0 +1,18 @@
+# User-level systemd unit for the vLLM model service (PROD-09 FM-21).
+# Installed by `bash infra/vllm_ctl.sh install-unit` (fills @REPO@).
+# Rootless podman containers do not come back after a reboot on their
+# own; with `loginctl enable-linger` this unit starts them at boot.
+[Unit]
+Description=STF local LLM (vLLM, compose project stf_llm)
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash @REPO@/infra/vllm_ctl.sh start
+ExecStop=/bin/bash @REPO@/infra/vllm_ctl.sh stop
+TimeoutStartSec=180
+TimeoutStopSec=120
+
+[Install]
+WantedBy=default.target

@@ -95,6 +95,6 @@ def test_model_source_refuses_cloud_without_opt_in() -> None:
     allowed = Settings(llm_base_url="https://openrouter.ai/api/v1", llm_api_key="x", llm_allow_cloud=True)
     assert build_model(allowed).model_name == allowed.llm_model
     local = Settings()
-    assert model_is_local(local) and build_model(local).model_name == "qwen3.5:27b-q8_0"
+    assert model_is_local(local) and build_model(local).model_name == "Qwen/Qwen3.6-27B-FP8"
     with pytest.raises(ModelConfigError):
         build_model(Settings(), cloud=True)

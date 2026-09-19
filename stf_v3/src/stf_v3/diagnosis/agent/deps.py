@@ -100,20 +100,30 @@ class Budgets:
     llm_temperature: float = 0.3
 
     @classmethod
-    def from_settings(cls, s: Any) -> "Budgets":
+    def from_settings(cls, s: Any, profile: Optional[str] = None) -> "Budgets":
+        """Gates from settings; ``None`` fields take the adapter profile's
+        default (vLLM / Ollama / cloud differ, PROD-09 FM-8).  An explicit
+        setting (env) always wins."""
+        from stf_v3.diagnosis.agent.model import profile_defaults, select_profile
+
+        d = profile_defaults(profile or select_profile(s))
+
+        def pick(value: Any, key: str) -> Any:
+            return d[key] if value is None else value
+
         return cls(
-            wall_clock_s=s.agent_wall_clock_s,
-            request_limit=s.agent_request_limit,
-            tool_calls_limit=s.agent_tool_calls_limit,
-            total_tokens_limit=s.agent_total_tokens_limit,
-            subagent_wall_clock_s=s.subagent_wall_clock_s,
-            subagent_request_limit=s.subagent_request_limit,
-            subagent_max_tokens=s.subagent_max_tokens,
-            subagent_temperature=s.subagent_temperature,
+            wall_clock_s=pick(s.agent_wall_clock_s, "wall_clock_s"),
+            request_limit=pick(s.agent_request_limit, "request_limit"),
+            tool_calls_limit=pick(s.agent_tool_calls_limit, "tool_calls_limit"),
+            total_tokens_limit=pick(s.agent_total_tokens_limit, "total_tokens_limit"),
+            subagent_wall_clock_s=pick(s.subagent_wall_clock_s, "subagent_wall_clock_s"),
+            subagent_request_limit=pick(s.subagent_request_limit, "subagent_request_limit"),
+            subagent_max_tokens=pick(s.subagent_max_tokens, "subagent_max_tokens"),
+            subagent_temperature=pick(s.subagent_temperature, "subagent_temperature"),
             tool_result_max_tokens=s.tool_result_max_tokens,
             compact_threshold_tokens=s.compact_threshold_tokens,
-            llm_max_tokens=s.llm_max_tokens,
-            llm_temperature=s.llm_temperature,
+            llm_max_tokens=pick(s.llm_max_tokens, "llm_max_tokens"),
+            llm_temperature=pick(s.llm_temperature, "llm_temperature"),
         )
 
 

@@ -196,7 +196,7 @@ async def run_obd_agent(
         OBD_AGENT, prompt, model=model, deps=deps, sink=core.events,
         parent_tool_call_id=parent_tool_call_id,
         usage_limits=make_limits(core.budgets.subagent_request_limit),
-        model_settings=_ms(_settings, subagent=True),
+        model_settings=_ms(_settings, subagent=True, model=model),
         wall_clock_s=core.budgets.subagent_wall_clock_s,
         usage=usage,
     )
