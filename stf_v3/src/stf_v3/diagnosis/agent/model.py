@@ -64,7 +64,7 @@ VLLM_NO_THINKING_EXTRA_BODY: Dict[str, Any] = {
 # generic row.  Every value can be overridden by its ``STF_V3_*`` setting.
 _PROFILE_DEFAULTS: Dict[str, Dict[str, Any]] = {
     PROFILE_QWEN_VLLM: dict(
-        wall_clock_s=900.0, request_limit=60, tool_calls_limit=100, total_tokens_limit=500_000,
+        wall_clock_s=900.0, request_limit=60, tool_calls_limit=100, total_tokens_limit=1_000_000,
         subagent_wall_clock_s=180.0, subagent_request_limit=12, subagent_max_tokens=12_288,
         subagent_temperature=0.2, llm_max_tokens=8192, llm_temperature=0.3, request_timeout_s=180.0,
     ),

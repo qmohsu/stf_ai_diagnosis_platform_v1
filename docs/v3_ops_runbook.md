@@ -152,8 +152,8 @@ podman cp stf-v3-api:/tmp/runs ~/prod09_runs/     # 报告 .report.md / .report.
 | `LLM_PROFILE` | auto | 适配档：`auto` 按地址 + 模型名选（qwen + vLLM → `qwen-vllm`：每请求 `enable_thinking=false`、思考不回灌、工具不加严格模式；qwen + Ollama 端口或带 `:` 标签 → `qwen-ollama`；其余 / 云端 → `generic`）；也可显式指定三者之一 |
 | `LLM_MAX_TOKENS` / `LLM_TEMPERATURE` / `LLM_REQUEST_TIMEOUT_S` | 档默认（8192 / 0.3 / vLLM 180 s · Ollama 300 s） | 单次请求参数；不设即取档默认 |
 | `LLM_ALLOW_CLOUD` | false | 非本机地址一律拒绝启动，除非显式打开；打开后提示词里 VIN 自动换成 `V-xxxxxxxx` 假名 |
-| `CLOUD_LLM_ENABLED/BASE_URL/MODEL/API_KEY` | 关 / OpenRouter / `deepseek/deepseek-v3.2` / 空 | 云端对照口，只由真跑脚本 `--cloud` 进入；`API_KEY` 为空时用手册摘要那把 `OPENROUTER_API_KEY`（§4.5） |
-| `AGENT_WALL_CLOCK_S / AGENT_REQUEST_LIMIT / AGENT_TOOL_CALLS_LIMIT / AGENT_TOTAL_TOKENS_LIMIT` | 档默认：vLLM 900 / 60 / 100 / 500000；Ollama 1200 / 80 / 120 / 600000；云端 900 / 80 / 120 / 600000 | 主 Agent 四道闸门；触发即以"部分报告"收尾；显式设置覆盖档默认 |
+| `CLOUD_LLM_ENABLED/BASE_URL/MODEL/API_KEY` | 关 / OpenRouter / `deepseek/deepseek-v3.2` / 空 | 云端对照口，只由真跑脚本 `--cloud` 进入；`API_KEY` 为空时用手册摘要那把密钥（`STF_V3_OPENROUTER_API_KEY`，别名 `OPENROUTER_API_KEY`；§4.5） |
+| `AGENT_WALL_CLOCK_S / AGENT_REQUEST_LIMIT / AGENT_TOOL_CALLS_LIMIT / AGENT_TOTAL_TOKENS_LIMIT` | 档默认：vLLM 900 / 60 / 100 / 1000000；Ollama 1200 / 80 / 120 / 600000；云端 900 / 80 / 120 / 600000 | 主 Agent 四道闸门；触发即以"部分报告"收尾；显式设置覆盖档默认 |
 | `SUBAGENT_WALL_CLOCK_S / SUBAGENT_REQUEST_LIMIT` | 档默认：vLLM 180 / 12；Ollama、云端 240 / 12 | 子代理闸门；超预算返回带 `[delegation …]` 前缀的部分结果 |
 | `TOOL_RESULT_MAX_TOKENS / COMPACT_THRESHOLD_TOKENS` | 2000 / 60000 | 单条工具结果截断；对话压缩阈值（中日韩字符按 1 token 估） |
 | `MANUAL_IMAGES_ENABLED` | false | 手册图片是否进模型（本地模型确认支持图片前保持关） |
@@ -174,15 +174,15 @@ V1/V2/V3 唯一的本地模型来源（设计文档 D7，PROD-09 D1）：`Qwen/Q
 ### 4.1 启停与启动顺序
 
 ```
-bash infra/vllm_ctl.sh start          # 起容器；冷启动约 5 分钟（权重来自本地卷 vllm_hf_cache，不联网）
-bash infra/vllm_ctl.sh wait           # 轮询 /v1/models 直到列出模型（默认最多 900 s），超时打印显卡占用 + 末 30 行日志
+bash infra/vllm_ctl.sh start          # 起容器；冷启动约 10 分钟（2026-09-19 实测 599 s：权重来自本地卷 vllm_hf_cache，不联网）
+bash infra/vllm_ctl.sh wait           # 轮询 /v1/models 直到列出模型（默认最多 1200 s），超时打印显卡占用 + 末 30 行日志
 bash infra/vllm_ctl.sh status         # 容器状态 / 健康 / pod / 已服务模型 / 两卡显存
 bash infra/vllm_ctl.sh stop           # 停容器，释放两张卡
 bash infra/vllm_ctl.sh logs 200
 bash infra/vllm_ctl.sh install-unit   # 装用户级 systemd 单元 stf-llm.service：重启机器后自动 start（已 enable-linger）
 ```
 
-**服务器重启后的启动顺序**（FM-21）：① `vllm_ctl.sh start` → `wait`（或 `stf-llm.service` 自动起）；② `systemctl --user restart stf-v3-gpu-worker`；③ V3 容器 `podman-compose -p stf_v3 … up -d stf-v3-api stf-v3-worker`；④ `bash stf_v3/scripts/deploy_check.sh`。V3 容器比 vLLM 早起也不会坏——真跑脚本与（PROD-11 的）任务预检会等模型就绪，只是那 5 分钟内的诊断请求会等或失败。
+**服务器重启后的启动顺序**（FM-21）：① `vllm_ctl.sh start` → `wait`（或 `stf-llm.service` 自动起）；② `systemctl --user restart stf-v3-gpu-worker`；③ V3 容器 `podman-compose -p stf_v3 … up -d stf-v3-api stf-v3-worker`；④ `bash stf_v3/scripts/deploy_check.sh`。V3 容器比 vLLM 早起也不会坏——真跑脚本与（PROD-11 的）任务预检会等模型就绪，只是那约 10 分钟内的诊断请求会等或失败。
 
 **vLLM 不参与 V3 部署核验的"30 分钟内新建"检查**（FM-39）：V3 每次部署不需要重启 vLLM；核验第 9 项只看它在线、服务的是配置里的模型、能真的生成一句。
 
@@ -203,7 +203,7 @@ bash infra/vllm_ctl.sh install-unit   # 装用户级 systemd 单元 stf-llm.serv
 | 前缀缓存 / 投机解码 | 开 / MTP 1 token | 同 |
 | 权重来源 | HF 缓存卷 | 同 + `HF_HUB_OFFLINE=1`（不联网） |
 | 端口 | 127.0.0.1:8010 | 同 |
-| 健康检查 / 重启 | 无 | `/health`，起始宽限 600 s；`on-failure:10`（有上限，FM-37） |
+| 健康检查 / 重启 | 无 | `/health`，起始宽限 900 s；`on-failure:10`（有上限，FM-37） |
 
 ### 4.4 回退到 Ollama（FM-9 / FM-38）与切回
 
@@ -220,7 +220,7 @@ bash stf_v3/scripts/deploy_check.sh --max-age-min 5  # 第 9 项会对 Ollama �
 
 ### 4.5 云端对照（D3）
 
-云端**只作对比**，永远不是产品路径：部署核验第 9 项在 `STF_V3_LLM_BASE_URL` 不是本机时直接 FAIL（FM-33）。进入云端只有一条路：`diagnose_once.py --cloud`，用 `STF_V3_CLOUD_LLM_*`（默认 OpenRouter + `deepseek/deepseek-v3.2`；换 `anthropic/claude-sonnet-4.6` 只改 `STF_V3_CLOUD_LLM_MODEL`），密钥为空时复用 `OPENROUTER_API_KEY`。
+云端**只作对比**，永远不是产品路径：部署核验第 9 项在 `STF_V3_LLM_BASE_URL` 不是本机时直接 FAIL（FM-33）。进入云端只有一条路：`diagnose_once.py --cloud`，用 `STF_V3_CLOUD_LLM_*`（默认 OpenRouter + `deepseek/deepseek-v3.2`；换 `anthropic/claude-sonnet-4.6` 只改 `STF_V3_CLOUD_LLM_MODEL`），密钥为空时复用手册摘要那把 `STF_V3_OPENROUTER_API_KEY`（别名 `OPENROUTER_API_KEY`）。
 
 **允许出境的字段**（FM-13，人工审过一份云端消息文件后固定）：车辆品牌与型号、**VIN 假名 `V-xxxxxxxx`**、车牌与昵称（车档标签，非身份）、日志的时间范围与格式、工具返回的**文本摘要**（信号统计 / 窗口抽样 / 故障码 / 手册章节文本）、系统与用户提示词。**不出境**：原始 VIN、原始日志文件、手册图片、密钥（事件 / 报告 / 消息三个落文件里也没有密钥，事件里只有 `model_source` 标签）。云端两轮的落文件留在服务器 `~/prod09_runs`（含日志摘要），不进 PR。
 

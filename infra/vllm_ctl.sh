@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Start / stop / inspect the vLLM model service (PROD-09 D1, issue #237).
 #
-#   bash infra/vllm_ctl.sh start          # up -d (cold start ≈ 5 min); then `wait`
-#   bash infra/vllm_ctl.sh wait [SECONDS] # poll /v1/models until the model is listed (default 900 s)
+#   bash infra/vllm_ctl.sh start          # up -d (cold start ≈ 10 min); then `wait`
+#   bash infra/vllm_ctl.sh wait [SECONDS] # poll /v1/models until the model is listed (default 1200 s)
 #   bash infra/vllm_ctl.sh status         # container / pod / health / served models / GPU summary
 #   bash infra/vllm_ctl.sh stop           # down (frees both GPUs; e.g. before an Ollama fallback)
 #   bash infra/vllm_ctl.sh logs [N]       # last N container log lines
@@ -38,13 +38,13 @@ case "${1:-}" in
     [ "${busy:-0}" -gt 0 ] && echo "WARN: a GPU already holds > 8 GB — vLLM may fail to start (Ollama model resident? another tenant?)"
     podman rm -f stf-vllm >/dev/null 2>&1 || true   # a leftover from a manual `podman run`
     "${COMPOSE[@]}" up -d stf-vllm || exit 1
-    echo "stf-vllm starting (cold start ≈ 5 min). Next: bash $0 wait"
+    echo "stf-vllm starting (cold start ≈ 10 min). Next: bash $0 wait"
     ;;
   stop)
     "${COMPOSE[@]}" down
     ;;
   wait)
-    limit="${2:-900}"
+    limit="${2:-1200}"
     started=$(date +%s)
     while :; do
       served="$(served_models)"

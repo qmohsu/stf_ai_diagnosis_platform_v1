@@ -11,7 +11,7 @@
 # Every parameter is checked by stf_v3/tests/test_infra_vllm_compose.py
 # and listed in docs/v3_ops_runbook.md §4 (repo recipe vs bake-off).
 #
-# Cold start ≈ 5 min (weights from the `vllm_hf_cache` volume; the
+# Cold start ≈ 10 min (weights from the `vllm_hf_cache` volume; the
 # healthcheck's start_period covers it).  Weights never come from the
 # network: HF_HUB_OFFLINE=1 (FM-34).
 services:
@@ -66,7 +66,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 600s               # cold start ≈ 5 min (FM-6 / FM-40)
+      start_period: 900s               # cold start ≈ 10 min measured 2026-09-19 (FM-6 / FM-40)
     restart: on-failure:10             # bounded retries (FM-37); reboot = vllm_ctl.sh start
 
 volumes:

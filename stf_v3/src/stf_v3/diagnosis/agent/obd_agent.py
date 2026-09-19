@@ -20,6 +20,7 @@ from pydantic_ai.models import Model
 
 from stf_v3.diagnosis.agent.context import last_assistant_text
 from stf_v3.diagnosis.agent.deps import DiagDeps, SubAgentDeps
+from stf_v3.diagnosis.agent.guards import NUDGE_FINAL_INSTRUCTION
 from stf_v3.diagnosis.agent.runner import RunOutcome, drive, make_limits
 from stf_v3.diagnosis.agent.subagent_prompts import (
     OBD_AGENT_SYSTEM_PROMPT,
@@ -133,6 +134,11 @@ def _coerce_extra_raw_data(raw: Any) -> List[DataExcerpt]:
     return out
 
 
+def has_final_json(text: Optional[str]) -> bool:
+    """Whether the sub-agent's final text carries its JSON answer object."""
+    return bool(text) and '"summary"' in text
+
+
 def parse_final_json(content: Optional[str]) -> Tuple[str, List[SignalCitation], List[DTCCitation], List[DataExcerpt], List[str]]:
     """``(summary, signal_citations, dtc_citations, extra_raw_data, limitations)``."""
     if not content:
@@ -200,6 +206,19 @@ async def run_obd_agent(
         wall_clock_s=core.budgets.subagent_wall_clock_s,
         usage=usage,
     )
+    if outcome.stopped_reason == "complete" and not has_final_json(outcome.output):
+        # PROD-09: same one-shot nudge as the manual sub-agent (planning
+        # prose returned as the final turn); tools stay available, never loops.
+        logger.info("obd_agent.nudged", tool_calls=len(deps.trace))
+        outcome = await drive(
+            OBD_AGENT, NUDGE_FINAL_INSTRUCTION, model=model, deps=deps, sink=core.events,
+            parent_tool_call_id=parent_tool_call_id,
+            usage_limits=make_limits(core.budgets.subagent_request_limit),
+            model_settings=_ms(_settings, subagent=True, model=model),
+            wall_clock_s=core.budgets.subagent_wall_clock_s,
+            usage=usage,
+            message_history=outcome.messages,
+        )
     if outcome.stopped_reason == "complete":
         summary, sig, dtc, extra, limitations = parse_final_json(outcome.output)
         stopped = "complete"

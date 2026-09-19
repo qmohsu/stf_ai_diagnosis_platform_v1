@@ -322,7 +322,7 @@ back, and sets per-profile budgets; a non-local URL is refused unless
 `STF_V3_LLM_ALLOW_CLOUD=true` (prompts then carry a VIN pseudonym) and
 `deploy_check.sh` check 9 fails on it — the cloud comparison model is
 reached ONLY via `diagnose_once.py --cloud` (`STF_V3_CLOUD_LLM_*`, key
-falls back to `OPENROUTER_API_KEY`).  Run one diagnosis on the server
+falls back to `STF_V3_OPENROUTER_API_KEY`).  Run one diagnosis on the server
 with `podman exec stf-v3-api python scripts/diagnose_once.py --vehicle-id
 … --log-id … --out-dir /tmp/runs` (see `docs/v3_ops_runbook.md` §3);
 tests drive the agent with Pydantic AI's `TestModel` / `FunctionModel`
@@ -330,7 +330,7 @@ tests drive the agent with Pydantic AI's `TestModel` / `FunctionModel`
 job, SSE or persistence yet — that is PROD-11.
 **vLLM lifecycle is separate from V3 deploys**: `bash infra/vllm_ctl.sh
 start|wait|status|stop|logs|install-unit` (compose project `stf_llm`,
-file `infra/docker-compose.vllm.yml`, cold start ≈ 5 min, weights from the
+file `infra/docker-compose.vllm.yml`, cold start ≈ 10 min, weights from the
 `vllm_hf_cache` volume offline, GPU share 0.80 so MinerU still fits on
 GPU 1).  Never start it any other way (it would land in V1/V2's pod).
 After a server reboot: vLLM → `stf-v3-gpu-worker` → V3 containers

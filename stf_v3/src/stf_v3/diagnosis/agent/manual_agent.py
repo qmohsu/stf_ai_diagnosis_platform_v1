@@ -29,6 +29,7 @@ from stf_v3.diagnosis.agent.deps import DiagDeps, SubAgentDeps
 from stf_v3.diagnosis.agent.guards import (
     FORCE_FINAL_INSTRUCTION,
     FORCED_DECLINE_SUMMARY,
+    NUDGE_FINAL_INSTRUCTION,
     ManualGuardState,
 )
 from stf_v3.diagnosis.agent.runner import RunOutcome, drive, make_limits
@@ -106,6 +107,11 @@ def _canonical_from_sections(manual_id: str, raw_slug: str, raw_sections: List[S
         if slugified and slugified in slug:
             return slug
     return raw_slug
+
+
+def has_final_json(text: Optional[str]) -> bool:
+    """Whether the sub-agent's final text carries its JSON answer object."""
+    return bool(text) and '"summary"' in text
 
 
 def parse_final_json(content: Optional[str], raw_sections: Optional[List[SectionRef]] = None) -> Tuple[str, List[Citation]]:
@@ -194,6 +200,21 @@ async def run_manual_agent(
         usage=usage,
         extra_capabilities=[ProcessHistory(_force_final_processor)],
     )
+    if outcome.stopped_reason == "complete" and not has_final_json(outcome.output) and not state.force_final:
+        # PROD-09 (qwen on vLLM, thinking off): the model sometimes ends a
+        # turn with planning prose instead of the JSON answer.  Nudge ONCE,
+        # tools still available, same history and budget; never loop.
+        logger.info("manual_agent.nudged", tool_calls=len(deps.trace))
+        outcome = await drive(
+            MANUAL_AGENT, NUDGE_FINAL_INSTRUCTION, model=model, deps=deps, sink=core.events,
+            parent_tool_call_id=parent_tool_call_id,
+            usage_limits=make_limits(core.budgets.subagent_request_limit),
+            model_settings=_ms(_settings, subagent=True, model=model),
+            wall_clock_s=core.budgets.subagent_wall_clock_s,
+            usage=usage,
+            message_history=outcome.messages,
+            extra_capabilities=[ProcessHistory(_force_final_processor)],
+        )
     raw_sections: List[SectionRef] = list(deps.raw_sections)
     if outcome.stopped_reason == "complete":
         summary, citations = parse_final_json(outcome.output, raw_sections)

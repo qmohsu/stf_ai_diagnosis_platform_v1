@@ -307,7 +307,7 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 - 第一轮纠正的事实：服务器两张卡当时都是空的（Ollama 里已无驻留模型，"先卸载"不需要）；vLLM 启动配方只在 /tmp。第二轮 45 条失效模式（盲审 28 + 代码细读 17）全按推荐（处理 33 / 推迟 3 / 接受 9）；改盲审推荐 4 条（FM-2 / 3 / 17 / 19 改为接受）。第三轮 16 条测试 T-1 ~ T-16（CI 9 / 服务器 7），"处理"条目无一遗漏。
 
 **实现**：
-- `infra/docker-compose.vllm.yml` + `infra/vllm_ctl.sh`（start / wait / status / stop / logs / install-unit，项目名写死 `stf_llm`）+ `infra/stf-llm.service`（用户级 systemd，重启后自起）：bake-off 配方照抄，只改显存 0.80；`HF_HUB_OFFLINE=1`；健康检查起始宽限 600 s；重启 `on-failure:10`。
+- `infra/docker-compose.vllm.yml` + `infra/vllm_ctl.sh`（start / wait / status / stop / logs / install-unit，项目名写死 `stf_llm`）+ `infra/stf-llm.service`（用户级 systemd，重启后自起）：bake-off 配方照抄，只改显存 0.80；`HF_HUB_OFFLINE=1`；健康检查起始宽限 900 s（冷启动实测 599 s）；重启 `on-failure:10`。
 - `diagnosis/agent/model.py`：三档适配（`qwen-vllm` / `qwen-ollama` / `generic`）按地址 + 模型名自动选或 `STF_V3_LLM_PROFILE` 显式指定；vLLM 档每请求带 `chat_template_kwargs.enable_thinking=false`（不用 Pydantic AI 的通用思考档位——它会翻成 OpenAI 的 `reasoning_effort`）；思考不回灌、工具不加严格模式沿用；`ModelSource`（本地/云端、主机、档）随模型对象走，写进 `session_start`、`done` 与报告；云端密钥回退到 `OPENROUTER_API_KEY`；预算与请求参数**按档给默认值**，显式设置覆盖。
 - `report.py` / `main_agent.py`：报告落文前剥离**带标签**的思考块并计数（`filter_hits / filter_removed_chars`）、统计思考字数、工具调用 XML 残留 → 部分报告 + limitation。
 - `scripts/diagnose_once.py`：`--cloud`、`--model-wait-s`（本机默认等 600 s，云端 0 且不预热）、落文件名 `_local` / `_cloud`、末行打印档与来源。
