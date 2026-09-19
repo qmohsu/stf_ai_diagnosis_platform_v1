@@ -56,7 +56,9 @@ async def test_bootstrap_loads_rows_and_runs_a_diagnosis(client, workshop_with_c
         with pytest.raises(DepsNotFound):
             await load_diag_deps(session, uuid.uuid4(), log_id, settings)
     assert deps.vehicle.vin == "JHMGK5830HX202404" and deps.log.format == "maxlog"
-    assert deps.locale == "en" and deps.budgets.request_limit == settings.agent_request_limit
+    from stf_v3.diagnosis.agent.deps import Budgets
+
+    assert deps.locale == "en" and deps.budgets.request_limit == Budgets.from_settings(settings).request_limit
     out = await run_diagnosis(deps, TestModel(custom_output_text="**Fault identification** — test."))
     assert out.stopped_reason == "complete" and out.report.content_md.startswith("**Fault")
     assert out.events[0].event_type == "session_start" and out.events[-1].event_type == "done"

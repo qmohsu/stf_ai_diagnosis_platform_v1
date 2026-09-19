@@ -8,6 +8,10 @@ on:
     paths:
       - "stf_v3/**"
       - "infra/docker-compose.v3*"
+      - "infra/docker-compose.vllm.yml"
+      - "infra/vllm_ctl.sh"
+      - "docs/v3_ops_runbook.md"
+      - "docs/v3_dev_plan.md"
       - "docs/api/**"
       - ".github/workflows/v3.yml"
       - "obd_agent/jetson_uploader.py"
@@ -19,6 +23,10 @@ on:
     paths:
       - "stf_v3/**"
       - "infra/docker-compose.v3*"
+      - "infra/docker-compose.vllm.yml"
+      - "infra/vllm_ctl.sh"
+      - "docs/v3_ops_runbook.md"
+      - "docs/v3_dev_plan.md"
       - "docs/api/**"
       - ".github/workflows/v3.yml"
       - "obd_agent/jetson_uploader.py"

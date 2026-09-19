@@ -33,6 +33,12 @@ MAX_FOREIGN_BLOCKS = 2
 _MATCH_SEPARATOR_RE = re.compile(r"[-_\s]+")
 _MIN_MATCH_TOKEN_CHARS = 4
 
+NUDGE_FINAL_INSTRUCTION = (
+    "Your last message was not a final answer (no JSON).  If you still need "
+    "information, continue with tool calls; otherwise return your final JSON "
+    "answer now, in the exact format requested."
+)
+
 FORCE_FINAL_INSTRUCTION = (
     "You have now read several manual sections — enough to decide. "
     "Do NOT call any more tools.  Using ONLY the sections you have "

@@ -1,0 +1,74 @@
+# vLLM model service — the ONE local LLM for V1/V2/V3 (design doc D7,
+# PROD-09 D1, issue #237).  Independent Compose project: ALWAYS start it
+# through `infra/vllm_ctl.sh` (project name `stf_llm` → its own pod
+# `pod_stf_llm`); never merge it into docker-compose.yml (V1/V2 pod) or
+# docker-compose.v3.yml (V3 pod).  V3 only points at it by configuration
+# (STF_V3_LLM_BASE_URL=http://127.0.0.1:8010/v1).
+#
+# Recipe = the 2026-08-01 bake-off (PR #236, /tmp/vllm_serve.sh on the
+# server) with ONE change: gpu-memory-utilization 0.80 instead of 0.90
+# (D2: ~9 GB per card stays free for MinerU manual conversion on GPU 1).
+# Every parameter is checked by stf_v3/tests/test_infra_vllm_compose.py
+# and listed in docs/v3_ops_runbook.md §4 (repo recipe vs bake-off).
+#
+# Cold start ≈ 10 min (weights from the `vllm_hf_cache` volume; the
+# healthcheck's start_period covers it).  Weights never come from the
+# network: HF_HUB_OFFLINE=1 (FM-34).
+services:
+  stf-vllm:
+    image: docker.io/vllm/vllm-openai:v0.24.0-ubuntu2404
+    container_name: stf-vllm
+    network_mode: host                 # binds 127.0.0.1:8010 only (see --host)
+    runtime: nvidia
+    devices:
+      - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidia1:/dev/nvidia1
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia-uvm:/dev/nvidia-uvm
+      - /dev/nvidia-uvm-tools:/dev/nvidia-uvm-tools
+    shm_size: "16g"
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      HF_HUB_OFFLINE: "1"              # FM-34: never contact HuggingFace
+      HF_HOME: /root/.cache/huggingface
+      VLLM_LOGGING_LEVEL: INFO
+    volumes:
+      - vllm_hf_cache:/root/.cache/huggingface
+    command:
+      - --model
+      - ${VLLM_MODEL:-Qwen/Qwen3.6-27B-FP8}
+      - --served-model-name
+      - ${VLLM_MODEL:-Qwen/Qwen3.6-27B-FP8}   # must equal STF_V3_LLM_MODEL (FM-35)
+      - --host
+      - "127.0.0.1"
+      - --port
+      - "8010"
+      - --tensor-parallel-size
+      - "2"
+      - --max-model-len
+      - "98304"
+      - --gpu-memory-utilization
+      - ${VLLM_GPU_MEMORY_UTILIZATION:-0.80}
+      - --reasoning-parser
+      - qwen3
+      - --default-chat-template-kwargs
+      - '{"enable_thinking": false}'
+      - --tool-call-parser
+      - qwen3_xml
+      - --enable-auto-tool-choice
+      - --enable-prefix-caching
+      - --speculative-config
+      - '{"method": "mtp", "num_speculative_tokens": 1}'
+    healthcheck:
+      test: ["CMD", "python3", "-c",
+             "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 900s               # cold start ≈ 10 min measured 2026-09-19 (FM-6 / FM-40)
+    restart: on-failure:10             # bounded retries (FM-37); reboot = vllm_ctl.sh start
+
+volumes:
+  vllm_hf_cache:
+    external: true                     # created by the 2026-08-01 bake-off; holds the weights

@@ -8,9 +8,9 @@
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.8（PROD-07 DONE：Jetson 上传器双推、断网补传、装机手册、首个真实车队建档） |
+| **版本** | v1.10（PROD-09 DONE：vLLM 正式化、模型适配档、云端对照口、部署核验第 9 项） |
 | **作者** | Xiangzhu Yan |
-| **最后更新** | 2026-09-14 |
+| **最后更新** | 2026-09-19 |
 
 ## 0. 本计划的定位
 
@@ -292,11 +292,28 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 - 设置：`STF_V3_LLM_BASE_URL / MODEL / API_KEY / ALLOW_CLOUD`、云端一组（默认关）、预算（`agent_*` / `subagent_*` / 截断 / 压缩阈值）、`default_locale`；compose 透传；import-linter"接口层不许导入流水线"契约把 diagnosis 纳入来源。**无新迁移、无新接口**（诊断接口在 PROD-11）。
 **测试**：`test_unit_loader` 7、`test_unit_tools_obd` 20、`test_unit_tools_manual` 12、`test_unit_agent_contract` 5、`test_unit_context_memory` 5、`test_unit_manual_guards` 6、`test_unit_agent_offline` 20（TestModel 三格式整轮、剧本 FunctionModel 嵌套委托 / 共享用量 / 文字+工具调用继续 / 引用 NO_SOURCE / 思考不进正文、四道闸门、模型断连、小助手超预算、取消、空回复、车档身份与假名、日志无内容无 VIN、记忆化）、`test_db_diagnosis` 1（行 → 依赖包 → 整轮）。**服务器等价验证（2026-09-17，PR #247 验证表）**：镜像内 148 passed + lint-imports 3 kept；deploy_check 8/8、隔离 PASS；真跑两次（现有 Ollama qwen3.5，zh-TW）：健康 Hiace 行程 346 s / 8 请求 / 20 工具调用 / 104k token / 52 事件 / 报告 2034 字，P00AF 行程 309 s / 6 请求 / 12 工具调用 / 86k token / 34 事件 / 报告 2962 字（P00AF 解码为主故障）；运维演练四项（端口不通 / 模型名错 / 云端未允许 / 输出目录在卷内）均预检拒绝。发现并修正：空 Mode 43/47 帧不再列为故障码。两次真跑 qwen3.5 未选择委托（委托证据 = 离线剧本 T-9）。
 
-#### PROD-09 — 模型适配层与云端接口
+#### PROD-09 — 模型适配层与云端接口 — **DONE（2026-09-19，PR #248）**
 
 **目标**：唯一本地 vLLM + Qwen3.6-27B 为默认，云端只作对比。
-**方法**：ModelProfile 收敛 qwen 工具调用怪癖与 thinking 抑制；OpenRouter 接口用配置开关；嵌入模型走同一 vLLM；模型地址只在配置里。
+**方法**：ModelProfile 收敛 qwen 工具调用怪癖与 thinking 抑制；OpenRouter 接口用配置开关；~~嵌入模型走同一 vLLM~~（D4 划掉：V3 无嵌入用途，见 §4）；模型地址只在配置里。
 **验收**：同一 golden 用例本地与云端各跑通一次；切换只改配置不改代码；qwen 无 thinking 泄漏到报告。
+
+**开工前三轮审核（§2.5，`.lavish/prod09_plan_review.html`，2026-09-18）**：
+- D1 vLLM 用**独立部署文件**（基础设施层，compose 项目 `stf_llm`），V3 只通过配置指向；V1/V2 应用改造仍归 #237。
+- D2 两卡各占 **80%**（bake-off 90%），给手册转换留约 9 GB；验收实测"vLLM 常驻 + 转最大一本手册 + 同时跑诊断"。
+- D3 云端对照验收时 **deepseek-v3.2 与 claude-sonnet-4.6 都跑**，默认配置 deepseek。
+- D4 "嵌入模型走同一 vLLM"**划掉**（V3 没有嵌入用途），写回头条件。D5 本 ticket **不开手册图片**（Qwen3.6-27B 有视觉架构但未验证），写回头条件。
+- 用户补充：先关思考求速度，另立待办验证开/关思考对时间与分数的影响（FM-45，§4）。
+- 第一轮纠正的事实：服务器两张卡当时都是空的（Ollama 里已无驻留模型，"先卸载"不需要）；vLLM 启动配方只在 /tmp。第二轮 45 条失效模式（盲审 28 + 代码细读 17）全按推荐（处理 33 / 推迟 3 / 接受 9）；改盲审推荐 4 条（FM-2 / 3 / 17 / 19 改为接受）。第三轮 16 条测试 T-1 ~ T-16（CI 9 / 服务器 7），"处理"条目无一遗漏。
+
+**实现**：
+- `infra/docker-compose.vllm.yml` + `infra/vllm_ctl.sh`（start / wait / status / stop / logs / install-unit，项目名写死 `stf_llm`）+ `infra/stf-llm.service`（用户级 systemd，重启后自起）：bake-off 配方照抄，只改显存 0.80；`HF_HUB_OFFLINE=1`；健康检查起始宽限 900 s（冷启动实测 599 s）；重启 `on-failure:10`。
+- `diagnosis/agent/model.py`：三档适配（`qwen-vllm` / `qwen-ollama` / `generic`）按地址 + 模型名自动选或 `STF_V3_LLM_PROFILE` 显式指定；vLLM 档每请求带 `chat_template_kwargs.enable_thinking=false`（不用 Pydantic AI 的通用思考档位——它会翻成 OpenAI 的 `reasoning_effort`）；思考不回灌、工具不加严格模式沿用；`ModelSource`（本地/云端、主机、档）随模型对象走，写进 `session_start`、`done` 与报告；云端密钥回退到 `OPENROUTER_API_KEY`；预算与请求参数**按档给默认值**，显式设置覆盖。
+- `report.py` / `main_agent.py`：报告落文前剥离**带标签**的思考块并计数（`filter_hits / filter_removed_chars`）、统计思考字数、工具调用 XML 残留 → 部分报告 + limitation。
+- `scripts/diagnose_once.py`：`--cloud`、`--model-wait-s`（本机默认等 600 s，云端 0 且不预热）、落文件名 `_local` / `_cloud`、末行打印档与来源。
+- `scripts/deploy_check.sh` 第 9 项：主模型地址必须本机、`/models` 含配置名、30 s 内真生成一句、vLLM 容器不在 V1/V3 的 pod；只能 `LLM_CHECK=skip` 显式跳过并打印理由；失败时打印 nvidia-smi 占用。
+- 默认配置改指 vLLM（`settings.py`、`docker-compose.v3.yml`）；CI 路径加入 vLLM 部署文件与运维手册；`.env.example` 加 V3 段。**无新迁移、无新接口。**
+**测试**：`test_unit_model_profile` 17（T-1 选档表 + 别名 / 大小写 / 未知名告警、T-2 三档实际请求体、T-3 残留过滤 + done 计数、T-4 工具调用残留、T-5 密钥回退 / 云端守卫 / 假名、T-6 预算随档）、`test_scripts_diagnose_once` 6（T-7）、`test_infra_vllm_compose` 2（T-8）、`test_docs_prod09` 2（T-16）；既有 `test_unit_agent_contract` 默认模型名随之更新。**服务器验证（2026-09-19，PR #248 验证表）**：镜像内 178 passed + lint-imports 3 kept；deploy_check **9/9**（第 9 项 generated="ready"，vLLM 在 pod_stf_llm）、`LLM_CHECK=skip` 打印 SKIP 行、隔离 PASS（vLLM 常驻）。T-10 从零冷启动 **599 s**（宽限改 900 s）。T-13 同一 Hiace 日志（P00AF）三路：本地 Qwen3.6/vLLM **97 s / 22 请求 / 34 工具 / 31.8 万 token**（主动委托了两个子代理）、云端 deepseek-v3.2 66 s / 19 / 18 / 15.3 万、云端 kimi-k2.5 45 s / 5 / 10 / 4.3 万（Anthropic / OpenAI / Google 模型从服务器 403 地区限制，运行时收成 error + 部分报告）；同一 golden 手册问题（cross-001）本地 18 s / deepseek 33 s / kimi 160 s 各跑通。T-14 vLLM 轮 reasoning 事件 0、thinking_chars 0、报告无标签；云端落文件原始 VIN 0 次、假名存在、密钥 0 次。T-11 vLLM 常驻 + MinerU 转 1736 页手册（2630 s 成功）+ 同时诊断 98 s 完成，GPU 1 峰值 44.2 / 46 GB（余量 1.9 GB，运维手册记“更大手册先停 vLLM”）。T-12 停 vLLM → 测试容器只改三个环境变量指向 Ollama qwen3.5 → 一轮完整（57 s / 2 请求 / 3 工具，档自动为 qwen-ollama、墙钟回到 1200 s、thinking_chars 1286 但报告无标签）→ `ollama stop` 卸载（ollama ps 空）→ vLLM 重启 528 s 就绪 → 再跑一轮完整（34 s / 8 请求 / 11 工具，qwen-vllm 档，thinking 0）；全程零代码改动（git status 无修改文件）。 T-9 反向：vLLM 停机时第 9 项 FAIL 并点名“configured model not served (served: <endpoint down>)”，附两卡占用摘要；真跑脚本对停机端点 30 s 等待上限内退出码 4（34 s），不挂起。 发现并修正：Qwen3.6 关思考后偶尔以规划文字收尾 → 子代理一次性补问（b556a3a）；首轮 31.8 万 token → vLLM 档 token 门 100 万。
 
 #### PROD-10 — Golden 评测移植与门槛
 
@@ -363,7 +380,12 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 | **真机补录（PROD-07 FM-25）** | **截止 2026-10-01**（PR 开出日 2026-09-17 + 14 天） | 协作者按 `docs/v3_device_install.md` 装机并跑一趟；我们在 PROD-07 条目补"真机验收通过"。到期未跑 → PROD-07 标"部分验收"并在下次汇报提出，不阻塞 PROD-08 | 否 | 等待外部 |
 | 并发诊断排队（PROD-08 FM-11） | PROD-11 建诊断队列时 | 诊断 job 并发设为 1（单模型串行），每次模型调用耗时已在事件里；出现真实并发需求再评估模型服务并发 | 否 | 暂缓 |
 | golden 手册编号映射（PROD-08 FM-56） | PROD-10 开工时 | golden 数据引用的是 V2 库的手册 UUID，V3 库编号不同：按厂方代号 / 文件哈希建 V2 → V3 映射，或评测按手册代号匹配引用 | 否 | 暂缓 |
-| Ollama 常驻显存（PROD-08） | PROD-09 起 vLLM 前 | 服务器 Ollama `keep_alive=-1`，qwen3.5 常驻 57 GB；起 vLLM 前先卸载（`ollama stop` 或停容器） | 否 | 暂缓（PROD-09 前置动作） |
+| Ollama 常驻显存（PROD-08） | PROD-09 起 vLLM 前 | 服务器 Ollama `keep_alive=-1`，qwen3.5 常驻 57 GB；起 vLLM 前先卸载（`ollama stop` 或停容器） | 是 | 已处理（2026-09-19：vLLM 常驻是新常态；回退 Ollama 的互斥步骤见运维手册 §4.4） |
+| 预算校准（PROD-09 FM-25） | PROD-10 有打分器与多用例后 | vLLM 档默认值只按 PROD-09 的三轮真跑定（带安全余量）；PROD-10 跑完 45 条 golden 后按 P95 耗时 / 请求数重定 | 否 | 暂缓 |
+| V1/V2 与 vLLM 抢显存（PROD-09 FM-27） | 若 V1/V2 容器重新启用 | 两者不能同时驻留模型：V1/V2 的 Ollama 模型与 vLLM 互斥（运维手册 §4.4）；应用改造归 #237 | 否 | 暂缓（V1/V2 将退役） |
+| 开/关思考的影响（PROD-09 FM-45） | PROD-10 评测器就位后 | 单开待办：主 Agent 与子代理、单个手册查找与完整诊断，各比开与关思考的时间与分数（vLLM 档 `enable_thinking` 切换即可） | 否 | 暂缓 |
+| 嵌入模型（PROD-09 D4） | V3 引入向量检索时 | 在同一 vLLM 上加嵌入模型（或 Ollama `nomic-embed-text`）；本 ticket 划掉"嵌入模型走同一 vLLM" | 否 | 暂缓 |
+| 手册图片（PROD-09 D5） | PROD-10 基线后若"依赖图"的题明显失分 | Qwen3.6-27B 有视觉架构；打开 `STF_V3_MANUAL_IMAGES_ENABLED` 前先验证 vLLM 带图参数与显存预留 | 否 | 暂缓 |
 | 前端语言 / 样式 | 前端归属确定后 | 由前端需求文档定 | 否 | 等待外部 |
 
 ## 5. 待决策
@@ -377,6 +399,7 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 | 版本 | 日期 | 变更 |
 |---|---|---|
 | v0.1 | 2026-09-07 | 初稿：7 个里程碑、15 张 PROD ticket（PROD-01 到验收级，其余到目标/方法/验收层）、非目标清单草案、9 项待决策 |
+| v1.10 | 2026-09-19 | PROD-09 DONE（vLLM 正式化：独立部署文件 + 控制脚本 + systemd 单元，显存 0.80；三档模型适配 `qwen-vllm / qwen-ollama / generic`，思考关 + 残留过滤 + 工具调用残留检查；云端对照口 `--cloud`（密钥回退 OPENROUTER_API_KEY）；预算按档默认；部署核验第 9 项；默认配置改指 vLLM）。三轮审核：D1–D5 + 思考待办；45 条 FM 全按推荐（改盲审 4 条为接受）；16 条测试。§4 新增 FM-25 / FM-27 / FM-45 / D4 / D5 五条回头条件，Ollama 常驻项关闭。设计文档同步至 v1.11（§1.4 LLM 供给落地；架构图已含 vLLM，无需改动） |
 | v1.9 | 2026-09-17 | PROD-08 DONE（Pydantic AI 2.44 运行时：三格式直读器、12 个工具、两个子代理以工具形式挂载、10 种事件、四道预算闸门 → 部分报告、压缩 / 记忆、手册子代理护栏、报告引用抽取、唯一模型来源 + 云端守卫、`diagnose_once.py` 真跑脚本；无新迁移、无新接口）。三轮审核：D1 冒烟用现有 Ollama、D2 默认繁体中文；57 条 FM 全按推荐（FM-26 按 V2 锁定决定接受）。§4 新增 FM-11 并发排队、FM-56 golden 编号映射、Ollama 常驻显存。设计文档同步至 v1.10（§1.4 运行时口径落地；架构图已含 Pydantic AI 与子代理，无需改动） |
 | v1.8 | 2026-09-17 | PROD-07 DONE（**D3：真机日志是 "OBD Maximum" 格式，V3 针对性加 `maxlog` 解析器 + 迁移 `b2c3d4e5f6a7`**；Jetson 上传器双推：V2 腿不变、V3 腿由设备 env 文件开关；重试 + 待传目录 + `--drain` 退避补传 + 拒收目录 + 401 留待传；`--self-check`；退出码 0/1/2；V3 拒收结构化日志；`onboard_first_workshop.py` 建档脚本；装机手册 `docs/v3_device_install.md`；CI `uploader` job py3.8/3.11；冒烟 42 步）。三轮审核：D1 车队 "PolyU STF 实验车队" / 负责人 manager / Perry 技师，D2 服务器等价验证即完成、真机作补录；36 条 FM 全按推荐。§4 新增 FM-6 第二 manager、FM-13 卷巡检、FM-25 真机补录截止 2026-10-01。设计文档同步至 v1.9（§1.8 设备上传口径补充；无架构变化，图无需改动） |
 | v1.7 | 2026-09-14 | PROD-06 DONE（`knowledge` 模块：手册库接口、一步到位入库流水线、gpu 队列任务、宿主机 GPU worker、V2 知识库搬迁、队列运维演练四项 + stalled 回收）。三轮审核决策：入库一步到位、marker 退出 V3、宿主机 worker 用 uv 装 3.11 直接跑 V3 代码；§4 新增 3 条推迟项（FM-17 队列库升级、FM-22 摘要出境开关、FM-36 CJK 质量门）。设计文档同步至 v1.8（§1.4 队列口径、§1.8 知识库口径；无架构变化，图无需改动） |

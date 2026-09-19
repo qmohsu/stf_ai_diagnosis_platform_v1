@@ -7,6 +7,8 @@ configuration (dev plan D3, constraint B).
 Author: Xiangzhu Yan
 """
 
+from typing import Optional
+
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -78,33 +80,40 @@ class Settings(BaseSettings):
     )
     repo_dir: str = ""                    # host worker: git checkout for commit stamp
 
-    # ── Agent runtime (PROD-08) ──────────────────────────────────────
+    # ── Agent runtime (PROD-08) · model adapter (PROD-09) ───────────
     # The ONLY model source (design doc D7): an OpenAI-compatible endpoint.
-    # Defaults to the server's Ollama; PROD-09 points it at vLLM.  A
-    # non-local address is refused unless ``llm_allow_cloud`` is set
-    # (FM-19 / FM-51: prompts carry the VIN, which must not leave the
-    # backend un-pseudonymised).
-    llm_base_url: str = "http://127.0.0.1:11434/v1"
-    llm_model: str = "qwen3.5:27b-q8_0"
-    llm_api_key: str = "ollama"            # dummy for Ollama / vLLM
+    # Defaults to the server's vLLM (Qwen3.6-27B-FP8, #237); a non-local
+    # address is refused unless ``llm_allow_cloud`` is set (FM-19 / FM-51:
+    # prompts carry the VIN, which must not leave the backend
+    # un-pseudonymised).  ``llm_profile`` picks the adapter profile
+    # (thinking off, no thinking send-back, non-strict tools …):
+    # auto = by URL + model name (see diagnosis.agent.model).
+    llm_base_url: str = "http://127.0.0.1:8010/v1"
+    llm_model: str = "Qwen/Qwen3.6-27B-FP8"
+    llm_api_key: str = "none"              # dummy for vLLM / Ollama
+    llm_profile: str = "auto"              # auto | qwen-vllm | qwen-ollama | generic
     llm_allow_cloud: bool = False
-    llm_max_tokens: int = 8192
-    llm_temperature: float = 0.3
-    llm_request_timeout_s: float = 300.0   # one model request (read timeout)
-    # Cloud comparison endpoint (PROD-09 wires it; off by default).
+    # Per-request settings: None = the adapter profile's default (FM-8);
+    # an explicit value (env) always wins.
+    llm_max_tokens: Optional[int] = None
+    llm_temperature: Optional[float] = None
+    llm_request_timeout_s: Optional[float] = None   # one model request (read timeout)
+    # Cloud comparison endpoint (PROD-09 D3): comparison runs only, never
+    # the product path.  Empty key → the OpenRouter key above (FM-32).
     cloud_llm_enabled: bool = False
     cloud_llm_base_url: str = "https://openrouter.ai/api/v1"
     cloud_llm_model: str = "deepseek/deepseek-v3.2"
     cloud_llm_api_key: str = ""
-    # Budgets (V2 magnitudes; every gate is a setting, FM-28).
-    agent_wall_clock_s: float = 1200.0
-    agent_request_limit: int = 80
-    agent_tool_calls_limit: int = 120
-    agent_total_tokens_limit: int = 600_000
-    subagent_wall_clock_s: float = 240.0
-    subagent_request_limit: int = 12
-    subagent_max_tokens: int = 12_288
-    subagent_temperature: float = 0.2
+    # Budgets (every gate is a setting, FM-28).  None = the adapter
+    # profile's default: vLLM, Ollama and cloud differ (FM-8).
+    agent_wall_clock_s: Optional[float] = None
+    agent_request_limit: Optional[int] = None
+    agent_tool_calls_limit: Optional[int] = None
+    agent_total_tokens_limit: Optional[int] = None
+    subagent_wall_clock_s: Optional[float] = None
+    subagent_request_limit: Optional[int] = None
+    subagent_max_tokens: Optional[int] = None
+    subagent_temperature: Optional[float] = None
     tool_result_max_tokens: int = 2000
     compact_threshold_tokens: int = 60_000
     # Manual images in tool results: off until the model is known to
@@ -117,6 +126,11 @@ class Settings(BaseSettings):
     def llm_is_local(self) -> bool:
         """True when ``llm_base_url`` points at this machine / a private net."""
         return is_local_url(self.llm_base_url)
+
+    @property
+    def cloud_api_key(self) -> str:
+        """The cloud comparison key: its own field, else the OpenRouter key (FM-32)."""
+        return self.cloud_llm_api_key or self.openrouter_api_key
 
 
 def is_local_url(url: str) -> bool:

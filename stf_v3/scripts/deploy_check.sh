@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 # Post-deploy verification for V3 on the PolyU server (code design §10).
-# Answers "is what is running the thing I meant to deploy?"  Eight checks
+# Answers "is what is running the thing I meant to deploy?"  Nine checks
 # (containers fresh, image commit, alembic head, /v3/health via nginx,
 # worker heartbeat, storage volume writable, host GPU worker alive on the
-# same commit, disk headroom); exits non-zero if any fails.
+# same commit, disk headroom, model service local + serving + generating);
+# exits non-zero if any fails.
 #
 #   bash stf_v3/scripts/deploy_check.sh [--max-age-min N] [--expect-commit SHA]
+#   LLM_CHECK=skip LLM_CHECK_REASON="…" bash stf_v3/scripts/deploy_check.sh   # skip check 9, visibly
 #
 # Defaults: containers must have been created within 30 min; expected commit
-# = `git rev-parse HEAD` of the checkout this script runs from.
+# = `git rev-parse HEAD` of the checkout this script runs from.  The vLLM
+# container is NOT part of the freshness check (its lifecycle is
+# infra/vllm_ctl.sh, FM-39).
 set -uo pipefail
 
 MAX_AGE_MIN=30
@@ -110,6 +114,52 @@ if [ "$free_gb" -ge "$MIN_FREE_GB" ]; then
   report "disk free >= ${MIN_FREE_GB} GB" 1 "${free_gb} GB free"
 else
   report "disk free >= ${MIN_FREE_GB} GB" 0 "${free_gb} GB free (conversions will refuse to start)"
+fi
+
+# 9. model service (PROD-09, FM-6/20/22/33/35/36/39): the endpoint the V3
+#    containers are configured with is local, lists the configured model,
+#    really generates (a hung TP pair passes /health but never answers),
+#    and — when it is our vLLM container — lives in its own pod.
+if [ "${LLM_CHECK:-run}" = "skip" ]; then
+  echo "SKIP  model service  -- LLM_CHECK=skip (reason: ${LLM_CHECK_REASON:-none given})"
+else
+  llm_url="$(podman exec stf-v3-api printenv STF_V3_LLM_BASE_URL 2>/dev/null)"
+  llm_model="$(podman exec stf-v3-api printenv STF_V3_LLM_MODEL 2>/dev/null)"
+  llm_key="$(podman exec stf-v3-api printenv STF_V3_LLM_API_KEY 2>/dev/null)"
+  llm_host="$(echo "$llm_url" | sed -E 's#^[a-z]+://##; s#[:/].*$##')"
+  detail="source=local url=$llm_url model=$llm_model"
+  ok=1; why=""
+  case "$llm_host" in
+    127.0.0.1|localhost|::1|host.containers.internal) ;;
+    *) ok=0; why="model source is NOT local (host=$llm_host): cloud is comparison-only, never the product path (FM-33)" ;;
+  esac
+  if [ "$ok" = 1 ]; then
+    served="$(curl -sf -m 10 -H "Authorization: Bearer $llm_key" "${llm_url%/}/models" 2>/dev/null       | python3 -c 'import json,sys; print(" ".join(m["id"] for m in json.load(sys.stdin)["data"]))' 2>/dev/null)"
+    case " $served " in
+      *" $llm_model "*) ;;
+      *) ok=0; why="configured model not served (served: ${served:-<endpoint down>}); STF_V3_LLM_MODEL must equal vLLM --served-model-name (FM-35)" ;;
+    esac
+  fi
+  if [ "$ok" = 1 ]; then
+    gen="$(curl -sf -m 30 -H "Authorization: Bearer $llm_key" -H 'Content-Type: application/json'       "${llm_url%/}/chat/completions"       -d "{\"model\":\"$llm_model\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with the single word: ready\"}],\"max_tokens\":8}" 2>/dev/null       | python3 -c 'import json,sys; print(json.load(sys.stdin)["choices"][0]["message"]["content"].strip()[:40])' 2>/dev/null)"
+    if [ -n "$gen" ]; then detail="$detail generated=\"$gen\""; else ok=0; why="no generation within 30 s (hung / tensor-parallel deadlock, FM-22)"; fi
+  fi
+  if [ "$ok" = 1 ] && podman inspect stf-vllm >/dev/null 2>&1; then
+    vpod="$(podman inspect -f '{{.Pod}}' stf-vllm 2>/dev/null)"
+    v3pod="$(podman inspect -f '{{.Pod}}' stf-v3-api 2>/dev/null)"
+    v1pod="$(podman inspect -f '{{.Pod}}' stf-postgres 2>/dev/null)"
+    if [ -n "$vpod" ] && { [ "$vpod" = "$v3pod" ] || [ "$vpod" = "$v1pod" ]; }; then
+      ok=0; why="stf-vllm shares a pod with V3 / V1 — start it with infra/vllm_ctl.sh (FM-36)"
+    fi
+    detail="$detail pod=${vpod:0:12}"
+  fi
+  if [ "$ok" = 1 ]; then
+    report "model service local + serving + generates" 1 "$detail"
+  else
+    report "model service local + serving + generates" 0 "$why; $detail"
+    nvidia-smi --query-gpu=index,memory.used,memory.total --format=csv,noheader 2>/dev/null | sed 's/^/      gpu  /'
+    nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv,noheader 2>/dev/null | sed 's/^/      proc /'
+  fi
 fi
 
 if [ "$FAILS" -eq 0 ]; then echo "DEPLOY CHECK ALL PASS"; exit 0; fi

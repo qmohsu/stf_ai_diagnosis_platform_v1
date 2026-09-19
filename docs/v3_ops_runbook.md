@@ -2,10 +2,10 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.3（PROD-08：诊断运行时一章） |
-| 日期 | 2026-09-17 |
+| 版本 | v0.4（PROD-09：模型服务 vLLM 一章；§3 改为 vLLM 默认） |
+| 日期 | 2026-09-19 |
 | 作者 | Xiangzhu Yan |
-| 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker` |
+| 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
 
 后续章节按里程碑追加：部署 / 回滚（PROD-04 已在 CLAUDE.md "V3 Deployment"）、备份与恢复（PROD-15）、常见故障（PROD-15）。
 
@@ -134,24 +134,27 @@ manager 在 API 上 `DELETE /v3/devices/{id}`（立即失效；设备端会得�
 ```
 cd ~/stf_ai_diagnosis_platform_v1
 podman exec stf-v3-api python scripts/diagnose_once.py \
-  --vehicle-id <车档 UUID> --log-id <日志 UUID> --out-dir /tmp/runs [--locale zh-TW] [--wall-clock-s 2400]
-podman cp stf-v3-api:/tmp/runs ~/prod08_runs/     # 报告 .report.md / .report.json / 事件 .events.jsonl / 消息 .messages.json
+  --vehicle-id <车档 UUID> --log-id <日志 UUID> --out-dir /tmp/runs [--locale zh-TW] [--wall-clock-s 1800] [--model-wait-s 600]
+podman exec stf-v3-api python scripts/diagnose_once.py --vehicle-id … --log-id … --out-dir /tmp/runs --cloud   # 云端对照（§4.5）
+podman cp stf-v3-api:/tmp/runs ~/prod09_runs/     # 报告 .report.md / .report.json / 事件 .events.jsonl / 消息 .messages.json
 ```
 
-- 脚本先预检：模型端点 `GET /models` 必须列出配置的模型名，再做一次预热请求（冷加载在这里发生，不在诊断里）；预检失败退出码 4，跑完退出码 0，被闸门截断 2，模型错误 3，超过脚本总时限 5。
-- 事件逐条打印：`tool_call / tool_result` 带工具名、耗时、结果长度；`(in <id>)` 表示子代理内部的事件；`reasoning` 是模型思考（qwen3.5 在 Ollama 上关不掉，PROD-09 处理）。
+- 脚本先预检：模型端点 `GET /models` 必须列出配置的模型名——本机端点最多等 `--model-wait-s`（默认 600 s，vLLM 冷启动约 5 分钟）再放弃，云端只查一次、不预热；预检失败退出码 4，跑完退出码 0，被闸门截断或报告标为部分 2，模型错误 3，超过脚本总时限 5。落文件名以 `_local` / `_cloud` 结尾。
+- 事件逐条打印：`tool_call / tool_result` 带工具名、耗时、结果长度；`(in <id>)` 表示子代理内部的事件；`reasoning` 是模型思考——vLLM 档（默认）关了思考，这类事件应为 0，末行 `thinking_chars=0`；只有回退到 Ollama 的 qwen3.5 才会有。`session_start` 与报告的 `model_source` 写明 `local|cloud 档名 @主机`。
 - 输出目录永远不能是日志卷或手册卷（脚本会拒绝）；文件名只含时间与日志编号前 8 位，不含 VIN；报告正文可能含 VIN，**不要把报告文件拷出服务器贴进 PR / issue**。
-- 用 qwen3.5 27B 一轮约 10–40 分钟；默认墙钟 20 分钟（`STF_V3_AGENT_WALL_CLOCK_S`），验证时可放宽到 40 分钟。
+- 耗时：vLLM + Qwen3.6-27B 一轮见 §4.6 的实测表；Ollama qwen3.5 回退档一轮 5–40 分钟。默认墙钟随档：vLLM 15 分钟、Ollama 20 分钟（`STF_V3_AGENT_WALL_CLOCK_S` 显式设置则以设置为准）。
 
 ### 3.2 配置项（全在 `infra/.env`，前缀 `STF_V3_`）
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
-| `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | `http://127.0.0.1:11434/v1` / `qwen3.5:27b-q8_0` / `ollama` | 唯一模型来源（OpenAI 兼容口）；PROD-09 改指 vLLM |
+| `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | `http://127.0.0.1:8010/v1` / `Qwen/Qwen3.6-27B-FP8` / `none` | 唯一模型来源（OpenAI 兼容口）= §4 的 vLLM；`LLM_MODEL` 必须与 vLLM 的 `--served-model-name` 逐字相同。回退 Ollama：`http://127.0.0.1:11434/v1` / `qwen3.5:27b-q8_0` / `ollama`（§4.4） |
+| `LLM_PROFILE` | auto | 适配档：`auto` 按地址 + 模型名选（qwen + vLLM → `qwen-vllm`：每请求 `enable_thinking=false`、思考不回灌、工具不加严格模式；qwen + Ollama 端口或带 `:` 标签 → `qwen-ollama`；其余 / 云端 → `generic`）；也可显式指定三者之一 |
+| `LLM_MAX_TOKENS` / `LLM_TEMPERATURE` / `LLM_REQUEST_TIMEOUT_S` | 档默认（8192 / 0.3 / vLLM 180 s · Ollama 300 s） | 单次请求参数；不设即取档默认 |
 | `LLM_ALLOW_CLOUD` | false | 非本机地址一律拒绝启动，除非显式打开；打开后提示词里 VIN 自动换成 `V-xxxxxxxx` 假名 |
-| `CLOUD_LLM_ENABLED/BASE_URL/MODEL/API_KEY` | 关 | 云端对照口（PROD-09 接） |
-| `AGENT_WALL_CLOCK_S / AGENT_REQUEST_LIMIT / AGENT_TOOL_CALLS_LIMIT / AGENT_TOTAL_TOKENS_LIMIT` | 1200 / 80 / 120 / 600000 | 主 Agent 四道闸门；触发即以"部分报告"收尾 |
-| `SUBAGENT_WALL_CLOCK_S / SUBAGENT_REQUEST_LIMIT` | 240 / 12 | 子代理闸门；超预算返回带 `[delegation …]` 前缀的部分结果 |
+| `CLOUD_LLM_ENABLED/BASE_URL/MODEL/API_KEY` | 关 / OpenRouter / `deepseek/deepseek-v3.2` / 空 | 云端对照口，只由真跑脚本 `--cloud` 进入；`API_KEY` 为空时用手册摘要那把密钥（`STF_V3_OPENROUTER_API_KEY`，别名 `OPENROUTER_API_KEY`；§4.5） |
+| `AGENT_WALL_CLOCK_S / AGENT_REQUEST_LIMIT / AGENT_TOOL_CALLS_LIMIT / AGENT_TOTAL_TOKENS_LIMIT` | 档默认：vLLM 900 / 60 / 100 / 1000000；Ollama 1200 / 80 / 120 / 600000；云端 900 / 80 / 120 / 600000 | 主 Agent 四道闸门；触发即以"部分报告"收尾；显式设置覆盖档默认 |
+| `SUBAGENT_WALL_CLOCK_S / SUBAGENT_REQUEST_LIMIT` | 档默认：vLLM 180 / 12；Ollama、云端 240 / 12 | 子代理闸门；超预算返回带 `[delegation …]` 前缀的部分结果 |
 | `TOOL_RESULT_MAX_TOKENS / COMPACT_THRESHOLD_TOKENS` | 2000 / 60000 | 单条工具结果截断；对话压缩阈值（中日韩字符按 1 token 估） |
 | `MANUAL_IMAGES_ENABLED` | false | 手册图片是否进模型（本地模型确认支持图片前保持关） |
 | `DEFAULT_LOCALE` | zh-TW | 未指定语言时的报告语言 |
@@ -159,7 +162,86 @@ podman cp stf-v3-api:/tmp/runs ~/prod08_runs/     # 报告 .report.md / .report.
 ### 3.3 出了问题看什么
 
 - 容器日志里每个事件一行 `agent.event`（类型、序号、工具、耗时、长度，**不含正文与 VIN**），每次工具调用一行 `agent.tool`，每轮结束一行 `agent.run_done`（`stopped_reason`：complete / timeout / budget / cancelled / error）。
-- `stopped_reason=error` 且 `error=` 以 `ModelHTTPError` / `ConnectError` 开头 → 模型服务问题：`curl -s http://127.0.0.1:11434/v1/models`、`podman exec stf-ollama ollama ps`。
+- `stopped_reason=error` 且 `error=` 以 `ModelHTTPError` / `ConnectError` 开头 → 模型服务问题：`bash infra/vllm_ctl.sh status`（§4.7）。
+- 报告 `partial=true` 但 `stopped_reason=complete` → 报告落文前的残留检查命中：`limitations` 里有"tool-call markup reached the report unparsed"= vLLM 的工具调用解析器没认出模型输出（FM-41）；`filter_hits>0` = 剥掉了带标签的思考块（FM-1）。两者都说明档位或模型出了偏差，查 `session_start.profile`。
 - 报告里出现 `NO_SOURCE` 的引用 = 正文提到但这一轮没读过的章节 / 没在日志里出现的故障码，是模型幻觉的标记，不是运行时错误。
 - 同参数重复调用工具在事件里标 `repeated=true`（结果从记忆化缓存返回）；很多 repeated 通常意味着模型在打转，配合 `context_compact` 事件看上下文是否已压缩。
 
+## 4. 模型服务（vLLM）
+
+V1/V2/V3 唯一的本地模型来源（设计文档 D7，PROD-09 D1）：`Qwen/Qwen3.6-27B-FP8` 由 vLLM 0.24 常驻，两张卡并用，思考在服务端关闭。部署文件 `infra/docker-compose.vllm.yml`，**只通过** `infra/vllm_ctl.sh` 启停（项目名固定 `stf_llm` → 自己的 pod `pod_stf_llm`，不进 V1/V2 的 `pod_infra`、不进 V3 的 `pod_stf_v3`）。V3 只通过配置指向它（§3.2）。
+
+### 4.1 启停与启动顺序
+
+```
+bash infra/vllm_ctl.sh start          # 起容器；冷启动约 10 分钟（2026-09-19 实测 599 s：权重来自本地卷 vllm_hf_cache，不联网）
+bash infra/vllm_ctl.sh wait           # 轮询 /v1/models 直到列出模型（默认最多 1200 s），超时打印显卡占用 + 末 30 行日志
+bash infra/vllm_ctl.sh status         # 容器状态 / 健康 / pod / 已服务模型 / 两卡显存
+bash infra/vllm_ctl.sh stop           # 停容器，释放两张卡
+bash infra/vllm_ctl.sh logs 200
+bash infra/vllm_ctl.sh install-unit   # 装用户级 systemd 单元 stf-llm.service：重启机器后自动 start（已 enable-linger）
+```
+
+**服务器重启后的启动顺序**（FM-21）：① `vllm_ctl.sh start` → `wait`（或 `stf-llm.service` 自动起）；② `systemctl --user restart stf-v3-gpu-worker`；③ V3 容器 `podman-compose -p stf_v3 … up -d stf-v3-api stf-v3-worker`；④ `bash stf_v3/scripts/deploy_check.sh`。V3 容器比 vLLM 早起也不会坏——真跑脚本与（PROD-11 的）任务预检会等模型就绪，只是那约 10 分钟内的诊断请求会等或失败。
+
+**vLLM 不参与 V3 部署核验的"30 分钟内新建"检查**（FM-39）：V3 每次部署不需要重启 vLLM；核验第 9 项只看它在线、服务的是配置里的模型、能真的生成一句。
+
+### 4.2 显存分配（D2）
+
+两张 RTX 6000 Ada 各 46 GB；vLLM `--gpu-memory-utilization 0.80`（bake-off 用 0.90），每张卡留约 9 GB 给宿主机 GPU worker 的手册转换（MinerU，固定用第二张卡）。验收实测（T-11，2026-09-19）：vLLM 常驻（两卡各 36.8 GB）时用 GPU worker 同一个 MinerU 二进制在 GPU 1 转换库里最大的一本手册（34.6 MB，1736 页）并同时跑一次完整诊断：转换成功（2630 s），诊断 98 s 完成；GPU 1 峰值 **44.2 GB / 46 GB**（余量只剩 1.9 GB），GPU 0 不变。结论：D2 的 0.80 刚好够，**更大的手册可能装不下**——若某本手册转换在这个余量下失败（日志里 CUDA out of memory）：先 `vllm_ctl.sh stop` → 转完 → `start`（运维动作，不改配置），或把 `VLLM_GPU_MEMORY_UTILIZATION` 降到 0.75。
+
+### 4.3 仓库配方 vs bake-off 配方（FM-10）
+
+| 参数 | 2026-08-01 bake-off（PR #236） | 仓库 `docker-compose.vllm.yml` |
+|---|---|---|
+| 镜像 | vllm/vllm-openai:v0.24.0-ubuntu2404 | 同 |
+| 模型 / 对外名 | Qwen/Qwen3.6-27B-FP8 | 同（`VLLM_MODEL` 可覆盖；必须与 `STF_V3_LLM_MODEL` 相同） |
+| 张量并行 / 上下文 | 2 / 98304 | 同 |
+| 显存占比 | 0.90 | **0.80**（D2） |
+| 思考 | `--reasoning-parser qwen3` + 模板默认 `enable_thinking=false` | 同；V3 每次请求再显式带 `enable_thinking=false`（双保险） |
+| 工具调用 | `--tool-call-parser qwen3_xml --enable-auto-tool-choice` | 同 |
+| 前缀缓存 / 投机解码 | 开 / MTP 1 token | 同 |
+| 权重来源 | HF 缓存卷 | 同 + `HF_HUB_OFFLINE=1`（不联网） |
+| 端口 | 127.0.0.1:8010 | 同 |
+| 健康检查 / 重启 | 无 | `/health`，起始宽限 900 s；`on-failure:10`（有上限，FM-37） |
+
+### 4.4 回退到 Ollama（FM-9 / FM-38）与切回
+
+回退只改配置、不改代码（qwen3.5 权重仍在 Ollama 卷里，`ollama list` 可见）：
+
+```
+bash infra/vllm_ctl.sh stop                         # 先释放显存：两者不能同时驻留（qwen3.5 常驻 57 GB）
+# infra/.env 加三行：STF_V3_LLM_BASE_URL=http://127.0.0.1:11434/v1  STF_V3_LLM_MODEL=qwen3.5:27b-q8_0  STF_V3_LLM_API_KEY=ollama
+cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker && cd ..
+bash stf_v3/scripts/deploy_check.sh --max-age-min 5  # 第 9 项会对 Ollama 做同样的三步检查；档自动变为 qwen-ollama（预算回到 20 分钟）
+```
+
+**切回 vLLM**：`podman exec stf-ollama ollama stop qwen3.5:27b-q8_0`（卸载常驻模型；`ollama ps` 应为空）→ 删掉 `.env` 里那三行 → `vllm_ctl.sh start && vllm_ctl.sh wait` → V3 容器 `down` + `up` → `deploy_check.sh`。
+
+### 4.5 云端对照（D3）
+
+云端**只作对比**，永远不是产品路径：部署核验第 9 项在 `STF_V3_LLM_BASE_URL` 不是本机时直接 FAIL（FM-33）。进入云端只有一条路：`diagnose_once.py --cloud`，用 `STF_V3_CLOUD_LLM_*`（默认 OpenRouter + `deepseek/deepseek-v3.2`；换 `anthropic/claude-sonnet-4.6` 只改 `STF_V3_CLOUD_LLM_MODEL`），密钥为空时复用手册摘要那把 `STF_V3_OPENROUTER_API_KEY`（别名 `OPENROUTER_API_KEY`）。
+
+**允许出境的字段**（FM-13，人工审过一份云端消息文件后固定）：车辆品牌与型号、**VIN 假名 `V-xxxxxxxx`**、车牌与昵称（车档标签，非身份）、日志的时间范围与格式、工具返回的**文本摘要**（信号统计 / 窗口抽样 / 故障码 / 手册章节文本）、系统与用户提示词。**不出境**：原始 VIN、原始日志文件、手册图片、密钥（事件 / 报告 / 消息三个落文件里也没有密钥，事件里只有 `model_source` 标签）。云端两轮的落文件留在服务器 `~/prod09_runs`（含日志摘要），不进 PR。
+
+### 4.6 实测（PROD-09 验收，2026-09-19）
+
+同一份 Hiace 日志（带 P00AF，4680 行）+ 同一道 golden 手册问题，2026-09-19：
+
+| 路径 | 诊断耗时 | 请求 | 工具调用 | token | 报告 | golden 问答 |
+|---|---|---|---|---|---|---|
+| 本地 Qwen3.6-27B-FP8 / vLLM（qwen-vllm 档） | 97 s | 22 | 34 | 31.8 万 | 2273 字，1 引用，reasoning 事件 0 | 18 s / 8 工具（首跑以规划文字收尾 → 已加补问） |
+| 云端 deepseek-v3.2（默认对照） | 66 s | 19 | 18 | 15.3 万 | 1788 字，1 引用 | 33 s / 9 工具 / 2 引用 |
+| 云端 kimi-k2.5（D3 第二模型，claude-sonnet 地区受限） | 45 s | 5 | 10 | 4.3 万（另有 6.8k 字思考，未回灌） | 2060 字，1 引用 | 160 s / 8 工具 / 1 引用 |
+| PROD-08 对照：Ollama qwen3.5（思考关不掉） | 309 s | 6 | 12 | 8.6 万 | 2962 字 | — |
+
+冷启动 599 s；T-11 显存：vLLM 两卡各 36.8 GB，MinerU 转 1736 页手册时 GPU 1 峰值 44.2 GB（余量 1.9 GB）。回退演练（T-12）：停 vLLM → 测试容器只改三个环境变量指向 Ollama qwen3.5 → 一轮完整（57 s / 2 请求 / 3 工具，档自动为 qwen-ollama、墙钟回到 1200 s、thinking_chars 1286 但报告无标签）→ `ollama stop` 卸载（ollama ps 空）→ vLLM 重启 528 s 就绪 → 再跑一轮完整（34 s / 8 请求 / 11 工具，qwen-vllm 档，thinking 0）；全程零代码改动（git status 无修改文件）。
+
+### 4.7 出了问题看什么（FM-4 / FM-22 / FM-35 / FM-37）
+
+- **起不来 / `wait` 超时**：`vllm_ctl.sh status` 看两卡占用——若某张卡已被占 > 8 GB（Ollama 常驻模型？别的租户？）vLLM 分不到 0.80 就退出并按 `on-failure:10` 重试；`nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv` 看谁占着；Ollama 的话 `podman exec stf-ollama ollama stop <模型>`。
+- **健康是 healthy 但请求永不返回**（两卡通信死锁）：`deploy_check.sh` 第 9 项 30 s 内真生成一句，失败即报；`vllm_ctl.sh stop && start`。
+- **404 model not found**：`STF_V3_LLM_MODEL` 与 vLLM `--served-model-name` 不一致；核验第 9 项会列出实际服务的名字。
+- **报告里有思考文本 / 工具调用 XML**：`session_start.profile` 不是 `qwen-vllm`（模型名没对上 → 落到 generic）；显式设 `STF_V3_LLM_PROFILE=qwen-vllm`。
+- **跳过第 9 项**（离线演练等）：`LLM_CHECK=skip LLM_CHECK_REASON="…" bash stf_v3/scripts/deploy_check.sh`——输出里会有一行 `SKIP  model service` 带理由，默认从不跳过（FM-20）。
+- 重启计数：`podman inspect -f '{{.RestartCount}}' stf-vllm`；日志 `vllm_ctl.sh logs 200`。
