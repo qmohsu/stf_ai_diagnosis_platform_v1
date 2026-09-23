@@ -5,9 +5,10 @@ although the right sections were read.  Two causes, both on the V3 side:
 
 * on the force-final turn (search tools withheld) Qwen3.6 kept "calling
   tools"; with none offered the call came back as text and the answer was
-  lost.  Now the ``final_answer`` output tool stays offered on every turn,
-  so the forced turn has exactly one tool to call, and its arguments carry
-  the schema (summary + citation objects);
+  lost.  Now that turn offers exactly one tool, ``final_answer``, whose
+  arguments carry the schema (summary + citation objects).  It is not
+  offered on normal turns (when it was, the model answered after one or
+  two reads);
 * in text answers the model wrote citations as strings, which the
   V2-copied parser dropped.  Strings are accepted now, but only when they
   resolve to a section that was actually read (free text such as
@@ -88,30 +89,37 @@ def test_the_final_answer_tool_output_is_the_answer() -> None:
     assert summary == "320 kPa." and [(c.manual_id, c.slug) for c in cits] == [("m2", "2-1-fuel-pump-troubleshooting")]
 
 
-async def test_the_forced_turn_offers_exactly_the_final_answer_tool() -> None:
-    """After four reads the search tools are withheld but ``final_answer``
-    stays offered; calling it ends the run with its citations, no nudge."""
-    seen: List[Dict[str, List[str]]] = []
-    script = FOUR_READS + [response(tool_call(FINAL_ANSWER_TOOL, summary="Fuel pressure is 320 kPa.", citations=[
-        {"manual_id": "m2", "slug": "2-1-fuel-pump-troubleshooting", "quote": "320 kPa"}]))]
+async def test_final_answer_is_offered_only_on_the_forced_turn() -> None:
+    """Normal turns: the four search tools, no ``final_answer`` (offered
+    always, it made the model answer after one or two reads).  After four
+    reads: exactly ``final_answer``.  After it is used: no tool; the closing
+    text is ignored and the submitted answer is the result (no nudge)."""
+    seen: List[List[str]] = []
+    script = FOUR_READS + [
+        response(tool_call(FINAL_ANSWER_TOOL, summary="Fuel pressure is 320 kPa.", citations=[
+            {"manual_id": "m2", "slug": "Fuel Pump Troubleshooting", "quote": "320 kPa"}])),
+        response(TEXT(content="DONE")),
+    ]
     calls = {"n": 0}
 
     def fn(messages: List[ModelMessage], info: AgentInfo) -> ModelResponse:
-        seen.append({"tools": [t.name for t in info.function_tools], "outputs": [t.name for t in info.output_tools]})
+        seen.append(sorted(t.name for t in info.function_tools))
         i = calls["n"]
         calls["n"] += 1
         return script[min(i, len(script) - 1)]
 
     result = await _run(FunctionModel(fn, model_name="final-answer-script"))
-    assert seen[0]["outputs"] == [FINAL_ANSWER_TOOL] and len(seen[0]["tools"]) == 4
-    assert seen[-1] == {"tools": [], "outputs": [FINAL_ANSWER_TOOL]}
+    assert all(FINAL_ANSWER_TOOL not in s and len(s) == 4 for s in seen[:4])
+    assert seen[4] == [FINAL_ANSWER_TOOL] and seen[5] == []
     assert result.nudged is False and result.summary == "Fuel pressure is 320 kPa."
-    assert [c.slug for c in result.citations] == ["2-1-fuel-pump-troubleshooting"]
+    assert [(c.manual_id, c.slug) for c in result.citations] == [("m2", "2-1-fuel-pump-troubleshooting")]
+    assert FINAL_ANSWER_TOOL not in [t.name for t in result.tool_trace]
 
 
 async def test_a_forced_prose_answer_is_nudged_once() -> None:
     """If the forced turn still answers in prose, one nudge (search tools
-    still withheld); the JSON reply is then parsed.  Never loops."""
+    still withheld, ``final_answer`` offered); the JSON reply is then
+    parsed.  Never loops."""
     final = json.dumps({"summary": "Fuel pressure is 320 kPa.",
                         "citations": ["2-1-fuel-pump-troubleshooting: 320 kPa"]})
     script = Script(main=[], manual=[response(tool_call("list_manuals"))] + FOUR_READS + [
@@ -119,5 +127,5 @@ async def test_a_forced_prose_answer_is_nudged_once() -> None:
         response(TEXT(content=final))])
     result = await _run(script.model())
     assert result.nudged is True
-    assert script.seen_tools["manual"][-1] == [] and script.seen_tools["manual"][-2] == []
+    assert script.seen_tools["manual"][-1] == [FINAL_ANSWER_TOOL] == script.seen_tools["manual"][-2]
     assert [c.slug for c in result.citations] == ["2-1-fuel-pump-troubleshooting"]

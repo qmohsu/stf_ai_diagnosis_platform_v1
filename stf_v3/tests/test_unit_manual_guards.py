@@ -13,7 +13,7 @@ from pydantic_ai.usage import RunUsage
 
 from stf_v3.diagnosis.agent.events import EventSink
 from stf_v3.diagnosis.agent.guards import FORCE_FINAL_INSTRUCTION, ManualGuardState, pin_manual_for_inquiry
-from stf_v3.diagnosis.agent.manual_agent import parse_final_json, run_manual_agent
+from stf_v3.diagnosis.agent.manual_agent import FINAL_ANSWER_TOOL, parse_final_json, run_manual_agent
 from stf_v3.diagnosis.agent.types import SectionRef
 from tests.agent_helpers import TEXT, Script, make_deps, response, small_manual, tool_call
 
@@ -45,8 +45,8 @@ async def test_pinned_manual_blocks_foreign_reads_then_forces_final() -> None:
     blocked = [t for t in deps.trace if t.is_error]
     assert len(blocked) == 2 and all(t.input["manual_id"] == "m1" for t in blocked)
     assert deps.events.count("tool_result") >= 3
-    # the forced turn had no tools and carried the force-final instruction
-    assert script.seen_tools["manual"][-1] == []
+    # the forced turn offered only final_answer (PROD-10) and carried the force-final instruction
+    assert script.seen_tools["manual"][-1] == [FINAL_ANSWER_TOOL]
     assert result.stopped_reason == "complete" and result.summary == "Fuel pressure is 320 kPa."
     assert result.citations and result.citations[0].manual_id == "m2"
 
@@ -58,7 +58,7 @@ async def test_four_reads_trip_the_force_final_backstop() -> None:
              for s in ("1-1-specifications", "1-2-maintenance-schedule", "2-1-fuel-pump-troubleshooting", "3-1-battery")]
     script = Script(main=[], manual=[response(tool_call("list_manuals"))] + reads + [response(TEXT(content=FINAL))])
     deps, result = await _run(script)
-    assert script.seen_tools["manual"][-1] == [] and len(script.seen_tools["manual"][-2]) == 4
+    assert script.seen_tools["manual"][-1] == [FINAL_ANSWER_TOOL] and len(script.seen_tools["manual"][-2]) == 4
     assert len(result.raw_sections) == 4
     assert result.citations[0].slug == "2-1-fuel-pump-troubleshooting"
 
@@ -69,7 +69,7 @@ async def test_repeated_identical_call_trips_force_final() -> None:
     same = response(tool_call("read_manual_section", manual_id="m2", section="3-1-battery"))
     script = Script(main=[], manual=[same, same, response(TEXT(content=FINAL))])
     deps, result = await _run(script)
-    assert script.seen_tools["manual"][-1] == []
+    assert script.seen_tools["manual"][-1] == [FINAL_ANSWER_TOOL]
     repeated = [e for e in deps.events.events if e.event_type == "tool_result" and e.payload.get("repeated")]
     assert repeated and result.stopped_reason == "complete"
 

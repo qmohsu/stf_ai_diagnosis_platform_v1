@@ -4,16 +4,17 @@ A restricted agent with only the 4 manual tools.  The V2 loop's guards
 live in ``guards.py`` and are wired here: the tools are withheld once the
 guard state says ``force_final`` (a ``prepare`` hook), and the
 force-final instruction is appended to what the model sees (a history
-processor — sent, not stored).  The final answer is either a call to the
-``final_answer`` output tool (PROD-10) or plain text parsed with the V2
-JSON extractor (FM-41); when the run stops on a gate the last assistant
-text (or a canned decline) becomes the summary.
+processor — sent, not stored).  The final answer is plain text parsed with
+the V2 JSON extractor (FM-41), or — on the force-final turn only — a call
+to the ``final_answer`` tool (PROD-10); when the run stops on a gate the
+last assistant text (or a canned decline) becomes the summary.
 
 PROD-10: on the force-final turn Qwen3.6 kept "calling tools" with none
-offered — the call came back as text, and the answer was lost.  The
-``final_answer`` tool stays offered on every turn (the four search tools
-are the ones withheld), so the forced turn has exactly one thing to call
-and its arguments carry the schema (summary + citation objects).
+offered — the call came back as text and the answer was lost.  Now that
+turn offers exactly one tool, ``final_answer`` (summary + citation
+objects), so the urge to call a tool IS the answer.  It is NOT offered on
+normal turns: when it was (an output tool), the model answered after one
+or two reads and the manual lane fell to 0.61.
 
 Author: Xiangzhu Yan
 """
@@ -26,7 +27,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import structlog
 from pydantic import BaseModel, Field
-from pydantic_ai import Agent, RunContext, Tool, ToolOutput
+from pydantic_ai import Agent, RunContext, Tool
 from pydantic_ai.capabilities import ProcessHistory
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from pydantic_ai.models import Model
@@ -104,28 +105,45 @@ def _force_final_processor(ctx: RunContext[SubAgentDeps], messages: List[ModelMe
     return list(messages) + [ModelRequest(parts=[UserPromptPart(content=FORCED_TURN_PROMPT)])]
 
 
-def build_manual_agent() -> Agent[SubAgentDeps, Any]:
-    """The manual sub-agent definition (model supplied at run time).
+def _offer_final_answer(ctx: RunContext[SubAgentDeps], tool_def: ToolDefinition) -> Optional[ToolDefinition]:
+    """``final_answer`` exists only on the force-final turn, until used."""
+    state = ctx.deps.state
+    if isinstance(state, ManualGuardState) and state.force_final and state.final_answer is None:
+        return tool_def
+    return None
 
-    Output: the ``final_answer`` tool (always offered, also on the
-    force-final turn) or plain text (V2 JSON, still parsed).
+
+async def final_answer(ctx: RunContext[SubAgentDeps], summary: str, citations: List[FinalCitation]) -> str:
+    """Submit your final answer and finish.
+
+    Args:
+        summary: The answer (for procedures: every step, as a numbered list),
+            or "Not found: <short explanation>".
+        citations: One object per section the answer relies on (manual_id,
+            slug, quote); empty when not found.
     """
+    state = ctx.deps.state
+    if isinstance(state, ManualGuardState):
+        state.final_answer = ManualFinalAnswer(summary=summary, citations=citations)
+    return "Final answer recorded. Reply with the single word DONE."
+
+
+def build_manual_agent() -> Agent[SubAgentDeps, str]:
+    """The manual sub-agent definition (model supplied at run time)."""
     tools = [
         Tool(fn, prepare=_withhold_when_forced, require_parameter_descriptions=True,
              docstring_format="google")
         for fn in MANUAL_TOOLS
     ]
-    final = ToolOutput(ManualFinalAnswer, name=FINAL_ANSWER_TOOL,
-                       description="Submit your final answer (summary + citations) and finish.")
+    tools.append(Tool(final_answer, name=FINAL_ANSWER_TOOL, prepare=_offer_final_answer,
+                      require_parameter_descriptions=True, docstring_format="google"))
     return Agent(
-        None, deps_type=SubAgentDeps, output_type=[final, str],
-        instructions=MANUAL_AGENT_SYSTEM_PROMPT + "\n\nTo finish, call the `final_answer` tool with that "
-        "object (preferred), or return it as plain JSON text.",
+        None, deps_type=SubAgentDeps, output_type=str, instructions=MANUAL_AGENT_SYSTEM_PROMPT,
         tools=tools, retries=2, name="manual_agent",
     )
 
 
-MANUAL_AGENT: Agent[SubAgentDeps, Any] = build_manual_agent()
+MANUAL_AGENT: Agent[SubAgentDeps, str] = build_manual_agent()
 MANUAL_TOOL_NAMES = frozenset(fn.__name__ for fn in MANUAL_TOOLS)
 
 
@@ -308,16 +326,17 @@ async def run_manual_agent(
         usage=usage,
         extra_capabilities=[ProcessHistory(_force_final_processor)],
     )
-    if outcome.stopped_reason == "complete" and not has_final_json(outcome.output):
+    if (outcome.stopped_reason == "complete" and state.final_answer is None
+            and not has_final_json(outcome.output)):
         # PROD-09 (qwen on vLLM, thinking off): the model sometimes ends a
         # turn with planning prose instead of the JSON answer.  Nudge ONCE,
         # same history and budget; never loop.  PROD-10: also after the
-        # force-final backstop (tools stay withheld) -- the forced turn
-        # often came back as prose or a tool call written as text.
+        # force-final backstop (then ``final_answer`` is the one tool offered).
         nudged = True
-        logger.info("manual_agent.nudged", tool_calls=len(deps.trace))
+        logger.info("manual_agent.nudged", tool_calls=len(deps.trace), forced=state.force_final)
         outcome = await drive(
-            MANUAL_AGENT, MANUAL_NUDGE_PROMPT, model=model, deps=deps, sink=core.events,
+            MANUAL_AGENT, MANUAL_NUDGE_PROMPT if state.force_final else NUDGE_FINAL_INSTRUCTION,
+            model=model, deps=deps, sink=core.events,
             parent_tool_call_id=parent_tool_call_id,
             usage_limits=make_limits(core.budgets.subagent_request_limit),
             model_settings=_ms(_settings, subagent=True, model=model),
@@ -327,7 +346,11 @@ async def run_manual_agent(
             extra_capabilities=[ProcessHistory(_force_final_processor)],
         )
     raw_sections: List[SectionRef] = list(deps.raw_sections)
-    if outcome.stopped_reason == "complete":
+    if state.final_answer is not None:
+        # Submitted on the forced turn; whatever text followed is ignored.
+        summary, citations = final_from_output(state.final_answer, raw_sections)
+        stopped = "complete"
+    elif outcome.stopped_reason == "complete":
         summary, citations = final_from_output(outcome.output, raw_sections)
         empty = outcome.output is None or (isinstance(outcome.output, str) and not outcome.output.strip())
         if state.force_final and empty:
