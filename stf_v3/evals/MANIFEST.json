@@ -1,0 +1,25 @@
+{
+  "description": "PROD-10 golden eval data: byte-for-byte copies of the V2 locked sets and the road-test fixture. Never edit in place (a changed hash fails CI); a revised set is a new file + a baseline reset PR.",
+  "copied_on": "2026-09-23",
+  "source_commit": "1715d3465ae1e88aa117a4d8e908a3b8475e55b1",
+  "files": {
+    "golden/manual_mws150a.jsonl": {
+      "sha256": "c8a7e866079e8034debf81c5c78026018508c4bb2828a6dfa2aba15f0bca3d6d",
+      "source": "diagnostic_api/tests/harness/evals/golden/v2/locked/mws150a_indexed.jsonl",
+      "source_sha256": "c8a7e866079e8034debf81c5c78026018508c4bb2828a6dfa2aba15f0bca3d6d",
+      "entries": 30
+    },
+    "golden/obd_yamaha_road_test.jsonl": {
+      "sha256": "03d95b1d014297c000348024e0211cbd074fecb38aae7cc2d477e89ba0682e92",
+      "source": "diagnostic_api/tests/harness/evals/golden/v2/locked/yamaha_road_test.jsonl",
+      "source_sha256": "03d95b1d014297c000348024e0211cbd074fecb38aae7cc2d477e89ba0682e92",
+      "entries": 15
+    },
+    "fixtures/yamaha_road_test.csv": {
+      "sha256": "0c9f9ff69499d527455142aedc28ceb06be06c920891eddef69216b7590f1df7",
+      "source": "obd_agent/fixtures/yamaha_dual_road_test_20260508.csv",
+      "source_sha256": "0c9f9ff69499d527455142aedc28ceb06be06c920891eddef69216b7590f1df7",
+      "bytes": 73634
+    }
+  }
+}

@@ -8,9 +8,9 @@
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.10（PROD-09 DONE：vLLM 正式化、模型适配档、云端对照口、部署核验第 9 项） |
+| **版本** | v1.11（PROD-10 进行中：golden 评测移植进 V3、CI 门槛；服务器基线待跑） |
 | **作者** | Xiangzhu Yan |
-| **最后更新** | 2026-09-19 |
+| **最后更新** | 2026-09-23 |
 
 ## 0. 本计划的定位
 
@@ -315,11 +315,31 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 - 默认配置改指 vLLM（`settings.py`、`docker-compose.v3.yml`）；CI 路径加入 vLLM 部署文件与运维手册；`.env.example` 加 V3 段。**无新迁移、无新接口。**
 **测试**：`test_unit_model_profile` 17（T-1 选档表 + 别名 / 大小写 / 未知名告警、T-2 三档实际请求体、T-3 残留过滤 + done 计数、T-4 工具调用残留、T-5 密钥回退 / 云端守卫 / 假名、T-6 预算随档）、`test_scripts_diagnose_once` 6（T-7）、`test_infra_vllm_compose` 2（T-8）、`test_docs_prod09` 2（T-16）；既有 `test_unit_agent_contract` 默认模型名随之更新。**服务器验证（2026-09-19，PR #248 验证表）**：镜像内 178 passed + lint-imports 3 kept；deploy_check **9/9**（第 9 项 generated="ready"，vLLM 在 pod_stf_llm）、`LLM_CHECK=skip` 打印 SKIP 行、隔离 PASS（vLLM 常驻）。T-10 从零冷启动 **599 s**（宽限改 900 s）。T-13 同一 Hiace 日志（P00AF）三路：本地 Qwen3.6/vLLM **97 s / 22 请求 / 34 工具 / 31.8 万 token**（主动委托了两个子代理）、云端 deepseek-v3.2 66 s / 19 / 18 / 15.3 万、云端 kimi-k2.5 45 s / 5 / 10 / 4.3 万（Anthropic / OpenAI / Google 模型从服务器 403 地区限制，运行时收成 error + 部分报告）；同一 golden 手册问题（cross-001）本地 18 s / deepseek 33 s / kimi 160 s 各跑通。T-14 vLLM 轮 reasoning 事件 0、thinking_chars 0、报告无标签；云端落文件原始 VIN 0 次、假名存在、密钥 0 次。T-11 vLLM 常驻 + MinerU 转 1736 页手册（2630 s 成功）+ 同时诊断 98 s 完成，GPU 1 峰值 44.2 / 46 GB（余量 1.9 GB，运维手册记“更大手册先停 vLLM”）。T-12 停 vLLM → 测试容器只改三个环境变量指向 Ollama qwen3.5 → 一轮完整（57 s / 2 请求 / 3 工具，档自动为 qwen-ollama、墙钟回到 1200 s、thinking_chars 1286 但报告无标签）→ `ollama stop` 卸载（ollama ps 空）→ vLLM 重启 528 s 就绪 → 再跑一轮完整（34 s / 8 请求 / 11 工具，qwen-vllm 档，thinking 0）；全程零代码改动（git status 无修改文件）。 T-9 反向：vLLM 停机时第 9 项 FAIL 并点名“configured model not served (served: <endpoint down>)”，附两卡占用摘要；真跑脚本对停机端点 30 s 等待上限内退出码 4（34 s），不挂起。 发现并修正：Qwen3.6 关思考后偶尔以规划文字收尾 → 子代理一次性补问（b556a3a）；首轮 31.8 万 token → vLLM 档 token 门 100 万。
 
-#### PROD-10 — Golden 评测移植与门槛
+#### PROD-10 — Golden 评测移植与门槛 — **进行中（代码与离线测试完成；服务器基线待跑）**
 
 **目标**：V3 的每次改动都能用与 V2 同一把尺子衡量；换模型时 V2/V3 各跑一遍（D7）。
 **方法**：eval runner 复制进 `stf_v3/evals/`，适配 Pydantic AI 调用签名；golden 数据文件复制；一条命令跑 manual lane 30 + OBD 15。
 **验收**：V3 首次基线 ≥ 0.831（manual）/ ≥ 0.938（OBD）；低于基线的 PR 不得合并；评测报告落 `docs/evals/`。
+
+**开工前三轮审核（§2.5，`.lavish/prod10_plan_review.html`，2026-09-19 ~ 09-23）**：
+- D1 "不掉分" = **均值 ≥ 基线 − 0.03，且基线 ≥ 0.6 的题不跌破 0.4**；未过可重跑一次，最新两份里有一份过即可（FM-3 细化）。
+- D2 **只对"动了 Agent 脑子"的 PR 强制**（受门槛路径写在 `stf_v3/evals/thresholds.yaml`：诊断运行时与工具、手册索引读取、日志读取、评测器与数据、settings、依赖锁、vLLM 部署文件）；证据 = 本 PR 新增的成绩单；CI 自动拦；`eval-exempt` 标签由用户加才可免。
+- D3 本 ticket **顺手跑一遍 45 题"开思考"对照**，小助手层面结案；主 Agent 部分留待办。
+- D4 首次基线不达标：先分清评测对接差异还是运行时差异并修，**最多两天**，仍不达标带数字与原因回来定。
+- 验收细化（FM-11）：两遍均值 ≥ 线，且每遍不低于线 − 0.03。
+- 第二轮 59 条失效模式（盲审 39 + 代码细读 20）全按推荐（处理 49 / 推迟 2 / 接受 8）；我改盲审推荐 6 条，其中 FM-14 改机制——评测在**一次性评测容器**里跑（同一镜像、手册卷只读、宿主目录做输出），不在 API 容器里 exec。第三轮 23 条测试 T-1 ~ T-23（纯 CI 12 / 涉及服务器 11），"处理"条目无一遗漏。
+- 第一轮纠正的事实：V3 手册库的手册编号与 V2 **逐字相同**（PROD-06 连编号一起搬），PROD-08 FM-56 的"编号映射"不需要做映射，只加保险；OBD 路试日志是 74 KB 的 `yamaha_dual_road_test_20260508.csv`。
+
+**实现**：
+- `stf_v3/src/stf_v3/evals/`：`schemas / metrics / metrics_obd / judge_prompts / judge` **从 V2 逐字复制**（只改 import 路径与判卷密钥来源：V3 的 OpenRouter 密钥），连同 V2 的 205 条单元测试一起复制过来照样通过；`lanes`（V2 的"结果 → 打分文本"拼法逐字复制 + V3 执行层：每题新建独立运行依赖，车辆固定 Yamaha TRICITY155 + 测试假 VIN，OBD 读日志副本，走生产子代理与生产配置）；`orchestrator`（V2 流水线 + 单题硬上限 2 × 子代理墙钟 + 60 s、判卷失败延迟重判、逐题回调）；`scorecard`（与 V2 同格式 + 模式 / 完整性 / 有效性 / 白名单配置快照 / 密钥脱敏 / 精简版 / 原子写与逐题增量写）；`gate`（门槛、验收、基线、预算校准的纯函数，只依赖 PyYAML）；`summary`（Markdown 摘要：按 lane、题型、维度、耗时与预算截断、依赖图六题单列、逐题与 V2 参考的差值）；`runner` + `cli`（`python -m stf_v3.evals run / regrade / summary / calibrate / accept`）。
+- 评测数据 `stf_v3/evals/`：两份锁定题目集（V2 `locked/mws150a_indexed.jsonl` 30 题、`locked/yamaha_road_test.jsonl` 15 题）+ 路试日志副本，均为已提交字节的原样副本；`MANIFEST.json` 记 sha256、V2 来源与复制日期，每次开跑先校验，`.gitattributes` 标 `-text` 防换行转换。
+- `stf_v3/scripts/run_golden_eval.sh`：服务器一条命令——检查工作树干净且镜像提交号 = HEAD、一次只跑一轮（锁）、两卡显存与 Ollama 未驻留、vLLM 空闲并记抢占计数、V3 与 V2 手册副本哈希一致；然后起一次性容器（环境变量取自运行中的 API 容器、只传名字不传值，不传登录密钥、不碰 `STF_V3_LLM_ALLOW_CLOUD`），`tail -f run.log` 看进度，断开 SSH 或重新部署 V3 不影响它。
+- `stf_v3/scripts/check_eval_gate.py` + CI job `eval-gate`（检出 PR head、完整历史）：没动受管路径 → 跳过；首次建立 / 基线重置 / 常规三种判定；成绩单必须"新鲜"（评测提交在分支历史里且之后没再动受管路径）；同一 PR 既动代码又动基线 → 红。
+- 生产代码只加两处：子代理结果带 `nudged`（补问是否触发，供统计）；`STF_V3_LLM_THINKING`（默认关，只有开思考对照轮打开）。`tiktoken==0.14.0` 显式钉版并在镜像里预下载 `cl100k_base`（打分器按 token 计啰嗦度，不能静默退回"字数 ÷ 4"）。import-linter 新增"生产代码不许 import 评测包"。**无新迁移、无新接口。**
+
+**测试**：`test_evals_v2_*`（V2 的打分 / 判卷 / 数据结构 / 流水线 / OBD 拼法测试 221 条原样复制）、`test_evals_equivalence`（T-1：从 V2 存档成绩单取 5 道手册题 + 3 道 OBD 题，V3 拼法逐字节复现存档输出，确定性维度与 V2 今日打分器逐位相同）、`test_evals_data`（T-2 / T-12）、`test_evals_gate_rules`（T-3 / T-9）、`test_evals_gate_script`（T-4，临时 git 仓库 10 种情形）、`test_evals_pipeline`（T-5 / T-6 / T-7 / T-10，真子代理 + 脚本化假模型整轮跑）、`test_evals_cli`（T-8 / T-11）、`test_docs_prod10`（T-13）。
+
+**服务器验证**：待跑（T-14 ~ T-23）。
 
 ### 3.5 M4 — S1 诊断闭环
 
@@ -379,13 +399,15 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 | 存储卷使用率巡检（PROD-07 FM-13） | 接入第三台车，或任一 V3 卷使用率过半 | 把 `stf_v3_obd_logs` / `stf_v3_manuals` 使用率加进日常巡检或 `deploy_check.sh` 报数 | 否 | 暂缓（deploy_check 第 8 项已看整盘余量） |
 | **真机补录（PROD-07 FM-25）** | **截止 2026-10-01**（PR 开出日 2026-09-17 + 14 天） | 协作者按 `docs/v3_device_install.md` 装机并跑一趟；我们在 PROD-07 条目补"真机验收通过"。到期未跑 → PROD-07 标"部分验收"并在下次汇报提出，不阻塞 PROD-08 | 否 | 等待外部 |
 | 并发诊断排队（PROD-08 FM-11） | PROD-11 建诊断队列时 | 诊断 job 并发设为 1（单模型串行），每次模型调用耗时已在事件里；出现真实并发需求再评估模型服务并发 | 否 | 暂缓 |
-| golden 手册编号映射（PROD-08 FM-56） | PROD-10 开工时 | golden 数据引用的是 V2 库的手册 UUID，V3 库编号不同：按厂方代号 / 文件哈希建 V2 → V3 映射，或评测按手册代号匹配引用 | 否 | 暂缓 |
+| golden 手册编号映射（PROD-08 FM-56） | PROD-10 开工时 | 核实：V3 库的手册编号与 V2 逐字相同（PROD-06 连编号一起搬），无需映射；评测开跑前核对 golden 引用的编号都在库里，缺失时映射到唯一匹配车型的手册并记入成绩单，否则拒跑 | 否 | 已处理（2026-09-23，PROD-10） |
 | Ollama 常驻显存（PROD-08） | PROD-09 起 vLLM 前 | 服务器 Ollama `keep_alive=-1`，qwen3.5 常驻 57 GB；起 vLLM 前先卸载（`ollama stop` 或停容器） | 是 | 已处理（2026-09-19：vLLM 常驻是新常态；回退 Ollama 的互斥步骤见运维手册 §4.4） |
 | 预算校准（PROD-09 FM-25） | PROD-10 有打分器与多用例后 | vLLM 档默认值只按 PROD-09 的三轮真跑定（带安全余量）；PROD-10 跑完 45 条 golden 后按 P95 耗时 / 请求数重定 | 否 | 暂缓 |
 | V1/V2 与 vLLM 抢显存（PROD-09 FM-27） | 若 V1/V2 容器重新启用 | 两者不能同时驻留模型：V1/V2 的 Ollama 模型与 vLLM 互斥（运维手册 §4.4）；应用改造归 #237 | 否 | 暂缓（V1/V2 将退役） |
 | 开/关思考的影响（PROD-09 FM-45） | PROD-10 评测器就位后 | 单开待办：主 Agent 与子代理、单个手册查找与完整诊断，各比开与关思考的时间与分数（vLLM 档 `enable_thinking` 切换即可） | 否 | 暂缓 |
 | 嵌入模型（PROD-09 D4） | V3 引入向量检索时 | 在同一 vLLM 上加嵌入模型（或 Ollama `nomic-embed-text`）；本 ticket 划掉"嵌入模型走同一 vLLM" | 否 | 暂缓 |
 | 手册图片（PROD-09 D5） | PROD-10 基线后若"依赖图"的题明显失分 | Qwen3.6-27B 有视觉架构；打开 `STF_V3_MANUAL_IMAGES_ENABLED` 前先验证 vLLM 带图参数与显存预留 | 否 | 暂缓 |
+| 评测进程持有生产凭据（PROD-10 FM-16） | 出现真实用户流量前 | 评测容器改用只读数据库角色、不注入与评测无关的变量（PROD-10 已做到：一次性容器、手册卷只读、不传登录密钥、行数前后一致） | 否 | 暂缓 |
+| 评测与手册转换抢第二张卡（PROD-10 FM-38） | 多人使用或手册上传 > 每周一次 | 评测前置检查 GPU 队列空闲并在评测期间暂停手册入库；此前运维手册写明"评测期间不上传手册" | 否 | 暂缓 |
 | 前端语言 / 样式 | 前端归属确定后 | 由前端需求文档定 | 否 | 等待外部 |
 
 ## 5. 待决策
@@ -399,6 +421,7 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 | 版本 | 日期 | 变更 |
 |---|---|---|
 | v0.1 | 2026-09-07 | 初稿：7 个里程碑、15 张 PROD ticket（PROD-01 到验收级，其余到目标/方法/验收层）、非目标清单草案、9 项待决策 |
+| v1.11 | 2026-09-23 | PROD-10 进行中（代码 + 离线测试）：golden 评测移植进 `stf_v3/evals/`（V2 打分器 / 判卷 / 拼法逐字复制 + V3 执行层）、题目与日志副本带哈希清单、服务器一次性评测容器脚本、CI `eval-gate`。三轮审核：D1–D4 + FM-3 / FM-11 两处细化；59 条 FM（处理 49 / 推迟 2 / 接受 8）；23 条测试。§4：FM-56 编号映射结案，新增 FM-16 / FM-38 两条回头条件。设计文档 v1.12（§1.7 评测门槛落地；评测是工具不是运行时架构，图无需改动） |
 | v1.10 | 2026-09-19 | PROD-09 DONE（vLLM 正式化：独立部署文件 + 控制脚本 + systemd 单元，显存 0.80；三档模型适配 `qwen-vllm / qwen-ollama / generic`，思考关 + 残留过滤 + 工具调用残留检查；云端对照口 `--cloud`（密钥回退 OPENROUTER_API_KEY）；预算按档默认；部署核验第 9 项；默认配置改指 vLLM）。三轮审核：D1–D5 + 思考待办；45 条 FM 全按推荐（改盲审 4 条为接受）；16 条测试。§4 新增 FM-25 / FM-27 / FM-45 / D4 / D5 五条回头条件，Ollama 常驻项关闭。设计文档同步至 v1.11（§1.4 LLM 供给落地；架构图已含 vLLM，无需改动） |
 | v1.9 | 2026-09-17 | PROD-08 DONE（Pydantic AI 2.44 运行时：三格式直读器、12 个工具、两个子代理以工具形式挂载、10 种事件、四道预算闸门 → 部分报告、压缩 / 记忆、手册子代理护栏、报告引用抽取、唯一模型来源 + 云端守卫、`diagnose_once.py` 真跑脚本；无新迁移、无新接口）。三轮审核：D1 冒烟用现有 Ollama、D2 默认繁体中文；57 条 FM 全按推荐（FM-26 按 V2 锁定决定接受）。§4 新增 FM-11 并发排队、FM-56 golden 编号映射、Ollama 常驻显存。设计文档同步至 v1.10（§1.4 运行时口径落地；架构图已含 Pydantic AI 与子代理，无需改动） |
 | v1.8 | 2026-09-17 | PROD-07 DONE（**D3：真机日志是 "OBD Maximum" 格式，V3 针对性加 `maxlog` 解析器 + 迁移 `b2c3d4e5f6a7`**；Jetson 上传器双推：V2 腿不变、V3 腿由设备 env 文件开关；重试 + 待传目录 + `--drain` 退避补传 + 拒收目录 + 401 留待传；`--self-check`；退出码 0/1/2；V3 拒收结构化日志；`onboard_first_workshop.py` 建档脚本；装机手册 `docs/v3_device_install.md`；CI `uploader` job py3.8/3.11；冒烟 42 步）。三轮审核：D1 车队 "PolyU STF 实验车队" / 负责人 manager / Perry 技师，D2 服务器等价验证即完成、真机作补录；36 条 FM 全按推荐。§4 新增 FM-6 第二 manager、FM-13 卷巡检、FM-25 真机补录截止 2026-10-01。设计文档同步至 v1.9（§1.8 设备上传口径补充；无架构变化，图无需改动） |

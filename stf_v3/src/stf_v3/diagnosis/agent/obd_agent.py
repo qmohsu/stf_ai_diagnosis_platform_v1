@@ -198,6 +198,7 @@ async def run_obd_agent(
     from stf_v3.diagnosis.agent.model import model_settings as _ms
     from stf_v3.settings import settings as _settings
 
+    nudged = False
     outcome: RunOutcome = await drive(
         OBD_AGENT, prompt, model=model, deps=deps, sink=core.events,
         parent_tool_call_id=parent_tool_call_id,
@@ -209,6 +210,7 @@ async def run_obd_agent(
     if outcome.stopped_reason == "complete" and not has_final_json(outcome.output):
         # PROD-09: same one-shot nudge as the manual sub-agent (planning
         # prose returned as the final turn); tools stay available, never loops.
+        nudged = True
         logger.info("obd_agent.nudged", tool_calls=len(deps.trace))
         outcome = await drive(
             OBD_AGENT, NUDGE_FINAL_INSTRUCTION, model=model, deps=deps, sink=core.events,
@@ -240,4 +242,5 @@ async def run_obd_agent(
                     for t in deps.trace],
         iterations=outcome.requests, total_tokens=outcome.usage.total_tokens,
         stopped_reason=stopped,  # type: ignore[arg-type]
+        nudged=nudged,
     )

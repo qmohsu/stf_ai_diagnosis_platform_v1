@@ -6,3 +6,8 @@
 
 # Treat PDFs and other binaries as binary (no line-ending conversion)
 *.pdf binary
+
+# PROD-10: golden eval data is hashed byte-for-byte (MANIFEST.json) --
+# never convert line endings on checkout.
+stf_v3/evals/golden/* -text
+stf_v3/evals/fixtures/* -text

@@ -253,7 +253,10 @@ def model_settings(
         timeout=d["request_timeout_s"] if settings.llm_request_timeout_s is None else settings.llm_request_timeout_s,
     )
     if name == PROFILE_QWEN_VLLM:
-        ms["extra_body"] = {"chat_template_kwargs": dict(VLLM_NO_THINKING_EXTRA_BODY["chat_template_kwargs"])}
+        kwargs = dict(VLLM_NO_THINKING_EXTRA_BODY["chat_template_kwargs"])
+        if getattr(settings, "llm_thinking", False):
+            kwargs["enable_thinking"] = True   # PROD-10 comparison run only (FM-45)
+        ms["extra_body"] = {"chat_template_kwargs": kwargs}
     return ms
 
 

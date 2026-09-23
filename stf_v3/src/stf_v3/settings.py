@@ -98,6 +98,10 @@ class Settings(BaseSettings):
     llm_max_tokens: Optional[int] = None
     llm_temperature: Optional[float] = None
     llm_request_timeout_s: Optional[float] = None   # one model request (read timeout)
+    # Qwen thinking on the vLLM profile (PROD-09: off for speed).  Only the
+    # PROD-10 thinking-on comparison run turns it on (FM-45); never the
+    # product default.
+    llm_thinking: bool = False
     # Cloud comparison endpoint (PROD-09 D3): comparison runs only, never
     # the product path.  Empty key → the OpenRouter key above (FM-32).
     cloud_llm_enabled: bool = False

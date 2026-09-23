@@ -1,0 +1,548 @@
+# Copied from diagnostic_api/tests/harness/evals/judge_prompts.py @ 9c9e7a9 (PROD-10).
+# Only import paths (and the judge client's key source) differ -- the
+# scoring logic is V2's, so V3 scores are comparable with V2 reports.
+"""Prompt templates for the answer-quality judge.
+
+In the comparative-eval (HARNESS-15 / Issue #74) redesign, the
+judge is no longer responsible for substring-based metrics —
+those are computed deterministically in
+``stf_v3.evals.metrics`` from the ``GoldenEntry`` and
+``SystemRunResult``.  The judge's only job is to produce the
+``answer_quality`` rating: a holistic 0.0–1.0 score for "does
+this output correctly, completely, and clearly answer the
+question?"
+
+Why split the work:
+
+- Deterministic metrics (section_recall, fact_recall, etc.)
+  produce identical scores across runs.  Reproducibility is a
+  hard requirement for benchmark-grade reporting.
+- The remaining subjective dimension (does the answer make
+  sense, is it well-organised, does it skip key steps) needs
+  judgment that substring matching can't capture.
+- This split also makes the judge call cheaper: the prompt is
+  much shorter without the 5-dimension rubric, and the response
+  is a single float plus 2–3 sentences of reasoning.
+
+Author: Li-Ta Hsu
+"""
+
+from __future__ import annotations
+
+import re
+from typing import List
+
+from stf_v3.evals.schemas import (
+    GoldenEntry,
+    RetrievedChunkMetadata,
+    SurfacedImage,
+    SystemRunResult,
+)
+
+
+# ── Constants ─────────────────────────────────────────────────────
+
+
+_MAX_OUTPUT_CHARS = 4000
+"""Cap on system output text passed to the judge.  RAG outputs
+in particular can be very long (top-5 chunks concatenated =
+~5–15 KB of text).  4 KB is enough for the judge to assess
+quality without overwhelming the prompt."""
+
+
+_MAX_GOLDEN_CHARS = 1500
+"""Cap on the golden_summary length included in the prompt.
+Golden summaries are 3–8 sentences (under 1 KB typically), so
+this is a soft ceiling."""
+
+
+_MAX_VISION_DESC_CHARS = 400
+"""Per-description cap in the SURFACED FIGURES block (#193).
+Marker vision descriptions are usually 1–3 sentences; the cap
+guards against pathological multi-paragraph captions bloating
+the judge prompt."""
+
+
+_MAX_SURFACED_FIGURES = 12
+"""Cap on the number of figure entries rendered in the SURFACED
+FIGURES block.  An agent run rarely reads more than a handful of
+image-bearing sections; the cap bounds the prompt if it does."""
+
+
+# ── System prompt ────────────────────────────────────────────────
+
+
+JUDGE_SYSTEM_PROMPT = """\
+You are grading a vehicle-service-manual answer on TWO dimensions:
+
+1. **answer_quality** — how correctly, completely, and clearly the
+   SYSTEM OUTPUT answers the question compared to the GOLDEN ANSWER.
+2. **pitfall_violations** — for each PITFALL_DIRECTIVE provided
+   with the entry, decide whether the SYSTEM OUTPUT violates it.
+
+You will see:
+  1. The QUESTION a technician asked.
+  2. The GOLDEN ANSWER (human-written reference).
+  3. A list of PITFALL_DIRECTIVES (specific failure modes the
+     output MUST NOT exhibit).
+  4. The SYSTEM OUTPUT (what one of two systems produced — you
+     are told which one, but score on substance, not source).
+
+Return ONLY a JSON object with this exact shape:
+
+{
+  "answer_quality": <float in [0.0, 1.0]>,
+  "reasoning": "<2–4 sentences citing specific evidence for answer_quality>",
+  "pitfall_violations": [
+    {
+      "directive": "<verbatim text of directive 1>",
+      "violated": <true|false>,
+      "reasoning": "<one short sentence — why violated or why compliant>"
+    },
+    ... one entry per directive, in the same order ...
+  ]
+}
+
+Do not wrap in markdown fences.  Do not output prose before or
+after the JSON.  If there are no PITFALL_DIRECTIVES, return an
+empty list for `pitfall_violations`.
+
+## Rating scale for answer_quality
+
+- 1.0 — Output answers the question correctly, completely, and
+  clearly.  A technician could act on it without consulting
+  another source.  Matches the golden's substance even if
+  phrased differently.
+- 0.7–0.9 — Mostly correct, with minor omissions or
+  unclear phrasing.  Technician would still arrive at the right
+  conclusion but might need to re-read.
+- 0.4–0.6 — Partially correct.  Key facts are present but the
+  output is missing critical steps, contains misleading
+  emphasis, or buries the answer in irrelevant content.
+  Technician might still get there but would risk error.
+- 0.1–0.3 — Wrong direction.  Output cites the wrong system,
+  the wrong DTC, or describes a different procedure.  Technician
+  acting on this would make things worse.
+- 0.0 — No usable content.  Empty output, refusal when the
+  manual could have answered, or completely fabricated content.
+
+## Rules for pitfall_violations
+
+Each directive is tagged `[assertion]` or `[omission]`.  Return a
+verdict for every directive, in order, regardless of tag.
+
+For an `[assertion]` directive, "violated" should be:
+- **true** if the SYSTEM OUTPUT clearly ASSERTS, CLAIMS, IMPLIES, or
+  RECOMMENDS the forbidden statement as part of its answer.
+- **false** if the SYSTEM OUTPUT does not mention the topic, OR
+  mentions it in a clearly compliant way:
+    - explicit negation ("this is NOT an oxygen sensor issue")
+    - disambiguation ("P0117 differs from O2-sensor codes like
+      P0130–P0139")
+    - cross-reference without endorsement ("see also: ...")
+
+For an `[omission]` directive (one demanding certain content be
+PRESENT), "violated" should be:
+- **true** if the required content is ABSENT from the SYSTEM
+  OUTPUT (the "does not mention the topic" rule above does NOT
+  apply — for omission directives, not mentioning IS the
+  violation).
+- **false** if the required content is present in substance,
+  even when phrased differently.
+
+Be context-aware.  A bare substring match is not enough — judge
+the SEMANTIC stance the output takes.
+
+If an assertion directive references a domain ("don't present
+brake content as the answer") and the output's main thrust is in
+that wrong domain, mark violated=true even if the literal
+directive phrasing isn't present in the output.
+
+## Special cases
+
+- The user message contains an ANSWERABILITY section.  When it
+  marks the entry NO-EVIDENCE / FALSE-PREMISE (the golden
+  establishes the source CANNOT answer the question as asked —
+  the premise is wrong, or the evidence does not exist), the
+  correct response is an explicit decline, and answer_quality
+  rates the QUALITY OF THE DECLINE:
+    - 0.9–1.0 — explicit, correct decline: names the false
+      premise or missing evidence, matches the golden's
+      corrective substance (what the source actually documents
+      instead), and fabricates nothing.
+    - 0.5–0.8 — declines, but weakly: hedged, buries the
+      premise error, or omits the golden's corrective facts.
+    - ≤ 0.2 — answers anyway: fabricates a spec, procedure, or
+      diagnosis, or validates the false premise — regardless of
+      how confident it sounds.
+  Do NOT score a correct decline as "no usable content" — on a
+  NO-EVIDENCE entry the decline IS the usable content.
+- A refusal on a NORMAL entry (where the golden shows the
+  source can answer) still scores 0.0.
+- For RAG outputs (no synthesised summary, just retrieved
+  chunks): grade as if a technician were reading the chunks
+  directly.  If the right chunk is in the retrieval set, the
+  technician can find the answer — score accordingly.  Apply
+  the same pitfall_violations logic: does the chunk content
+  ASSERT the forbidden claim?  Off-topic chunks (brake content
+  for a coolant question) DO violate a "don't present brake
+  content as answer" directive — they're the system's answer
+  by construction.
+- The user message contains an IMAGE REQUIREMENT section and a
+  SURFACED FIGURES list — image evidence (figure sections the
+  system read or cited, with any vision-generated descriptions).
+  The product UI displays surfaced figures to the technician
+  alongside the text answer, so a surfaced figure IS part of the
+  delivered answer.  On an IMAGE-REQUIRED entry:
+    - Award FULL answer_quality when the output surfaces the
+      correct figure (a SURFACED FIGURES entry covers the
+      golden's section, ideally cited) and the text correctly
+      states the figure's role — what it shows and how the
+      technician uses it.  Do NOT deduct merely because
+      pixel-level visual detail is not transcribed into text;
+      the figure itself carries that detail.
+    - Fabricated figure content — visual details that contradict
+      the golden or are unsupported by the surfaced evidence —
+      still scores low, exactly as fabricated text would.
+    - If NO surfaced figure covers the golden's section, the
+      figure was not delivered: grade the text answer on its own
+      merits against the golden.
+- Phrasing differences from the golden are NOT a penalty.
+  English vs Chinese, terse vs verbose, narrative vs
+  bullet-list — all fine if the substance matches.
+
+## Substance focus
+
+Reasoning should cite concrete evidence: which fact is missing,
+which step is wrong, which DTC was confused with which.  Do
+not reason about format, length, or style — those don't enter
+the score.
+"""
+
+
+# ── User-prompt builder ──────────────────────────────────────────
+
+
+def _truncate(text: str, max_chars: int) -> str:
+    """Truncate with a trailing marker if clipped."""
+    if not text:
+        return ""
+    if len(text) <= max_chars:
+        return text
+    return (
+        text[:max_chars]
+        + f"\n[truncated — {len(text)} chars total]"
+    )
+
+
+def _format_chunk_summary(
+    chunks: List[RetrievedChunkMetadata],
+) -> str:
+    """Compact chunk-level breakdown for the RAG prompt.
+
+    The judge sees ``output_text`` (concatenated chunks) for
+    must_contain scanning, but a per-chunk metadata list helps
+    it understand what was retrieved (scores, slugs, DTC tags).
+    """
+    if not chunks:
+        return "  (no chunks retrieved)"
+    lines = []
+    for i, c in enumerate(chunks, 1):
+        flags = []
+        if c.has_image:
+            flags.append("image")
+        if c.dtc_codes:
+            flags.append(f"dtc={','.join(c.dtc_codes[:3])}")
+        flag_str = f"  [{' / '.join(flags)}]" if flags else ""
+        lines.append(
+            f"  [{i}] score={c.score:.3f}  slug={c.slug}{flag_str}"
+        )
+    return "\n".join(lines)
+
+
+def _format_surfaced_images(
+    images: List[SurfacedImage],
+) -> str:
+    """Render the SURFACED FIGURES block for the judge (#193).
+
+    One line per image-bearing section (slug, figure count,
+    CITED/read-only flag) with any vision descriptions indented
+    below it, truncated to ``_MAX_VISION_DESC_CHARS`` each.
+    Returns a "(none captured)" marker when the run surfaced no
+    image evidence — the judge is told absence means the figure
+    was not delivered, so the marker must be explicit rather
+    than an empty string.
+
+    Args:
+        images: ``SystemRunResult.surfaced_images``.
+
+    Returns:
+        Rendered block body (no heading).
+    """
+    if not images:
+        return (
+            "  (none captured — the system surfaced no image "
+            "evidence)"
+        )
+    lines: List[str] = []
+    for i, img in enumerate(
+        images[:_MAX_SURFACED_FIGURES], 1,
+    ):
+        status = "CITED" if img.cited else "read, not cited"
+        lines.append(
+            f"  [{i}] slug={img.slug}  "
+            f"figures={img.image_count}  [{status}]"
+        )
+        for desc in img.vision_descriptions:
+            lines.append(
+                "      vision: "
+                + _truncate(desc, _MAX_VISION_DESC_CHARS)
+            )
+    clipped = len(images) - _MAX_SURFACED_FIGURES
+    if clipped > 0:
+        lines.append(
+            f"  ... and {clipped} more image-bearing sections"
+        )
+    return "\n".join(lines)
+
+
+def _is_image_required_entry(entry: GoldenEntry) -> bool:
+    """Whether a complete answer depends on figure content.
+
+    ``question_type == "image-required"`` is the primary axis;
+    ``requires_image`` is the authoring-time sanity flag — either
+    marks the entry so the judge applies the figure-credit rule
+    (#193).
+
+    Args:
+        entry: Golden reference.
+
+    Returns:
+        True when the golden's answer needs a figure.
+    """
+    return (
+        entry.question_type == "image-required"
+        or entry.requires_image
+    )
+
+
+_IMAGE_REQUIREMENT_REQUIRED = """\
+IMAGE-REQUIRED entry: a complete answer depends on a figure's
+visual content.  Grade answer_quality using the SURFACED FIGURES
+evidence per the system prompt's Special cases: surfacing the
+correct figure and correctly stating its role earns FULL credit
+even when pixel-level detail is not transcribed into text;
+fabricated figure detail still scores low; a missing figure means
+the visual content was not delivered."""
+
+
+_IMAGE_REQUIREMENT_NONE = """\
+No figure requirement: text evidence suffices for full
+answer_quality."""
+
+
+_OMISSION_DIRECTIVE_RE = re.compile(
+    r"must\s+not\s+(?:omit|leave\s+out|skip(?:\s+over)?|drop)\b"
+    r"|must\s+(?:also\s+)?(?:reference|include|mention|state|"
+    r"retain|preserve|cover)\b",
+    re.IGNORECASE,
+)
+"""Phrasing patterns that mark a directive as OMISSION-type.
+
+Two shapes, both demanding the PRESENCE of content:
+
+- negative-omission — ``"must not omit X"`` (also ``leave out`` /
+  ``skip`` / ``drop``), the dominant authoring pattern.
+- positive-requirement — ``"must reference X"`` (also ``include``
+  / ``mention`` / ``state`` / ...), e.g. cross-001's *"must
+  reference the manual's 12,000 km figure"*.
+
+Everything else is ASSERTION-type (the default).  Deliberately
+conservative: a mis-classified omission directive falls back to
+the pre-#147 behaviour (still penalised), whereas a loose pattern
+that swallowed assertion directives would silently weaken
+``hallucination_penalty``.  Keyword mentions like *"...the missing
+chain spec"* inside an assertion directive do NOT match — only
+the demand phrasing does."""
+
+
+def classify_pitfall_directive(directive: str) -> str:
+    """Classify a pitfall directive as ``assertion`` or ``omission``.
+
+    Assertion directives forbid the output from SAYING something
+    ("must not assert/invent/present X") — violating one means the
+    output fabricated or endorsed a wrong claim, which is what
+    ``hallucination_penalty`` measures.  Omission directives demand
+    the output CONTAIN something ("must not omit X" / "must
+    reference X") — violating one is a recall failure, already
+    measured by ``fact_recall``, and is excluded from
+    ``hallucination_penalty`` (#147).
+
+    Args:
+        directive: Directive sentence from
+            ``GoldenEntry.pitfall_directives``.
+
+    Returns:
+        ``"omission"`` or ``"assertion"``.
+    """
+    if directive and _OMISSION_DIRECTIVE_RE.search(directive):
+        return "omission"
+    return "assertion"
+
+
+def _is_no_evidence_entry(entry: GoldenEntry) -> bool:
+    """Whether the golden expects a decline rather than an answer.
+
+    True for adversarial entries in either lane (the manual /
+    OBD data cannot answer the question as asked) and for entries
+    explicitly flagged ``expected_no_evidence`` (OBD lane).  The
+    manual lane has no dedicated flag — ``question_type ==
+    "adversarial"`` is its authoring-time signal.
+
+    Args:
+        entry: Golden reference.
+
+    Returns:
+        True when the correct system response is an explicit,
+        reasoned decline.
+    """
+    return (
+        entry.question_type in ("adversarial", "adversarial_obd")
+        or entry.expected_no_evidence
+    )
+
+
+_ANSWERABILITY_NO_EVIDENCE = """\
+NO-EVIDENCE / FALSE-PREMISE entry: the golden establishes that the
+source material CANNOT answer this question as asked (the premise
+is wrong, or the evidence does not exist).  The CORRECT response
+is an explicit decline that names the premise error or missing
+evidence and states what the source actually documents.  Score
+answer_quality on the quality of the decline per the system
+prompt's Special cases — a correct decline is a HIGH score, and
+an answer that fabricates content or validates the premise is a
+LOW score."""
+
+
+_ANSWERABILITY_NORMAL = """\
+Normal entry: the source material can answer this question.  A
+refusal or "not found" response scores 0.0 on answer_quality."""
+
+
+def _format_pitfall_directives(directives: List[str]) -> str:
+    """Numbered list of pitfall directives, or a "none" marker.
+
+    The judge sees these in a stable order and is asked to return
+    one ``pitfall_violations`` entry per directive in the same
+    order — keeping the list small and ordered makes both the
+    prompt and the parsed result easier to align.
+    """
+    if not directives:
+        return "  (none — return empty list for pitfall_violations)"
+    return "\n".join(
+        f"  {i}. [{classify_pitfall_directive(d)}] {d}"
+        for i, d in enumerate(directives, 1)
+    )
+
+
+def build_user_prompt(
+    entry: GoldenEntry, run: SystemRunResult,
+) -> str:
+    """Assemble the user message given the golden + system output.
+
+    The prompt includes ``pitfall_directives`` (LLM-judged) but
+    deliberately omits ``must_contain`` / ``expected_recall_slugs``
+    — those are graded deterministically and don't need the
+    judge's attention.  The judge focuses on answer_quality
+    (against ``golden_summary``) AND pitfall_violations (against
+    the directives).
+
+    An ANSWERABILITY section tells the judge whether the golden
+    expects an answer or a decline (#146): adversarial /
+    ``expected_no_evidence`` entries are marked NO-EVIDENCE /
+    FALSE-PREMISE so a correct explicit decline earns a high
+    ``answer_quality`` instead of being scored as an empty
+    answer; fabricating an answer on such entries scores low.
+
+    An IMAGE REQUIREMENT section plus a SURFACED FIGURES block
+    (#193) tell the judge which figures the system read/cited —
+    with vision descriptions where available — so image-required
+    entries earn full ``answer_quality`` for surfacing the
+    correct figure and stating its role, instead of being
+    structurally capped because ``output_text`` cannot carry
+    pixels.
+
+    Args:
+        entry: Golden reference.
+        run: System output (agent or RAG, both unified into
+            ``SystemRunResult``).
+
+    Returns:
+        Fully-rendered user prompt.
+    """
+    golden_summary = _truncate(entry.golden_summary, _MAX_GOLDEN_CHARS)
+    output_text = _truncate(run.output_text, _MAX_OUTPUT_CHARS)
+    chunk_block = (
+        _format_chunk_summary(run.retrieved_chunk_metadata)
+        if run.system_label == "rag" else "  (n/a — agent output)"
+    )
+
+    claim_block = (
+        ', '.join(run.claim_slugs) if run.claim_slugs else '(none)'
+    )
+    read_block = (
+        ', '.join(run.read_slugs) if run.read_slugs else '(none)'
+    )
+    pitfall_block = _format_pitfall_directives(entry.pitfall_directives)
+    answerability_block = (
+        _ANSWERABILITY_NO_EVIDENCE
+        if _is_no_evidence_entry(entry)
+        else _ANSWERABILITY_NORMAL
+    )
+    image_requirement_block = (
+        _IMAGE_REQUIREMENT_REQUIRED
+        if _is_image_required_entry(entry)
+        else _IMAGE_REQUIREMENT_NONE
+    )
+    figures_block = _format_surfaced_images(run.surfaced_images)
+    return f"""\
+## QUESTION
+{entry.question}
+
+## ANSWERABILITY
+{answerability_block}
+
+## IMAGE REQUIREMENT
+{image_requirement_block}
+
+## GOLDEN ANSWER
+{golden_summary}
+
+## PITFALL DIRECTIVES (must NOT be exhibited by the system output)
+{pitfall_block}
+
+## SYSTEM UNDER TEST: {run.system_label}
+
+### Cited slugs (the system's claim about which sections are answers)
+{claim_block}
+
+### Read slugs (sections the system actually accessed; may include
+### navigation/index pages even when not cited)
+{read_block}
+
+### Retrieved chunks (RAG only)
+{chunk_block}
+
+### SURFACED FIGURES (image evidence the system read/cited — the
+### product UI shows these figures to the technician)
+{figures_block}
+
+### Output text
+{output_text}
+
+---
+
+Return ONLY the JSON object with `answer_quality` (float 0.0–1.0),
+`reasoning` (2–4 sentences), and `pitfall_violations` (list, one
+entry per directive in the same order).  No prose, no code fences.
+"""

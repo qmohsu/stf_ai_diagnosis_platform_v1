@@ -2,8 +2,8 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.4（PROD-09：模型服务 vLLM 一章；§3 改为 vLLM 默认） |
-| 日期 | 2026-09-19 |
+| 版本 | v0.5（PROD-10：Golden 评测一章） |
+| 日期 | 2026-09-23 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
 
@@ -245,3 +245,49 @@ bash stf_v3/scripts/deploy_check.sh --max-age-min 5  # 第 9 项会对 Ollama �
 - **报告里有思考文本 / 工具调用 XML**：`session_start.profile` 不是 `qwen-vllm`（模型名没对上 → 落到 generic）；显式设 `STF_V3_LLM_PROFILE=qwen-vllm`。
 - **跳过第 9 项**（离线演练等）：`LLM_CHECK=skip LLM_CHECK_REASON="…" bash stf_v3/scripts/deploy_check.sh`——输出里会有一行 `SKIP  model service` 带理由，默认从不跳过（FM-20）。
 - 重启计数：`podman inspect -f '{{.RestartCount}}' stf-vllm`；日志 `vllm_ctl.sh logs 200`。
+
+## 5. Golden 评测（PROD-10）
+
+同一把尺子：30 道 MWS-150-A 手册题 + 15 道 Yamaha 路试日志题，打分器与判卷（OpenRouter `z-ai/glm-5.1`）从 V2 逐字复制。门槛与基线在 `stf_v3/evals/thresholds.yaml`，成绩单在 `docs/evals/`。
+
+### 5.1 什么时候必须跑
+
+- PR 动了**受管路径**（`thresholds.yaml` 的 `managed_paths`：诊断运行时与工具、手册索引读取、日志读取、评测器与数据、settings、依赖锁、vLLM 部署文件）→ CI `eval-gate` 要求本 PR 新增一份**新鲜**且过线的成绩单：评测提交号在分支历史里，且其后没再改受管路径。
+- 门槛：均值 ≥ 基线 − 0.03，且基线 ≥ 0.6 的题不跌破 0.4；未过可重跑一次，最新两份里有一份过即可。
+- 只算：本地模型、思考关、用途 `gate` / `baseline`、完整、有效、同一判卷模型、生产预算（倍数 1）。云端 / 开思考 / 校准 / 演示成绩单永远不算。
+- 看起来受管但其实无关的 PR：由**用户**加 `eval-exempt` 标签，CI 打印"已豁免"。
+
+### 5.2 怎么跑
+
+```
+cd ~/stf_ai_diagnosis_platform_v1 && git checkout <branch> && git pull
+cd infra && GIT_COMMIT=$(git rev-parse HEAD) ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml build && cd ..
+bash stf_v3/scripts/run_golden_eval.sh --purpose gate            # 两条 lane，六路并发
+tail -f ~/stf_v3_evals/<容器名>/run.log                           # 断开 SSH 不影响
+cat ~/stf_v3_evals/<容器名>/exit_code                             # 0 有效 · 2 跑完但无效 · 4 拒跑 · 6 看门狗
+```
+
+常用参数：`--lanes manual|obd`、`--ids lookup-001,cross-003`（按题号结尾匹配；两条 lane 同名时两边都跑）、`--thinking on --budget-scale 2`（开思考对照）、`--cloud`（deepseek 对照，不做预热、VIN 用假名）、`--purpose calibration --budget-scale 2`（预算校准）、`--wait`（等跑完再返回）。输出目录：`<base>.json`（完整）、`.slim.json`（精简，门槛 PR 入库用）、`.md`（摘要）、`.progress.jsonl`、`run.log`、`preflight.txt`。
+
+前置检查会拒跑（退出码 4）：工作树有未提交改动；镜像提交号 ≠ HEAD（先重建镜像）；已有一轮在跑；某张卡 > 42 GB（Ollama / MinerU / 其他租户占着）；Ollama 驻留了模型；vLLM 正在处理请求；V3 与 V2 的手册副本哈希不同（打印 DIFFERENT）；容器内分词器、模型端点或判卷模型不可用。
+
+入库：把输出目录里的 `.json` 或 `.slim.json` 与 `.md` 拷到本地 `docs/evals/` 提交。**基线与对照轮入库完整版，门槛 PR 入库精简版**（完整版约 1 MB）。
+
+### 5.3 多久、多少钱
+
+45 题六路并发约 15–20 分钟（开思考约翻倍）；判卷一轮约 45 次调用、几美分；云端对照一轮约 1 美元。评测期间 vLLM 被占满，线上诊断会变慢。
+
+### 5.4 分数掉了先看哪
+
+1. 摘要"失败的题"：判卷失败 → `podman run … python -m stf_v3.evals regrade --scorecard <x.json>` 只重判失败题（不重跑模型）；`run_error` = 子代理报错（端点 / 工具异常），先查 vLLM。
+2. "耗时与预算"：被预算截断的题数突增 → 预算或 vLLM 抢占（`preflight.txt` 的前后抢占计数）。
+3. "逐题"差值表：集中在一类题（依赖图 / 跨章节）还是全面下降；与 V2 参考比。
+4. 配置快照：判卷模型、vLLM 版本、手册库哈希与基线不同 → CI 打印 WARN，基线可能过时（走 5.6）。
+
+### 5.5 评测期间不要做
+
+不启动 V1/V2（Ollama 与 vLLM 抢显存）；不上传手册（MinerU 与六路并发抢第二张卡）；不重启 vLLM。重新部署 V3（api / worker 停了再起）没关系，评测容器不受影响。
+
+### 5.6 基线重置
+
+模型、判卷、vLLM 版本或手册库本身换了，分数整体平移：开一个**只改** `thresholds.yaml` + 新增两份基线成绩单的 PR（`python -m stf_v3.evals accept --scorecards a.json b.json --lines manual_agent=0.831,obd_agent=0.938 --write-thresholds stf_v3/evals/thresholds.yaml`），由用户加 `baseline-reset` 标签。同一 PR 里再动受管代码 CI 会红。

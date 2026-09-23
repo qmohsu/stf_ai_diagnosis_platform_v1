@@ -191,6 +191,7 @@ async def run_manual_agent(
     from stf_v3.diagnosis.agent.model import model_settings as _ms
     from stf_v3.settings import settings as _settings
 
+    nudged = False
     outcome: RunOutcome = await drive(
         MANUAL_AGENT, prompt, model=model, deps=deps, sink=core.events,
         parent_tool_call_id=parent_tool_call_id,
@@ -204,6 +205,7 @@ async def run_manual_agent(
         # PROD-09 (qwen on vLLM, thinking off): the model sometimes ends a
         # turn with planning prose instead of the JSON answer.  Nudge ONCE,
         # tools still available, same history and budget; never loop.
+        nudged = True
         logger.info("manual_agent.nudged", tool_calls=len(deps.trace))
         outcome = await drive(
             MANUAL_AGENT, NUDGE_FINAL_INSTRUCTION, model=model, deps=deps, sink=core.events,
@@ -244,6 +246,7 @@ async def run_manual_agent(
         iterations=outcome.requests,
         total_tokens=outcome.usage.total_tokens,
         stopped_reason=stopped,  # type: ignore[arg-type]
+        nudged=nudged,
     )
 
 

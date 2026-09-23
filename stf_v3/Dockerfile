@@ -13,11 +13,17 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src
 RUN pip install --upgrade pip && pip install ".[dev]"
+# PROD-10: the golden eval scores verbosity in cl100k_base tokens; bake the
+# vocabulary into the image so scoring never depends on a download (FM-24).
+ENV TIKTOKEN_CACHE_DIR=/app/.tiktoken
+RUN python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
 
 COPY alembic.ini ./
 COPY alembic ./alembic
 COPY scripts ./scripts
 COPY tests ./tests
+# PROD-10: golden sets + road-test fixture + manifest + thresholds (/app/evals).
+COPY evals ./evals
 
 # Build-time commit stamp, read by deploy_check.sh and reported by /health.
 ARG GIT_COMMIT=unknown
