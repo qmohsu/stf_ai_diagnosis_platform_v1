@@ -38,6 +38,24 @@ from stf_v3.evals import gate as evgate
 from stf_v3.evals import scorecard as sc
 
 TOKENIZER = "cl100k_base"
+JUDGE_MAX_TOKENS = 8192
+"""The copied judge caps its reply at 2048 tokens (V2).  glm-5.1 on
+OpenRouter now spends hidden reasoning tokens first; on long Chinese
+goldens that exhausts 2048 and the reply comes back empty (finish=length,
+PROD-10 T-17: image-005 needed 3448).  The cap only decides whether the
+judge finishes — grades that fitted in 2048 are unchanged — so V3 raises
+it here and records it in every scorecard, keeping judge.py verbatim."""
+
+
+def configure_judge(judge_model: Optional[str] = None) -> Dict[str, Any]:
+    """Apply the V3 judge settings on the copied module; returns them."""
+    from stf_v3.evals import judge as evjudge
+
+    evjudge._JUDGE_MAX_TOKENS = JUDGE_MAX_TOKENS
+    if judge_model:
+        evjudge._JUDGE_MODEL = judge_model   # V2's module-constant override pattern
+    return {"judge_model": evjudge._JUDGE_MODEL, "judge_temperature": evjudge._JUDGE_TEMPERATURE,
+            "judge_max_tokens": evjudge._JUDGE_MAX_TOKENS}
 
 
 def _parse(argv: Optional[Sequence[str]]) -> argparse.Namespace:
@@ -127,7 +145,7 @@ async def check_judge(client: Any, judge_model: str) -> None:
     """One tiny judge call so a missing key / blocked model fails before the run (FM-25)."""
     completion = await client.chat.completions.create(
         model=judge_model, messages=[{"role": "user", "content": 'Return {"ok": true} as JSON.'}],
-        temperature=0.0, max_tokens=32)
+        temperature=0.0, max_tokens=2048)   # the judge reasons before answering
     if not completion.choices or not completion.choices[0].message.content:
         raise RuntimeError("judge returned no content")
 
@@ -198,8 +216,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         info = check_model(base_url, key, name, local=not opts.cloud, wait_s=args.model_wait_s)
     except Exception as exc:  # noqa: BLE001
         return refuse(str(exc))
-    if args.judge_model:
-        evjudge._JUDGE_MODEL = args.judge_model  # V2's module-constant override pattern
+    judge_cfg = configure_judge(args.judge_model)
     try:
         judge_client = evjudge._get_default_client()
         asyncio.run(check_judge(judge_client, evjudge._JUDGE_MODEL))
@@ -225,8 +242,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                     "subagent_max_tokens": settings.subagent_max_tokens,
                     "subagent_temperature": b.subagent_temperature,
                     "tool_result_max_tokens": b.tool_result_max_tokens},
-        "images_enabled": False, "judge_model": evjudge._JUDGE_MODEL,
-        "judge_temperature": evjudge._JUDGE_TEMPERATURE, "tokenizer": tokenizer,
+        "images_enabled": False, **judge_cfg, "tokenizer": tokenizer,
         "manual_sha256": evdata.manual_hashes(manual_root, [m.id for m in manuals]),
         "pydantic_ai": _pydantic_ai_version(), "vllm_version": info.get("vllm_version"),
         "judge_credit": credit,
@@ -265,6 +281,7 @@ def cmd_regrade(args: argparse.Namespace) -> int:
     from stf_v3.evals.orchestrator import is_judge_failure
     from stf_v3.evals.schemas import GoldenEntry, SystemRunResult
 
+    judge_cfg = configure_judge()
     card = sc.load(Path(args.scorecard))
     records = card.get("records", [])
     targets = [i for i, r in enumerate(records)
@@ -301,7 +318,7 @@ def cmd_regrade(args: argparse.Namespace) -> int:
     aq_new = [records[i]["grade"]["answer_quality"] for i in targets]
     ov_old = [old[i]["grade"]["overall"] for i in targets]
     ov_new = [records[i]["grade"]["overall"] for i in targets]
-    report = {"regraded": len(targets), "deterministic_max_abs_diff": diffs,
+    report = {"regraded": len(targets), "judge": judge_cfg, "deterministic_max_abs_diff": diffs,
               "answer_quality_mean": {"stored": _m(aq_old), "now": _m(aq_new)},
               "overall_mean": {"stored": _m(ov_old), "now": _m(ov_new)}}
     card.setdefault("meta", {}).setdefault("regrades", []).append({"at": time.time(), **report})
@@ -397,4 +414,4 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "calibrate": cmd_calibrate, "accept": cmd_accept}[args.cmd](args)
 
 
-__all__ = ["TOKENIZER", "check_judge", "check_model", "check_tokenizer", "main"]
+__all__ = ["JUDGE_MAX_TOKENS", "TOKENIZER", "configure_judge", "check_judge", "check_model", "check_tokenizer", "main"]

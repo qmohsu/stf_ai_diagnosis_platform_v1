@@ -341,6 +341,8 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 
 **发现并修正（PROD-09 遗留）**：`infra/docker-compose.v3.yml` 的 `${STF_V3_OPENROUTER_API_KEY:-${OPENROUTER_API_KEY:-}}` 嵌套默认值被 podman-compose 1.5 读成"密钥 + `}`"，自 09-19 部署起 V3 容器里的 OpenRouter 密钥一直无效（401；宿主机 GPU worker 直接读 `infra/.env`，章节摘要不受影响）。判卷自检（T-17）发现；改为单层默认，新增测试禁止嵌套默认值。
 
+**判卷漂移（T-17 发现）**：OpenRouter 上的 glm-5.1（现由 AtlasCloud 提供）会先做隐藏推理再作答；V2 照抄的判卷输出上限 2048 token 在长中文题上被推理耗尽，回复为空（finish=length，image-005 实需 3448）。V3 在命令行把上限提到 8192（`judge.py` 保持逐字复制），并把判卷模型 / 温度 / 上限记进每份成绩单；上限只决定判卷能否答完，原本 2048 内答完的分数不变。
+
 **服务器验证**：待跑（T-14 ~ T-23）。
 
 ### 3.5 M4 — S1 诊断闭环

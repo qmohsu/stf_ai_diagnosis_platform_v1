@@ -182,3 +182,17 @@ def test_calibrate_and_summary_commands(tmp_path: pathlib.Path, capsys: Any) -> 
     md = tmp_path / "s.md"
     assert evcli.main(["summary", "--scorecards", str(c), "--out", str(md)]) == 0
     assert "# Golden 评测摘要" in md.read_text(encoding="utf-8")
+
+
+def test_judge_output_cap_is_raised_and_recorded(monkeypatch: pytest.MonkeyPatch) -> None:
+    """T-17 finding: glm-5.1 reasons before answering; V2's 2048-token cap
+    returned empty replies on long goldens.  V3 raises it to 8192 (judge.py
+    itself stays verbatim) and records it with the judge model."""
+    import stf_v3.evals.judge as evjudge
+
+    monkeypatch.setattr(evjudge, "_JUDGE_MAX_TOKENS", 2048)
+    monkeypatch.setattr(evjudge, "_JUDGE_MODEL", "z-ai/glm-5.1")
+    cfg = evcli.configure_judge()
+    assert evjudge._JUDGE_MAX_TOKENS == 8192 == cfg["judge_max_tokens"]
+    assert cfg["judge_model"] == "z-ai/glm-5.1" and cfg["judge_temperature"] == 0.0
+    assert evcli.configure_judge("deepseek/deepseek-v4-pro")["judge_model"] == "deepseek/deepseek-v4-pro"
