@@ -63,7 +63,8 @@ def _force_final_processor(ctx: RunContext[SubAgentDeps], messages: List[ModelMe
         return messages
     last = messages[-1] if messages else None
     if isinstance(last, ModelRequest) and any(
-        isinstance(p, UserPromptPart) and p.content == FORCE_FINAL_INSTRUCTION for p in last.parts
+        isinstance(p, UserPromptPart) and p.content in (FORCE_FINAL_INSTRUCTION, NUDGE_FINAL_INSTRUCTION)
+        for p in last.parts
     ):
         return messages
     return list(messages) + [ModelRequest(parts=[UserPromptPart(content=FORCE_FINAL_INSTRUCTION)])]
@@ -143,15 +144,58 @@ def parse_final_json(content: Optional[str], raw_sections: Optional[List[Section
     raw_cits = payload.get("citations", [])
     if isinstance(raw_cits, list):
         for cit in raw_cits:
-            if not isinstance(cit, dict):
-                continue
             try:
-                manual_id = str(cit.get("manual_id", ""))
-                slug = _canonical_from_sections(manual_id, str(cit.get("slug", "")), raw_sections or [])
-                citations.append(Citation(manual_id=manual_id, slug=slug, quote=str(cit.get("quote", ""))))
+                parsed = citation_from_item(cit, raw_sections or [])
             except Exception:  # noqa: BLE001
-                continue
+                parsed = None
+            if parsed is not None:
+                citations.append(parsed)
     return summary, citations
+
+
+# PROD-10: Qwen3.6 on vLLM often writes citations as strings
+# ("<slug>: <quote>") or with other keys instead of the requested
+# {manual_id, slug, quote} object; V2's parser dropped those, which left
+# 20 of 30 golden answers with no citation at all.
+_STRING_CITE_RE = re.compile(r"^\s*(?P<slug>[^:：\n]+?)\s*[:：]\s*(?P<quote>.*)$", re.DOTALL)
+
+
+def _manual_for_slug(raw_slug: str, raw_sections: List[SectionRef]) -> str:
+    """The manual a cited slug belongs to, from the sections actually read."""
+    ids = []
+    for s in raw_sections:
+        if s.manual_id not in ids:
+            ids.append(s.manual_id)
+    if len(ids) == 1:
+        return ids[0]
+    for s in raw_sections:
+        if s.slug == raw_slug or (raw_slug and raw_slug in s.slug):
+            return s.manual_id
+    return ids[0] if ids else ""
+
+
+def citation_from_item(cit: Any, raw_sections: List[SectionRef]) -> Optional[Citation]:
+    """One citation from the model's JSON: an object (``manual_id`` /
+    ``slug`` / ``quote``, also ``section`` / ``node_id`` / ``excerpt``) or a
+    string ``"<slug>: <quote>"`` / ``"<slug>"``.  The manual id, when
+    missing, comes from the sections read; the slug is canonicalised."""
+    if isinstance(cit, dict):
+        manual_id = str(cit.get("manual_id") or cit.get("manual") or "")
+        raw_slug = str(cit.get("slug") or cit.get("section") or cit.get("node_id") or cit.get("section_slug") or "")
+        quote = str(cit.get("quote") or cit.get("excerpt") or cit.get("text") or "")
+    elif isinstance(cit, str) and cit.strip():
+        match = _STRING_CITE_RE.match(cit)
+        raw_slug, quote = (match.group("slug"), match.group("quote")) if match else (cit.strip(), "")
+        manual_id = ""
+    else:
+        return None
+    raw_slug = raw_slug.strip()
+    if not raw_slug:
+        return None
+    if not manual_id:
+        manual_id = _manual_for_slug(raw_slug, raw_sections)
+    slug = _canonical_from_sections(manual_id, raw_slug, raw_sections)
+    return Citation(manual_id=manual_id, slug=slug, quote=quote.strip())
 
 
 def _force_not_found(messages: List[ModelMessage], raw_sections: List[SectionRef]) -> Tuple[str, List[Citation]]:
@@ -201,10 +245,12 @@ async def run_manual_agent(
         usage=usage,
         extra_capabilities=[ProcessHistory(_force_final_processor)],
     )
-    if outcome.stopped_reason == "complete" and not has_final_json(outcome.output) and not state.force_final:
+    if outcome.stopped_reason == "complete" and not has_final_json(outcome.output):
         # PROD-09 (qwen on vLLM, thinking off): the model sometimes ends a
         # turn with planning prose instead of the JSON answer.  Nudge ONCE,
-        # tools still available, same history and budget; never loop.
+        # same history and budget; never loop.  PROD-10: also after the
+        # force-final backstop (tools stay withheld) -- the forced turn
+        # often came back as prose or a tool call written as text.
         nudged = True
         logger.info("manual_agent.nudged", tool_calls=len(deps.trace))
         outcome = await drive(
@@ -250,5 +296,5 @@ async def run_manual_agent(
     )
 
 
-__all__ = ["MANUAL_AGENT", "MANUAL_TOOL_NAMES", "build_manual_agent", "parse_final_json",
+__all__ = ["MANUAL_AGENT", "MANUAL_TOOL_NAMES", "build_manual_agent", "citation_from_item", "parse_final_json",
            "resolve_section_slug", "run_manual_agent"]

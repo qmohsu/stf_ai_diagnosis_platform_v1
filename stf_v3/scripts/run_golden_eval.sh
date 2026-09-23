@@ -84,12 +84,15 @@ fi
 V3M=$(podman volume inspect stf_v3_manuals --format '{{.Mountpoint}}')
 if podman volume exists infra_diagnostic_api_manuals 2>/dev/null; then
   V2M=$(podman volume inspect infra_diagnostic_api_manuals --format '{{.Mountpoint}}')
-  for f in $(cd "$V3M" && find . -path ./uploads -prune -o \( -name '*.md' -o -name '*.index.yaml' \) -print); do
+  DIFF=0
+  while IFS= read -r f; do   # manual directory names contain spaces ("Corolla E11 Haynes")
     if [ -f "$V2M/$f" ]; then
       A=$(sha256sum "$V3M/$f" | cut -c1-16); B=$(sha256sum "$V2M/$f" | cut -c1-16)
+      [ "$A" = "$B" ] || DIFF=1
       echo "manual $f v3=$A v2=$B $([ "$A" = "$B" ] && echo same || echo DIFFERENT)" | tee -a "$PRE"
     fi
-  done
+  done < <(cd "$V3M" && find . -path ./uploads -prune -o \( -name '*.md' -o -name '*.index.yaml' \) -print)
+  [ $DIFF -eq 0 ] || fail "the V3 manual copy differs from V2's (see DIFFERENT above) — scores would not be comparable"
 fi
 
 # 5. The same model / key settings as the running API; nothing else (no JWT
