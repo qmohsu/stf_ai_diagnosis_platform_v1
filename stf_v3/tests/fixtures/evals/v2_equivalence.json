@@ -275,7 +275,7 @@
     "claim_precision": null,
     "exploration_cost": 0.0,
     "fact_recall": 1.0,
-    "fact_density": 1.0,
+    "fact_density": 0.9892086330935251,
     "citation_quality": 0.3,
     "trajectory_efficiency": 0.5,
     "value_accuracy": 1.0
@@ -610,7 +610,7 @@
     "claim_precision": 1.0,
     "exploration_cost": 0.0,
     "fact_recall": 1.0,
-    "fact_density": 1.0,
+    "fact_density": 0.8963662690477833,
     "citation_quality": 1.0,
     "trajectory_efficiency": 0.75,
     "value_accuracy": 1.0

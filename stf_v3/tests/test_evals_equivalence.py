@@ -62,6 +62,15 @@ def test_obd_mapping_reproduces_the_archived_v2_run(rec: Dict[str, Any]) -> None
     assert [c.model_dump(mode="json") for c in mapped.obd_dtc_citations] == archived["obd_dtc_citations"]
 
 
+def test_the_scorer_counts_real_tokens() -> None:
+    """The comparison below only means something with the real cl100k_base:
+    without it the scorer silently falls back to len/4 and V2 and V3 would
+    agree on wrong numbers (FM-43 — happened while writing this test)."""
+    from stf_v3.evals import metrics
+
+    assert metrics._count_tokens("測試 test") == 5, "cl100k_base unavailable: set TIKTOKEN_CACHE_DIR"
+
+
 @pytest.mark.parametrize("rec", DATA["manual"] + DATA["obd"], ids=_ids(DATA["manual"] + DATA["obd"]))
 def test_deterministic_metrics_equal_v2(rec: Dict[str, Any]) -> None:
     """The V3 scorer copy computes exactly V2's numbers on the same input
