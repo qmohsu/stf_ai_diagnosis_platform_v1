@@ -69,7 +69,7 @@ def redact_error(exc: BaseException) -> str:
 class RunOutcome:
     """Result of one driven run (agent or sub-agent)."""
 
-    output: Optional[str]
+    output: Any                    # str, or the output-tool model (manual final_answer)
     messages: List[ModelMessage]
     usage: RunUsage
     stopped_reason: str            # complete | timeout | budget | cancelled | error
@@ -165,7 +165,7 @@ async def drive(
     started = time.monotonic()
     events_before = len(sink.events)
     messages: List[ModelMessage] = list(message_history or [])
-    output: Optional[str] = None
+    output: Any = None
     stopped = "complete"
     error: Optional[str] = None
     run_usage = usage if usage is not None else RunUsage()

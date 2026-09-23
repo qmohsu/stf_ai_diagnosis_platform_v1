@@ -4,9 +4,16 @@ A restricted agent with only the 4 manual tools.  The V2 loop's guards
 live in ``guards.py`` and are wired here: the tools are withheld once the
 guard state says ``force_final`` (a ``prepare`` hook), and the
 force-final instruction is appended to what the model sees (a history
-processor — sent, not stored).  The final answer stays plain text and is
-parsed with the V2 JSON extractor (FM-41); when the run stops on a gate
-the last assistant text (or a canned decline) becomes the summary.
+processor — sent, not stored).  The final answer is either a call to the
+``final_answer`` output tool (PROD-10) or plain text parsed with the V2
+JSON extractor (FM-41); when the run stops on a gate the last assistant
+text (or a canned decline) becomes the summary.
+
+PROD-10: on the force-final turn Qwen3.6 kept "calling tools" with none
+offered — the call came back as text, and the answer was lost.  The
+``final_answer`` tool stays offered on every turn (the four search tools
+are the ones withheld), so the forced turn has exactly one thing to call
+and its arguments carry the schema (summary + citation objects).
 
 Author: Xiangzhu Yan
 """
@@ -18,7 +25,8 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 import structlog
-from pydantic_ai import Agent, RunContext, Tool
+from pydantic import BaseModel, Field
+from pydantic_ai import Agent, RunContext, Tool, ToolOutput
 from pydantic_ai.capabilities import ProcessHistory
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from pydantic_ai.models import Model
@@ -57,33 +65,67 @@ def _withhold_when_forced(ctx: RunContext[SubAgentDeps], tool_def: ToolDefinitio
     return tool_def
 
 
+FINAL_ANSWER_TOOL = "final_answer"
+_FINAL_ANSWER_HINT = (
+    "Submit it by calling the `final_answer` tool: `summary`, and `citations` "
+    "as one object per cited section (`manual_id`, `slug`, `quote`)."
+)
+FORCED_TURN_PROMPT = FORCE_FINAL_INSTRUCTION + "  " + _FINAL_ANSWER_HINT
+MANUAL_NUDGE_PROMPT = NUDGE_FINAL_INSTRUCTION + "  " + _FINAL_ANSWER_HINT
+
+
+class FinalCitation(BaseModel):
+    """One cited manual section."""
+
+    manual_id: str = Field(default="", description="The manual id you read (from list_manuals).")
+    slug: str = Field(description="The section slug / node id you read.")
+    quote: str = Field(default="", description="A short verbatim excerpt from that section.")
+
+
+class ManualFinalAnswer(BaseModel):
+    """The manual sub-agent's final answer (the ``final_answer`` tool)."""
+
+    summary: str = Field(description="The answer (for procedures: every step, as a numbered list), "
+                                     "or 'Not found: <short explanation>'.")
+    citations: List[FinalCitation] = Field(default_factory=list,
+                                           description="Sections the answer relies on; empty when not found.")
+
+
 def _force_final_processor(ctx: RunContext[SubAgentDeps], messages: List[ModelMessage]) -> List[ModelMessage]:
     state = ctx.deps.state
     if not (isinstance(state, ManualGuardState) and state.force_final):
         return messages
     last = messages[-1] if messages else None
     if isinstance(last, ModelRequest) and any(
-        isinstance(p, UserPromptPart) and p.content in (FORCE_FINAL_INSTRUCTION, NUDGE_FINAL_INSTRUCTION)
+        isinstance(p, UserPromptPart) and p.content in (FORCED_TURN_PROMPT, MANUAL_NUDGE_PROMPT)
         for p in last.parts
     ):
         return messages
-    return list(messages) + [ModelRequest(parts=[UserPromptPart(content=FORCE_FINAL_INSTRUCTION)])]
+    return list(messages) + [ModelRequest(parts=[UserPromptPart(content=FORCED_TURN_PROMPT)])]
 
 
-def build_manual_agent() -> Agent[SubAgentDeps, str]:
-    """The manual sub-agent definition (model supplied at run time)."""
+def build_manual_agent() -> Agent[SubAgentDeps, Any]:
+    """The manual sub-agent definition (model supplied at run time).
+
+    Output: the ``final_answer`` tool (always offered, also on the
+    force-final turn) or plain text (V2 JSON, still parsed).
+    """
     tools = [
         Tool(fn, prepare=_withhold_when_forced, require_parameter_descriptions=True,
              docstring_format="google")
         for fn in MANUAL_TOOLS
     ]
+    final = ToolOutput(ManualFinalAnswer, name=FINAL_ANSWER_TOOL,
+                       description="Submit your final answer (summary + citations) and finish.")
     return Agent(
-        None, deps_type=SubAgentDeps, output_type=str, instructions=MANUAL_AGENT_SYSTEM_PROMPT,
+        None, deps_type=SubAgentDeps, output_type=[final, str],
+        instructions=MANUAL_AGENT_SYSTEM_PROMPT + "\n\nTo finish, call the `final_answer` tool with that "
+        "object (preferred), or return it as plain JSON text.",
         tools=tools, retries=2, name="manual_agent",
     )
 
 
-MANUAL_AGENT: Agent[SubAgentDeps, str] = build_manual_agent()
+MANUAL_AGENT: Agent[SubAgentDeps, Any] = build_manual_agent()
 MANUAL_TOOL_NAMES = frozenset(fn.__name__ for fn in MANUAL_TOOLS)
 
 
@@ -110,9 +152,21 @@ def _canonical_from_sections(manual_id: str, raw_slug: str, raw_sections: List[S
     return raw_slug
 
 
-def has_final_json(text: Optional[str]) -> bool:
-    """Whether the sub-agent's final text carries its JSON answer object."""
-    return bool(text) and '"summary"' in text
+def has_final_json(text: Any) -> bool:
+    """Whether the sub-agent's final output is its answer (the
+    ``final_answer`` tool, or text carrying the JSON answer object)."""
+    if isinstance(text, ManualFinalAnswer):
+        return True
+    return isinstance(text, str) and bool(text) and '"summary"' in text
+
+
+def final_from_output(output: Any, raw_sections: List[SectionRef]) -> Tuple[str, List[Citation]]:
+    """``(summary, citations)`` from the run output: the ``final_answer``
+    tool's arguments, else the V2 text parser."""
+    if isinstance(output, ManualFinalAnswer):
+        cits = [citation_from_item(c.model_dump(), raw_sections) for c in output.citations]
+        return output.summary[:_MAX_FINAL_SUMMARY_CHARS], [c for c in cits if c is not None]
+    return parse_final_json(output if isinstance(output, str) else None, raw_sections)
 
 
 def parse_final_json(content: Optional[str], raw_sections: Optional[List[SectionRef]] = None) -> Tuple[str, List[Citation]]:
@@ -178,7 +232,12 @@ def citation_from_item(cit: Any, raw_sections: List[SectionRef]) -> Optional[Cit
     """One citation from the model's JSON: an object (``manual_id`` /
     ``slug`` / ``quote``, also ``section`` / ``node_id`` / ``excerpt``) or a
     string ``"<slug>: <quote>"`` / ``"<slug>"``.  The manual id, when
-    missing, comes from the sections read; the slug is canonicalised."""
+    missing, comes from the sections read; the slug is canonicalised.
+
+    A string citation is kept only when it resolves to a section that was
+    actually read: strings like ``"Section '<title>': …"`` are free text,
+    and keeping an unresolved one would count as a wrong claim."""
+    from_string = False
     if isinstance(cit, dict):
         manual_id = str(cit.get("manual_id") or cit.get("manual") or "")
         raw_slug = str(cit.get("slug") or cit.get("section") or cit.get("node_id") or cit.get("section_slug") or "")
@@ -186,7 +245,9 @@ def citation_from_item(cit: Any, raw_sections: List[SectionRef]) -> Optional[Cit
     elif isinstance(cit, str) and cit.strip():
         match = _STRING_CITE_RE.match(cit)
         raw_slug, quote = (match.group("slug"), match.group("quote")) if match else (cit.strip(), "")
+        raw_slug = re.sub(r"^\s*(?:section|章節)\s*", "", raw_slug, flags=re.IGNORECASE).strip(" '\"「」[]()")
         manual_id = ""
+        from_string = True
     else:
         return None
     raw_slug = raw_slug.strip()
@@ -195,6 +256,8 @@ def citation_from_item(cit: Any, raw_sections: List[SectionRef]) -> Optional[Cit
     if not manual_id:
         manual_id = _manual_for_slug(raw_slug, raw_sections)
     slug = _canonical_from_sections(manual_id, raw_slug, raw_sections)
+    if from_string and slug not in {s.slug for s in raw_sections}:
+        return None
     return Citation(manual_id=manual_id, slug=slug, quote=quote.strip())
 
 
@@ -254,7 +317,7 @@ async def run_manual_agent(
         nudged = True
         logger.info("manual_agent.nudged", tool_calls=len(deps.trace))
         outcome = await drive(
-            MANUAL_AGENT, NUDGE_FINAL_INSTRUCTION, model=model, deps=deps, sink=core.events,
+            MANUAL_AGENT, MANUAL_NUDGE_PROMPT, model=model, deps=deps, sink=core.events,
             parent_tool_call_id=parent_tool_call_id,
             usage_limits=make_limits(core.budgets.subagent_request_limit),
             model_settings=_ms(_settings, subagent=True, model=model),
@@ -265,8 +328,9 @@ async def run_manual_agent(
         )
     raw_sections: List[SectionRef] = list(deps.raw_sections)
     if outcome.stopped_reason == "complete":
-        summary, citations = parse_final_json(outcome.output, raw_sections)
-        if state.force_final and not (outcome.output or "").strip():
+        summary, citations = final_from_output(outcome.output, raw_sections)
+        empty = outcome.output is None or (isinstance(outcome.output, str) and not outcome.output.strip())
+        if state.force_final and empty:
             summary, citations = _force_not_found(outcome.messages, raw_sections)
         stopped = "complete"
     else:
@@ -296,5 +360,6 @@ async def run_manual_agent(
     )
 
 
-__all__ = ["MANUAL_AGENT", "MANUAL_TOOL_NAMES", "build_manual_agent", "citation_from_item", "parse_final_json",
+__all__ = ["FINAL_ANSWER_TOOL", "FORCED_TURN_PROMPT", "MANUAL_AGENT", "MANUAL_NUDGE_PROMPT", "MANUAL_TOOL_NAMES",
+           "ManualFinalAnswer", "build_manual_agent", "citation_from_item", "final_from_output", "parse_final_json",
            "resolve_section_slug", "run_manual_agent"]
