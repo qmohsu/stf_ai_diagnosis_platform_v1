@@ -339,6 +339,8 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 
 **测试**：`test_evals_v2_*`（V2 的打分 / 判卷 / 数据结构 / 流水线 / OBD 拼法测试 221 条原样复制）、`test_evals_equivalence`（T-1：从 V2 存档成绩单取 5 道手册题 + 3 道 OBD 题，V3 拼法逐字节复现存档输出，确定性维度与 V2 今日打分器逐位相同）、`test_evals_data`（T-2 / T-12）、`test_evals_gate_rules`（T-3 / T-9）、`test_evals_gate_script`（T-4，临时 git 仓库 10 种情形）、`test_evals_pipeline`（T-5 / T-6 / T-7 / T-10，真子代理 + 脚本化假模型整轮跑）、`test_evals_cli`（T-8 / T-11）、`test_docs_prod10`（T-13）。
 
+**发现并修正（PROD-09 遗留）**：`infra/docker-compose.v3.yml` 的 `${STF_V3_OPENROUTER_API_KEY:-${OPENROUTER_API_KEY:-}}` 嵌套默认值被 podman-compose 1.5 读成"密钥 + `}`"，自 09-19 部署起 V3 容器里的 OpenRouter 密钥一直无效（401；宿主机 GPU worker 直接读 `infra/.env`，章节摘要不受影响）。判卷自检（T-17）发现；改为单层默认，新增测试禁止嵌套默认值。
+
 **服务器验证**：待跑（T-14 ~ T-23）。
 
 ### 3.5 M4 — S1 诊断闭环

@@ -72,6 +72,8 @@ def test_data_dir_resolution_order(tmp_path: pathlib.Path, monkeypatch: pytest.M
 
 def test_image_build_copies_the_eval_data_and_bakes_the_tokenizer() -> None:
     """The Dockerfile copies ``evals/`` and pre-downloads cl100k_base (FM-46 / FM-24)."""
+    if not (_V3 / "Dockerfile").is_file():
+        pytest.skip("Dockerfile not in the image")
     dockerfile = (_V3 / "Dockerfile").read_text(encoding="utf-8")
     assert "COPY evals ./evals" in dockerfile
     assert "TIKTOKEN_CACHE_DIR" in dockerfile and "cl100k_base" in dockerfile
