@@ -66,9 +66,10 @@ VLLM_NO_THINKING_EXTRA_BODY: Dict[str, Any] = {
 _PROFILE_DEFAULTS: Dict[str, Dict[str, Any]] = {
     PROFILE_QWEN_VLLM: dict(
         wall_clock_s=900.0, request_limit=60, tool_calls_limit=100, total_tokens_limit=1_000_000,
-        # Sub-agent gates from the PROD-10 calibration run (45 goldens at 2x budget,
-        # 6-way concurrency, 0 censored): p95 wall 98 s / requests 13, x 1.5.
-        subagent_wall_clock_s=150.0, subagent_request_limit=20, subagent_max_tokens=12_288,
+        # Sub-agent gates from the PROD-10 golden calibration (45 goldens at 2x
+        # budget, 6-way concurrency, 0 censored, after the sub-agent fixes):
+        # p95 wall 198 s (max 299) / requests 13 (max 17), x 1.5.
+        subagent_wall_clock_s=300.0, subagent_request_limit=20, subagent_max_tokens=12_288,
         subagent_temperature=0.2, llm_max_tokens=8192, llm_temperature=0.3, request_timeout_s=180.0,
     ),
     PROFILE_QWEN_OLLAMA: dict(
