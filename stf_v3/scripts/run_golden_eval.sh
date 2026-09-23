@@ -33,7 +33,12 @@ while [ $# -gt 0 ]; do
     *) PASS+=("$1"); shift ;;
   esac
 done
-fail() { echo "[run_golden_eval] REFUSED: $*" >&2; exit 4; }
+RUN_DIR=""
+fail() {
+  echo "[run_golden_eval] REFUSED: $*" >&2
+  [ -n "$RUN_DIR" ] && rm -rf "$RUN_DIR"   # a refused run leaves no output directory
+  exit 4
+}
 cd "$REPO_DIR"
 
 # 1. The code under test is exactly this commit (FM-58).
