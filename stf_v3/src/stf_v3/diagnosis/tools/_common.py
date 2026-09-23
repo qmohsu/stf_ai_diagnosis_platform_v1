@@ -7,7 +7,10 @@ helper (FM-12 / FM-52 / T-13):
   with ``[repeated call — same result as before]``;
 * converts an unexpected exception into a short ``Error: …`` text so the
   model can self-correct (``ModelRetry`` passes through);
-* truncates the text to the per-result budget (FM-8 in V2 terms);
+* truncates the text to the per-result budget (FM-8 in V2 terms) — the
+  main agent's 2000-token cap; inside a sub-agent only a runaway guard
+  (V2's sub-agents saw tool output whole; PROD-10 found the 2000 cut
+  hiding half of the manual TOC and the middle of long sections);
 * records a ``ToolCallTrace`` on the calling agent's deps and the
   duration under the tool call id (the runtime reads it for events);
 * logs one structlog line with sizes only — never the content.
@@ -25,7 +28,7 @@ import structlog
 from pydantic_ai import ModelRetry, RunContext
 
 from stf_v3.diagnosis.agent.context import truncate_text
-from stf_v3.diagnosis.agent.deps import ToolCallTrace, core_deps
+from stf_v3.diagnosis.agent.deps import SubAgentDeps, ToolCallTrace, core_deps
 
 logger = structlog.get_logger(__name__)
 
@@ -65,7 +68,9 @@ async def execute(
             if len(msg) > _MAX_ERROR_CHARS:
                 msg = msg[:_MAX_ERROR_CHARS] + "..."
             result = f"Error: tool '{name}' failed — {type(exc).__name__}: {msg}"
-        result = truncate_text(result, core.budgets.tool_result_max_tokens)
+        cap = (core.budgets.subagent_tool_result_max_tokens if isinstance(deps, SubAgentDeps)
+               else core.budgets.tool_result_max_tokens)
+        result = truncate_text(result, cap)
         if not is_error:
             deps.memo[key] = result
     elapsed_ms = (time.monotonic() - started) * 1000.0

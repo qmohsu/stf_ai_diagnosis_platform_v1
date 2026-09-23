@@ -119,6 +119,10 @@ class Settings(BaseSettings):
     subagent_max_tokens: Optional[int] = None
     subagent_temperature: Optional[float] = None
     tool_result_max_tokens: int = 2000
+    # Sub-agents see tool output whole, as V2's sub-agents did (PROD-10: the
+    # 2000 cut hid half of the manual TOC and long sections); this only
+    # guards against a runaway result.
+    subagent_tool_result_max_tokens: int = 16_000
     compact_threshold_tokens: int = 60_000
     # Manual images in tool results: off until the model is known to
     # accept image parts (FM-42; PROD-09 decides per model).
