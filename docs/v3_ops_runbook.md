@@ -2,7 +2,7 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.5（PROD-10：Golden 评测一章） |
+| 版本 | v0.6（PROD-10 D5 后续：基线重置示例的 OBD 验收线改为 0.884） |
 | 日期 | 2026-09-24 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
@@ -296,4 +296,4 @@ bash infra/vllm_ctl.sh stop                                       # 评测完停
 
 ### 5.6 基线重置
 
-模型、判卷、vLLM 版本或手册库本身换了，分数整体平移：开一个**只改** `thresholds.yaml` + 新增两份基线成绩单的 PR（`python -m stf_v3.evals accept --scorecards a.json b.json --lines manual_agent=0.831,obd_agent=0.938 --write-thresholds stf_v3/evals/thresholds.yaml`），由用户加 `baseline-reset` 标签。同一 PR 里再动受管代码 CI 会红。
+模型、判卷、vLLM 版本或手册库本身换了，分数整体平移：开一个**只改** `thresholds.yaml` + 新增两份基线成绩单的 PR（`python -m stf_v3.evals accept --scorecards a.json b.json --lines manual_agent=0.831,obd_agent=0.884 --write-thresholds stf_v3/evals/thresholds.yaml`），由用户加 `baseline-reset` 标签。同一 PR 里再动受管代码 CI 会红。
