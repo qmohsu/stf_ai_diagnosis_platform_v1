@@ -330,13 +330,17 @@ tests drive the agent with Pydantic AI's `TestModel` / `FunctionModel`
 **Golden eval gate (PROD-10)**: `stf_v3/evals/` (V2 scorer / judge / mapping
 copied verbatim) + data in `stf_v3/evals/` (hash-checked).  A PR touching the
 managed paths in `stf_v3/evals/thresholds.yaml` must add a fresh passing
-scorecard under `docs/evals/` (CI job `eval-gate`; mean ≥ baseline − 0.03,
-no golden with baseline ≥ 0.6 below 0.4).  Run it on the server with
+scorecard under `docs/evals/` (CI job `eval-gate`; mean ≥ baseline − lane
+tolerance: manual 0.03, OBD 0.06; no golden with baseline ≥ 0.6 below 0.4;
+baseline 2026-09-24: manual 0.878, OBD 0.885).  Run it on the server with
 `bash stf_v3/scripts/run_golden_eval.sh --purpose gate` (one-off container,
 never inside stf-v3-api; runbook §5); the user alone adds `eval-exempt` /
 `baseline-reset` labels.  No diagnosis endpoint,
 job, SSE or persistence yet — that is PROD-11.
-**vLLM lifecycle is separate from V3 deploys**: `bash infra/vllm_ctl.sh
+**vLLM is started on demand since 2026-09-24** (shared GPUs: it was stopped
+to free them for another team) — start it for evals / verification, stop it
+after; while it is off, run `deploy_check.sh` with `LLM_CHECK=skip
+LLM_CHECK_REASON=…`.  **vLLM lifecycle is separate from V3 deploys**: `bash infra/vllm_ctl.sh
 start|wait|status|stop|logs|install-unit` (compose project `stf_llm`,
 file `infra/docker-compose.vllm.yml`, cold start ≈ 10 min, weights from the
 `vllm_hf_cache` volume offline, GPU share 0.80 so MinerU still fits on

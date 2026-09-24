@@ -116,8 +116,37 @@ def test_managed_path_patterns() -> None:
               "stf_v3/src/stf_v3/knowledge/manual_index.py", "stf_v3/evals/golden/manual_mws150a.jsonl",
               "stf_v3/src/stf_v3/evals/metrics.py", "stf_v3/pyproject.toml", "infra/docker-compose.vllm.yml"):
         assert gate.is_managed(p, pats), p
-    for p in ("stf_v3/src/stf_v3/vehicles/router.py", "docs/evals/x.json", "stf_v3/scripts/smoke_e2e.py"):
+    for p in ("stf_v3/src/stf_v3/vehicles/router.py", "docs/evals/x.json", "stf_v3/scripts/smoke_e2e.py",
+              "stf_v3/src/stf_v3/evals/gate.py", "stf_v3/src/stf_v3/evals/summary.py",
+              "stf_v3/src/stf_v3/evals/scorecard.py"):
         assert not gate.is_managed(p, pats), p
+    for p in ("stf_v3/src/stf_v3/evals/judge.py", "stf_v3/src/stf_v3/evals/lanes.py", "stf_v3/src/stf_v3/evals/cli.py",
+              "stf_v3/evals/thresholds.yaml"):
+        assert gate.is_managed(p, pats), p
+
+
+def test_per_lane_tolerance_obd_006_manual_003() -> None:
+    """D6: OBD tolerates 0.06 (15 goldens are noisy), the manual lane 0.03;
+    a lane without its own value falls back to the file-level tolerance."""
+    t = gate.Thresholds(lanes={
+        M: gate.LaneBaseline(mean=0.88, per_item={f"g-{i:03d}": 0.88 for i in range(4)}, tolerance=0.03),
+        O: gate.LaneBaseline(mean=0.885, per_item={f"o-{i:03d}": 0.885 for i in range(4)}, tolerance=0.06)})
+    c = card({M: {f"g-{i:03d}": 0.85 for i in range(4)}, O: {f"o-{i:03d}": 0.83 for i in range(4)}})
+    ok, lines = gate.decide([c], t)
+    assert ok is True, lines                          # OBD 0.83 ≥ 0.885 − 0.06
+    c2 = card({M: {f"g-{i:03d}": 0.84 for i in range(4)}, O: {f"o-{i:03d}": 0.83 for i in range(4)}})
+    ok, lines = gate.decide([c2], t)
+    assert ok is False and any("mean 0.840 < baseline 0.880 − 0.03" in line for line in lines)
+    fallback = gate.parse_thresholds({"tolerance": 0.05, "lanes": {M: {"mean": 0.9, "per_item": {}}}})
+    assert fallback.lanes[M].tolerance is None and fallback.tolerance == 0.05
+
+
+def test_acceptance_uses_the_lane_tolerance() -> None:
+    """D5 + D6: OBD's line is V3's own baseline; each run may sit 0.06 under it."""
+    obd = lambda v: card(uniform(O, 3, v))  # noqa: E731
+    assert gate.acceptance([obd(0.897), obd(0.872)], {O: 0.884})[0] is True       # line = baseline mean, floored
+    assert gate.acceptance([obd(0.897), obd(0.872)], {O: 0.884}, 0.01)[0] is False
+    assert gate.build_baseline([obd(0.9), obd(0.87)])[O]["tolerance"] == 0.06
 
 
 # ── calibration (T-9) ─────────────────────────────────────────────

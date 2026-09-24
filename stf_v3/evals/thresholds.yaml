@@ -1,0 +1,99 @@
+description: 'PROD-10 golden gate (baseline set 2026-09-24). Baseline = mean of the two runs below. Manual acceptance line 0.831 is the dev plan''s; OBD''s is V3''s own first baseline 0.884 (D5: the plan''s 0.938 was qwen3.5 on V2). Per-lane tolerance: manual 0.03, OBD 0.06 (D6). Changing this file is a baseline-reset PR (label baseline-reset, set by the user) that may not change any other managed path.'
+tolerance: 0.03
+floor: 0.4
+floor_min_baseline: 0.6
+max_runs_considered: 2
+judge_model: z-ai/glm-5.1
+exempt_label: eval-exempt
+reset_label: baseline-reset
+thresholds_path: stf_v3/evals/thresholds.yaml
+baseline_scorecards:
+- 20260923T214529Z_3cc1a3aa_baseline_local_think-off.json
+- 20260923T220146Z_3cc1a3aa_baseline_local_think-off.json
+baseline_config:
+  judge_model: z-ai/glm-5.1
+  vllm_version: 0.24.0
+  manual_sha256:
+    0a2ba199-665f-41aa-a106-1163cad68d16:
+      md: 8b7a4cf64292c111d90e8fb2dd34d2b22da0274f0cd440671263a78bd4f8457b
+      index: d9fc0d063d9e47e5ede7acec9d9d06f8a554489cb193e2d90c34d415529dbe1f
+    e555b84a-2f40-4ce3-8ab6-d30494abddbd:
+      md: e0a3f228f445f126f41158fb9f1d4d06753fce186c6c44aca2703c34eeaf8d1e
+      index: 5bbea4ae6182a5e44c28ca35de9649df9b3cd787e62d4977b36b9f6b55b165f2
+  model: Qwen/Qwen3.6-27B-FP8
+  tokenizer: cl100k_base
+managed_paths:
+- stf_v3/src/stf_v3/diagnosis/*
+- stf_v3/src/stf_v3/knowledge/manual_index.py
+- stf_v3/src/stf_v3/knowledge/manual_fs.py
+- stf_v3/src/stf_v3/ingest/loader.py
+- stf_v3/src/stf_v3/evals/schemas.py
+- stf_v3/src/stf_v3/evals/metrics.py
+- stf_v3/src/stf_v3/evals/metrics_obd.py
+- stf_v3/src/stf_v3/evals/judge.py
+- stf_v3/src/stf_v3/evals/judge_prompts.py
+- stf_v3/src/stf_v3/evals/lanes.py
+- stf_v3/src/stf_v3/evals/orchestrator.py
+- stf_v3/src/stf_v3/evals/runner.py
+- stf_v3/src/stf_v3/evals/data.py
+- stf_v3/src/stf_v3/evals/cli.py
+- stf_v3/evals/*
+- stf_v3/src/stf_v3/settings.py
+- stf_v3/pyproject.toml
+- infra/docker-compose.vllm.yml
+lanes:
+  manual_agent:
+    mean: 0.8782
+    tolerance: 0.03
+    per_item:
+      0a2ba199-665f-41aa-a106-1163cad68d16-adversarial-001: 0.7746
+      0a2ba199-665f-41aa-a106-1163cad68d16-adversarial-002: 0.8231
+      0a2ba199-665f-41aa-a106-1163cad68d16-adversarial-003: 0.7077
+      0a2ba199-665f-41aa-a106-1163cad68d16-adversarial-004: 0.6596
+      0a2ba199-665f-41aa-a106-1163cad68d16-adversarial-005: 0.8385
+      0a2ba199-665f-41aa-a106-1163cad68d16-adversarial-006: 0.9266
+      0a2ba199-665f-41aa-a106-1163cad68d16-cross-001: 0.8
+      0a2ba199-665f-41aa-a106-1163cad68d16-cross-002: 1.0
+      0a2ba199-665f-41aa-a106-1163cad68d16-cross-003: 0.905
+      0a2ba199-665f-41aa-a106-1163cad68d16-cross-004: 0.7588
+      0a2ba199-665f-41aa-a106-1163cad68d16-cross-005: 0.9667
+      0a2ba199-665f-41aa-a106-1163cad68d16-cross-006: 0.8562
+      0a2ba199-665f-41aa-a106-1163cad68d16-dtc-001: 0.994
+      0a2ba199-665f-41aa-a106-1163cad68d16-image-001: 0.8961
+      0a2ba199-665f-41aa-a106-1163cad68d16-image-002: 0.9691
+      0a2ba199-665f-41aa-a106-1163cad68d16-image-003: 0.9137
+      0a2ba199-665f-41aa-a106-1163cad68d16-image-004: 0.865
+      0a2ba199-665f-41aa-a106-1163cad68d16-image-005: 0.895
+      0a2ba199-665f-41aa-a106-1163cad68d16-image-006: 0.9888
+      0a2ba199-665f-41aa-a106-1163cad68d16-lookup-001: 0.875
+      0a2ba199-665f-41aa-a106-1163cad68d16-lookup-002: 0.7901
+      0a2ba199-665f-41aa-a106-1163cad68d16-lookup-003: 0.95
+      0a2ba199-665f-41aa-a106-1163cad68d16-lookup-004: 0.8492
+      0a2ba199-665f-41aa-a106-1163cad68d16-lookup-005: 0.5737
+      0a2ba199-665f-41aa-a106-1163cad68d16-lookup-006: 0.925
+      0a2ba199-665f-41aa-a106-1163cad68d16-procedural-002: 0.9902
+      0a2ba199-665f-41aa-a106-1163cad68d16-procedural-003: 0.9221
+      0a2ba199-665f-41aa-a106-1163cad68d16-procedural-004: 0.994
+      0a2ba199-665f-41aa-a106-1163cad68d16-procedural-005: 0.975
+      0a2ba199-665f-41aa-a106-1163cad68d16-procedural-006: 0.9625
+    acceptance_line: 0.831
+  obd_agent:
+    mean: 0.8848
+    tolerance: 0.06
+    per_item:
+      yamaha-road-test-adversarial-001: 0.5813
+      yamaha-road-test-adversarial-002: 0.675
+      yamaha-road-test-adversarial-003: 0.9387
+      yamaha-road-test-compound-001: 0.7183
+      yamaha-road-test-compound-002: 0.8025
+      yamaha-road-test-compound-003: 0.9315
+      yamaha-road-test-dtc-decode-001: 0.955
+      yamaha-road-test-dtc-decode-002: 0.9415
+      yamaha-road-test-dtc-decode-003: 0.9888
+      yamaha-road-test-dtc-enum-001: 0.9962
+      yamaha-road-test-dtc-enum-002: 0.8812
+      yamaha-road-test-event-finding-001: 0.985
+      yamaha-road-test-event-finding-002: 0.9962
+      yamaha-road-test-signal-stats-001: 0.9275
+      yamaha-road-test-signal-stats-002: 0.9533
+    acceptance_line: 0.884

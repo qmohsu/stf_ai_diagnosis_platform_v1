@@ -9,13 +9,17 @@ Rules (decided on the PROD-10 board):
   purpose ``gate`` or ``baseline``, complete, valid, judged by the
   baseline's judge model.  Cloud / thinking-on / demo / calibration /
   invalid / incomplete scorecards never count.
-* **Lane passes** (D1 + FM-3): mean ≥ baseline mean − tolerance (0.03),
+* **Lane passes** (D1 + FM-3 + D6): mean ≥ baseline mean − the lane's
+  tolerance (manual 0.03; OBD 0.06 — 15 goldens, the same code scored
+  0.897 / 0.872 / 0.844 on three runs),
   and no golden whose baseline score is ≥ 0.6 falls below the floor
   (0.4); every baseline golden must be present.  A lane passes when
   either of the (at most two) newest eligible scorecards passes it —
   "one re-run allowed".
 * **Acceptance of a baseline** (FM-11): per lane, the mean of the two
-  run means ≥ the acceptance line, and each run ≥ line − tolerance.
+  run means ≥ the acceptance line, and each run ≥ line − the lane's
+  tolerance.  OBD's acceptance line is V3's own first baseline (D5: the
+  0.938 in the dev plan was qwen3.5 on V2).
 * **Stale baseline warning** (FM-28): config keys outside the managed
   paths (judge model, vLLM version, manual library hashes, model) differ
   between the scorecard and the baseline.
@@ -43,7 +47,18 @@ DEFAULT_MANAGED_PATHS = [
     "stf_v3/src/stf_v3/knowledge/manual_index.py",
     "stf_v3/src/stf_v3/knowledge/manual_fs.py",
     "stf_v3/src/stf_v3/ingest/loader.py",
-    "stf_v3/src/stf_v3/evals/*",
+    # the evaluator's score-affecting modules (not gate.py / summary.py /
+    # scorecard.py: they decide or report, they do not change a score)
+    "stf_v3/src/stf_v3/evals/schemas.py",
+    "stf_v3/src/stf_v3/evals/metrics.py",
+    "stf_v3/src/stf_v3/evals/metrics_obd.py",
+    "stf_v3/src/stf_v3/evals/judge.py",
+    "stf_v3/src/stf_v3/evals/judge_prompts.py",
+    "stf_v3/src/stf_v3/evals/lanes.py",
+    "stf_v3/src/stf_v3/evals/orchestrator.py",
+    "stf_v3/src/stf_v3/evals/runner.py",
+    "stf_v3/src/stf_v3/evals/data.py",
+    "stf_v3/src/stf_v3/evals/cli.py",
     "stf_v3/evals/*",
     "stf_v3/src/stf_v3/settings.py",
     "stf_v3/pyproject.toml",
@@ -53,6 +68,9 @@ DEFAULT_MANAGED_PATHS = [
 directories (fnmatch).  Over-inclusion is cheap: the ``eval-exempt`` label
 (added by the user) skips the gate for a PR that only looks managed."""
 
+DEFAULT_LANE_TOLERANCE = {"manual_agent": 0.03, "obd_agent": 0.06}
+"""D6 (2026-09-24): per-lane tolerance for the gate and the acceptance rule."""
+
 
 @dataclass
 class LaneBaseline:
@@ -61,6 +79,7 @@ class LaneBaseline:
     mean: float
     per_item: Dict[str, float] = field(default_factory=dict)
     acceptance_line: Optional[float] = None
+    tolerance: Optional[float] = None      # None → Thresholds.tolerance
 
 
 @dataclass
@@ -98,7 +117,9 @@ def parse_thresholds(doc: Dict[str, Any]) -> Thresholds:
     for lane, rec in (doc.get("lanes") or {}).items():
         t.lanes[lane] = LaneBaseline(mean=float(rec["mean"]),
                                      per_item={k: float(v) for k, v in (rec.get("per_item") or {}).items()},
-                                     acceptance_line=rec.get("acceptance_line"))
+                                     acceptance_line=rec.get("acceptance_line"),
+                                     tolerance=(float(rec["tolerance"]) if rec.get("tolerance") is not None
+                                                else None))
     return t
 
 
@@ -157,8 +178,9 @@ def check_lane(scores: Dict[str, float], base: LaneBaseline, t: Thresholds) -> T
     if not scores:
         return False, why + ["no scores"]
     mean = statistics.mean(scores.values())
-    if mean < base.mean - t.tolerance - 1e-9:
-        why.append(f"mean {mean:.3f} < baseline {base.mean:.3f} − {t.tolerance:.2f}")
+    tol = base.tolerance if base.tolerance is not None else t.tolerance
+    if mean < base.mean - tol - 1e-9:
+        why.append(f"mean {mean:.3f} < baseline {base.mean:.3f} − {tol:.2f}")
     for gid, s in sorted(scores.items()):
         b = base.per_item.get(gid)
         if b is not None and b >= t.floor_min_baseline and s < t.floor:
@@ -199,9 +221,13 @@ def decide(cards: Sequence[Dict[str, Any]], t: Thresholds) -> Tuple[bool, List[s
     return overall_ok, lines
 
 
-def acceptance(cards: Sequence[Dict[str, Any]], lines: Dict[str, float], tolerance: float = 0.03
-               ) -> Tuple[bool, List[str]]:
-    """FM-11: mean of the run means ≥ line and each run ≥ line − tolerance."""
+def acceptance(cards: Sequence[Dict[str, Any]], lines: Dict[str, float],
+               tolerance: Optional[Any] = None) -> Tuple[bool, List[str]]:
+    """FM-11: mean of the run means ≥ line and each run ≥ line − tolerance.
+
+    ``tolerance``: a number for every lane, a ``{lane: tol}`` map, or
+    ``None`` → ``DEFAULT_LANE_TOLERANCE`` (D6).
+    """
     out: List[str] = []
     ok_all = True
     for lane, line in lines.items():
@@ -211,7 +237,13 @@ def acceptance(cards: Sequence[Dict[str, Any]], lines: Dict[str, float], toleran
             ok_all = False
             continue
         avg = statistics.mean(means)  # type: ignore[arg-type]
-        ok = avg >= line - 1e-9 and all(m >= line - tolerance - 1e-9 for m in means)  # type: ignore[operator]
+        if isinstance(tolerance, dict):
+            tol = float(tolerance.get(lane, DEFAULT_LANE_TOLERANCE.get(lane, 0.03)))
+        elif tolerance is None:
+            tol = DEFAULT_LANE_TOLERANCE.get(lane, 0.03)
+        else:
+            tol = float(tolerance)
+        ok = avg >= line - 1e-9 and all(m >= line - tol - 1e-9 for m in means)  # type: ignore[operator]
         out.append(f"{lane}: runs {', '.join(f'{m:.3f}' for m in means)} → mean {avg:.3f} vs line {line:.3f} "
                    f"({'PASS' if ok else 'FAIL'})")
         ok_all = ok_all and ok
@@ -228,6 +260,7 @@ def build_baseline(cards: Sequence[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]
         ids = sorted(set().union(*per_run))
         per_item = {i: round(statistics.mean(r[i] for r in per_run if i in r), 4) for i in ids}
         lanes[lane] = {"mean": round(statistics.mean(statistics.mean(r.values()) for r in per_run), 4),
+                       "tolerance": DEFAULT_LANE_TOLERANCE.get(lane, 0.03),
                        "per_item": per_item}
     return lanes
 
@@ -298,6 +331,6 @@ def calibrate(card: Dict[str, Any], margin: float = 1.5, max_censored: float = 0
     return out
 
 
-__all__ = ["DEFAULT_JUDGE_MODEL", "DEFAULT_MANAGED_PATHS", "LANES", "LaneBaseline", "Thresholds", "acceptance", "build_baseline",
+__all__ = ["DEFAULT_JUDGE_MODEL", "DEFAULT_LANE_TOLERANCE", "DEFAULT_MANAGED_PATHS", "LANES", "LaneBaseline", "Thresholds", "acceptance", "build_baseline",
            "calibrate", "check_lane", "decide", "eligibility", "is_managed", "lane_means", "lane_scores",
            "load_thresholds", "managed", "p95", "parse_thresholds", "stale_warnings"]

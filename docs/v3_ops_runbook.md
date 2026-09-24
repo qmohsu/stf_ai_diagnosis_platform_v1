@@ -3,7 +3,7 @@
 | 文档控制 | |
 |---|---|
 | 版本 | v0.5（PROD-10：Golden 评测一章） |
-| 日期 | 2026-09-23 |
+| 日期 | 2026-09-24 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
 
@@ -169,6 +169,8 @@ podman cp stf-v3-api:/tmp/runs ~/prod09_runs/     # 报告 .report.md / .report.
 
 ## 4. 模型服务（vLLM）
 
+> **2026-09-24 起按需启动，不再常驻。** 2026-09-23 vLLM 被停机、GPU 让给其他团队的训练（共享服务器）。现在的做法是评测 / 验证时才开（`vllm_ctl.sh start` + `wait`，冷启动约 10 分钟），用完 `vllm_ctl.sh stop`。vLLM 停着时部署核验第 9 项会 FAIL：部署时用 `LLM_CHECK=skip LLM_CHECK_REASON="vLLM 按需启动，当前停机" bash stf_v3/scripts/deploy_check.sh`。长期是常驻还是按需，见开发计划 §4"vLLM 常驻与共享服务器"。
+
 V1/V2/V3 唯一的本地模型来源（设计文档 D7，PROD-09 D1）：`Qwen/Qwen3.6-27B-FP8` 由 vLLM 0.24 常驻，两张卡并用，思考在服务端关闭。部署文件 `infra/docker-compose.vllm.yml`，**只通过** `infra/vllm_ctl.sh` 启停（项目名固定 `stf_llm` → 自己的 pod `pod_stf_llm`，不进 V1/V2 的 `pod_infra`、不进 V3 的 `pod_stf_v3`）。V3 只通过配置指向它（§3.2）。
 
 ### 4.1 启停与启动顺序
@@ -253,7 +255,8 @@ bash stf_v3/scripts/deploy_check.sh --max-age-min 5  # 第 9 项会对 Ollama �
 ### 5.1 什么时候必须跑
 
 - PR 动了**受管路径**（`thresholds.yaml` 的 `managed_paths`：诊断运行时与工具、手册索引读取、日志读取、评测器与数据、settings、依赖锁、vLLM 部署文件）→ CI `eval-gate` 要求本 PR 新增一份**新鲜**且过线的成绩单：评测提交号在分支历史里，且其后没再改受管路径。
-- 门槛：均值 ≥ 基线 − 0.03，且基线 ≥ 0.6 的题不跌破 0.4；未过可重跑一次，最新两份里有一份过即可。
+- 门槛：均值 ≥ 基线 − 该 lane 的容差（手册 0.03，OBD 0.06——15 题波动大，同一代码三遍相差 0.053），且基线 ≥ 0.6 的题不跌破 0.4；未过可重跑一次，最新两份里有一份过即可。
+- 当前基线（2026-09-24，`thresholds.yaml`）：手册 0.878（验收线 0.831）、OBD 0.885（验收线 0.884：V3 首次实测，开发计划原写的 0.938 是旧模型 qwen3.5 在 V2 上的数字）。
 - 只算：本地模型、思考关、用途 `gate` / `baseline`、完整、有效、同一判卷模型、生产预算（倍数 1）。云端 / 开思考 / 校准 / 演示成绩单永远不算。
 - 看起来受管但其实无关的 PR：由**用户**加 `eval-exempt` 标签，CI 打印"已豁免"。
 
@@ -261,10 +264,13 @@ bash stf_v3/scripts/deploy_check.sh --max-age-min 5  # 第 9 项会对 Ollama �
 
 ```
 cd ~/stf_ai_diagnosis_platform_v1 && git checkout <branch> && git pull
+nvidia-smi --query-gpu=index,memory.used --format=csv   # 两卡空着才启动（共享服务器）
+bash infra/vllm_ctl.sh start && bash infra/vllm_ctl.sh wait   # 冷启动约 10 分钟
 cd infra && GIT_COMMIT=$(git rev-parse HEAD) ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml build && cd ..
 bash stf_v3/scripts/run_golden_eval.sh --purpose gate            # 两条 lane，六路并发
 tail -f ~/stf_v3_evals/<容器名>/run.log                           # 断开 SSH 不影响
 cat ~/stf_v3_evals/<容器名>/exit_code                             # 0 有效 · 2 跑完但无效 · 4 拒跑 · 6 看门狗
+bash infra/vllm_ctl.sh stop                                       # 评测完停机，把 GPU 还给别人
 ```
 
 常用参数：`--lanes manual|obd`、`--ids lookup-001,cross-003`（按题号结尾匹配；两条 lane 同名时两边都跑）、`--thinking on --budget-scale 2`（开思考对照）、`--cloud`（deepseek 对照，不做预热、VIN 用假名）、`--purpose calibration --budget-scale 2`（预算校准）、`--wait`（等跑完再返回）。输出目录：`<base>.json`（完整）、`.slim.json`（精简，门槛 PR 入库用）、`.md`（摘要）、`.progress.jsonl`、`run.log`、`preflight.txt`。
@@ -275,7 +281,7 @@ cat ~/stf_v3_evals/<容器名>/exit_code                             # 0 有效 
 
 ### 5.3 多久、多少钱
 
-45 题六路并发约 15–20 分钟（开思考约翻倍）；判卷一轮约 45 次调用、几美分；云端对照一轮约 1 美元。评测期间 vLLM 被占满，线上诊断会变慢。
+45 题六路并发实测约 15.5 分钟（开思考、预算 ×2 约 25 分钟；云端 deepseek 约 9 分钟）；vLLM 冷启动另加约 10 分钟。判卷一轮约 45 次调用、几美分；2026-09-23 ~ 24 九次评测（含云端对照）判卷 + 云端合计约 3.1 美元。评测期间 vLLM 被占满，线上诊断会变慢。判卷模型 glm-5.1 会先推理再作答，命令行已把判卷输出上限设为 8192（照抄 V2 的 2048 会让长题判卷返回空）；分词器 `cl100k_base` 已烘进镜像，拿不到时评测拒跑。
 
 ### 5.4 分数掉了先看哪
 

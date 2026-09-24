@@ -19,8 +19,9 @@ Decision (printed line by line, exit 0 = green, 1 = red):
    eligible (local, thinking off, gate/baseline, complete, valid, same
    judge) and **fresh** — their ``git_commit`` is an ancestor of head and
    no managed path changed after it (FM-4 / FM-45) — are checked against
-   the baseline (mean ≥ baseline − 0.03; no golden with baseline ≥ 0.6
-   below 0.4; one of the newest two may pass).  Unmanaged config drift
+   the baseline (mean ≥ baseline − the lane's tolerance: manual 0.03,
+   OBD 0.06; no golden with baseline ≥ 0.6 below 0.4; one of the newest
+   two may pass).  Unmanaged config drift
    against the baseline prints a warning (FM-28).
 
 Only needs Python + PyYAML + git (imports ``stf_v3.evals.gate`` by path).
@@ -169,7 +170,8 @@ def decide(repo: Path, base: str, head: str, labels: Sequence[str]) -> Tuple[int
                 out.append(f"FAIL ({mode}): {c['_path']}: {msg}")
                 ok_all = False
         lines = {lane: b.acceptance_line for lane, b in t.lanes.items() if b.acceptance_line is not None}
-        acc_ok, acc = gate.acceptance(cards, lines, t.tolerance)
+        tols = {lane: (b.tolerance if b.tolerance is not None else t.tolerance) for lane, b in t.lanes.items()}
+        acc_ok, acc = gate.acceptance(cards, lines, tols)
         out += [f"{mode}: {line}" for line in acc]
         if not (ok_all and acc_ok):
             return 1, out + [f"FAIL ({mode})"]
