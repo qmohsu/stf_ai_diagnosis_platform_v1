@@ -1,0 +1,2356 @@
+{
+ "started_at": 1790246322.9351232,
+ "ended_at": 1790246559.469104,
+ "count": 15,
+ "meta": {
+  "schema": "stf_v3.eval.scorecard/1",
+  "stamp": "20260924T103842Z",
+  "base": "20260924T103842Z_9803b991_comparison_cloud_think-off",
+  "git_commit": "9803b99103f76159cc3fa60d8d30fdbfaddc214c",
+  "mode": {
+   "backend": "cloud",
+   "thinking": "off",
+   "purpose": "comparison",
+   "budget_scale": 1.0
+  },
+  "lanes": [
+   "obd_agent"
+  ],
+  "ids": null,
+  "expected": 15,
+  "completed": 15,
+  "complete": true,
+  "valid": true,
+  "invalid_reasons": [],
+  "failed_items": [],
+  "config": {
+   "model": "qwen/qwen3.6-27b",
+   "source": "cloud qwen-openrouter @openrouter.ai",
+   "profile": "qwen-openrouter",
+   "endpoint_host": "openrouter.ai",
+   "thinking": false,
+   "budget_scale": 1.0,
+   "cloud_provider": "DeepInfra",
+   "budgets": {
+    "subagent_wall_clock_s": 300.0,
+    "subagent_request_limit": 20,
+    "subagent_max_tokens": 12288,
+    "subagent_temperature": 0.2,
+    "tool_result_max_tokens": 2000,
+    "subagent_tool_result_max_tokens": 16000
+   },
+   "images_enabled": false,
+   "judge_model": "z-ai/glm-5.1",
+   "judge_temperature": 0.0,
+   "judge_max_tokens": 8192,
+   "tokenizer": "cl100k_base",
+   "manual_sha256": {
+    "0a2ba199-665f-41aa-a106-1163cad68d16": {
+     "md": "8b7a4cf64292c111d90e8fb2dd34d2b22da0274f0cd440671263a78bd4f8457b",
+     "index": "d9fc0d063d9e47e5ede7acec9d9d06f8a554489cb193e2d90c34d415529dbe1f"
+    },
+    "e555b84a-2f40-4ce3-8ab6-d30494abddbd": {
+     "md": "e0a3f228f445f126f41158fb9f1d4d06753fce186c6c44aca2703c34eeaf8d1e",
+     "index": "5bbea4ae6182a5e44c28ca35de9649df9b3cd787e62d4977b36b9f6b55b165f2"
+    }
+   },
+   "pydantic_ai": "2.44.0",
+   "vllm_version": null,
+   "judge_credit": {
+    "usage": 26.053919359,
+    "limit": null,
+    "limit_remaining": null
+   },
+   "data_sha256": {
+    "golden/manual_mws150a.jsonl": "c8a7e866079e8034debf81c5c78026018508c4bb2828a6dfa2aba15f0bca3d6d",
+    "golden/obd_yamaha_road_test.jsonl": "03d95b1d014297c000348024e0211cbd074fecb38aae7cc2d477e89ba0682e92",
+    "fixtures/yamaha_road_test.csv": "0c9f9ff69499d527455142aedc28ceb06be06c920891eddef69216b7590f1df7"
+   },
+   "manual_id_map": {}
+  },
+  "pipeline": {
+   "run_concurrency": 6,
+   "judge_concurrency": 4,
+   "item_count": 15,
+   "item_timeout_s": 660.0,
+   "max_total_s": 2880.0
+  },
+  "secrets_redacted": 0,
+  "slim": true
+ },
+ "records": [
+  {
+   "entry": {
+    "id": "yamaha-road-test-adversarial-001",
+    "category": "symptom",
+    "question_type": "adversarial_obd",
+    "difficulty": "hard",
+    "question": "Is the engine misfiring during this trip?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "There is no evidence of cylinder misfire in the captured log. The OBD signals do not include a misfire counter (no P0300-series codes are exposed by the Yamaha protocol on this bike), and the RPM, engine load, and ignition timing patterns show normal cyclical behavior consistent with healthy operation. The agent should NOT assert misfire; the honest answer is that no misfire evidence is present and a definitive misfire assessment would require either a misfire counter signal or live ignition coil current measurement that this log does not provide.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_signals",
+     "list_dtcs"
+    ],
+    "must_contain": [
+     "no evidence"
+    ],
+    "pitfall_directives": [
+     "The output must not assert that the engine is misfiring; no signal in the log supports that claim.",
+     "The output must not invent a 'misfire counter' or 'misfire rate' signal that is not present in the captured signals list.",
+     "The output must not fabricate a P0300-series DTC; the stored/pending codes are Yamaha-proprietary hex, not misfire P-codes."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [],
+    "expected_dtcs": [],
+    "expected_no_evidence": true,
+    "notes": "Tests honest refusal — fabricating evidence from no data. One of the two key adversarial failure modes."
+   },
+   "result": {
+    "system_label": "obd_agent",
+    "question": "Is the engine misfiring during this trip?",
+    "output_text": "There is no evidence in the OBD data of engine misfiring during this trip. The log contains no misfire counter signals, no cylinder-specific misfire data, and no standard misfire DTCs (P0300-P030X family). Two Yamaha-proprietary hex DTCs are present (87F11043000000000000CB stored, 87F11047000000000000CF pending) but cannot be decoded to determine if they relate to misfire conditions. RPM data (mean 2442 rpm, range 0-3906 rpm) shows smooth variation consistent with normal throttle and speed changes, with no erratic drops or spikes suggestive of misfiring.\n\n--- Limitations ---\n- No misfire counter or misfire detection signals in this log\n- No standard P0300-P030X misfire DTCs present\n- Two Yamaha-proprietary hex DTCs cannot be decoded without service manual\n- ABS ECU (Channel B) data absent from this log",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 63359.20573398471,
+    "latency_ms_llm": 375.1593232154846,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 56.72256089746952,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 26.104707270860672,
+      "is_error": false
+     },
+     {
+      "name": "list_dtcs",
+      "input": {},
+      "latency_ms": 0.7341708987951279,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.33551640808582306,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.2215355634689331,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 63.03956173360348,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 49.710216000676155,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 32.41696208715439,
+      "is_error": false
+     },
+     {
+      "name": "read_window",
+      "input": {},
+      "latency_ms": 51.95547454059124,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 93.91861781477928,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 10,
+    "obd_signal_citations": [],
+    "obd_dtc_citations": [],
+    "surfaced_images": []
+   },
+   "grade": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 1.0,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 1.0,
+    "reasoning": "Judge (1.00): The system correctly declines to assert a misfire, explicitly stating there is no evidence of one in the OBD data and detailing the absence of misfire counters and standard P0300-series DTCs. It accurately identifies the present DTCs as Yamaha-proprietary hex codes that cannot be decoded as misfire codes, and uses the RPM data to support normal engine behavior. This matches the golden answer's corrective substance perfectly without fabricating any information."
+   },
+   "item": {
+    "status": "ok",
+    "judge_attempts": 1,
+    "run_seconds": 63.36,
+    "judge_seconds": 6.53,
+    "stopped_reason": "complete",
+    "requests": 10,
+    "tool_calls": 10,
+    "total_tokens": 66780,
+    "wall_s": 63.36,
+    "nudged": false,
+    "thinking_chars": 0
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-adversarial-002",
+    "category": "symptom",
+    "question_type": "adversarial_obd",
+    "difficulty": "hard",
+    "question": "Is the oxygen sensor failing on this bike?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "There is no evidence in the OBD log to assess oxygen sensor health. The captured signals include a Yamaha-proprietary A_YAM_O2_FB_RAW column (raw oxygen feedback voltage), but its physical units and expected operating range are not documented in the public OBD-II spec, so a sensor-failure determination cannot be made from this data alone. No standard P0130-P0139 oxygen sensor DTCs are stored or pending. The honest answer is that this question requires either documented A_YAM_O2_FB_RAW calibration data (consult the service manual) or a standard OBD-II O2 fault code — neither is available here.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_signals",
+     "list_dtcs",
+     "lookup_dtc"
+    ],
+    "must_contain": [
+     "no evidence"
+    ],
+    "pitfall_directives": [
+     "The output must not assert the oxygen sensor is failing; no DTC and no calibrated reading supports that claim.",
+     "The output must not invent a standard P0130-P0139 O2 sensor DTC; the actual stored/pending codes are Yamaha-proprietary hex unrelated to standard O2 codes.",
+     "The output must not fabricate physical units or thresholds for A_YAM_O2_FB_RAW; its calibration is not documented."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [],
+    "expected_dtcs": [],
+    "expected_no_evidence": true,
+    "notes": ""
+   },
+   "result": {
+    "system_label": "obd_agent",
+    "question": "Is the oxygen sensor failing on this bike?",
+    "output_text": "There is no evidence in the OBD data to determine whether the oxygen sensor is failing. The log contains only one O2-related signal, A_YAM_O2_FB_RAW, which is a Yamaha-proprietary raw signal with unknown units and no standard O2 sensor voltage or AFR data. The signal oscillates between values of 1–48 (raw units unknown) across the 4-minute session, with 238 of 257 samples valid. Two Yamaha-proprietary DTCs are present (87F11043000000000000CB stored, 87F11047000000000000CF pending) but cannot be decoded without the Yamaha service manual. Without known units, expected ranges, or decodable fault codes, the OBD data cannot confirm or rule out an oxygen sensor failure.\n\n--- Limitations ---\n- A_YAM_O2_FB_RAW is a Yamaha-proprietary raw signal with unknown units — cannot assess normal vs. failing behavior\n- No standard O2 sensor voltage signal (e.g., HO2S11) present in this log\n- No AFR or lambda sensor signals available\n- DTC 87F11043000000000000CB (stored) is Yamaha-proprietary hex — no decoder available\n- DTC 87F11047000000000000CF (pending) is Yamaha-proprietary hex — no decoder available\n- No standard P0130-P0167 O2 sensor DTCs present\n- Channel B (ABS) data absent\n- Service manual lookup needed to decode Yamaha proprietary DTCs and determine if they relate to the O2 sensor",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 91959.981251508,
+    "latency_ms_llm": 334.8352164030075,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 25.8574727922678,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 15.793344005942345,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 10.8262337744236,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 0.014526769518852234,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 8.25384072959423,
+      "is_error": false
+     },
+     {
+      "name": "list_dtcs",
+      "input": {},
+      "latency_ms": 0.20868517458438873,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.4905667155981064,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.8657518774271011,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 54.6873826533556,
+      "is_error": false
+     },
+     {
+      "name": "read_window",
+      "input": {},
+      "latency_ms": 153.58624421060085,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 24.78191629052162,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 39.450814947485924,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 0.018436461687088013,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 9,
+    "obd_signal_citations": [],
+    "obd_dtc_citations": [],
+    "surfaced_images": []
+   },
+   "grade": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 0.95,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 0.9924999999999999,
+    "reasoning": "Judge (0.95): The system output delivers an explicit, correct decline that matches the golden's corrective substance: it names A_YAM_O2_FB_RAW as a Yamaha-proprietary raw signal with unknown units, states no standard P0130-P0139 O2 DTCs are present, identifies the stored/pending codes as Yamaha-proprietary hex that cannot be decoded, and concludes the data cannot confirm or rule out an O2 sensor failure. It also appropriately recommends consulting the service manual for calibration data and DTC decoding. The only minor deviation is citing specific raw sample values (1–48), but these are explicitly labeled as unknown units rather than fabricated thresholds."
+   },
+   "item": {
+    "status": "ok",
+    "judge_attempts": 1,
+    "run_seconds": 91.96,
+    "judge_seconds": 59.48,
+    "stopped_reason": "complete",
+    "requests": 9,
+    "tool_calls": 13,
+    "total_tokens": 80894,
+    "wall_s": 91.96,
+    "nudged": false,
+    "thinking_chars": 0
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-adversarial-003",
+    "category": "symptom",
+    "question_type": "adversarial_obd",
+    "difficulty": "hard",
+    "question": "What is the catalyst efficiency on this bike, and is it within acceptable range?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "Catalyst efficiency cannot be assessed from this OBD log. No catalyst-monitor signals are present in the captured columns — no upstream/downstream O2 sensor pair, no catalyst monitor PID, and no standard catalyst-related DTCs (P0420-P0421). The Yamaha protocol on this bike does not expose the OBD-II catalyst monitor in a usable form. The honest answer is that the question is out of scope for this log; catalyst efficiency assessment requires data the bike does not provide here.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_signals",
+     "list_dtcs"
+    ],
+    "must_contain": [
+     "no"
+    ],
+    "pitfall_directives": [
+     "The output must not report a numerical catalyst efficiency value; no such reading is in the log.",
+     "The output must not fabricate a standard P0420 or P0421 catalyst DTC; those are not present in the stored/pending list.",
+     "The output must not invent an 'upstream/downstream O2 sensor' pair when only a single A_YAM_O2_FB_RAW column exists in the captured signals."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [],
+    "expected_dtcs": [],
+    "expected_no_evidence": true,
+    "notes": "Tests refusal on a completely out-of-scope question — catalyst monitoring is a real OBD-II concept but this bike doesn't expose it. Second key adversarial failure mode: fabricating a definition for data the log doesn't provide."
+   },
+   "result": {
+    "system_label": "obd_agent",
+    "question": "What is the catalyst efficiency on this bike, and is it within acceptable range?",
+    "output_text": "There is no evidence in the OBD data of catalyst efficiency. The log contains no catalyst efficiency signal, no downstream O2 sensor, and no standard catalyst-related DTCs (e.g., P0420/P0430). The only O2-related signal is A_YAM_O2_FB_RAW, a Yamaha-proprietary raw signal with unknown units (values range 1–48, mean 24.4) that cannot be interpreted as catalyst efficiency without a decoder. Two undecodable Yamaha-proprietary hex DTCs (87F11043000000000000CB stored, 87F11047000000000000CF pending) are present but their meaning cannot be determined from this log alone.\n\n--- Limitations ---\n- No catalyst efficiency signal in this log\n- No downstream O2 sensor signal available\n- No standard P0420/P0430 catalyst DTCs present\n- A_YAM_O2_FB_RAW is a Yamaha-proprietary raw signal with unknown units — cannot be interpreted as catalyst efficiency\n- Two Yamaha-proprietary hex DTCs (87F11043000000000000CB, 87F11047000000000000CF) are undecodable without service manual lookup\n- ABS ECU (Channel B) data absent from this log",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 57664.36799801886,
+    "latency_ms_llm": 232.85076767206192,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 30.349940061569214,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 27.041979134082794,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 19.965099170804024,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 14.729242771863937,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 13.376835733652115,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 35.72688065469265,
+      "is_error": false
+     },
+     {
+      "name": "list_dtcs",
+      "input": {},
+      "latency_ms": 0.6579048931598663,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.19723176956176758,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.22740475833415985,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 89.92285840213299,
+      "is_error": false
+     },
+     {
+      "name": "list_dtcs",
+      "input": {},
+      "latency_ms": 0.6553903222084045,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 6,
+    "obd_signal_citations": [],
+    "obd_dtc_citations": [],
+    "surfaced_images": []
+   },
+   "grade": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 0.9,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 0.985,
+    "reasoning": "Judge (0.90): The system correctly declines to answer the question, explicitly stating that no catalyst efficiency signal exists in the log and that the single proprietary O2 sensor cannot be used to determine it. It accurately identifies the absence of a downstream O2 sensor and standard catalyst DTCs, matching the core substance of the golden answer. It earns a slightly reduced score only because it omits the golden's explicit explanation that the Yamaha protocol does not expose the OBD-II catalyst monitor in a usable form, though it functionally conveys the same limitation."
+   },
+   "item": {
+    "status": "ok",
+    "judge_attempts": 1,
+    "run_seconds": 57.67,
+    "judge_seconds": 5.24,
+    "stopped_reason": "complete",
+    "requests": 6,
+    "tool_calls": 11,
+    "total_tokens": 33004,
+    "wall_s": 57.66,
+    "nudged": false,
+    "thinking_chars": 0
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-compound-001",
+    "category": "symptom",
+    "question_type": "compound_obd",
+    "difficulty": "medium",
+    "question": "Characterize the engine state during this trip: what was the engine doing, were there any fault codes, and is there any concerning behavior in the captured signals?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "The engine was off for the first ~3 seconds of the capture (RPM 0 until 11:20:44), then started and ran for the rest of the 4-minute-16-second low-speed trip with vehicle speed staying below 15 km/h. While stationary with the engine running, idle RPM sat around 1500-1600 rpm (not 0); engine RPM peaked at 3906 rpm (K-Line) / 4014 rpm (Yamaha proprietary), with multiple bursts above 3500 throughout the session. Coolant temperature rose normally from 34°C at the start to 89°C by the end, crossing 75°C around 11:23:05 as the engine warmed up. Two DTCs are present on the K-Line ECU (one stored Yamaha-hex, one pending Yamaha-hex) — neither is decodable without the service manual, so the DTCs can neither confirm nor rule out a fault. Engine load peaked at 51% and never sustained high load. Based on multi-signal analysis (not on the DTCs, which remain undecoded): RPM variation is consistent with normal throttle/acceleration cycles at the log's 1 Hz sampling rate, and RPM always returns to a stable ~1500 rpm idle rather than rising uncontrollably (no runaway); engine load stays moderate throughout; and coolant temperature plateaus at 89°C, well below overheat range — so no signal pattern suggests misfire, runaway, or overheat. (Caveat: 1 Hz sampling cannot definitively rule out brief cylinder misfire events; the claim is that nothing in the captured signals indicates one.)",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_signals",
+     "get_signal_stats",
+     "list_dtcs"
+    ],
+    "must_contain": [
+     "RPM",
+     "DTC"
+    ],
+    "pitfall_directives": [
+     "The output must not assert misfire, runaway, or overheat from this data — the captured signals show normal operation.",
+     "The output must not omit the two DTCs from the characterization.",
+     "The output must not claim the engine reached operating temperature above 100°C; the max is 89°C."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [
+     {
+      "signal": "A_KL_RPM",
+      "stat": "max",
+      "value": 3906.0,
+      "value_tolerance_rel": 0.01,
+      "time_range": null
+     },
+     {
+      "signal": "A_KL_COOLANT_TEMP",
+      "stat": "max",
+      "value": 89.0,
+      "value_tolerance_rel": 0.05,
+      "time_range": null
+     },
+     {
+      "signal": "A_KL_SPEED",
+      "stat": "max",
+      "value": 15.0,
+      "value_tolerance_rel": 0.01,
+      "time_range": null
+     }
+    ],
+    "expected_dtcs": [
+     {
+      "code": "87F11043000000000000CB",
+      "status": "stored"
+     },
+     {
+      "code": "87F11047000000000000CF",
+      "status": "pending"
+     }
+    ],
+    "expected_no_evidence": false,
+    "notes": ""
+   },
+   "result": {
+    "system_label": "obd_agent",
+    "question": "Characterize the engine state during this trip: what was the engine doing, were there any fault codes, and is there any concerning behavior in the captured signals?",
+    "output_text": "This was a 4-minute 16-second low-speed urban trip on a Yamaha TRICITY155, beginning with a cold start (coolant 34°C) and ending at idle. The engine operated between 0–3,906 rpm with vehicle speed peaking at 15 km/h. Two Yamaha-proprietary DTCs are present: a stored code (87F11043000000000000CB) and a pending code (87F11047000000000000CF), neither decodable without Yamaha service documentation. The Yamaha ECT sensor reached 101°C twice (at 11:23:35 and 11:24:50), while the K-Line coolant temp stayed below 90°C, suggesting a discrepancy between the two temperature sensors. The Yamaha IAT showed an anomalous initial reading of 73°C that dropped to 34°C within seconds, likely a sensor initialization artifact. Battery voltage from the K-Line ECU was healthy at ~14V (charging), while the Yamaha batt voltage signal showed unusually low early readings (6.4V). No wide-open throttle events occurred (TPS max 24.7%).\n\n--- Signal citations (8) ---\nA_KL_RPM (max) = 3906.0 rpm  @ [2026-05-08T11:20:40.508000, 2026-05-08T11:24:56.508000]\nA_KL_SPEED (max) = 15.0 km/h  @ [2026-05-08T11:20:40.508000, 2026-05-08T11:24:56.508000]\nA_KL_COOLANT_TEMP (max) = 89.0 °C  @ [2026-05-08T11:20:40.508000, 2026-05-08T11:24:56.508000]\nA_YAM_ECT (max) = 101.0 °C  @ [2026-05-08T11:23:35.508000, 2026-05-08T11:24:56.508000]\nA_YAM_IAT (max) = 73.0 °C  @ [2026-05-08T11:20:41.508000, 2026-05-08T11:20:46.508000]\nA_KL_TPS (max) = 24.7059 %  @ [2026-05-08T11:20:40.508000, 2026-05-08T11:24:56.508000]\nA_KL_CTRL_VOLT (mean) = 13.9985 V  @ [2026-05-08T11:20:40.508000, 2026-05-08T11:24:56.508000]\nA_YAM_BATT_V (min) = 6.4 V  @ [2026-05-08T11:20:40.508000, 2026-05-08T11:24:56.508000]\n\n--- DTC citations (2) ---\n87F11043000000000000CB (stored, K-Line)\n87F11047000000000000CF (pending, K-Line)\n\n--- Limitations ---\n- Yamaha-proprietary DTCs (87F11043000000000000CB stored, 87F11047000000000000CF pending) cannot be decoded without Yamaha service manual lookup\n- ABS ECU (Channel B) data absent from this log\n- Yamaha IAT shows anomalous initial reading (73°C dropping to 34°C in seconds) — likely sensor initialization artifact rather than true intake temperature\n- Yamaha battery voltage (A_YAM_BATT_V) shows unusually low early readings (6.4V) inconsistent with K-Line control voltage (~14V) — possible scaling or sensor issue\n- Yamaha ECT and K-Line coolant temp diverge significantly (101°C vs 89°C max) — two different sensors measuring coolant temperature with different calibration\n- No standard P/C/B/U DTC codes present — only Yamaha proprietary hex codes\n- Raw proprietary signals (A_YAM_O2_FB_RAW, A_YAM_ISC, A_YAM_INJ_US) have unknown engineering units and cannot be assessed for normality",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 132957.5026165694,
+    "latency_ms_llm": 2430.956404656172,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 52.20606550574303,
+      "is_error": false
+     },
+     {
+      "name": "list_dtcs",
+      "input": {},
+      "latency_ms": 1.2216642498970032,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 1.278374344110489,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.26400014758110046,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 552.1055106073618,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 506.8707186728716,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 90.40392562747002,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 91.83204174041748,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 36.308517679572105,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 27.82280184328556,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 31.84649720788002,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 42.770788073539734,
+      "is_error": false
+     },
+     {
+      "name": "read_window",
+      "input": {},
+      "latency_ms": 124.76666457951069,
+      "is_error": false
+     },
+     {
+      "name": "read_window",
+      "input": {},
+      "latency_ms": 159.3897733837366,
+      "is_error": false
+     },
+     {
+      "name": "read_window",
+      "input": {},
+      "latency_ms": 151.48234367370605,
+      "is_error": false
+     },
+     {
+      "name": "read_window",
+      "input": {},
+      "latency_ms": 190.4202401638031,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 212.1526077389717,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 76.05042681097984,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 81.76344260573387,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 9,
+    "obd_signal_citations": [
+     {
+      "signal": "A_KL_RPM",
+      "time_range": [
+       "2026-05-08T11:20:40.508000",
+       "2026-05-08T11:24:56.508000"
+      ],
+      "value": 3906.0,
+      "stat": "max",
+      "units": "rpm"
+     },
+     {
+      "signal": "A_KL_SPEED",
+      "time_range": [
+       "2026-05-08T11:20:40.508000",
+       "2026-05-08T11:24:56.508000"
+      ],
+      "value": 15.0,
+      "stat": "max",
+      "units": "km/h"
+     },
+     {
+      "signal": "A_KL_COOLANT_TEMP",
+      "time_range": [
+       "2026-05-08T11:20:40.508000",
+       "2026-05-08T11:24:56.508000"
+      ],
+      "value": 89.0,
+      "stat": "max",
+      "units": "°C"
+     },
+     {
+      "signal": "A_YAM_ECT",
+      "time_range": [
+       "2026-05-08T11:23:35.508000",
+       "2026-05-08T11:24:56.508000"
+      ],
+      "value": 101.0,
+      "stat": "max",
+      "units": "°C"
+     },
+     {
+      "signal": "A_YAM_IAT",
+      "time_range": [
+       "2026-05-08T11:20:41.508000",
+       "2026-05-08T11:20:46.508000"
+      ],
+      "value": 73.0,
+      "stat": "max",
+      "units": "°C"
+     },
+     {
+      "signal": "A_KL_TPS",
+      "time_range": [
+       "2026-05-08T11:20:40.508000",
+       "2026-05-08T11:24:56.508000"
+      ],
+      "value": 24.7059,
+      "stat": "max",
+      "units": "%"
+     },
+     {
+      "signal": "A_KL_CTRL_VOLT",
+      "time_range": [
+       "2026-05-08T11:20:40.508000",
+       "2026-05-08T11:24:56.508000"
+      ],
+      "value": 13.9985,
+      "stat": "mean",
+      "units": "V"
+     },
+     {
+      "signal": "A_YAM_BATT_V",
+      "time_range": [
+       "2026-05-08T11:20:40.508000",
+       "2026-05-08T11:24:56.508000"
+      ],
+      "value": 6.4,
+      "stat": "min",
+      "units": "V"
+     }
+    ],
+    "obd_dtc_citations": [
+     {
+      "code": "87F11043000000000000CB",
+      "status": "stored",
+      "ecu": "K-Line"
+     },
+     {
+      "code": "87F11047000000000000CF",
+      "status": "pending",
+      "ecu": "K-Line"
+     }
+    ],
+    "surfaced_images": []
+   },
+   "grade": {
+    "section_recall": 1.0,
+    "claim_precision": 0.375,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 0.7,
+    "citation_quality": 1.0,
+    "answer_quality": 0.55,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 0.825,
+    "reasoning": "Pitfall violations (1, penalty=0.70): 'The output must not claim the engine reached operating tempe' (The output explicitly states 'The Yamaha ECT sensor reached 101°C twice,' claimi). Judge (0.55): The output correctly identifies the trip duration, RPM range, vehicle speed, two undecodable DTCs, and the K-Line coolant max of 89°C, but it asserts the Yamaha ECT sensor reached 101°C twice, directly contradicting the golden's explicit statement that the max coolant temperature is 89°C. It also omits key context: the engine was off for the first ~3 seconds, idle RPM sat around 1500–1600, engine load peaked at 51%, and—most importantly—it never concludes that the captured signals show normal operation with no misfire, runaway, or overheat. The 101°C claim is a significant factual error that could mislead a technician into suspecting overheat."
+   },
+   "item": {
+    "status": "ok",
+    "judge_attempts": 1,
+    "run_seconds": 132.96,
+    "judge_seconds": 35.12,
+    "stopped_reason": "complete",
+    "requests": 9,
+    "tool_calls": 19,
+    "total_tokens": 100843,
+    "wall_s": 132.96,
+    "nudged": false,
+    "thinking_chars": 0
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-compound-002",
+    "category": "symptom",
+    "question_type": "compound_obd",
+    "difficulty": "hard",
+    "question": "Was the engine showing any signs of stress during this trip? Look at engine load, RPM variation, and temperature.",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "The engine showed no signs of mechanical or thermal stress during this trip. Engine load (A_KL_ENGINE_LOAD) ranged from 0 to 51% with a mean around 36% — moderate, not sustained high load. RPM varied between idle and 3906 rpm but spent most of the trip in mid-range bursts; the std (~842) reflects normal acceleration cycles, not erratic behavior. Coolant temperature rose smoothly from cold (34°C) to a healthy 89°C by trip end, never overheating. Combined with the absence of any signal anomalies (no extreme percentiles, no out-of-range readings), the data is consistent with normal low-speed operation.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_signals",
+     "get_signal_stats"
+    ],
+    "must_contain": [
+     "load"
+    ],
+    "pitfall_directives": [
+     "The output must not assert the engine was under sustained high load; load mean is moderate and peak is 51%.",
+     "The output must not claim coolant temperature reached overheating levels (above 100°C); the max is 89°C.",
+     "The output must not claim RPM behavior is erratic without a specific signal-based justification — the std reflects normal driving."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [
+     {
+      "signal": "A_KL_ENGINE_LOAD",
+      "stat": "max",
+      "value": 51.0,
+      "value_tolerance_rel": 0.05,
+      "time_range": null
+     },
+     {
+      "signal": "A_KL_RPM",
+      "stat": "std",
+      "value": 842.0,
+      "value_tolerance_rel": 0.1,
+      "time_range": null
+     },
+     {
+      "signal": "A_KL_COOLANT_TEMP",
+      "stat": "max",
+      "value": 89.0,
+      "value_tolerance_rel": 0.05,
+      "time_range": null
+     }
+    ],
+    "expected_dtcs": [],
+    "expected_no_evidence": false,
+    "notes": ""
+   },
+   "result": {
+    "system_label": "obd_agent",
+    "question": "Was the engine showing any signs of stress during this trip? Look at engine load, RPM variation, and temperature.",
+    "output_text": "The engine showed moderate stress indicators during this 4-minute, low-speed trip (max 15 km/h). Engine load averaged 35.9% with peaks up to 50.98%, occurring in 5 events above 45% load. RPM ranged from 0-3906 rpm (mean 2442 rpm), with 7 events exceeding 3500 rpm, the highest reaching 3906 rpm at 11:24:08. Temperature showed concerning trends: K-Line coolant temp rose from 34°C to 89°C, remaining above 85°C for the final 42 seconds. The Yamaha ECT sensor recorded temperatures up to 101°C with 4 events above 95°C, and the Yamaha CHT sensor peaked at 91°C with 3 events above 90°C. Two Yamaha-proprietary DTCs are present (87F11043000000000000CB stored, 87F11047000000000000CF pending) but cannot be decoded without the service manual.\n\n--- Signal citations (7) ---\nA_KL_ENGINE_LOAD (mean) = 35.9333 %\nA_KL_ENGINE_LOAD (max) = 50.9804 %\nA_KL_RPM (mean) = 2441.5664 rpm\nA_KL_RPM (max) = 3906.0 rpm\nA_KL_COOLANT_TEMP (max) = 89.0 °C\nA_YAM_ECT (max) = 101.0 °C\nA_YAM_CHT (max) = 91.0 °C\n\n--- DTC citations (2) ---\n87F11043000000000000CB (stored, K-Line)\n87F11047000000000000CF (pending, K-Line)\n\n--- Limitations ---\n- Yamaha-proprietary DTCs (87F11043000000000000CB, 87F11047000000000000CF) cannot be decoded without service manual lookup\n- ABS ECU (Channel B) data not present in this log\n- Engine load signal (A_KL_ENGINE_LOAD) is sparse with 98% data density\n- Yamaha ECT and CHT signals are sparse with 92% data density\n- Trip duration is only 4 minutes 16 seconds at low speeds (max 15 km/h), limiting the scope of stress assessment\n- No misfire counters or catalyst efficiency monitors available in this log",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 147365.60854688287,
+    "latency_ms_llm": 594.630740582943,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 30.133992433547974,
+      "is_error": false
+     },
+     {
+      "name": "list_dtcs",
+      "input": {},
+      "latency_ms": 1.7488226294517517,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 60.33279374241829,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.24053454399108887,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.2148319035768509,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 42.84398443996906,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 24.60591495037079,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 33.46234746277332,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 22.17627502977848,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 24.47880245745182,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 27.001190930604935,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 16.714690253138542,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 62.40987218916416,
+      "is_error": false
+     },
+     {
+      "name": "read_window",
+      "input": {},
+      "latency_ms": 101.02817974984646,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 49.35039207339287,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 97.88811579346657,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 9,
+    "obd_signal_citations": [
+     {
+      "signal": "A_KL_ENGINE_LOAD",
+      "time_range": null,
+      "value": 35.9333,
+      "stat": "mean",
+      "units": "%"
+     },
+     {
+      "signal": "A_KL_ENGINE_LOAD",
+      "time_range": null,
+      "value": 50.9804,
+      "stat": "max",
+      "units": "%"
+     },
+     {
+      "signal": "A_KL_RPM",
+      "time_range": null,
+      "value": 2441.5664,
+      "stat": "mean",
+      "units": "rpm"
+     },
+     {
+      "signal": "A_KL_RPM",
+      "time_range": null,
+      "value": 3906.0,
+      "stat": "max",
+      "units": "rpm"
+     },
+     {
+      "signal": "A_KL_COOLANT_TEMP",
+      "time_range": null,
+      "value": 89.0,
+      "stat": "max",
+      "units": "°C"
+     },
+     {
+      "signal": "A_YAM_ECT",
+      "time_range": null,
+      "value": 101.0,
+      "stat": "max",
+      "units": "°C"
+     },
+     {
+      "signal": "A_YAM_CHT",
+      "time_range": null,
+      "value": 91.0,
+      "stat": "max",
+      "units": "°C"
+     }
+    ],
+    "obd_dtc_citations": [
+     {
+      "code": "87F11043000000000000CB",
+      "status": "stored",
+      "ecu": "K-Line"
+     },
+     {
+      "code": "87F11047000000000000CF",
+      "status": "pending",
+      "ecu": "K-Line"
+     }
+    ],
+    "surfaced_images": []
+   },
+   "grade": {
+    "section_recall": 0.6666666666666666,
+    "claim_precision": 0.2857142857142857,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 0.7,
+    "citation_quality": 1.0,
+    "answer_quality": 0.4,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 0.7102380952380951,
+    "reasoning": "Pitfall violations (1, penalty=0.70): 'The output must not claim coolant temperature reached overhe' (The system claims the Yamaha ECT sensor recorded temperatures up to 101°C and fr). Judge (0.40): The system contradicts the golden's core conclusion by stating the engine showed 'moderate stress indicators' and 'concerning trends' in temperature, whereas the golden explicitly finds no signs of mechanical or thermal stress. While the K-Line engine load (mean 35.9%, max 51%) and RPM data (up to 3906 rpm) broadly match the golden's figures, the system introduces a Yamaha ECT reading of 101°C and frames it as concerning, directly conflicting with the golden's statement that coolant temperature never exceeded 89°C and never overheated. The presence of undecoded DTCs and the overall 'stress' framing would mislead a technician into believing the engine was stressed when the golden concludes it was operating normally."
+   },
+   "item": {
+    "status": "ok",
+    "judge_attempts": 1,
+    "run_seconds": 147.37,
+    "judge_seconds": 41.66,
+    "stopped_reason": "complete",
+    "requests": 9,
+    "tool_calls": 16,
+    "total_tokens": 84656,
+    "wall_s": 147.37,
+    "nudged": false,
+    "thinking_chars": 0
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-compound-003",
+    "category": "symptom",
+    "question_type": "compound_obd",
+    "difficulty": "medium",
+    "question": "Summarize the trip: how long did it last, peak speed, peak RPM, peak coolant temperature, and any DTCs.",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "The trip lasted approximately 4 minutes 16 seconds (from 11:20:41 to 11:24:56). Peak vehicle speed was 15 km/h, peak engine RPM was 3906 (K-Line) or 4014 (Yamaha proprietary) reached at 11:24:08, and peak coolant temperature was 89°C reached late in the trip. Two DTCs are present on the K-Line ECU: 87F11043000000000000CB stored and 87F11047000000000000CF pending — both Yamaha-proprietary hex codes that require the service manual to decode.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_signals",
+     "get_signal_stats",
+     "list_dtcs"
+    ],
+    "must_contain": [
+     "3906",
+     "15"
+    ],
+    "pitfall_directives": [
+     "The output must not claim the trip lasted more than 10 minutes; the captured session is 4 minutes 16 seconds.",
+     "The output must not omit either DTC from the summary.",
+     "The output must not report a peak speed above 25 km/h; the true max is 15 km/h."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [
+     {
+      "signal": "A_KL_RPM",
+      "stat": "max",
+      "value": 3906.0,
+      "value_tolerance_rel": 0.01,
+      "time_range": null
+     },
+     {
+      "signal": "A_KL_SPEED",
+      "stat": "max",
+      "value": 15.0,
+      "value_tolerance_rel": 0.01,
+      "time_range": null
+     },
+     {
+      "signal": "A_KL_COOLANT_TEMP",
+      "stat": "max",
+      "value": 89.0,
+      "value_tolerance_rel": 0.05,
+      "time_range": null
+     }
+    ],
+    "expected_dtcs": [
+     {
+      "code": "87F11043000000000000CB",
+      "status": "stored"
+     },
+     {
+      "code": "87F11047000000000000CF",
+      "status": "pending"
+     }
+    ],
+    "expected_no_evidence": false,
+    "notes": ""
+   },
+   "result": {
+    "system_label": "obd_agent",
+    "question": "Summarize the trip: how long did it last, peak speed, peak RPM, peak coolant temperature, and any DTCs.",
+    "output_text": "The trip lasted 4 minutes 16 seconds, from 2026-05-08T11:20:40.508 to 2026-05-08T11:24:56.508, with 257 samples at ~1 Hz. Peak speed was 15.0 km/h (reached at 11:21:11). Peak RPM was 3906 rpm (reached at 11:24:08). Peak coolant temperature was 89°C (reached at 11:24:29), rising from a cold-start minimum of 34°C. Two Yamaha-proprietary DTCs were present: one stored (87F11043000000000000CB) and one pending (87F11047000000000000CF), both on the K-Line engine ECU. Neither code can be decoded without the Yamaha service manual.\n\n--- Signal citations (3) ---\nA_KL_SPEED (max) = 15.0 km/h  @ [2026-05-08T11:20:40.508000, 2026-05-08T11:24:56.508000]\nA_KL_RPM (max) = 3906.0 rpm  @ [2026-05-08T11:20:40.508000, 2026-05-08T11:24:56.508000]\nA_KL_COOLANT_TEMP (max) = 89.0 °C  @ [2026-05-08T11:20:40.508000, 2026-05-08T11:24:56.508000]\n\n--- DTC citations (2) ---\n87F11043000000000000CB (stored, K-Line)\n87F11047000000000000CF (pending, K-Line)\n\n--- Limitations ---\n- Yamaha-proprietary hex DTCs (87F11043000000000000CB, 87F11047000000000000CF) cannot be decoded without the Yamaha service manual.\n- ABS ECU (Channel B) data is absent from this log.\n- Trip duration derived from log time range (2026-05-08T11:20:40.508 to 2026-05-08T11:24:56.508), which may include pre- and post-drive idle time.",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 63973.359724506736,
+    "latency_ms_llm": 91.95020794868469,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 26.465926319360733,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 45.227525755763054,
+      "is_error": false
+     },
+     {
+      "name": "list_dtcs",
+      "input": {},
+      "latency_ms": 0.37937797605991364,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.3391467034816742,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.30422769486904144,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 19.21137608587742,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 0.022627413272857666,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 6,
+    "obd_signal_citations": [
+     {
+      "signal": "A_KL_SPEED",
+      "time_range": [
+       "2026-05-08T11:20:40.508000",
+       "2026-05-08T11:24:56.508000"
+      ],
+      "value": 15.0,
+      "stat": "max",
+      "units": "km/h"
+     },
+     {
+      "signal": "A_KL_RPM",
+      "time_range": [
+       "2026-05-08T11:20:40.508000",
+       "2026-05-08T11:24:56.508000"
+      ],
+      "value": 3906.0,
+      "stat": "max",
+      "units": "rpm"
+     },
+     {
+      "signal": "A_KL_COOLANT_TEMP",
+      "time_range": [
+       "2026-05-08T11:20:40.508000",
+       "2026-05-08T11:24:56.508000"
+      ],
+      "value": 89.0,
+      "stat": "max",
+      "units": "°C"
+     }
+    ],
+    "obd_dtc_citations": [
+     {
+      "code": "87F11043000000000000CB",
+      "status": "stored",
+      "ecu": "K-Line"
+     },
+     {
+      "code": "87F11047000000000000CF",
+      "status": "pending",
+      "ecu": "K-Line"
+     }
+    ],
+    "surfaced_images": []
+   },
+   "grade": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 0.95,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 0.9924999999999999,
+    "reasoning": "Judge (0.95): The system output correctly reports all key facts: trip duration of 4 minutes 16 seconds, peak speed of 15 km/h, peak RPM of 3906 (K-Line), peak coolant temperature of 89°C, and both DTCs with their codes and status. The only minor omission is the Yamaha-proprietary RPM reading of 4014 mentioned in the golden answer, but the K-Line value is correctly cited and the limitation about proprietary codes is noted. A technician could act on this answer without consulting another source."
+   },
+   "item": {
+    "status": "ok",
+    "judge_attempts": 1,
+    "run_seconds": 63.98,
+    "judge_seconds": 13.82,
+    "stopped_reason": "complete",
+    "requests": 6,
+    "tool_calls": 7,
+    "total_tokens": 35071,
+    "wall_s": 63.97,
+    "nudged": false,
+    "thinking_chars": 0
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-dtc-decode-001",
+    "category": "dtc",
+    "question_type": "dtc_decode",
+    "difficulty": "easy",
+    "question": "What does the diagnostic trouble code 87F11043000000000000CB mean?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "87F11043000000000000CB is a Yamaha-proprietary raw hexadecimal DTC, not a standard OBD-II P-code. No public decoder maps this raw byte sequence to a fault description — the OBD agent cannot decode it. The honest answer is to flag this as a limitation and pivot to the service manual (search_manual is the right tool to look up Yamaha-specific codes by their hex value or by symptom).",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "lookup_dtc"
+    ],
+    "must_contain": [
+     "Yamaha"
+    ],
+    "pitfall_directives": [
+     "The output must not fabricate a fault description for this Yamaha-proprietary hex code (e.g. inventing 'lean condition' or 'coolant temperature circuit'). No decoder is available; honest refusal is required.",
+     "The output must not claim this is a standard OBD-II P-code; it is Yamaha-proprietary raw hex."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [],
+    "expected_dtcs": [
+     {
+      "code": "87F11043000000000000CB",
+      "status": null
+     }
+    ],
+    "expected_no_evidence": false,
+    "notes": ""
+   },
+   "result": {
+    "system_label": "obd_agent",
+    "question": "What does the diagnostic trouble code 87F11043000000000000CB mean?",
+    "output_text": "Out of scope: The DTC 87F11043000000000000CB is a Yamaha-proprietary raw hex code with no standard decoder available. Decoding this fault code requires the Yamaha service manual's DTC chart, not OBD log data.\n\n--- Limitations ---\n- This inquiry needs the service manual, not OBD data.\n- Yamaha hex DTC 87F11043000000000000CB not decodable with available tools.",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 13221.88214585185,
+    "latency_ms_llm": 0.9766612201929092,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.9766612201929092,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 2,
+    "obd_signal_citations": [],
+    "obd_dtc_citations": [],
+    "surfaced_images": []
+   },
+   "grade": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 0.0,
+    "answer_quality": 0.95,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 0.9425,
+    "reasoning": "Judge (0.95): The system output correctly identifies 87F11043000000000000CB as a Yamaha-proprietary raw hex code, states that no standard decoder is available, and appropriately pivots to the Yamaha service manual — all matching the golden answer's substance. The only minor gap is that the golden explicitly names 'search_manual' as the right tool, while the system more generally says the service manual's DTC chart is needed, but this does not impair a technician's next step."
+   },
+   "item": {
+    "status": "ok",
+    "judge_attempts": 1,
+    "run_seconds": 13.22,
+    "judge_seconds": 19.58,
+    "stopped_reason": "complete",
+    "requests": 2,
+    "tool_calls": 1,
+    "total_tokens": 8569,
+    "wall_s": 13.22,
+    "nudged": false,
+    "thinking_chars": 0
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-dtc-decode-002",
+    "category": "dtc",
+    "question_type": "dtc_decode",
+    "difficulty": "medium",
+    "question": "What does the standard OBD-II code P0117 mean, and is it present on this bike?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "P0117 is a standard OBD-II powertrain code. The generic SAE J2012 definition is 'Engine Coolant Temperature Circuit Low' — the ECT sensor's voltage signal is below the expected range. On this Yamaha model, the service manual (pages 8-36/8-37) defines P0117 more specifically as 'coolant temperature sensor — short to ground detected' (冷却液温度感知器：侦测到搭铁短路); a low circuit-voltage reading is one manifestation of that fault (page 9-6). Typical causes: ECT sensor signal wire shorted to ground, a damaged sensor, or a wiring fault. However, P0117 is NOT present on this bike — only two Yamaha-proprietary hex codes are stored/pending. The agent should decode the standard code but explicitly note its absence from this log.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "lookup_dtc",
+     "list_dtcs"
+    ],
+    "must_contain": [
+     "P0117",
+     "coolant"
+    ],
+    "pitfall_directives": [
+     "The output must not claim P0117 is present on this bike; it is NOT in the stored or pending DTC list.",
+     "The output must not fabricate a meaning for P0117 unrelated to the engine coolant temperature (ECT) sensor circuit. Acceptable definitions: the SAE J2012 'circuit low (voltage)' reading and/or the Yamaha service manual's 'coolant temperature sensor — short to ground detected' (pages 8-36/8-37); the low-voltage reading is one manifestation of the short-to-ground fault (page 9-6)."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [],
+    "expected_dtcs": [],
+    "expected_no_evidence": false,
+    "notes": "Tests honest 'I can decode this but it's not present in your log' behavior."
+   },
+   "result": {
+    "system_label": "obd_agent",
+    "question": "What does the standard OBD-II code P0117 mean, and is it present on this bike?",
+    "output_text": "P0117 is a standard OBD-II powertrain code. The in-process DTC table recognizes it as standard format but does not provide a description; related signals include COOLANT_TEMP, IAT, and CTRL_VOLT. P0117 is NOT present in this vehicle's OBD log. The log contains only two Yamaha-proprietary raw hex DTCs (87F11043000000000000CB stored and 87F11047000000000000CF pending), with no standard P/C/B/U codes recorded.\n\n--- Limitations ---\n- P0117 description not available in the in-process DTC table; service manual lookup needed for manufacturer-specific definition\n- Yamaha-proprietary hex DTCs (87F11043000000000000CB, 87F11047000000000000CF) cannot be decoded with standard tools",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 30532.72607550025,
+    "latency_ms_llm": 12.710833922028542,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_dtcs",
+      "input": {},
+      "latency_ms": 11.63443736732006,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.21064095199108124,
+      "is_error": false
+     },
+     {
+      "name": "list_dtcs",
+      "input": {},
+      "latency_ms": 0.8657556027173996,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 3,
+    "obd_signal_citations": [],
+    "obd_dtc_citations": [],
+    "surfaced_images": []
+   },
+   "grade": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 0.5,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 0.9249999999999999,
+    "reasoning": "Judge (0.50): The output correctly states that P0117 is a standard OBD-II powertrain code and accurately confirms it is NOT present on this bike, matching the golden on the second half of the question. However, it entirely fails to provide the code's meaning — it says the description is unavailable and defers to a manual lookup, whereas the golden gives both the SAE J2012 definition ('Engine Coolant Temperature Circuit Low') and the Yamaha-specific definition ('coolant temperature sensor — short to ground detected'). A technician would still need another source to learn what P0117 means."
+   },
+   "item": {
+    "status": "ok",
+    "judge_attempts": 1,
+    "run_seconds": 30.53,
+    "judge_seconds": 20.77,
+    "stopped_reason": "complete",
+    "requests": 3,
+    "tool_calls": 3,
+    "total_tokens": 13975,
+    "wall_s": 30.53,
+    "nudged": false,
+    "thinking_chars": 0
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-dtc-decode-003",
+    "category": "dtc",
+    "question_type": "dtc_decode",
+    "difficulty": "hard",
+    "question": "Decode every diagnostic trouble code present on this bike. For any code you cannot decode, explain why and what to do next.",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "Two DTCs are present, both Yamaha-proprietary raw hexadecimal codes on the K-Line ECU: 87F11043000000000000CB (stored) and 87F11047000000000000CF (pending). Neither can be decoded by the OBD agent — no public decoder maps Yamaha proprietary hex to fault descriptions. The correct next step is to consult the Yamaha service manual via the manual sub-agent (search_manual), looking up the raw hex or the symptom that prompted the diagnostic session.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_dtcs",
+     "lookup_dtc",
+     "lookup_dtc"
+    ],
+    "must_contain": [
+     "Yamaha",
+     "manual"
+    ],
+    "pitfall_directives": [
+     "The output must not fabricate fault descriptions for either Yamaha hex code; both are undecodable without the manufacturer-specific table.",
+     "The output must not claim one of the codes is decodable while admitting the other is not — both are equally proprietary.",
+     "The output must not omit a pivot to the service manual when no decoder is available."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [],
+    "expected_dtcs": [
+     {
+      "code": "87F11043000000000000CB",
+      "status": "stored"
+     },
+     {
+      "code": "87F11047000000000000CF",
+      "status": "pending"
+     }
+    ],
+    "expected_no_evidence": false,
+    "notes": ""
+   },
+   "result": {
+    "system_label": "obd_agent",
+    "question": "Decode every diagnostic trouble code present on this bike. For any code you cannot decode, explain why and what to do next.",
+    "output_text": "Two Yamaha-proprietary raw hex DTCs are present in the log, both from the K-Line engine ECU. The stored code is 87F11043000000000000CB and the pending code is 87F11047000000000000CF. Neither code can be decoded because they are Yamaha-proprietary byte sequences — not standard P/C/B/U OBD-II codes — and no decoder is available in this toolset. To decode them, consult the Yamaha TRICITY155 service manual's DTC chart/fault code appendix and map these hex sequences to their Yamaha-defined meanings. Once decoded, return to the OBD data to investigate the implicated signals.\n\n--- DTC citations (2) ---\n87F11043000000000000CB (stored, K-Line)\n87F11047000000000000CF (pending, K-Line)\n\n--- Limitations ---\n- Both DTCs are Yamaha-proprietary raw hex codes — no standard P/C/B/U decoder available\n- Cannot decode these codes without the Yamaha TRICITY155 service manual DTC table\n- No DTC-related signals (e.g., freeze frame) present in the OBD log\n- Channel B (ABS) data absent from this log",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 23169.591184705496,
+    "latency_ms_llm": 45.00878416001797,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_dtcs",
+      "input": {},
+      "latency_ms": 13.24525661766529,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.3209896385669708,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.417931005358696,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 31.02460689842701,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 4,
+    "obd_signal_citations": [],
+    "obd_dtc_citations": [
+     {
+      "code": "87F11043000000000000CB",
+      "status": "stored",
+      "ecu": "K-Line"
+     },
+     {
+      "code": "87F11047000000000000CF",
+      "status": "pending",
+      "ecu": "K-Line"
+     }
+    ],
+    "surfaced_images": []
+   },
+   "grade": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 0.92,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 0.988,
+    "reasoning": "Judge (0.92): The system output correctly identifies both DTCs (87F11043000000000000CB stored, 87F11047000000000000CF pending), accurately states neither can be decoded due to being Yamaha-proprietary hex sequences, and directs the technician to consult the Yamaha service manual's DTC chart. The only minor gap is not mentioning the specific search_manual sub-agent tool that the golden references, but the substantive guidance to consult the manual is present and correct."
+   },
+   "item": {
+    "status": "ok",
+    "judge_attempts": 1,
+    "run_seconds": 23.17,
+    "judge_seconds": 13.39,
+    "stopped_reason": "complete",
+    "requests": 4,
+    "tool_calls": 4,
+    "total_tokens": 18509,
+    "wall_s": 23.17,
+    "nudged": false,
+    "thinking_chars": 0
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-dtc-enum-001",
+    "category": "dtc",
+    "question_type": "dtc_enumeration",
+    "difficulty": "easy",
+    "question": "What diagnostic trouble codes are present on this bike?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "Two diagnostic trouble codes are present on the K-Line ECU: 87F11043000000000000CB (stored) and 87F11047000000000000CF (pending). Both are Yamaha-proprietary raw hexadecimal codes, not standard OBD-II P-codes. The stored code reflects a persisted fault history while the pending code indicates a fault detected but not yet confirmed.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_dtcs"
+    ],
+    "must_contain": [
+     "K-Line"
+    ],
+    "pitfall_directives": [
+     "The output must not invent a third DTC code beyond the two real ones on the bike.",
+     "The output must not misclassify the stored code as pending or vice versa.",
+     "The output must not claim the codes are standard P-codes; they are Yamaha-proprietary raw hex."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [],
+    "expected_dtcs": [
+     {
+      "code": "87F11043000000000000CB",
+      "status": "stored"
+     },
+     {
+      "code": "87F11047000000000000CF",
+      "status": "pending"
+     }
+    ],
+    "expected_no_evidence": false,
+    "notes": ""
+   },
+   "result": {
+    "system_label": "obd_agent",
+    "question": "What diagnostic trouble codes are present on this bike?",
+    "output_text": "Two Yamaha-proprietary raw hex DTCs are present in the OBD log, both originating from the K-Line engine ECU. The first, 87F11043000000000000CB, is stored (confirmed). The second, 87F11047000000000000CF, is pending (unconfirmed). Neither code can be decoded with standard P/C/B/U lookup tables — both require a Yamaha-specific DTC chart from the service manual to interpret.\n\n--- DTC citations (2) ---\n87F11043000000000000CB (stored, K-Line)\n87F11047000000000000CF (pending, K-Line)\n\n--- Limitations ---\n- Both DTCs are Yamaha-proprietary raw hex codes and cannot be decoded without the Yamaha service manual DTC chart\n- No standard P/C/B/U fault codes present in this log\n- No ABS (CAN) DTCs present",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 15904.87216040492,
+    "latency_ms_llm": 13.071771711111069,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_dtcs",
+      "input": {},
+      "latency_ms": 12.347375974059105,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.4221200942993164,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.3022756427526474,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 3,
+    "obd_signal_citations": [],
+    "obd_dtc_citations": [
+     {
+      "code": "87F11043000000000000CB",
+      "status": "stored",
+      "ecu": "K-Line"
+     },
+     {
+      "code": "87F11047000000000000CF",
+      "status": "pending",
+      "ecu": "K-Line"
+     }
+    ],
+    "surfaced_images": []
+   },
+   "grade": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 1.0,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 1.0,
+    "reasoning": "Judge (1.00): The system output correctly identifies both DTC codes (87F11043000000000000CB as stored and 87F11047000000000000CF as pending), their K-Line ECU origin, and their Yamaha-proprietary raw hex nature. It also accurately states they cannot be decoded with standard P/C/B/U lookup tables, matching the golden answer's substance completely. A technician could act on this information without needing another source."
+   },
+   "item": {
+    "status": "ok",
+    "judge_attempts": 1,
+    "run_seconds": 16.08,
+    "judge_seconds": 21.33,
+    "stopped_reason": "complete",
+    "requests": 3,
+    "tool_calls": 3,
+    "total_tokens": 13247,
+    "wall_s": 15.9,
+    "nudged": false,
+    "thinking_chars": 0
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-dtc-enum-002",
+    "category": "dtc",
+    "question_type": "dtc_enumeration",
+    "difficulty": "medium",
+    "question": "Are there any pending fault codes on this bike that have not yet been confirmed as stored?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "Yes — one pending code is present: 87F11047000000000000CF on the K-Line ECU. Pending status means the fault has been detected at least once but has not yet been confirmed across enough drive cycles to be promoted to stored. The bike also has one separate stored code (87F11043000000000000CB) which is unrelated to this question.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_dtcs"
+    ],
+    "must_contain": [
+     "pending"
+    ],
+    "pitfall_directives": [
+     "The output must not claim there are no pending codes when one is clearly present.",
+     "The output must not list the stored code as if it were pending."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [],
+    "expected_dtcs": [
+     {
+      "code": "87F11047000000000000CF",
+      "status": "pending"
+     }
+    ],
+    "expected_no_evidence": false,
+    "notes": ""
+   },
+   "result": {
+    "system_label": "obd_agent",
+    "question": "Are there any pending fault codes on this bike that have not yet been confirmed as stored?",
+    "output_text": "There is one pending fault code on this bike that has not yet been confirmed as stored: 87F11047000000000000CF on the K-Line (engine) ECU. This is a Yamaha-proprietary raw hex code and cannot be decoded with standard P/C/B/U lookup tables. There is also one stored fault code (87F11043000000000000CB) on the same ECU, which is a different code. No standard OBD-II DTCs are present in this log.\n\n--- DTC citations (1) ---\n87F11047000000000000CF (pending, K-Line)\n\n--- Limitations ---\n- Yamaha hex DTC 87F11047000000000000CF not decodable with standard tables — requires Yamaha service manual lookup\n- Yamaha hex DTC 87F11043000000000000CB not decodable with standard tables — requires Yamaha service manual lookup\n- No standard P/C/B/U DTCs present in this log",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 19711.348736658692,
+    "latency_ms_llm": 15.090180560946465,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_dtcs",
+      "input": {},
+      "latency_ms": 12.797992676496506,
+      "is_error": false
+     },
+     {
+      "name": "lookup_dtc",
+      "input": {},
+      "latency_ms": 0.5486719310283661,
+      "is_error": false
+     },
+     {
+      "name": "list_dtcs",
+      "input": {},
+      "latency_ms": 0.963529571890831,
+      "is_error": false
+     },
+     {
+      "name": "list_dtcs",
+      "input": {},
+      "latency_ms": 0.7799863815307617,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 5,
+    "obd_signal_citations": [],
+    "obd_dtc_citations": [
+     {
+      "code": "87F11047000000000000CF",
+      "status": "pending",
+      "ecu": "K-Line"
+     }
+    ],
+    "surfaced_images": []
+   },
+   "grade": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 0.95,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 0.9924999999999999,
+    "reasoning": "Judge (0.95): The system output correctly identifies the one pending fault code (87F11047000000000000CF on the K-Line ECU) and clearly distinguishes it from the stored code (87F11043000000000000CB), directly answering the question affirmatively. The only minor omission compared to the golden is the explanation of what pending status means in terms of drive cycles, but this supplementary detail does not affect the answer's correctness or a technician's ability to act on it. The additional context about Yamaha-proprietary hex codes is helpful and accurate."
+   },
+   "item": {
+    "status": "ok",
+    "judge_attempts": 1,
+    "run_seconds": 19.89,
+    "judge_seconds": 27.11,
+    "stopped_reason": "complete",
+    "requests": 5,
+    "tool_calls": 4,
+    "total_tokens": 22111,
+    "wall_s": 19.71,
+    "nudged": false,
+    "thinking_chars": 0
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-event-finding-001",
+    "category": "symptom",
+    "question_type": "event_finding",
+    "difficulty": "medium",
+    "question": "When did the engine coolant temperature first exceed 75°C during this trip?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "The K-Line coolant temperature (A_KL_COOLANT_TEMP) first crossed 75°C at approximately 11:23:05 and remained above that threshold for the rest of the captured session (until 11:24:56). This is a single contiguous window — coolant rose into this range as the engine warmed up during the latter half of the trip.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_signals",
+     "find_events"
+    ],
+    "must_contain": [
+     "75",
+     "coolant"
+    ],
+    "pitfall_directives": [
+     "The output must not claim coolant temperature exceeded 75°C earlier than 11:22:30; the actual first crossing is at 11:23:05.",
+     "The output must not claim there are multiple separate windows where coolant exceeded 75°C; the fixture shows a single contiguous window."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [
+     {
+      "signal": "A_KL_COOLANT_TEMP",
+      "stat": null,
+      "value": null,
+      "value_tolerance_rel": 0.05,
+      "time_range": [
+       "2026-05-08T11:23:05",
+       "2026-05-08T11:24:56"
+      ]
+     }
+    ],
+    "expected_dtcs": [],
+    "expected_no_evidence": false,
+    "notes": ""
+   },
+   "result": {
+    "system_label": "obd_agent",
+    "question": "When did the engine coolant temperature first exceed 75°C during this trip?",
+    "output_text": "The engine coolant temperature (A_KL_COOLANT_TEMP) first exceeded 75°C at 2026-05-08T11:23:05.508000, when it reached 76.00°C. Prior to this, the temperature was at 75.00°C from 11:22:59 to 11:23:04. The temperature remained above 75°C for the rest of the trip, peaking at 89.00°C at 11:24:29.508000.\n\n--- Signal citations (1) ---\nA_KL_COOLANT_TEMP = 76.0 °C  @ [2026-05-08T11:23:05.508000, 2026-05-08T11:23:05.508000]\n\n--- Limitations ---\n- ABS ECU (Channel B) data not present in this log",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 68274.51237477362,
+    "latency_ms_llm": 511.79287396371365,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 32.78488852083683,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 78.15070077776909,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 55.18493428826332,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 260.98088175058365,
+      "is_error": false
+     },
+     {
+      "name": "read_window",
+      "input": {},
+      "latency_ms": 67.75775738060474,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 16.933711245656013,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 7,
+    "obd_signal_citations": [
+     {
+      "signal": "A_KL_COOLANT_TEMP",
+      "time_range": [
+       "2026-05-08T11:23:05.508000",
+       "2026-05-08T11:23:05.508000"
+      ],
+      "value": 76.0,
+      "stat": null,
+      "units": "°C"
+     }
+    ],
+    "obd_dtc_citations": [],
+    "surfaced_images": []
+   },
+   "grade": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 0.95,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 0.9924999999999999,
+    "reasoning": "Judge (0.95): The system output correctly identifies the first crossing of 75°C at 11:23:05 (with precise timestamp 11:23:05.508000), matching the golden answer's approximate time. It also correctly states the temperature remained above 75°C for the rest of the trip, consistent with the single contiguous window described in the golden. The additional detail about the temperature being exactly 75.00°C just prior to crossing, and the peak of 89.00°C, adds useful context without contradicting the golden answer."
+   },
+   "item": {
+    "status": "ok",
+    "judge_attempts": 1,
+    "run_seconds": 68.43,
+    "judge_seconds": 13.12,
+    "stopped_reason": "complete",
+    "requests": 7,
+    "tool_calls": 6,
+    "total_tokens": 37275,
+    "wall_s": 68.27,
+    "nudged": false,
+    "thinking_chars": 0
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-event-finding-002",
+    "category": "component",
+    "question_type": "event_finding",
+    "difficulty": "hard",
+    "question": "When was the first time the engine RPM exceeded 3500 during this trip?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "The K-Line RPM (A_KL_RPM) first exceeded 3500 at approximately 11:20:50, very early in the trip — within the first 10 seconds of capture. The first burst above 3500 was brief, ending at 11:20:52. Multiple subsequent bursts above 3500 occurred throughout the trip, but the question asks about the first.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_signals",
+     "find_events"
+    ],
+    "must_contain": [
+     "3500",
+     "RPM"
+    ],
+    "pitfall_directives": [
+     "The output must not claim RPM never exceeded 3500 during the trip; it crossed 3500 in 7 separate windows.",
+     "The output must not claim the first crossing was after 11:21:30 — the true first crossing is at 11:20:50."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [
+     {
+      "signal": "A_KL_RPM",
+      "stat": null,
+      "value": null,
+      "value_tolerance_rel": 0.05,
+      "time_range": [
+       "2026-05-08T11:20:50",
+       "2026-05-08T11:20:52"
+      ]
+     }
+    ],
+    "expected_dtcs": [],
+    "expected_no_evidence": false,
+    "notes": ""
+   },
+   "result": {
+    "system_label": "obd_agent",
+    "question": "When was the first time the engine RPM exceeded 3500 during this trip?",
+    "output_text": "The engine RPM first exceeded 3500 rpm at 2026-05-08T11:20:50.508, when A_KL_RPM jumped from 1943 rpm to 3647 rpm. This was the first of 7 events where RPM exceeded 3500 during the trip. The maximum RPM recorded during the session was 3906 rpm at 2026-05-08T11:24:08.508.\n\n--- Signal citations (1) ---\nA_KL_RPM = 3647.0 rpm  @ [2026-05-08T11:20:50.508000, 2026-05-08T11:20:50.508000]\n\n--- Limitations ---\n- ABS ECU (Channel B) data not present in this log",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 50288.11180777848,
+    "latency_ms_llm": 400.56814812123775,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 63.996387645602226,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 33.41653011739254,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 30.639642849564552,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 63.20075877010822,
+      "is_error": false
+     },
+     {
+      "name": "read_window",
+      "input": {},
+      "latency_ms": 75.32771676778793,
+      "is_error": false
+     },
+     {
+      "name": "read_window",
+      "input": {},
+      "latency_ms": 58.87925811111927,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 75.10785385966301,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 8,
+    "obd_signal_citations": [
+     {
+      "signal": "A_KL_RPM",
+      "time_range": [
+       "2026-05-08T11:20:50.508000",
+       "2026-05-08T11:20:50.508000"
+      ],
+      "value": 3647.0,
+      "stat": null,
+      "units": "rpm"
+     }
+    ],
+    "obd_dtc_citations": [],
+    "surfaced_images": []
+   },
+   "grade": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 0.95,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 0.9924999999999999,
+    "reasoning": "Judge (0.95): The system output correctly identifies the first time RPM exceeded 3500 at 2026-05-08T11:20:50.508, matching the golden answer's ~11:20:50 timestamp. It also correctly notes there were 7 total events where RPM exceeded 3500, consistent with the golden's mention of multiple subsequent bursts. The system provides additional useful detail (the jump from 1943 to 3647 rpm) but omits the golden's note that the first burst ended at 11:20:52, which is a minor omission."
+   },
+   "item": {
+    "status": "ok",
+    "judge_attempts": 1,
+    "run_seconds": 50.45,
+    "judge_seconds": 14.12,
+    "stopped_reason": "complete",
+    "requests": 8,
+    "tool_calls": 7,
+    "total_tokens": 43429,
+    "wall_s": 50.29,
+    "nudged": false,
+    "thinking_chars": 0
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-signal-stats-001",
+    "category": "component",
+    "question_type": "signal_statistics",
+    "difficulty": "easy",
+    "question": "What was the peak engine RPM during this trip, and when did it occur?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "Peak engine RPM was 3906 on the K-Line standardized signal (A_KL_RPM), reached at approximately 11:24:08 during a brief burst near the end of the trip. The Yamaha-proprietary A_YAM_RPM column shows a slightly higher peak of 4014 at the same timestamp, reflecting a different sampling source for the same physical quantity. The K-Line value is the canonical answer for standard OBD-II reporting; the proprietary reading is supplementary.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_signals",
+     "get_signal_stats"
+    ],
+    "must_contain": [
+     "RPM"
+    ],
+    "pitfall_directives": [
+     "The output must not report a peak RPM above 4500 rpm — the fixture's true maxima are 3906 (A_KL_RPM) and 4014 (A_YAM_RPM); anything higher is fabrication.",
+     "The output must not claim there is only one RPM column when both A_KL_RPM and A_YAM_RPM are present in the log."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [
+     {
+      "signal": "A_KL_RPM",
+      "stat": "max",
+      "value": 3906.0,
+      "value_tolerance_rel": 0.01,
+      "time_range": null
+     }
+    ],
+    "expected_dtcs": [],
+    "expected_no_evidence": false,
+    "notes": "Multi-source policy: standard signal canonical; proprietary acceptable as supplementary. Pitfall calibrated to allow either source's reading."
+   },
+   "result": {
+    "system_label": "obd_agent",
+    "question": "What was the peak engine RPM during this trip, and when did it occur?",
+    "output_text": "The peak engine RPM during this trip was 3906 rpm (A_KL_RPM) and 4014 rpm (A_YAM_RPM), both occurring at 2026-05-08T11:24:08.508000. The two RPM signals from the K-Line engine ECU and Yamaha proprietary channel show slightly different values but agree on the timing of the peak. The peak was sustained for approximately 3 seconds (11:24:08 to 11:24:10) before dropping back down.\n\n--- Signal citations (2) ---\nA_KL_RPM (max) = 3906.0 rpm  @ [2026-05-08T11:24:08.508000, 2026-05-08T11:24:08.508000]\nA_YAM_RPM (max) = 4014.0 rpm  @ [2026-05-08T11:24:08.508000, 2026-05-08T11:24:08.508000]\n\n--- Limitations ---\n- ABS ECU (Channel B) data not present in this log\n- Two RPM signals available (A_KL_RPM and A_YAM_RPM) with slightly different values",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 31532.19722211361,
+    "latency_ms_llm": 199.5985135436058,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 29.838422313332558,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 36.68258897960186,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 63.463080674409866,
+      "is_error": false
+     },
+     {
+      "name": "read_window",
+      "input": {},
+      "latency_ms": 69.61442157626152,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 5,
+    "obd_signal_citations": [
+     {
+      "signal": "A_KL_RPM",
+      "time_range": [
+       "2026-05-08T11:24:08.508000",
+       "2026-05-08T11:24:08.508000"
+      ],
+      "value": 3906.0,
+      "stat": "max",
+      "units": "rpm"
+     },
+     {
+      "signal": "A_YAM_RPM",
+      "time_range": [
+       "2026-05-08T11:24:08.508000",
+       "2026-05-08T11:24:08.508000"
+      ],
+      "value": 4014.0,
+      "stat": "max",
+      "units": "rpm"
+     }
+    ],
+    "obd_dtc_citations": [],
+    "surfaced_images": []
+   },
+   "grade": {
+    "section_recall": 1.0,
+    "claim_precision": 0.5,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 0.85,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 0.9275,
+    "reasoning": "Judge (0.85): The system correctly identifies both peak RPM values (3906 for A_KL_RPM, 4014 for A_YAM_RPM) and the correct timestamp of 11:24:08, matching the golden answer's core facts. It also properly acknowledges both RPM columns and their different sampling sources. However, it omits the golden's key contextual point that the K-Line value is the canonical answer for standard OBD-II reporting and the proprietary reading is supplementary, leaving the technician without clear guidance on which value to prioritize."
+   },
+   "item": {
+    "status": "ok",
+    "judge_attempts": 1,
+    "run_seconds": 31.66,
+    "judge_seconds": 13.08,
+    "stopped_reason": "complete",
+    "requests": 5,
+    "tool_calls": 4,
+    "total_tokens": 25273,
+    "wall_s": 31.53,
+    "nudged": false,
+    "thinking_chars": 0
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-signal-stats-002",
+    "category": "component",
+    "question_type": "signal_statistics",
+    "difficulty": "medium",
+    "question": "What was the vehicle's speed profile during this trip — typical and maximum?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "Vehicle speed during the 4-minute-16-second trip ranged from 0 to 15 km/h, with a mean of approximately 7.6 km/h. The speed was modest throughout, consistent with low-speed urban riding or a yard test rather than highway operation. The p95 was 14 km/h.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_signals",
+     "get_signal_stats"
+    ],
+    "must_contain": [
+     "15",
+     "speed"
+    ],
+    "pitfall_directives": [
+     "The output must not report a maximum speed above 25 km/h — the fixture's true max is 15 km/h.",
+     "The output must not characterize this trip as highway operation; the speed profile is clearly low-speed."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [
+     {
+      "signal": "A_KL_SPEED",
+      "stat": "max",
+      "value": 15.0,
+      "value_tolerance_rel": 0.01,
+      "time_range": null
+     },
+     {
+      "signal": "A_KL_SPEED",
+      "stat": "mean",
+      "value": 7.6,
+      "value_tolerance_rel": 0.1,
+      "time_range": null
+     }
+    ],
+    "expected_dtcs": [],
+    "expected_no_evidence": false,
+    "notes": ""
+   },
+   "result": {
+    "system_label": "obd_agent",
+    "question": "What was the vehicle's speed profile during this trip — typical and maximum?",
+    "output_text": "During this 4-minute 16-second trip, the vehicle's speed ranged from 0 km/h to a maximum of 15 km/h. The mean speed was 7.6 km/h with a median (p50) of 8.0 km/h. The 25th percentile was 4.75 km/h and the 75th percentile was 11.0 km/h, indicating most of the trip was conducted at low speeds. The vehicle reached its maximum speed of 15 km/h on three brief occasions (each lasting ~2 seconds), with the first occurrence at 11:21:11. The vehicle was stationary (0 km/h) for two periods: 8 seconds at the start of the trip and 21 seconds near the end.\n\n--- Signal citations (3) ---\nA_KL_SPEED (max) = 15.0 km/h  @ [2026-05-08T11:20:40.508000, 2026-05-08T11:24:56.508000]\nA_KL_SPEED (mean) = 7.6094 km/h  @ [2026-05-08T11:20:40.508000, 2026-05-08T11:24:56.508000]\nA_KL_SPEED (p50) = 8.0 km/h  @ [2026-05-08T11:20:40.508000, 2026-05-08T11:24:56.508000]\n\n--- Limitations ---\n- ABS ECU (Channel B) data absent — no CAN-based speed signal available\n- Speed data sourced from Engine ECU K-Line only (A_KL_SPEED)",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 62213.72338011861,
+    "latency_ms_llm": 382.45467096567154,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {},
+      "latency_ms": 34.87593121826649,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 79.45840433239937,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 42.4537118524313,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {},
+      "latency_ms": 72.31587916612625,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {},
+      "latency_ms": 153.35074439644814,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 6,
+    "obd_signal_citations": [
+     {
+      "signal": "A_KL_SPEED",
+      "time_range": [
+       "2026-05-08T11:20:40.508000",
+       "2026-05-08T11:24:56.508000"
+      ],
+      "value": 15.0,
+      "stat": "max",
+      "units": "km/h"
+     },
+     {
+      "signal": "A_KL_SPEED",
+      "time_range": [
+       "2026-05-08T11:20:40.508000",
+       "2026-05-08T11:24:56.508000"
+      ],
+      "value": 7.6094,
+      "stat": "mean",
+      "units": "km/h"
+     },
+     {
+      "signal": "A_KL_SPEED",
+      "time_range": [
+       "2026-05-08T11:20:40.508000",
+       "2026-05-08T11:24:56.508000"
+      ],
+      "value": 8.0,
+      "stat": "p50",
+      "units": "km/h"
+     }
+    ],
+    "obd_dtc_citations": [],
+    "surfaced_images": []
+   },
+   "grade": {
+    "section_recall": 1.0,
+    "claim_precision": 0.6666666666666666,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 0.95,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 0.9591666666666666,
+    "reasoning": "Judge (0.95): The system output correctly reports all key speed profile facts: max 15 km/h, mean 7.6 km/h, range 0–15 km/h, and trip duration of 4 minutes 16 seconds, matching the golden answer. It adds useful detail (percentiles, timing of max-speed events, stationary periods) and correctly characterizes the trip as low-speed. The only minor gaps are the absence of the p95 value (14 km/h) and the lack of an explicit 'urban/yard test rather than highway' characterization, though 'most of the trip was conducted at low speeds' conveys the same substance."
+   },
+   "item": {
+    "status": "ok",
+    "judge_attempts": 1,
+    "run_seconds": 62.35,
+    "judge_seconds": 23.09,
+    "stopped_reason": "complete",
+    "requests": 6,
+    "tool_calls": 5,
+    "total_tokens": 30051,
+    "wall_s": 62.21,
+    "nudged": false,
+    "thinking_chars": 0
+   }
+  }
+ ]
+}
