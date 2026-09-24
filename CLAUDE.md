@@ -366,7 +366,7 @@ re-queued and rerun. Queue ops: `bash stf_v3/scripts/queue_ops.sh status|failed|
 cd ~/stf_ai_diagnosis_platform_v1 && git fetch origin && git checkout <branch> && git pull origin <branch>
 bash stf_v3/scripts/isolation_check.sh snapshot                       # V1/V2 baseline
 cd infra && GIT_COMMIT=$(git rev-parse HEAD) ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml build && cd ..
-~/.local/bin/podman-compose -p stf_v3 -f infra/docker-compose.v3.yml -f infra/docker-compose.v3.polyu.yml run --rm stf-v3-migrate alembic upgrade head
+~/.local/bin/podman-compose --profile migrate -p stf_v3 -f infra/docker-compose.v3.yml -f infra/docker-compose.v3.polyu.yml run --rm stf-v3-migrate alembic upgrade head   # --profile migrate is required: without it podman-compose 1.5 only warns 'missing services' and exits 0
 cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down &&   ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker && cd ..
 podman exec stf-nginx nginx -t && podman exec stf-nginx nginx -s reload   # only if nginx.conf changed
 systemctl --user restart stf-v3-gpu-worker && bash stf_v3/gpu_worker/install.sh --check   # host worker on the new code (PROD-06)
@@ -386,7 +386,7 @@ Podman 3.4 gotcha applies: always `down` + `up`, never trust `up -d --build`.
 image whose commit label differs from `git rev-parse HEAD`.
 
 **Main deployment** — same as above minus the smoke DB, after merging:
-pull main → build with `GIT_COMMIT` → `run --rm stf-v3-migrate alembic upgrade head`
+pull main → build with `GIT_COMMIT` → `--profile migrate … run --rm stf-v3-migrate alembic upgrade head`
 → `down` + `up -d stf-v3-api stf-v3-worker` → `deploy_check.sh` → `isolation_check.sh compare`.
 
 **CI** (`.github/workflows/v3.yml`, V3 paths only): unit + contract

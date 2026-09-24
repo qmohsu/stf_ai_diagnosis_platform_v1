@@ -4,14 +4,18 @@
 # all via configuration.  Never merge this into docker-compose.yml.
 #
 # Build (GIT_COMMIT is baked into the image label for deploy_check.sh):
-#   GIT_COMMIT=$(git rev-parse HEAD) podman-compose \
+#   GIT_COMMIT=$(git rev-parse HEAD) podman-compose -p stf_v3 \
 #     -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml build
-# Migrate (owner role):
-#   podman-compose -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml \
+# Migrate (owner role; the service sits in the `migrate` profile, so
+# --profile migrate is required -- without it podman-compose 1.5 only
+# warns "missing services" and exits 0):
+#   podman-compose --profile migrate -p stf_v3 \
+#     -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml \
 #     run --rm stf-v3-migrate alembic upgrade head
 # Run (runtime role):
-#   podman-compose -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml \
+#   podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml \
 #     up -d stf-v3-api stf-v3-worker
+# Always pass -p stf_v3: without it V3 lands in the V1/V2 pod.
 #
 # Variables come from infra/.env on the server (never committed):
 #   STF_V3_DATABASE_URL, STF_V3_APP_DATABASE_URL, STF_V3_JWT_SECRET
