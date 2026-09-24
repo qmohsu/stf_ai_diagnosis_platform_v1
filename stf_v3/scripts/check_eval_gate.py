@@ -48,7 +48,7 @@ THRESHOLDS = "stf_v3/evals/thresholds.yaml"
 
 
 def _git(repo: Path, *args: str, check: bool = True) -> str:
-    res = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
+    res = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True, encoding="utf-8")
     if check and res.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)}: {res.stderr.strip()}")
     return res.stdout
