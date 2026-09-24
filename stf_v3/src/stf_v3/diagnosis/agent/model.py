@@ -13,7 +13,14 @@ the explicit ``llm_profile`` setting):
 * ``qwen-ollama`` -- Qwen served by Ollama: thinking cannot be disabled on
   ``/v1`` (it arrives in a separate field and is discarded); PROD-08
   budgets.
-* ``generic``     -- anything else, including every cloud model: no
+* ``qwen-openrouter`` -- a Qwen model reached through OpenRouter (the
+  cloud comparison, PROD-10 D5 follow-up; the product path reaches it
+  only behind ``STF_V3_LLM_ALLOW_CLOUD``): thinking switched off
+  with OpenRouter's own ``reasoning: {enabled: false}`` (it ignores
+  ``chat_template_kwargs``), optionally pinned to one hosting provider
+  (``STF_V3_CLOUD_LLM_PROVIDER``), and the qwen-vllm budgets -- so a run
+  of the same model is comparable with the local one.
+* ``generic``     -- anything else, including every other cloud model: no
   vendor-specific request fields at all (FM-29).
 
 Per-profile budget defaults live here as well (FM-8): a setting left at
@@ -47,8 +54,9 @@ logger = structlog.get_logger(__name__)
 
 PROFILE_QWEN_VLLM = "qwen-vllm"
 PROFILE_QWEN_OLLAMA = "qwen-ollama"
+PROFILE_QWEN_OPENROUTER = "qwen-openrouter"
 PROFILE_GENERIC = "generic"
-PROFILES = (PROFILE_QWEN_VLLM, PROFILE_QWEN_OLLAMA, PROFILE_GENERIC)
+PROFILES = (PROFILE_QWEN_VLLM, PROFILE_QWEN_OLLAMA, PROFILE_QWEN_OPENROUTER, PROFILE_GENERIC)
 
 _OLLAMA_PORT = 11434
 
@@ -61,8 +69,9 @@ VLLM_NO_THINKING_EXTRA_BODY: Dict[str, Any] = {
 # Budget / request defaults per profile (FM-8).  The Ollama row is
 # PROD-08's (36 s per call with thinking on); the vLLM row was set from
 # the PROD-09 server runs, its sub-agent gates re-set by the PROD-10 golden
-# calibration (see the dev plan entries); cloud models get the
-# generic row.  Every value can be overridden by its ``STF_V3_*`` setting.
+# calibration (see the dev plan entries); the same Qwen through OpenRouter
+# takes the vLLM row (comparability); other cloud models get the generic
+# row.  Every value can be overridden by its ``STF_V3_*`` setting.
 _PROFILE_DEFAULTS: Dict[str, Dict[str, Any]] = {
     PROFILE_QWEN_VLLM: dict(
         wall_clock_s=900.0, request_limit=60, tool_calls_limit=100, total_tokens_limit=1_000_000,
@@ -83,6 +92,7 @@ _PROFILE_DEFAULTS: Dict[str, Dict[str, Any]] = {
         subagent_temperature=0.2, llm_max_tokens=8192, llm_temperature=0.3, request_timeout_s=180.0,
     ),
 }
+_PROFILE_DEFAULTS[PROFILE_QWEN_OPENROUTER] = dict(_PROFILE_DEFAULTS[PROFILE_QWEN_VLLM])
 
 
 class ModelConfigError(RuntimeError):
@@ -143,8 +153,8 @@ def resolve_profile(base_url: str, model_name: str, explicit: str = "auto") -> s
     ``explicit`` other than ``auto`` is validated and returned as is.
     Otherwise: a Qwen model on a local endpoint is ``qwen-ollama`` when the
     endpoint is Ollama's port or the name carries an Ollama tag
-    (``qwen3.5:27b-q8_0``), else ``qwen-vllm``; everything else --
-    including every non-local endpoint -- is ``generic``.  A local
+    (``qwen3.5:27b-q8_0``), else ``qwen-vllm``; a Qwen model on OpenRouter
+    is ``qwen-openrouter``; everything else is ``generic``.  A local
     endpoint that lands on ``generic`` is logged as a warning because it
     means no thinking control at all.
     """
@@ -160,6 +170,8 @@ def resolve_profile(base_url: str, model_name: str, explicit: str = "auto") -> s
         if port == _OLLAMA_PORT or ollama_tag:
             return PROFILE_QWEN_OLLAMA
         return PROFILE_QWEN_VLLM
+    if not local and "qwen" in name and (urlsplit(base_url).hostname or "").endswith("openrouter.ai"):
+        return PROFILE_QWEN_OPENROUTER
     if local:
         logger.warning("model.profile_generic", base_url=base_url, model=model_name,
                        hint="no thinking control for this model; set STF_V3_LLM_PROFILE explicitly")
@@ -261,6 +273,12 @@ def model_settings(
         if getattr(settings, "llm_thinking", False):
             kwargs["enable_thinking"] = True   # PROD-10 comparison run only (FM-45)
         ms["extra_body"] = {"chat_template_kwargs": kwargs}
+    elif name == PROFILE_QWEN_OPENROUTER:
+        body: Dict[str, Any] = {"reasoning": {"enabled": bool(getattr(settings, "llm_thinking", False))}}
+        pin = (getattr(settings, "cloud_llm_provider", "") or "").strip()
+        if pin:
+            body["provider"] = {"order": [pin], "allow_fallbacks": False}
+        ms["extra_body"] = body
     return ms
 
 

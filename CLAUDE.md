@@ -317,7 +317,9 @@ that end a run with a PARTIAL report (never an exception), and
 source is `STF_V3_LLM_BASE_URL/MODEL/API_KEY` — by default the server's
 **vLLM** (`Qwen/Qwen3.6-27B-FP8` on 127.0.0.1:8010, PROD-09); the
 adapter profile (`STF_V3_LLM_PROFILE=auto`: `qwen-vllm` / `qwen-ollama` /
-`generic`) switches thinking off per request on vLLM, never sends thinking
+`qwen-openrouter` (same Qwen via OpenRouter, `reasoning.enabled=false`, local
+budgets; eval pre-check `--cloud --cloud-model qwen/qwen3.6-27b
+--cloud-provider DeepInfra`, never counts for the gate) / `generic`) switches thinking off per request on vLLM, never sends thinking
 back, and sets per-profile budgets; a non-local URL is refused unless
 `STF_V3_LLM_ALLOW_CLOUD=true` (prompts then carry a VIN pseudonym) and
 `deploy_check.sh` check 9 fails on it — the cloud comparison model is
