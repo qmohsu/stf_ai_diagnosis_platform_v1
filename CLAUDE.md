@@ -339,15 +339,17 @@ baseline 2026-09-24: manual 0.878, OBD 0.885).  Run it on the server with
 never inside stf-v3-api; runbook §5); the user alone adds `eval-exempt` /
 `baseline-reset` labels.  No diagnosis endpoint,
 job, SSE or persistence yet — that is PROD-11.
-**vLLM is started on demand since 2026-09-24** (shared GPUs: it was stopped
-to free them for another team) — start it for evals / verification, stop it
-after; while it is off, run `deploy_check.sh` with `LLM_CHECK=skip
-LLM_CHECK_REASON=…`.  **vLLM lifecycle is separate from V3 deploys**: `bash infra/vllm_ctl.sh
+**vLLM policy (user decision 2026-09-24): started on demand, never
+resident** — revisit only when we provide a stable service or the hardware
+is upgraded.  Start it only when both GPUs are free (shared server; check
+`nvidia-smi`), stop it right after evals / verification; never install the
+`stf-llm.service` auto-start unit.  While it is off (the normal state), run
+`deploy_check.sh` with `LLM_CHECK=skip LLM_CHECK_REASON=…`.  **vLLM lifecycle is separate from V3 deploys**: `bash infra/vllm_ctl.sh
 start|wait|status|stop|logs|install-unit` (compose project `stf_llm`,
 file `infra/docker-compose.vllm.yml`, cold start ≈ 10 min, weights from the
 `vllm_hf_cache` volume offline, GPU share 0.80 so MinerU still fits on
 GPU 1).  Never start it any other way (it would land in V1/V2's pod).
-After a server reboot: vLLM → `stf-v3-gpu-worker` → V3 containers
+After a server reboot: `stf-v3-gpu-worker` → V3 containers (vLLM stays off until needed)
 (runbook §4.1).  Fallback to Ollama and back = config only, but the two
 must never hold GPU memory at the same time (runbook §4.4).
 The manual library lives in `stf_v3_manuals` (`/app/data/manuals`, PROD-06),
