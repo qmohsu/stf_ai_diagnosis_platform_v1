@@ -108,6 +108,10 @@ class Settings(BaseSettings):
     cloud_llm_base_url: str = "https://openrouter.ai/api/v1"
     cloud_llm_model: str = "deepseek/deepseek-v3.2"
     cloud_llm_api_key: str = ""
+    # OpenRouter hosting provider to pin for the qwen-openrouter profile
+    # (e.g. "DeepInfra"); empty = OpenRouter picks per request.  Comparison
+    # runs only (PROD-10 D5 follow-up).
+    cloud_llm_provider: str = ""
     # Budgets (every gate is a setting, FM-28).  None = the adapter
     # profile's default: vLLM, Ollama and cloud differ (FM-8).
     agent_wall_clock_s: Optional[float] = None

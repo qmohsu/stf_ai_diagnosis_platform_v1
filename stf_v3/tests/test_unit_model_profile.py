@@ -43,7 +43,9 @@ CLOUD = "https://openrouter.ai/api/v1"
         (OLLAMA, "qwen3.5:27b-q8_0", "auto", m.PROFILE_QWEN_OLLAMA),           # Ollama port
         (VLLM, "qwen3.5:27b-q8_0", "auto", m.PROFILE_QWEN_OLLAMA),             # Ollama tag on another port
         (VLLM, "llama-3-70b", "auto", m.PROFILE_GENERIC),                      # unknown local model
-        (CLOUD, "qwen/qwen3.5-plus", "auto", m.PROFILE_GENERIC),               # cloud is always generic
+        (CLOUD, "qwen/qwen3.6-27b", "auto", m.PROFILE_QWEN_OPENROUTER),        # same model via API (D5)
+        (CLOUD, "qwen/qwen3.5-plus", "auto", m.PROFILE_QWEN_OPENROUTER),       # any Qwen on OpenRouter
+        ("https://dashscope.example.com/v1", "qwen-plus", "auto", m.PROFILE_GENERIC),  # other cloud: generic
         (CLOUD, "deepseek/deepseek-v3.2", "auto", m.PROFILE_GENERIC),
         (VLLM, "Qwen/Qwen3.6-27B-FP8", "qwen-ollama", m.PROFILE_QWEN_OLLAMA),  # explicit wins
     ],
@@ -210,7 +212,12 @@ def test_product_path_to_cloud_needs_the_explicit_switch_and_pseudonymises() -> 
         m.build_model(Settings(llm_base_url=CLOUD, llm_api_key="k"))
     allowed = m.build_model(Settings(llm_base_url=CLOUD, llm_api_key="k", llm_allow_cloud=True))
     src = m.source_of(allowed)
-    assert src is not None and src.kind == "cloud" and src.profile == m.PROFILE_GENERIC
+    # The local model name on OpenRouter resolves to qwen-openrouter (thinking
+    # off, local budgets) -- still recorded as cloud, still behind the switch.
+    assert src is not None and src.kind == "cloud" and src.profile == m.PROFILE_QWEN_OPENROUTER
+    other = m.source_of(m.build_model(Settings(llm_base_url=CLOUD, llm_model="deepseek/deepseek-v3.2",
+                                               llm_api_key="k", llm_allow_cloud=True)))
+    assert other is not None and other.profile == m.PROFILE_GENERIC
     assert not m.model_is_local(Settings(llm_base_url=CLOUD, llm_allow_cloud=True))
     assert not m.model_is_local(Settings(), cloud=True)
     deps = make_deps(model_is_local=False)

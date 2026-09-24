@@ -2,7 +2,7 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.5（PROD-10：Golden 评测一章） |
+| 版本 | v0.6（PROD-10 D5 后续：基线重置示例的 OBD 验收线改为 0.884；同模型 API 预检） |
 | 日期 | 2026-09-24 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
@@ -149,7 +149,7 @@ podman cp stf-v3-api:/tmp/runs ~/prod09_runs/     # 报告 .report.md / .report.
 | 变量 | 默认 | 说明 |
 |---|---|---|
 | `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | `http://127.0.0.1:8010/v1` / `Qwen/Qwen3.6-27B-FP8` / `none` | 唯一模型来源（OpenAI 兼容口）= §4 的 vLLM；`LLM_MODEL` 必须与 vLLM 的 `--served-model-name` 逐字相同。回退 Ollama：`http://127.0.0.1:11434/v1` / `qwen3.5:27b-q8_0` / `ollama`（§4.4） |
-| `LLM_PROFILE` | auto | 适配档：`auto` 按地址 + 模型名选（qwen + vLLM → `qwen-vllm`：每请求 `enable_thinking=false`、思考不回灌、工具不加严格模式；qwen + Ollama 端口或带 `:` 标签 → `qwen-ollama`；其余 / 云端 → `generic`）；也可显式指定三者之一 |
+| `LLM_PROFILE` | auto | 适配档：`auto` 按地址 + 模型名选（qwen + vLLM → `qwen-vllm`：每请求 `enable_thinking=false`、思考不回灌、工具不加严格模式；qwen + Ollama 端口或带 `:` 标签 → `qwen-ollama`；qwen + OpenRouter → `qwen-openrouter`：`reasoning.enabled=false`、预算同 `qwen-vllm`、可用 `CLOUD_LLM_PROVIDER` 固定托管方；其余云端 → `generic`）；也可显式指定其一 |
 | `LLM_MAX_TOKENS` / `LLM_TEMPERATURE` / `LLM_REQUEST_TIMEOUT_S` | 档默认（8192 / 0.3 / vLLM 180 s · Ollama 300 s） | 单次请求参数；不设即取档默认 |
 | `LLM_ALLOW_CLOUD` | false | 非本机地址一律拒绝启动，除非显式打开；打开后提示词里 VIN 自动换成 `V-xxxxxxxx` 假名 |
 | `CLOUD_LLM_ENABLED/BASE_URL/MODEL/API_KEY` | 关 / OpenRouter / `deepseek/deepseek-v3.2` / 空 | 云端对照口，只由真跑脚本 `--cloud` 进入；`API_KEY` 为空时用手册摘要那把密钥（`STF_V3_OPENROUTER_API_KEY`，别名 `OPENROUTER_API_KEY`；§4.5） |
@@ -273,6 +273,8 @@ cat ~/stf_v3_evals/<容器名>/exit_code                             # 0 有效 
 bash infra/vllm_ctl.sh stop                                       # 评测完停机，把 GPU 还给别人
 ```
 
+**显卡被占时的同模型预检**（PROD-10 D5 后续）：`--cloud --cloud-model qwen/qwen3.6-27b --cloud-provider DeepInfra --purpose comparison --lanes obd`——同一 Qwen3.6-27B（FP8 托管）经 OpenRouter，关思考、预算同本地；只作参考，成绩单记为云端，**永不计入门槛**，合并仍须本地门槛评测。
+
 常用参数：`--lanes manual|obd`、`--ids lookup-001,cross-003`（按题号结尾匹配；两条 lane 同名时两边都跑）、`--thinking on --budget-scale 2`（开思考对照）、`--cloud`（deepseek 对照，不做预热、VIN 用假名）、`--purpose calibration --budget-scale 2`（预算校准）、`--wait`（等跑完再返回）。输出目录：`<base>.json`（完整）、`.slim.json`（精简，门槛 PR 入库用）、`.md`（摘要）、`.progress.jsonl`、`run.log`、`preflight.txt`。
 
 前置检查会拒跑（退出码 4）：工作树有未提交改动；镜像提交号 ≠ HEAD（先重建镜像）；已有一轮在跑；某张卡 > 42 GB（Ollama / MinerU / 其他租户占着）；Ollama 驻留了模型；vLLM 正在处理请求；V3 与 V2 的手册副本哈希不同（打印 DIFFERENT）；容器内分词器、模型端点或判卷模型不可用。
@@ -296,4 +298,4 @@ bash infra/vllm_ctl.sh stop                                       # 评测完停
 
 ### 5.6 基线重置
 
-模型、判卷、vLLM 版本或手册库本身换了，分数整体平移：开一个**只改** `thresholds.yaml` + 新增两份基线成绩单的 PR（`python -m stf_v3.evals accept --scorecards a.json b.json --lines manual_agent=0.831,obd_agent=0.938 --write-thresholds stf_v3/evals/thresholds.yaml`），由用户加 `baseline-reset` 标签。同一 PR 里再动受管代码 CI 会红。
+模型、判卷、vLLM 版本或手册库本身换了，分数整体平移：开一个**只改** `thresholds.yaml` + 新增两份基线成绩单的 PR（`python -m stf_v3.evals accept --scorecards a.json b.json --lines manual_agent=0.831,obd_agent=0.884 --write-thresholds stf_v3/evals/thresholds.yaml`），由用户加 `baseline-reset` 标签。同一 PR 里再动受管代码 CI 会红。

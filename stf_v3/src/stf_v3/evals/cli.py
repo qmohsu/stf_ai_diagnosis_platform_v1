@@ -67,6 +67,10 @@ def _parse(argv: Optional[Sequence[str]]) -> argparse.Namespace:
     r.add_argument("--lanes", default="manual,obd")
     r.add_argument("--thinking", choices=("off", "on"), default="off")
     r.add_argument("--cloud", action="store_true")
+    r.add_argument("--cloud-model", default=None,
+                   help="with --cloud: OpenRouter model id (e.g. qwen/qwen3.6-27b = the local model via API)")
+    r.add_argument("--cloud-provider", default=None,
+                   help="with --cloud: pin one OpenRouter hosting provider (e.g. DeepInfra)")
     r.add_argument("--budget-scale", type=float, default=1.0)
     r.add_argument("--concurrency", type=int, default=6)
     r.add_argument("--judge-concurrency", type=int, default=4)
@@ -195,6 +199,12 @@ def cmd_run(args: argparse.Namespace) -> int:
         return refuse(f"unknown lane in {args.lanes!r}")
     if args.cloud and args.thinking == "on":
         return refuse("--thinking on applies to the local vLLM profile only")
+    if (args.cloud_model or args.cloud_provider) and not args.cloud:
+        return refuse("--cloud-model / --cloud-provider need --cloud")
+    if args.cloud_model:
+        settings.cloud_llm_model = args.cloud_model
+    if args.cloud_provider:
+        settings.cloud_llm_provider = args.cloud_provider
     opts = RunOptions(purpose=args.purpose, lanes=lanes, thinking=args.thinking == "on", cloud=args.cloud,
                       budget_scale=args.budget_scale, concurrency=args.concurrency,
                       judge_concurrency=args.judge_concurrency,
@@ -237,6 +247,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     config = {
         "model": name, "source": source_label(model), "profile": profile,
         "endpoint_host": src.host if src else None, "thinking": opts.thinking, "budget_scale": opts.budget_scale,
+        "cloud_provider": (settings.cloud_llm_provider or None) if opts.cloud else None,
         "budgets": {"subagent_wall_clock_s": b.subagent_wall_clock_s,
                     "subagent_request_limit": b.subagent_request_limit,
                     "subagent_max_tokens": settings.subagent_max_tokens,
