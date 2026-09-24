@@ -95,6 +95,7 @@ class Budgets:
     subagent_max_tokens: int = 12_288
     subagent_temperature: float = 0.2
     tool_result_max_tokens: int = 2000
+    subagent_tool_result_max_tokens: int = 16_000
     compact_threshold_tokens: int = 60_000
     llm_max_tokens: int = 8192
     llm_temperature: float = 0.3
@@ -121,6 +122,7 @@ class Budgets:
             subagent_max_tokens=pick(s.subagent_max_tokens, "subagent_max_tokens"),
             subagent_temperature=pick(s.subagent_temperature, "subagent_temperature"),
             tool_result_max_tokens=s.tool_result_max_tokens,
+            subagent_tool_result_max_tokens=getattr(s, "subagent_tool_result_max_tokens", 16_000),
             compact_threshold_tokens=s.compact_threshold_tokens,
             llm_max_tokens=pick(s.llm_max_tokens, "llm_max_tokens"),
             llm_temperature=pick(s.llm_temperature, "llm_temperature"),

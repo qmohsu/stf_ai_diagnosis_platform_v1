@@ -48,6 +48,7 @@ class ManualAgentResult(BaseModel):
     iterations: int = 0
     total_tokens: int = 0
     stopped_reason: StoppedReason = "complete"
+    nudged: bool = False   # PROD-10: the one-shot "finish" nudge fired (eval stats)
 
 
 class SignalCitation(BaseModel):
@@ -90,3 +91,4 @@ class OBDAgentResult(BaseModel):
     iterations: int = 0
     total_tokens: int = 0
     stopped_reason: StoppedReason = "complete"
+    nudged: bool = False   # PROD-10: the one-shot "finish" nudge fired (eval stats)

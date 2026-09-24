@@ -30,6 +30,9 @@ dependencies = [
     # used for the local vLLM / Ollama endpoint.  No numpy / pandas: the
     # OBD tools are pure Python by design.
     "pydantic-ai-slim[openai]==2.44.0",
+    # PROD-10 golden eval: the V2 scorer counts tokens with cl100k_base
+    # (already in the image via the OpenAI client stack; pinned here).
+    "tiktoken==0.14.0",
 ]
 
 [project.optional-dependencies]
@@ -89,3 +92,18 @@ source_modules = [
     "stf_v3.knowledge.manual_index",
 ]
 forbidden_modules = ["stf_v3.knowledge.pipeline", "fitz"]
+
+[[tool.importlinter.contracts]]
+name = "Production code never imports the golden eval harness (PROD-10)"
+type = "forbidden"
+source_modules = [
+    "stf_v3.main",
+    "stf_v3.diagnosis",
+    "stf_v3.knowledge",
+    "stf_v3.ingest",
+    "stf_v3.vehicles",
+    "stf_v3.auth",
+    "stf_v3.workshops",
+    "stf_v3.jobs",
+]
+forbidden_modules = ["stf_v3.evals"]

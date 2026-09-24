@@ -1,0 +1,2151 @@
+{
+ "description": "PROD-10 T-1 fixture: archived V2 eval records + the sub-agent result reconstructed from each (V2's own mapping reproduces the archived run byte-for-byte) + the deterministic metrics V2's scorer computes today. The V3 copies must match exactly.",
+ "sources": {
+  "manual": "docs/eval-reports/harness234_postfix_reference_20260801.json",
+  "obd": "docs/eval-reports/harness27_obd_rerun.json"
+ },
+ "v2_commit": "9c9e7a9",
+ "manual": [
+  {
+   "entry": {
+    "id": "0a2ba199-665f-41aa-a106-1163cad68d16-adversarial-001",
+    "category": "adversarial",
+    "question_type": "adversarial",
+    "difficulty": "easy",
+    "question": "What is the recommended drive-chain adjustment specification for the MWS-150-A, and how often should the chain be lubricated?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "The premise of this question is incorrect.  The MWS-150-A does NOT use a chain drive — it uses a V 皮帶 (V-belt) continuously variable transmission (CVT).  The service manual provides V-belt replacement reminders (BELT TRIP odometer / V-belt change indicator) and component service procedures for the CVT, but contains no chain-adjustment specification and no chain-lubrication interval, because no such part exists on this vehicle.  A correct answer must recognise that the question is built on a false premise (chain drive) and explain that the actual drive mechanism is a V-belt CVT.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_manuals",
+     "get_manual_toc",
+     "read_manual_section",
+     "read_manual_section",
+     "read_manual_section"
+    ],
+    "must_contain": [
+     "V 皮帶",
+     "no chain"
+    ],
+    "pitfall_directives": [
+     "The output must not invent a chain-adjustment specification or a lubrication interval — the MWS-150-A has no chain drive, and fabricating numbers would mislead the technician.",
+     "The output must not present V-belt service intervals as if they were chain-related — those refer to a fundamentally different drive mechanism (continuously variable transmission belt), and conflating them obscures the premise error.",
+     "The output must not return brake-system, cooling-system, or unrelated content as a substitute for the missing chain spec — the correct response is to explicitly correct the premise, not to surface a tangentially-related section.",
+     "The output must not assert the manual specifies a chain when it does not — silently providing any chain specification implies the manual covers a part that does not exist on this vehicle."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [],
+    "expected_dtcs": [],
+    "expected_no_evidence": false,
+    "notes": "human-authored 2026-05-10 for HARNESS-17 dashboard adversarial bucket.  Tests refusal / premise-correction: the question is plausible-sounding (most motorcycles have chains) but the TRICITY 150 / MWS-150-A uses a V-belt CVT (confirmed via manual mentions of V 皮帶 / BELT TRIP odometer at ~@5901, @7412, @8659).  Empty golden_citations is intentional — there is no manual section that legitimately answers a chain question."
+   },
+   "agent_result": {
+    "summary": "Not found: The Yamaha TRICITY155 (MWS150-A) uses a V-belt automatic transmission system, not a drive chain. Therefore, there is no drive-chain adjustment specification or chain lubrication interval in the manual. The manual specifies V-belt replacement intervals (when the V-belt replacement indicator lights up, typically every 20,000 km) and lubrication intervals for other components such as cables and moving parts (every 4,000 km), but no chain-related maintenance exists for this vehicle.",
+    "citations": [
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "maintenance-desc-一般定期保養-潤滑表",
+      "quote": ""
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "general-desc-v-皮帶更換計程錶-belt-trip",
+      "quote": ""
+     }
+    ],
+    "raw_sections": [
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "maintenance-desc-一般定期保養-潤滑表",
+      "text": "## 一般定期保養 / 潤滑表\n\n註\n\n1. ＊：表示這些項目推薦給山葉服務網檢查保養。\n\n2. 在里程錶實際行駛里程達 24,000 公里後，應再從定期保養表的4,000公里開始，以重複方式追加進行保養。\n\n3. 須做年度檢查之項目，必須每年實施一次。\n\n<!-- recovered text (p80): lines the geometry pass dropped; source = PDF text layer -->\nEAS20022\nEAS30022\nEAS30614\nEAS30615\n\n{'type': 'text', 'content': '註'} {'type': 'text', 'content': '1. 引擎空氣濾清器及V型皮帶箱空氣濾清器'} {'type': 'text', 'content': '• 此種引擎空氣濾清器濾蕊是濕紙式，不可使用壓縮空氣清潔，以免造成損壞。'} {'type': 'text', 'content': '• 當常行駛在多塵與潮濕區域時，須經常性的更換引擎空氣濾清器濾蕊及清潔V型皮帶箱空氣濾清器濾蕊。'}\n\n<table><tr><td colspan=\"2\" rowspan=\"2\">編號</td><td rowspan=\"2\">項目</td><td rowspan=\"2\">檢查或維修內容</td><td colspan=\"6\">實際行駛里程(km)</td><td rowspan=\"2\">年度檢查</td></tr><tr><td>1,000</td><td>4,000</td><td>8,000</td><td>12,000</td><td>16,000</td><td>20,000</td></tr><tr><td>1</td><td>*</td><td>診斷系統檢查</td><td>使用山葉診斷工具進行動態檢查。檢查故障碼。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>2</td><td></td><td>空氣濾清器濾蕊</td><td>更換。</td><td colspan=\"7\">每20,000 km</td></tr><tr><td>3</td><td></td><td>空氣濾清器檢查軟管</td><td>清潔。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>4</td><td>*</td><td>V型皮帶箱空氣濾清器濾蕊</td><td>清潔。必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>5</td><td>*</td><td>前煞車</td><td>檢查作動功能、煞車液量及是否洩漏。必要時更換煞車片。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>6</td><td>*</td><td>後煞車</td><td>檢查作動功能、煞車液量及是否洩漏。檢查煞車把手自由間隙。必要時調整。必要時更換煞車片。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td rowspan=\"2\">7</td><td rowspan=\"2\">*</td><td rowspan=\"2\">煞車軟管</td><td>檢查是否龜裂或損壞。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>更換。</td><td colspan=\"7\">每4年</td></tr><tr><td>8</td><td>*</td><td>煞車液</td><td>更換。</td><td colspan=\"7\">每2年</td></tr><tr><td>9</td><td></td><td>駐車煞車</td><td>檢查作動功能。檢查橡膠護套。檢查鋼索長度。必要時調整。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td rowspan=\"2\">10</td><td rowspan=\"2\">*</td><td rowspan=\"2\">車輪</td><td>檢查失圓度及是否損壞。必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>雙前輪的平衡。</td><td colspan=\"7\">當外胎或車輪更換後</td></tr><tr><td>11</td><td>*</td><td>外胎</td><td>檢查胎紋深度及損壞狀況。必要時更換。檢查冷胎壓狀況。必要時調整。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>12</td><td>*</td><td>車輪軸承</td><td>檢查軸承鬆緊度或損壞狀況。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td rowspan=\"2\">13</td><td rowspan=\"2\">*</td><td rowspan=\"2\">轉向系統</td><td>檢查軸承鬆緊度及轉向順暢度。檢查轉向橫拉桿。必要時更換。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>塗抹鋰皂基黃油潤滑。</td><td colspan=\"7\">每24,000 km</td></tr><tr><td>14</td><td>*</td><td>傾斜系統</td><td>檢查軸承鬆緊度或損壞狀況。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>15</td><td>*</td><td>車體鎖緊度</td><td>確認所有的螺帽、螺栓及螺絲正確鎖緊。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>16</td><td></td><td>前、後煞車把手樞軸</td><td>塗抹矽黃油潤滑。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>17</td><td>*</td><td>連動煞車系統</td><td>塗抹矽黃油潤滑連結樞軸及活動部品。塗抹鋰皂基黃油潤滑鋼索末端。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>18</td><td></td><td>主、側支架</td><td>檢查作動功能。塗抹鋰皂基黃油潤滑。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>19</td><td>*</td><td>側支架開關</td><td>檢查作動功能。必要時更換。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>20</td><td>*</td><td>前叉</td><td>檢查作動功能及是否漏油。必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>21</td><td>*</td><td>緩衝器總成</td><td>·檢查作動功能及是否漏油。·必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>22</td><td></td><td>引擎機油</td><td>·更換(排放機油前先暖機)。·檢查引擎機油量及是否漏油。</td><td colspan=\"7\">當機油更換指示器顯示時</td></tr><tr><td>23</td><td>*</td><td>引擎機油濾網</td><td>·清洗。</td><td>○</td><td></td><td>○</td><td></td><td>○</td><td></td><td></td></tr><tr><td rowspan=\"2\">24</td><td rowspan=\"2\">*</td><td rowspan=\"2\">冷卻系統</td><td>·檢查冷卻液量及是否洩漏。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>·更換。</td><td colspan=\"7\">每3年</td></tr><tr><td rowspan=\"2\">25</td><td rowspan=\"2\">*</td><td rowspan=\"2\">齒輪油</td><td>·檢查是否漏油。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>·更換。</td><td>○</td><td colspan=\"6\">每12,000 km</td></tr><tr><td>26</td><td>*</td><td>V型皮帶</td><td>·更換。</td><td colspan=\"7\">當V型皮帶更換指示器顯示時</td></tr><tr><td>27</td><td>*</td><td>前、後煞車燈開關</td><td>·檢查作動功能。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>28</td><td>*</td><td>活動部品及鋼索</td><td>·潤滑。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>29</td><td>*</td><td>油門握把外殼及鋼索</td><td>·檢查作動功能及自由間隙。·必要時調整油門鋼索自由間隙。·潤滑油門握把外殼及鋼索。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>30</td><td>*</td><td>各照明、訊號及開關</td><td>·檢查作動功能。·調整前燈光束。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>31</td><td>*</td><td>電瓶</td><td>·檢查電瓶電壓是否正常。·清潔樁頭。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr></table>\n\n<!-- rescued region (engine emitted empty table) -->\n|編號|Col2|項目|檢查或維修內容|實際行駛里程（km）|Col6|Col7|Col8|Col9|Col10|\n|---|---|---|---|---|---|---|---|---|---|\n|編號|編號|項目|檢查或維修內容|1,000|4,000|8,000|12,000|16,000|20,000|\n|21|*|緩衝器總成|• 檢查作動功能及是否漏油。<br>• 必要時更換。||○|○|○|○|○|\n|22||引擎機油|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|\n|23|*|引擎機油濾網|• 清洗。|○||○||○||\n|24|*|冷卻系統|• 檢查冷卻液量及是否洩漏。||○|○|○|○|○|\n|24|*|冷卻系統|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|\n|25|*|齒輪油|• 檢查是否漏油。|○|○|○|○|○|○|\n|25|*|齒輪油|• 更換。|○|○|○|○|○|○|\n|26|*|V 型皮帶|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|\n|27|*|前、後煞車燈開關|• 檢查作動功能。|○|○|○|○|○|○|\n|28|*|活動部品及鋼索|• 潤滑。||○|○|○|○|○|\n|29|*|油門握把外殼及鋼<br>索|• 檢查作動功能及自由間隙。<br>• 必要時調整油門鋼索自由間<br>隙。<br>• 潤滑油門握把外殼及鋼索。||○|○|○|○|○|\n|30|*|各照明、訊號及開<br>關|• 檢查作動功能。<br>• 調整前燈光束。|○|○|○|○|○|○|\n\n當機油更換指示器顯示時\n每 12,000 km\n當V 型皮帶更換指示器顯示時\n• 檢查電瓶電壓是否正常。\n• 清潔樁頭。\n年度檢查\n\n## 2. 液壓煞車\n\n• 當分解煞車主缸或卡鉗後，亦須同時更換新煞車液。另應時常檢查煞車液面，必要時添加。\n\n• 每 2 年更換一次煞車主缸及煞車卡鉗的內部零件，並同時更換新的煞車液。\n\n• 每 4 年更換一次煞車軟管。若有龜裂和損壞時，請立即換新。\n\n<!-- recovered text (p82): lines the geometry pass dropped; source = PDF text layer -->\n1. 引擎空氣濾清器及V 型皮帶箱空氣濾清器\n• 此種引擎空氣濾清器濾蕊是濕紙式，不可使用壓縮空氣清潔，以免造成損壞。\n• 當常行駛在多塵與潮濕區域時，須經常性的更換引擎空氣濾清器濾蕊及清潔Ｖ型皮帶箱空氣濾清器濾",
+      "had_images": true
+     }
+    ],
+    "tool_trace": [
+     {
+      "name": "list_manuals",
+      "input": {
+       "vehicle_model": "MWS-150-A"
+      },
+      "latency_ms": 35.46593338251114,
+      "is_error": false
+     },
+     {
+      "name": "list_manuals",
+      "input": {},
+      "latency_ms": 32.585401087999344,
+      "is_error": false
+     },
+     {
+      "name": "get_manual_toc",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 568.6777103692293,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "query": "drive chain",
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 25.58703161776066,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "query": "chain",
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 24.483541026711464,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "query": "鏈條",
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 22.873561829328537,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "query": "傳動",
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 22.250855341553688,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "maintenance-desc-一般定期保養-潤滑表"
+      },
+      "latency_ms": 11.323776096105576,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "query": "V 皮帶",
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 23.14789779484272,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "query": "調整",
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 23.036709055304527,
+      "is_error": false
+     }
+    ],
+    "iterations": 11,
+    "total_tokens": 0,
+    "stopped_reason": "complete"
+   },
+   "archived_result": {
+    "system_label": "manual_agent",
+    "question": "What is the recommended drive-chain adjustment specification for the MWS-150-A, and how often should the chain be lubricated?",
+    "output_text": "Not found: The Yamaha TRICITY155 (MWS150-A) uses a V-belt automatic transmission system, not a drive chain. Therefore, there is no drive-chain adjustment specification or chain lubrication interval in the manual. The manual specifies V-belt replacement intervals (when the V-belt replacement indicator lights up, typically every 20,000 km) and lubrication intervals for other components such as cables and moving parts (every 4,000 km), but no chain-related maintenance exists for this vehicle.\n\n--- Cited sections (1) ---\n\n[maintenance-desc-一般定期保養-潤滑表]\n## 一般定期保養 / 潤滑表\n\n註\n\n1. ＊：表示這些項目推薦給山葉服務網檢查保養。\n\n2. 在里程錶實際行駛里程達 24,000 公里後，應再從定期保養表的4,000公里開始，以重複方式追加進行保養。\n\n3. 須做年度檢查之項目，必須每年實施一次。\n\n<!-- recovered text (p80): lines the geometry pass dropped; source = PDF text layer -->\nEAS20022\nEAS30022\nEAS30614\nEAS30615\n\n{'type': 'text', 'content': '註'} {'type': 'text', 'content': '1. 引擎空氣濾清器及V型皮帶箱空氣濾清器'} {'type': 'text', 'content': '• 此種引擎空氣濾清器濾蕊是濕紙式，不可使用壓縮空氣清潔，以免造成損壞。'} {'type': 'text', 'content': '• 當常行駛在多塵與潮濕區域時，須經常性的更換引擎空氣濾清器濾蕊及清潔V型皮帶箱空氣濾清器濾蕊。'}\n\n<table><tr><td colspan=\"2\" rowspan=\"2\">編號</td><td rowspan=\"2\">項目</td><td rowspan=\"2\">檢查或維修內容</td><td colspan=\"6\">實際行駛里程(km)</td><td rowspan=\"2\">年度檢查</td></tr><tr><td>1,000</td><td>4,000</td><td>8,000</td><td>12,000</td><td>16,000</td><td>20,000</td></tr><tr><td>1</td><td>*</td><td>診斷系統檢查</td><td>使用山葉診斷工具進行動態檢查。檢查故障碼。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>2</td><td></td><td>空氣濾清器濾蕊</td><td>更換。</td><td colspan=\"7\">每20,000 km</td></tr><tr><td>3</td><td></td><td>空氣濾清器檢查軟管</td><td>清潔。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>4</td><td>*</td><td>V型皮帶箱空氣濾清器濾蕊</td><td>清潔。必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>5</td><td>*</td><td>前煞車</td><td>檢查作動功能、煞車液量及是否洩漏。必要時更換煞車片。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>6</td><td>*</td><td>後煞車</td><td>檢查作動功能、煞車液量及是否洩漏。檢查煞車把手自由間隙。必要時調整。必要時更換煞車片。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td rowspan=\"2\">7</td><td rowspan=\"2\">*</td><td rowspan=\"2\">煞車軟管</td><td>檢查是否龜裂或損壞。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>更換。</td><td colspan=\"7\">每4年</td></tr><tr><td>8</td><td>*</td><td>煞車液</td><td>更換。</td><td colspan=\"7\">每2年</td></tr><tr><td>9</td><td></td><td>駐車煞車</td><td>檢查作動功能。檢查橡膠護套。檢查鋼索長度。必要時調整。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td rowspan=\"2\">10</td><td rowspan=\"2\">*</td><td rowspan=\"2\">車輪</td><td>檢查失圓度及是否損壞。必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>雙前輪的平衡。</td><td colspan=\"7\">當外胎或車輪更換後</td></tr><tr><td>11</td><td>*</td><td>外胎</td><td>檢查胎紋深度及損壞狀況。必要時更換。檢查冷胎壓狀況。必要時調整。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>12</td><td>*</td><td>車輪軸承</td><td>檢查軸承鬆緊度或損壞狀況。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td rowspan=\"2\">13</td><td rowspan=\"2\">*</td><td rowspan=\"2\">轉向系統</td><td>檢查軸承鬆緊度及轉向順暢度。檢查轉向橫拉桿。必要時更換。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>塗抹鋰皂基黃油潤滑。</td><td colspan=\"7\">每24,000 km</td></tr><tr><td>14</td><td>*</td><td>傾斜系統</td><td>檢查軸承鬆緊度或損壞狀況。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>15</td><td>*</td><td>車體鎖緊度</td><td>確認所有的螺帽、螺栓及螺絲正確鎖緊。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>16</td><td></td><td>前、後煞車把手樞軸</td><td>塗抹矽黃油潤滑。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>17</td><td>*</td><td>連動煞車系統</td><td>塗抹矽黃油潤滑連結樞軸及活動部品。塗抹鋰皂基黃油潤滑鋼索末端。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>18</td><td></td><td>主、側支架</td><td>檢查作動功能。塗抹鋰皂基黃油潤滑。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>19</td><td>*</td><td>側支架開關</td><td>檢查作動功能。必要時更換。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>20</td><td>*</td><td>前叉</td><td>檢查作動功能及是否漏油。必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>21</td><td>*</td><td>緩衝器總成</td><td>·檢查作動功能及是否漏油。·必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>22</td><td></td><td>引擎機油</td><td>·更換(排放機油前先暖機)。·檢查引擎機油量及是否漏油。</td><td colspan=\"7\">當機油更換指示器顯示時</td></tr><tr><td>23</td><td>*</td><td>引擎機油濾網</td><td>·清洗。</td><td>○</td><td></td><td>○</td><td></td><td>○</td><td></td><td></td></tr><tr><td rowspan=\"2\">24</td><td rowspan=\"2\">*</td><td rowspan=\"2\">冷卻系統</td><td>·檢查冷卻液量及是否洩漏。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>·更換。</td><td colspan=\"7\">每3年</td></tr><tr><td rowspan=\"2\">25</td><td rowspan=\"2\">*</td><td rowspan=\"2\">齒輪油</td><td>·檢查是否漏油。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>·更換。</td><td>○</td><td colspan=\"6\">每12,000 km</td></tr><tr><td>26</td><td>*</td><td>V型皮帶</td><td>·更換。</td><td colspan=\"7\">當V型皮帶更換指示器顯示時</td></tr><tr><td>27</td><td>*</td><td>前、後煞車燈開關</td><td>·檢查作動功能。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>28</td><td>*</td><td>活動部品及鋼索</td><td>·潤滑。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>29</td><td>*</td><td>油門握把外殼及鋼索</td><td>·檢查作動功能及自由間隙。·必要時調整油門鋼索自由間隙。·潤滑油門握把外殼及鋼索。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>30</td><td>*</td><td>各照明、訊號及開關</td><td>·檢查作動功能。·調整前燈光束。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>31</td><td>*</td><td>電瓶</td><td>·檢查電瓶電壓是否正常。·清潔樁頭。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr></table>\n\n<!-- rescued region (engine emitted empty table) -->\n|編號|Col2|項目|檢查或維修內容|實際行駛里程（km）|Col6|Col7|Col8|Col9|Col10|\n|---|---|---|---|---|---|---|---|---|---|\n|編號|編號|項目|檢查或維修內容|1,000|4,000|8,000|12,000|16,000|20,000|\n|21|*|緩衝器總成|• 檢查作動功能及是否漏油。<br>• 必要時更換。||○|○|○|○|○|\n|22||引擎機油|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|\n|23|*|引擎機油濾網|• 清洗。|○||○||○||\n|24|*|冷卻系統|• 檢查冷卻液量及是否洩漏。||○|○|○|○|○|\n|24|*|冷卻系統|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|\n|25|*|齒輪油|• 檢查是否漏油。|○|○|○|○|○|○|\n|25|*|齒輪油|• 更換。|○|○|○|○|○|○|\n|26|*|V 型皮帶|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|\n|27|*|前、後煞車燈開關|• 檢查作動功能。|○|○|○|○|○|○|\n|28|*|活動部品及鋼索|• 潤滑。||○|○|○|○|○|\n|29|*|油門握把外殼及鋼<br>索|• 檢查作動功能及自由間隙。<br>• 必要時調整油門鋼索自由間<br>隙。<br>• 潤滑油門握把外殼及鋼索。||○|○|○|○|○|\n|30|*|各照明、訊號及開<br>關|• 檢查作動功能。<br>• 調整前燈光束。|○|○|○|○|○|○|\n\n當機油更換指示器顯示時\n每 12,000 km\n當V 型皮帶更換指示器顯示時\n• 檢查電瓶電壓是否正常。\n• 清潔樁頭。\n年度檢查\n\n## 2. 液壓煞車\n\n• 當分解煞車主缸或卡鉗後，亦須同時更換新煞車液。另應時常檢查煞車液面，必要時添加。\n\n• 每 2 年更換一次煞車主缸及煞車卡鉗的內部零件，並同時更換新的煞車液。\n\n• 每 4 年更換一次煞車軟管。若有龜裂和損壞時，請立即換新。\n\n<!-- recovered text (p82): lines the geometry pass dropped; source = PDF text layer -->\n1. 引擎空氣濾清器及V 型皮帶箱空氣濾清器\n• 此種引擎空氣濾清器濾蕊是濕紙式，不可使用壓縮空氣清潔，以免造成損壞。\n• 當常行駛在多塵與潮濕區域時，須經常性的更換引擎空氣濾清器濾蕊及清潔Ｖ型皮帶箱空氣濾清器濾",
+    "claim_slugs": [
+     "maintenance-desc-一般定期保養-潤滑表",
+     "general-desc-v-皮帶更換計程錶-belt-trip"
+    ],
+    "read_slugs": [
+     "maintenance-desc-一般定期保養-潤滑表"
+    ],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 100824.56345669925,
+    "latency_ms_llm": 789.432417601347,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_manuals",
+      "input": {
+       "vehicle_model": "MWS-150-A"
+      },
+      "latency_ms": 35.46593338251114,
+      "is_error": false
+     },
+     {
+      "name": "list_manuals",
+      "input": {},
+      "latency_ms": 32.585401087999344,
+      "is_error": false
+     },
+     {
+      "name": "get_manual_toc",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 568.6777103692293,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "query": "drive chain",
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 25.58703161776066,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "query": "chain",
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 24.483541026711464,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "query": "鏈條",
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 22.873561829328537,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "query": "傳動",
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 22.250855341553688,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "maintenance-desc-一般定期保養-潤滑表"
+      },
+      "latency_ms": 11.323776096105576,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "query": "V 皮帶",
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 23.14789779484272,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "query": "調整",
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 23.036709055304527,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 11,
+    "obd_signal_citations": [],
+    "obd_dtc_citations": [],
+    "surfaced_images": [
+     {
+      "slug": "maintenance-desc-一般定期保養-潤滑表",
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "cited": true,
+      "image_count": 1,
+      "vision_descriptions": []
+     }
+    ]
+   },
+   "expected_det": {
+    "section_recall": null,
+    "claim_precision": null,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 0.9892086330935251,
+    "citation_quality": 0.3,
+    "trajectory_efficiency": 0.5,
+    "value_accuracy": 1.0
+   },
+   "archived_grade": {
+    "section_recall": null,
+    "claim_precision": null,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 0.9892086330935251,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 0.3,
+    "answer_quality": 0.9,
+    "trajectory_efficiency": 0.5,
+    "value_accuracy": 1.0,
+    "overall": 0.9222468179302712,
+    "reasoning": "Judge (0.90): The system output correctly identifies the false premise, explicitly stating the MWS-150-A uses a V-belt CVT rather than a chain drive, and declines to provide chain-adjustment or chain-lubrication specifications. It explains what the manual actually covers (V-belt replacement and lubrication of other components) without fabricating chain-related data. The only minor deduction is that the 'typically every 20,000 km' V-belt interval may conflate the air-filter replacement row with the belt-trip indicator, but this does not undermine the core premise correction."
+   }
+  },
+  {
+   "entry": {
+    "id": "0a2ba199-665f-41aa-a106-1163cad68d16-cross-001",
+    "category": "component",
+    "question_type": "cross-section",
+    "difficulty": "medium",
+    "question": "On the MWS-150-A, what is the prescribed maintenance interval for inspecting valve clearance, and what are the cold-engine intake and exhaust clearance specifications?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "**Manual default — fixed interval.** The MWS-150-A service manual specifies inspecting and adjusting the valve clearance every 12,000 km on a cold engine — item 4 in the periodic maintenance schedule (廢氣控制系統定期保養表).\n\n**Workshop practice — interval is condition-driven, not fixed.** Per Towngas technician practice (confirmed 2026-05-20), the 12,000 km figure is treated as a default only when the vehicle is in great shape with no other warning signs — which in real workshops is uncommon. The technician's normal workflow is: inspect each vehicle, assess its condition (noises, idle quality, recent diagnostics, accumulated mileage and severity-of-service since last check), and decide a vehicle-specific interval that may be shorter than 12,000 km. The manual's 12,000 km is the upper bound for a healthy vehicle, not a universal rule.\n\n**Clearance specifications — unconditional.** The cold-engine clearance specs themselves are fixed and only valid in 冷機狀態 (cold state): 進氣 (intake) 0.10–0.14 mm (0.0039–0.0055 in) and 排氣 (exhaust) 0.21–0.25 mm (0.0083–0.0098 in). These values come from the engine specifications table and apply regardless of which interval the inspection is performed at.\n\n**Where each fact lives in the manual.** Interval — periodic-maintenance chapter (定期檢查與調整 → 定期保養 → 廢氣控制系統定期保養表). Clearance values — engine specifications table (引擎規格; parser-quirk slug 冷卻系統).",
+    "golden_citations": [
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "maintenance-desc-廢氣控制系統定期保養表",
+      "quote": "汽門間隙"
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "maintenance-desc-廢氣控制系統定期保養表",
+      "quote": "每 12,000 km"
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "cooling-desc-冷卻系統",
+      "quote": "汽門間隙 (冷機狀態)"
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "cooling-desc-冷卻系統",
+      "quote": "0.10–0.14 mm (0.0039–0.0055 in)"
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "cooling-desc-冷卻系統",
+      "quote": "0.21–0.25 mm (0.0083–0.0098 in)"
+     }
+    ],
+    "expected_recall_slugs": [
+     "maintenance-desc-廢氣控制系統定期保養表",
+     "maintenance-desc-簡介",
+     "maintenance-insp-定期檢查與調整",
+     "cooling-desc-冷卻系統",
+     "general-desc-引擎規格",
+     "general-desc-引擎規格"
+    ],
+    "expected_tool_trace": [
+     "list_manuals",
+     "get_manual_toc",
+     "read_manual_section",
+     "read_manual_section",
+     "read_manual_section",
+     "read_manual_section"
+    ],
+    "must_contain": [
+     "每 12,000 km",
+     "0.10–0.14",
+     "0.21–0.25",
+     "汽門間隙",
+     "冷機"
+    ],
+    "pitfall_directives": [
+     "The output must reference the manual's 12,000 km figure as the documented interval — omitting that figure (or replacing it without flagging that 12,000 km is the manual's value) is wrong. A correct answer cites 12,000 km AND, ideally, contextualises it as the manual's default for a healthy vehicle.",
+     "The output must not give only one half of the answer (e.g., only the spec, or only the interval) — the question is a cross-section ask and a correct answer requires combining facts from two distinct manual sections.",
+     "The output must not assert that valve clearance may be measured with a warm engine — the manual mandates 冷機狀態 (cold state) for both measurement and adjustment.",
+     "The output must not present DTC P0117 / coolant-temperature-sensor content as the answer — that topic is unrelated to a maintenance-interval lookup for valve clearance.",
+     "The output must not present the 12,000 km interval as a strict universal rule with no qualification. Per Towngas workshop practice (issue #89), technicians use a condition-driven per-vehicle interval that may be shorter than 12,000 km; the manual's figure is the default only for a vehicle in great shape (uncommon in practice)."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [],
+    "expected_dtcs": [],
+    "expected_no_evidence": false,
+    "notes": "human-authored 2026-05-10 for HARNESS-17 dashboard cross-section bucket. Crosses two manual sections: (a) the periodic-maintenance schedule under 定期檢查與調整 → 定期保養 → 廢氣控制系統定期保養表 (provides the every-12,000-km interval at item 4); and (b) the engine specifications table under 引擎規格 (parser-quirk slug 冷卻系統; provides the cold-engine clearance values). Verified against live manual content at ~@63607 (schedule row) and ~@32105 (spec table). **Rewritten 2026-05-20** in response to Towngas reviewer feedback in issue #89 (option d clarification): the manual's 12,000 km is a default for healthy vehicles; technicians normally use a condition-driven per-vehicle interval that may be shorter. Summary now leads with the manual figure, layers the workshop reality, and keeps the unconditional clearance specs separate. Added a 5th pitfall_directive against presenting 12,000 km as a strict universal rule; softened the original directive that previously forbade ANY other interval. expected_tool_trace pending Step-5 calibration."
+   },
+   "agent_result": {
+    "summary": "The service manual for the Yamaha TRICITY155 (MWS150-A) does not specify a prescribed maintenance interval for inspecting valve clearance in the regular maintenance schedule table; valve clearance inspection/adjustment is not listed as a periodic item in the '一般定期保養 / 潤滑表' (General Periodic Maintenance/Lubrication Table). However, the manual does provide the cold-engine valve clearance specifications: Intake valve clearance is 0.10–0.14 mm (0.0039–0.0055 in), and Exhaust valve clearance is 0.21–0.25 mm (0.0083–0.0098 in). These measurements must be performed with the engine cold and the piston at Top Dead Center (TDC) on the compression stroke.",
+    "citations": [
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "maintenance-desc-一般定期保養-潤滑表",
+      "quote": ""
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "maintenance-op-汽門間隙的調整",
+      "quote": ""
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "general-desc-引擎規格",
+      "quote": ""
+     }
+    ],
+    "raw_sections": [
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "maintenance-desc-一般定期保養-潤滑表",
+      "text": "## 一般定期保養 / 潤滑表\n\n註\n\n1. ＊：表示這些項目推薦給山葉服務網檢查保養。\n\n2. 在里程錶實際行駛里程達 24,000 公里後，應再從定期保養表的4,000公里開始，以重複方式追加進行保養。\n\n3. 須做年度檢查之項目，必須每年實施一次。\n\n<!-- recovered text (p80): lines the geometry pass dropped; source = PDF text layer -->\nEAS20022\nEAS30022\nEAS30614\nEAS30615\n\n{'type': 'text', 'content': '註'} {'type': 'text', 'content': '1. 引擎空氣濾清器及V型皮帶箱空氣濾清器'} {'type': 'text', 'content': '• 此種引擎空氣濾清器濾蕊是濕紙式，不可使用壓縮空氣清潔，以免造成損壞。'} {'type': 'text', 'content': '• 當常行駛在多塵與潮濕區域時，須經常性的更換引擎空氣濾清器濾蕊及清潔V型皮帶箱空氣濾清器濾蕊。'}\n\n<table><tr><td colspan=\"2\" rowspan=\"2\">編號</td><td rowspan=\"2\">項目</td><td rowspan=\"2\">檢查或維修內容</td><td colspan=\"6\">實際行駛里程(km)</td><td rowspan=\"2\">年度檢查</td></tr><tr><td>1,000</td><td>4,000</td><td>8,000</td><td>12,000</td><td>16,000</td><td>20,000</td></tr><tr><td>1</td><td>*</td><td>診斷系統檢查</td><td>使用山葉診斷工具進行動態檢查。檢查故障碼。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>2</td><td></td><td>空氣濾清器濾蕊</td><td>更換。</td><td colspan=\"7\">每20,000 km</td></tr><tr><td>3</td><td></td><td>空氣濾清器檢查軟管</td><td>清潔。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>4</td><td>*</td><td>V型皮帶箱空氣濾清器濾蕊</td><td>清潔。必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>5</td><td>*</td><td>前煞車</td><td>檢查作動功能、煞車液量及是否洩漏。必要時更換煞車片。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>6</td><td>*</td><td>後煞車</td><td>檢查作動功能、煞車液量及是否洩漏。檢查煞車把手自由間隙。必要時調整。必要時更換煞車片。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td rowspan=\"2\">7</td><td rowspan=\"2\">*</td><td rowspan=\"2\">煞車軟管</td><td>檢查是否龜裂或損壞。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>更換。</td><td colspan=\"7\">每4年</td></tr><tr><td>8</td><td>*</td><td>煞車液</td><td>更換。</td><td colspan=\"7\">每2年</td></tr><tr><td>9</td><td></td><td>駐車煞車</td><td>檢查作動功能。檢查橡膠護套。檢查鋼索長度。必要時調整。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td rowspan=\"2\">10</td><td rowspan=\"2\">*</td><td rowspan=\"2\">車輪</td><td>檢查失圓度及是否損壞。必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>雙前輪的平衡。</td><td colspan=\"7\">當外胎或車輪更換後</td></tr><tr><td>11</td><td>*</td><td>外胎</td><td>檢查胎紋深度及損壞狀況。必要時更換。檢查冷胎壓狀況。必要時調整。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>12</td><td>*</td><td>車輪軸承</td><td>檢查軸承鬆緊度或損壞狀況。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td rowspan=\"2\">13</td><td rowspan=\"2\">*</td><td rowspan=\"2\">轉向系統</td><td>檢查軸承鬆緊度及轉向順暢度。檢查轉向橫拉桿。必要時更換。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>塗抹鋰皂基黃油潤滑。</td><td colspan=\"7\">每24,000 km</td></tr><tr><td>14</td><td>*</td><td>傾斜系統</td><td>檢查軸承鬆緊度或損壞狀況。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>15</td><td>*</td><td>車體鎖緊度</td><td>確認所有的螺帽、螺栓及螺絲正確鎖緊。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>16</td><td></td><td>前、後煞車把手樞軸</td><td>塗抹矽黃油潤滑。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>17</td><td>*</td><td>連動煞車系統</td><td>塗抹矽黃油潤滑連結樞軸及活動部品。塗抹鋰皂基黃油潤滑鋼索末端。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>18</td><td></td><td>主、側支架</td><td>檢查作動功能。塗抹鋰皂基黃油潤滑。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>19</td><td>*</td><td>側支架開關</td><td>檢查作動功能。必要時更換。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>20</td><td>*</td><td>前叉</td><td>檢查作動功能及是否漏油。必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>21</td><td>*</td><td>緩衝器總成</td><td>·檢查作動功能及是否漏油。·必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>22</td><td></td><td>引擎機油</td><td>·更換(排放機油前先暖機)。·檢查引擎機油量及是否漏油。</td><td colspan=\"7\">當機油更換指示器顯示時</td></tr><tr><td>23</td><td>*</td><td>引擎機油濾網</td><td>·清洗。</td><td>○</td><td></td><td>○</td><td></td><td>○</td><td></td><td></td></tr><tr><td rowspan=\"2\">24</td><td rowspan=\"2\">*</td><td rowspan=\"2\">冷卻系統</td><td>·檢查冷卻液量及是否洩漏。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>·更換。</td><td colspan=\"7\">每3年</td></tr><tr><td rowspan=\"2\">25</td><td rowspan=\"2\">*</td><td rowspan=\"2\">齒輪油</td><td>·檢查是否漏油。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>·更換。</td><td>○</td><td colspan=\"6\">每12,000 km</td></tr><tr><td>26</td><td>*</td><td>V型皮帶</td><td>·更換。</td><td colspan=\"7\">當V型皮帶更換指示器顯示時</td></tr><tr><td>27</td><td>*</td><td>前、後煞車燈開關</td><td>·檢查作動功能。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>28</td><td>*</td><td>活動部品及鋼索</td><td>·潤滑。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>29</td><td>*</td><td>油門握把外殼及鋼索</td><td>·檢查作動功能及自由間隙。·必要時調整油門鋼索自由間隙。·潤滑油門握把外殼及鋼索。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>30</td><td>*</td><td>各照明、訊號及開關</td><td>·檢查作動功能。·調整前燈光束。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>31</td><td>*</td><td>電瓶</td><td>·檢查電瓶電壓是否正常。·清潔樁頭。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr></table>\n\n<!-- rescued region (engine emitted empty table) -->\n|編號|Col2|項目|檢查或維修內容|實際行駛里程（km）|Col6|Col7|Col8|Col9|Col10|\n|---|---|---|---|---|---|---|---|---|---|\n|編號|編號|項目|檢查或維修內容|1,000|4,000|8,000|12,000|16,000|20,000|\n|21|*|緩衝器總成|• 檢查作動功能及是否漏油。<br>• 必要時更換。||○|○|○|○|○|\n|22||引擎機油|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|\n|23|*|引擎機油濾網|• 清洗。|○||○||○||\n|24|*|冷卻系統|• 檢查冷卻液量及是否洩漏。||○|○|○|○|○|\n|24|*|冷卻系統|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|\n|25|*|齒輪油|• 檢查是否漏油。|○|○|○|○|○|○|\n|25|*|齒輪油|• 更換。|○|○|○|○|○|○|\n|26|*|V 型皮帶|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|\n|27|*|前、後煞車燈開關|• 檢查作動功能。|○|○|○|○|○|○|\n|28|*|活動部品及鋼索|• 潤滑。||○|○|○|○|○|\n|29|*|油門握把外殼及鋼<br>索|• 檢查作動功能及自由間隙。<br>• 必要時調整油門鋼索自由間<br>隙。<br>• 潤滑油門握把外殼及鋼索。||○|○|○|○|○|\n|30|*|各照明、訊號及開<br>關|• 檢查作動功能。<br>• 調整前燈光束。|○|○|○|○|○|○|\n\n當機油更換指示器顯示時\n每 12,000 km\n當V 型皮帶更換指示器顯示時\n• 檢查電瓶電壓是否正常。\n• 清潔樁頭。\n年度檢查\n\n## 2. 液壓煞車\n\n• 當分解煞車主缸或卡鉗後，亦須同時更換新煞車液。另應時常檢查煞車液面，必要時添加。\n\n• 每 2 年更換一次煞車主缸及煞車卡鉗的內部零件，並同時更換新的煞車液。\n\n• 每 4 年更換一次煞車軟管。若有龜裂和損壞時，請立即換新。\n\n<!-- recovered text (p82): lines the geometry pass dropped; source = PDF text layer -->\n1. 引擎空氣濾清器及V 型皮帶箱空氣濾清器\n• 此種引擎空氣濾清器濾蕊是濕紙式，不可使用壓縮空氣清潔，以免造成損壞。\n• 當常行駛在多塵與潮濕區域時，須經常性的更換引擎空氣濾清器濾蕊及清潔Ｖ型皮帶箱空氣濾清器濾",
+      "had_images": true
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "maintenance-op-汽門間隙的調整",
+      "text": "汽門間隙的調整\n\n以下程序適用於所有汽門。\n\n註\n\n• 汽門間隙調整必須在引擎冷卻的室溫狀況下進行。\n\n• 測量或調整汽門間隙時，活塞必須位於壓縮行程的上死點（TDC）。\n\n1. 拆卸：\n\n• 胸蓋\n\n參閱第 4-1 頁的“一般車體（1）”。\n\n<!-- recovered text (p84): lines the geometry pass dropped; source = PDF text layer -->\nEAS30620\nECA13330\nEAS30622\n\n• 置物箱\n\n• 汽油箱外蓋\n\n參閱第 4-3 頁的“一般車體（2）”。\n\n• 下腳防護擋板螺絲“1”\n\n\n• 置腳踏板\n\n參閱第 4-23 頁的 “ 一般車體 （9）”。\n\n• 汽缸頭蓋\n\n參閱第 5-9 頁的“汽缸頭”。\n\n• 置腳踏板支架（右）“2”\n\n\n• 水箱蓋\n\n參閱第 6-1 頁的“水箱”。\n\n2. 移動：\n\n• 水箱 “1”\n\n註\n\n將水箱後端朝外移動。\n\n\n3. 移動：\n\n• 水泵浦總成 “1”\n\n註\n\n依圖示方向移動水泵浦總成。\n\n\n4. 測量：\n\n• 汽門間隙不符規格 → 調整。\n\n\n汽門間隙 （冷機狀態）進氣\n\n0.10–0.14 mm (0.0039–0.0055 in)\n\n排氣\n\n0.21–0.25 mm (0.0083–0.0098 in)\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼a. 順時針轉動曲軸。\n\n\nb. 活塞在壓縮衝程的上死點（TDC）時，將凸輪軸鏈輪上的記號“a”對齊凸輪軸停止器板上的對準記號“b”\n\n\nc. 以厚薄規“1”測量汽門間隙。不符規格 → 調整。\n\n<!-- recovered text (p85): lines the geometry pass dropped; source = PDF text layer -->\n的對準記號“b”。\n\n\n▲ ▲ ▲▲▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲▲▲\n\n5. 調整：\n\n• 汽門間隙\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼\n\na. 鬆開固定螺帽“1”。\n\nb. 將厚薄規“2”插入調整螺絲末端和汽門頂之間。\n\n\nc. 用汽門調整工具“4”將調整螺絲“3”往“a” 或 “b” 方向轉動，直到達到規定的汽門間隙。\n\n方向 “a”\n\n汽門間隙增加。方向 “b”\n\n汽門間隙減少。\n\n\n汽門調整工具90890-01311六件式汽門調整工具組YM-A5970\n\n\nd. 固定調整螺絲，避免其移動，然後按規格鎖緊固定螺帽。\n汽門間隙調整螺絲固定螺帽7 N·m （0.7 kgf·m，5.1 lb·ft）\n\ne. 再測量汽門間隙一次。\n\nf. 如果汽門間隙還是不符規格，則重複進行整套 汽門間隙調整步驟，直到達到規定的間隙。\n\n▲ ▲ ▲▲▲▲▲▲ ▲ ▲ ▲▲▲ ▲▲▲▲ ▲▲▲▲ ▲▲▲\n\n6. 安裝：\n\n• 所有拆卸的零件\n\n註\n\n安裝時，依照拆卸程序反向進行。\n\n7. 檢查：\n\n• 冷卻液量\n\n參閱第 3-21 頁的“冷卻液量的檢查”。",
+      "had_images": true
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "general-desc-引擎規格",
+      "text": "{'type': 'text', 'content': '引擎規格'}\n\n<table><tr><td colspan=\"2\">引擎</td></tr><tr><td>燃燒循環</td><td>4行程</td></tr><tr><td>冷卻系統</td><td>水冷</td></tr><tr><td>汽門</td><td>SOHC</td></tr><tr><td>排氣量</td><td>155 $cm^3$ </td></tr><tr><td>汽缸數</td><td>單缸</td></tr><tr><td>內徑×行程</td><td>58.0×58.7mm(2.28×2.31in)</td></tr><tr><td>壓縮比</td><td>10.5:1</td></tr><tr><td>壓縮壓力</td><td>1566-2016kPa/860r/min(15.7-20.2kgf/ $cm^2$ /860r/min,222.7-286.7psi/860r/min)</td></tr><tr><td>起動系統</td><td>電動起動器</td></tr><tr><td colspan=\"2\">汽油</td></tr><tr><td>推薦的汽油</td><td>限用無鉛汽油(推薦使用92無鉛汽油)</td></tr><tr><td>油箱容量</td><td>7.2L(1.9USgal,1.6Imp.gal)</td></tr><tr><td colspan=\"2\">引擎機油</td></tr><tr><td>推薦的品牌</td><td>YAMALUBE</td></tr><tr><td>SAE黏稠度等級</td><td>10W-40</td></tr><tr><td>推薦的引擎機油等級</td><td>API服務等級SG類型或以上,JASO標準MA或MB</td></tr><tr><td>潤滑系統</td><td>濕式油底殼</td></tr><tr><td>引擎機油量</td><td></td></tr><tr><td>機油更換</td><td>0.90L(0.95USqt,0.79Imp.qt)</td></tr><tr><td>容量(分解)</td><td>1.00L(1.06USqt,0.88Imp.qt)</td></tr><tr><td colspan=\"2\">齒輪油</td></tr><tr><td>類型</td><td>機油SAE10W-30型SE或更高等級或齒輪油SAE85WGL-3</td></tr><tr><td>容量</td><td>0.15L(0.16USqt,0.13Imp.qt)</td></tr><tr><td>容量(分解)</td><td>0.16L(0.17USqt,0.14Imp.qt)</td></tr><tr><td colspan=\"2\">機油濾清器</td></tr><tr><td>機油濾清器類型</td><td>離心式</td></tr><tr><td colspan=\"2\">機油泵浦</td></tr><tr><td>內轉子到外轉子頂端的間隙</td><td>0.150mm(0.0059in)</td></tr><tr><td>限制</td><td>0.23mm(0.0091in)</td></tr><tr><td>外轉子到機油泵浦殼體的間隙</td><td>0.13-0.18mm(0.0051-0.0071in)</td></tr><tr><td>限制</td><td>0.25mm(0.0098in)</td></tr><tr><td>機油泵浦殼體到內外轉子的間隙</td><td>0.06-0.11mm(0.0024-0.0043in)</td></tr><tr><td>限制</td><td>0.18mm(0.0071in)</td></tr><tr><td>機油泵浦殼體到內外轉子的間隙(機油給油泵浦)</td><td>0.06-0.11mm(0.0024-0.0043in)</td></tr><tr><td>限制</td><td>0.18mm(0.0071in)</td></tr><tr><td colspan=\"2\">冷卻系統</td></tr><tr><td>冷卻液容量</td><td></td></tr><tr><td>水箱(含所有管路)</td><td>0.46L(0.49USqt,0.40Imp.qt)</td></tr><tr><td>副水箱(到達最高液位記號)</td><td>0.25 L (0.26 US qt, 0.22 Imp.qt)</td></tr><tr><td>水箱蓋閥開啟壓力</td><td>108.0-137.4 kPa (1.08-1.37 kgf/cm2, 15.7-19.9 psi)</td></tr><tr><td>恆溫器</td><td></td></tr><tr><td>閥門開口溫度</td><td>74.0-78.0 °C (165.20-172.40 °F)</td></tr><tr><td>閥門全開溫度</td><td>90.0 °C (194.00 °F)</td></tr><tr><td>閥門升程(全開)</td><td>7.0 mm (0.28 in)</td></tr><tr><td>水泵浦</td><td></td></tr><tr><td>水泵浦類型</td><td>單吸式離心泵浦</td></tr><tr><td>輪葉軸傾斜極限</td><td>0.15 mm (0.006 in)</td></tr><tr><td>火星塞</td><td></td></tr><tr><td>製造商/型號</td><td>NGK/CPR8EA</td></tr><tr><td>火星塞間隙</td><td>0.8-0.9 mm (0.031-0.035 in)</td></tr><tr><td>汽缸頭</td><td></td></tr><tr><td>彎曲限制</td><td>0.05 mm (0.0020 in)</td></tr><tr><td>凸輪軸</td><td></td></tr><tr><td>凸輪軸突部尺寸</td><td></td></tr><tr><td>突部高度(進氣)</td><td>32.211-32.311 mm (1.2681-1.2721 in)</td></tr><tr><td>限制</td><td>32.111 mm (1.2642 in)</td></tr><tr><td>突部高度(進氣高速)</td><td>32.587-32.687 mm (1.2830-1.2869 in)</td></tr><tr><td>限制(進氣高速)</td><td>32.487 mm (1.2790 in)</td></tr><tr><td>突部高度(排氣)</td><td>29.420-29.520 mm (1.1583-1.1622 in)</td></tr><tr><td>限制</td><td>29.320 mm (1.1543 in)</td></tr><tr><td>凸輪軸失圓度限制</td><td>0.030 mm (0.0012 in)</td></tr><tr><td>搖臂/搖臂軸</td><td></td></tr><tr><td>搖臂內徑</td><td>9.985-10.000 mm (0.3931-0.3937 in)</td></tr><tr><td>限制</td><td>10.015 mm (0.3943 in)</td></tr><tr><td>搖臂軸外徑</td><td>9.966-9.976 mm (0.3924-0.3928 in)</td></tr><tr><td>限制</td><td>9.935 mm (0.3911 in)</td></tr><tr><td>汽門、汽門座、汽門導管</td><td></td></tr><tr><td>汽門間隙(冷機狀態)</td><td></td></tr><tr><td>進氣</td><td>0.10-0.14 mm (0.0039-0.0055 in)</td></tr><tr><td>排氣</td><td>0.21-0.25 mm (0.0083-0.0098 in)</td></tr><tr><td>汽門尺寸</td><td></td></tr><tr><td>汽門座接觸寬度(進氣)</td><td>0.90-1.20 mm (0.0354-0.0472 in)</td></tr><tr><td>限制</td><td>1.6 mm (0.06 in)</td></tr><tr><td>汽門座接觸寬度(排氣)</td><td>0.90-1.20 mm (0.0354-0.0472 in)</td></tr><tr><td>限制</td><td>1.6 mm (0.06 in)</td></tr><tr><td>汽門桿直徑(進氣)</td><td>4.975-4.990 mm (0.1959-0.1965 in)</td></tr><tr><td>限制</td><td>4.920 mm (0.1937 in)</td></tr><tr><td>汽門桿直徑(排氣)</td><td>4.960-4.975 mm (0.1953-0.1959 in)</td></tr><tr><td>限制</td><td>4.925 mm (0.1939 in)</td></tr><tr><td>汽門導管內徑(進氣)</td><td>5.000-5.012 mm (0.1969-0.1973 in)</td></tr><tr><td>汽門導管內徑(排氣)</td><td>5.000-5.012 mm (0.1969-0.1973 in)</td></tr><tr><td>汽門桿與汽門導管之間的間隙(進氣)</td><td>0.010-0.037 mm (0.0004-0.0015 in)</td></tr><tr><td>限制</td><td>0.080 mm (0.0032 in)</td></tr><tr><td>汽門桿與汽門導管之間的間隙(排氣)</td><td>0.025-0.052 mm (0.0010-0.0020 in)</td></tr><tr><td>限制</td><td>0.100 mm (0.0039 in)</td></tr><tr><td>汽門桿失圓度</td><td>0.010 mm (0.0004 in)</td></tr><tr><td colspan=\"2\">汽門彈簧</td></tr><tr><td>自由長度(進氣)</td><td>33.79 mm (1.33 in)</td></tr><tr><td>限制</td><td>32.10 mm (1.26 in)</td></tr><tr><td>自由長度(排氣)</td><td>33.79 mm (1.33 in)</td></tr><tr><td>限制</td><td>32.10 mm (1.26 in)</td></tr><tr><td>彈簧傾斜(進氣)</td><td>1.5 mm (0.06 in)</td></tr><tr><td>彈簧傾斜(排氣)</td><td>1.5 mm (0.06 in)</td></tr><tr><td colspan=\"2\">汽缸</td></tr><tr><td>內徑</td><td>58.000-58.010 mm (2.2835-2.2839 in)</td></tr><tr><td>斜度限制</td><td>0.050 mm (0.0020 in)</td></tr><tr><td>失圓度限制</td><td>0.050 mm (0.0020 in)</td></tr><tr><td colspan=\"2\">活塞</td></tr><tr><td>活塞與汽缸之間的間隙</td><td>0.015-0.048 mm (0.0006-0.0019 in)</td></tr><tr><td>直徑</td><td>57.962-57.985 mm (2.2820-2.2829 in)</td></tr><tr><td>測量點(從活塞裙底端)</td><td>6.0 mm (0.24 in)</td></tr><tr><td>活塞銷孔內徑</td><td>14.002-14.013 mm (0.5513-0.5517 in)</td></tr><tr><td>限制</td><td>14.043 mm (0.5529 in)</td></tr><tr><td>活塞銷外徑</td><td>13.995-14.000 mm (0.5510-0.5512 in)</td></tr><tr><td>限制</td><td>13.975 mm (0.5502 in)</td></tr><tr><td>活塞銷與活塞銷孔之間的間隙</td><td>0.002-0.018 mm (0.0001-0.0007 in)</td></tr><tr><td colspan=\"2\">活塞環</td></tr><tr><td colspan=\"2\">頂環</td></tr><tr><td>環類型</td><td>筒型</td></tr><tr><td>末端間隙限制</td><td>0.50 mm (0.0197 in)</td></tr><tr><td>環邊間隙</td><td>0.030-0.065 mm (0.0012-0.0026 in)</td></tr><tr><td>邊間隙限制</td><td>0.115 mm (0.0045 in)</td></tr><tr><td colspan=\"2\">第2環</td></tr><tr><td>環類型</td><td>錐型</td></tr><tr><td>末端間隙限制</td><td>0.85 mm (0.0335 in)</td></tr><tr><td>環邊間隙</td><td>0.020-0.055 mm (0.0008-0.0022 in)</td></tr><tr><td>邊間隙限制</td><td>0.115 mm (0.0045 in)</td></tr><tr><td colspan=\"2\">曲軸</td></tr><tr><td>曲軸總成寬度</td><td>51.45-51.50 mm (2.026-2.028 in)</td></tr><tr><td>失圓度限制</td><td>0.030 mm (0.0012 in)</td></tr><tr><td colspan=\"2\">離合器</td></tr><tr><td>離合器類型</td><td>乾式、離心式、片式</td></tr><tr><td colspan=\"2\">自動離心離合器</td></tr><tr><td>離合器塊厚度</td><td>4.0 mm (0.16 in)</td></tr><tr><td>限制</td><td>2.5 mm (0.10 in)</td></tr><tr><td>離合器塊彈簧自由長度</td><td>31.0 mm (1.22 in)</td></tr><tr><td>離合器外殼內徑</td><td>125.0 mm (4.92 in)</td></tr><tr><td>限制</td><td>126.0 mm (4.96 in)</td></tr><tr><td>壓縮彈簧自由長度</td><td>95.0 mm (3.74 in)</td></tr><tr><td>限制</td><td>85.5 mm (3.37 in)</td></tr><tr><td>衡重外徑</td><td>20.0 mm (0.79 in)</td></tr><tr><td>限制</td><td>19.5 mm (0.77 in)</td></tr><tr><td>離合器接合轉速</td><td>2200-2600 r/min</td></tr><tr><td>離合器分離轉速</td><td>4700-5300 r/min</td></tr><tr><td colspan=\"2\">V皮帶</td></tr><tr><td>V皮帶寬度</td><td>25.5 mm (1.00 in)</td></tr><tr><td>限制</td><td>23.0 mm (0.91 in)</td></tr><tr><td colspan=\"2\">變速箱</td></tr><tr><td>變速類型</td><td>V皮帶、自動</td></tr><tr><td>一次減速比</td><td>1.000</td></tr><tr><td>二次減速比</td><td>10.208 (56/16 × 35/12)</td></tr><tr><td>齒輪比</td><td>2.306-0.725 : 1</td></tr><tr><td>最後驅動</td><td>齒輪</td></tr><tr><td colspan=\"2\">空氣濾清器</td></tr><tr><td>空氣濾清器濾蕊</td><td>溼紙式濾蕊</td></tr><tr><td colspan=\"2\">汽油泵浦</td></tr><tr><td>泵浦類型</td><td>電氣式</td></tr><tr><td>最大消耗安培數</td><td>3.0 A</td></tr><tr><td colspan=\"2\">噴油嘴</td></tr><tr><td>電阻</td><td>12.2Ω</td></tr><tr><td colspan=\"2\">節流閥本體</td></tr><tr><td>ID記號</td><td>BB81 00</td></tr><tr><td colspan=\"2\">節流閥位置感知器(油門位置感知器)</td></tr><tr><td>輸出電壓(惰轉時)</td><td>0.63-0.73 V</td></tr><tr><td colspan=\"2\">惰轉狀況</td></tr><tr><td>引擎惰轉轉速</td><td>1500-1700 r/min</td></tr><tr><td>排氣取樣點</td><td>排氣尾管</td></tr><tr><td>冷卻液溫度</td><td>80-90 °C (176-194 °F)</td></tr><tr><td>CO%</td><td>0.0-1.5 %</td></tr><tr><td>汽油管路壓力(惰轉時)</td><td>300-390 kPa (3.0-3.9 kgf/cm2, 43.5-56.6 psi)</td></tr><tr><td>油門握把自由間隙</td><td>3.0-7.0 mm (0.12-0.28 in)</td></tr></table>\n\n<!-- recovered text (p31): lines the geometry pass dropped; source = PDF text layer -->\nEAS20014\n1566–2016 kPa/860 r/min（15.7–20.2 kgf/cm²/860\n\n<!-- rescued region (engine emitted empty table) -->\n\n\n副水箱（到達最高液位記號）\n0.25 L （0.26 US qt，0.22 Imp.qt）\n水箱蓋閥開啟壓力\n108.0–137.4 kPa （1.08–1.37 kgf/cm²，15.7–19.9\n閥門開口溫度\n74.0–78.0 °C （165.20–172.40 °F）\n閥門全開溫度\n90.0 °C （194.00 °F）\n閥門升程（全開）\n7.0 mm (0.28 in)\n水泵浦類型\n單吸式離心泵浦\n輪葉軸傾斜極限\n0.15 mm (0.006 in)\n製造商/ 型號\nNGK/CPR8EA\n火星塞間隙\n0.8–0.9 mm (0.031–0.035 in)\n彎曲限制\n0.05 mm (0.0020 in)\n凸輪軸突部尺寸\n突部高度（進氣）\n32.211–32.311 mm (1.2681–1.2721 in)\n32.111 mm (1.2642 in)\n突部高度（進氣高速）\n32.587–32.687 mm (1.2830–1.2869 in)\n限制（進氣高速）\n32.487 mm (1.2790 in)\n突部高度（排氣）\n29.420–29.520 mm (1.1583–1.1622 in)\n29.320 mm (1.1543 in)\n凸輪軸失圓度限制\n0.030 mm (0.0012 in)\n搖臂/ 搖臂軸\n搖臂內徑\n9.985–10.000 mm (0.3931–0.3937 in)\n10.015 mm (0.3943 in)\n搖臂軸外徑\n9.966–9.976 mm (0.3924–0.3928 in)\n9.935 mm (0.3911 in)\n汽門、汽門座、汽門導管\n汽門間隙（冷機狀態）\n0.10–0.14 mm (0.0039–0.0055 in)\n0.21–0.25 mm (0.0083–0.0098 in)\n汽門尺寸\n汽門座接觸寬度（進氣）\n0.90–1.20 mm (0.0354–0.0472 in)\n1.6 mm (0.06 in)\n汽門座接觸寬度（排氣）\n0.90–1.20 mm (0.0354–0.0472 in)\n1.6 mm (0.06 in)\n汽門桿直徑（進氣）\n4.975–4.990 mm (0.1959–0.1965 in)\n4.920 mm (0.1937 in)\n汽門桿直徑（排氣）\n4.960–4.975 mm (0.1953–0.1959 in)\n4.925 mm (0.1939 in)\n汽門導管內徑（進氣）\n5.000–5.012 mm (0.1969–0.1973 in)\n汽門導管內徑（排氣）\n5.000–5.012 mm (0.1969–0.1973 in)\n汽門桿與汽門導管之間的間隙（進氣）\n0.010–0.037 mm (0.0004–0.0015 in)\n\n<!-- recovered text (p32): lines the geometry pass dropped; source = PDF text layer -->\n引擎規格\n\n<!-- rescued region (engine emitted empty table) -->\n\n\n0.080 mm (0.0032 in)\n汽門桿與汽門導管之間的間隙（排氣）\n0.025–0.052 mm (0.0010–0.0020 in)\n0.100 mm (0.0039 in)\n汽門桿失圓度\n0.010 mm (0.0004 in)\n汽門彈簧\n自由長度（進氣）\n33.79 mm (1.33 in)\n32.10 mm (1.26 in)\n自由長度（排氣）\n33.79 mm (1.33 in)\n32.10 mm (1.26 in)\n彈簧傾斜（進氣）\n1.5 mm (0.06 in)\n彈簧傾斜（排氣）\n1.5 mm (0.06 in)\n58.000–58.010 mm (2.2835–2.2839 in)\n斜度限制\n0.050 mm (0.0020 in)\n失圓度限制\n0.050 mm (0.0020 in)\n活塞與汽缸之間的間隙\n0.015–0.048 mm (0.0006–0.0019 in)\n57.962–57.985 mm (2.2820–2.2829 in)\n測量點（從活塞裙底端）\n6.0 mm (0.24 in)\n活塞銷孔內徑\n14.002–14.013 mm (0.5513–0.5517 in)\n14.043 mm (0.5529 in)\n活塞銷外徑\n13.995–14.000 mm (0.5510–0.5512 in)\n13.975 mm (0.5502 in)\n活塞銷與活塞銷孔之間的間隙\n0.002–0.018 mm (0.0001–0.0007 in)\n末端間隙限制\n0.50 mm (0.0197 in)\n環邊間隙\n0.030–0.065 mm (0.0012–0.0026 in)\n邊間隙限制\n0.115 mm (0.0045 in)\n末端間隙限制\n0.85 mm (0.0335 in)\n環邊間隙\n0.020–0.055 mm (0.0008–0.0022 in)\n邊間隙限制\n0.115 mm (0.0045 in)\n曲軸總成寬度\n51.45–51.50 mm (2.026–2.028 in)\n失圓度限制\n0.030 mm (0.0012 in)\n離合器類型\n乾式、離心式、片式\n自動離心離合器\n離合器塊厚度\n4.0 mm (0.16 in)\n2.5 mm (0.10 in)\n離合器塊彈簧自由長度\n31.0 mm (1.22 in)\n\n<!-- recovered text (p33): lines the geometry pass dropped; source = PDF text layer -->\n引擎規格\n\n<!-- rescued region (engine emitted empty table) -->\n離合器外殼內徑\n125.0 mm (4.92 in)\n126.0 mm (4.96 in)\n壓縮彈簧自由長度\n95.0 mm (3.74 in)\n85.5 mm (3.37 in)\n衡重外徑\n20.0 mm (0.79 in)\n19.5 mm (0.77 in)\n離合器接合轉速\n2200–2600 r/min\n離合器分離轉速\n4700–5300 r/min\nV 皮帶寬度\n25.5 mm (1.00 in)\n23.0 mm (0.91 in)\n變速類型\nV 皮帶、自動\n一次減速比\n二次減速比\n10.208 (56/16 × 35/12)\n2.306–0.725：1\n最後驅動\n空氣濾清器\n空氣濾清器濾蕊\n溼紙式濾蕊\n汽油泵浦\n泵浦類型\n最大消耗安培數\n節流閥本體\nID 記號\nBB81 00\n節流閥位置感知器( 油門位置感知器)\n輸出電壓（惰轉時）\n0.63–0.73 V\n惰轉狀況\n引擎惰轉轉速\n1500–1700 r/min\n排氣取樣點\n排氣尾管\n冷卻液溫度\n80–90 °C （176–194 °F）\n0.0–1.5 %\n汽油管路壓力（惰轉時）\n300–390 kPa （3.0–3.9 kgf/cm²，43.5–56.6 psi）\n油門握把自由間隙\n3.0–7.0 mm (0.12–0.28 in)\n\n<!-- recovered text (p34): lines the geometry pass dropped; source = PDF text layer -->\n引擎規格",
+      "had_images": true
+     }
+    ],
+    "tool_trace": [
+     {
+      "name": "list_manuals",
+      "input": {
+       "vehicle_model": "MWS-150-A"
+      },
+      "latency_ms": 28.390193358063698,
+      "is_error": false
+     },
+     {
+      "name": "list_manuals",
+      "input": {},
+      "latency_ms": 27.078572660684586,
+      "is_error": false
+     },
+     {
+      "name": "get_manual_toc",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 11.698689311742783,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "maintenance-desc-一般定期保養-潤滑表",
+       "include_subsections": true
+      },
+      "latency_ms": 10.599667206406593,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "section": "maintenance-op-汽門間隙的調整",
+       "include_subsections": true,
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 14.51161690056324,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "query": "汽門間隙",
+       "max_hits": 10
+      },
+      "latency_ms": 26.2334942817688,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "general-desc-引擎規格",
+       "include_subsections": true
+      },
+      "latency_ms": 15.668747946619987,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "query": "汽門間隙 檢查",
+       "max_hits": 10
+      },
+      "latency_ms": 23.12835305929184,
+      "is_error": false
+     }
+    ],
+    "iterations": 9,
+    "total_tokens": 0,
+    "stopped_reason": "complete"
+   },
+   "archived_result": {
+    "system_label": "manual_agent",
+    "question": "On the MWS-150-A, what is the prescribed maintenance interval for inspecting valve clearance, and what are the cold-engine intake and exhaust clearance specifications?",
+    "output_text": "The service manual for the Yamaha TRICITY155 (MWS150-A) does not specify a prescribed maintenance interval for inspecting valve clearance in the regular maintenance schedule table; valve clearance inspection/adjustment is not listed as a periodic item in the '一般定期保養 / 潤滑表' (General Periodic Maintenance/Lubrication Table). However, the manual does provide the cold-engine valve clearance specifications: Intake valve clearance is 0.10–0.14 mm (0.0039–0.0055 in), and Exhaust valve clearance is 0.21–0.25 mm (0.0083–0.0098 in). These measurements must be performed with the engine cold and the piston at Top Dead Center (TDC) on the compression stroke.\n\n--- Cited sections (3) ---\n\n[maintenance-desc-一般定期保養-潤滑表]\n## 一般定期保養 / 潤滑表\n\n註\n\n1. ＊：表示這些項目推薦給山葉服務網檢查保養。\n\n2. 在里程錶實際行駛里程達 24,000 公里後，應再從定期保養表的4,000公里開始，以重複方式追加進行保養。\n\n3. 須做年度檢查之項目，必須每年實施一次。\n\n<!-- recovered text (p80): lines the geometry pass dropped; source = PDF text layer -->\nEAS20022\nEAS30022\nEAS30614\nEAS30615\n\n{'type': 'text', 'content': '註'} {'type': 'text', 'content': '1. 引擎空氣濾清器及V型皮帶箱空氣濾清器'} {'type': 'text', 'content': '• 此種引擎空氣濾清器濾蕊是濕紙式，不可使用壓縮空氣清潔，以免造成損壞。'} {'type': 'text', 'content': '• 當常行駛在多塵與潮濕區域時，須經常性的更換引擎空氣濾清器濾蕊及清潔V型皮帶箱空氣濾清器濾蕊。'}\n\n<table><tr><td colspan=\"2\" rowspan=\"2\">編號</td><td rowspan=\"2\">項目</td><td rowspan=\"2\">檢查或維修內容</td><td colspan=\"6\">實際行駛里程(km)</td><td rowspan=\"2\">年度檢查</td></tr><tr><td>1,000</td><td>4,000</td><td>8,000</td><td>12,000</td><td>16,000</td><td>20,000</td></tr><tr><td>1</td><td>*</td><td>診斷系統檢查</td><td>使用山葉診斷工具進行動態檢查。檢查故障碼。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>2</td><td></td><td>空氣濾清器濾蕊</td><td>更換。</td><td colspan=\"7\">每20,000 km</td></tr><tr><td>3</td><td></td><td>空氣濾清器檢查軟管</td><td>清潔。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>4</td><td>*</td><td>V型皮帶箱空氣濾清器濾蕊</td><td>清潔。必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>5</td><td>*</td><td>前煞車</td><td>檢查作動功能、煞車液量及是否洩漏。必要時更換煞車片。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>6</td><td>*</td><td>後煞車</td><td>檢查作動功能、煞車液量及是否洩漏。檢查煞車把手自由間隙。必要時調整。必要時更換煞車片。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td rowspan=\"2\">7</td><td rowspan=\"2\">*</td><td rowspan=\"2\">煞車軟管</td><td>檢查是否龜裂或損壞。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>更換。</td><td colspan=\"7\">每4年</td></tr><tr><td>8</td><td>*</td><td>煞車液</td><td>更換。</td><td colspan=\"7\">每2年</td></tr><tr><td>9</td><td></td><td>駐車煞車</td><td>檢查作動功能。檢查橡膠護套。檢查鋼索長度。必要時調整。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td rowspan=\"2\">10</td><td rowspan=\"2\">*</td><td rowspan=\"2\">車輪</td><td>檢查失圓度及是否損壞。必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>雙前輪的平衡。</td><td colspan=\"7\">當外胎或車輪更換後</td></tr><tr><td>11</td><td>*</td><td>外胎</td><td>檢查胎紋深度及損壞狀況。必要時更換。檢查冷胎壓狀況。必要時調整。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>12</td><td>*</td><td>車輪軸承</td><td>檢查軸承鬆緊度或損壞狀況。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td rowspan=\"2\">13</td><td rowspan=\"2\">*</td><td rowspan=\"2\">轉向系統</td><td>檢查軸承鬆緊度及轉向順暢度。檢查轉向橫拉桿。必要時更換。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>塗抹鋰皂基黃油潤滑。</td><td colspan=\"7\">每24,000 km</td></tr><tr><td>14</td><td>*</td><td>傾斜系統</td><td>檢查軸承鬆緊度或損壞狀況。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>15</td><td>*</td><td>車體鎖緊度</td><td>確認所有的螺帽、螺栓及螺絲正確鎖緊。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>16</td><td></td><td>前、後煞車把手樞軸</td><td>塗抹矽黃油潤滑。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>17</td><td>*</td><td>連動煞車系統</td><td>塗抹矽黃油潤滑連結樞軸及活動部品。塗抹鋰皂基黃油潤滑鋼索末端。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>18</td><td></td><td>主、側支架</td><td>檢查作動功能。塗抹鋰皂基黃油潤滑。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>19</td><td>*</td><td>側支架開關</td><td>檢查作動功能。必要時更換。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>20</td><td>*</td><td>前叉</td><td>檢查作動功能及是否漏油。必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>21</td><td>*</td><td>緩衝器總成</td><td>·檢查作動功能及是否漏油。·必要時更換。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>22</td><td></td><td>引擎機油</td><td>·更換(排放機油前先暖機)。·檢查引擎機油量及是否漏油。</td><td colspan=\"7\">當機油更換指示器顯示時</td></tr><tr><td>23</td><td>*</td><td>引擎機油濾網</td><td>·清洗。</td><td>○</td><td></td><td>○</td><td></td><td>○</td><td></td><td></td></tr><tr><td rowspan=\"2\">24</td><td rowspan=\"2\">*</td><td rowspan=\"2\">冷卻系統</td><td>·檢查冷卻液量及是否洩漏。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>·更換。</td><td colspan=\"7\">每3年</td></tr><tr><td rowspan=\"2\">25</td><td rowspan=\"2\">*</td><td rowspan=\"2\">齒輪油</td><td>·檢查是否漏油。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td></td></tr><tr><td>·更換。</td><td>○</td><td colspan=\"6\">每12,000 km</td></tr><tr><td>26</td><td>*</td><td>V型皮帶</td><td>·更換。</td><td colspan=\"7\">當V型皮帶更換指示器顯示時</td></tr><tr><td>27</td><td>*</td><td>前、後煞車燈開關</td><td>·檢查作動功能。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>28</td><td>*</td><td>活動部品及鋼索</td><td>·潤滑。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>29</td><td>*</td><td>油門握把外殼及鋼索</td><td>·檢查作動功能及自由間隙。·必要時調整油門鋼索自由間隙。·潤滑油門握把外殼及鋼索。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>30</td><td>*</td><td>各照明、訊號及開關</td><td>·檢查作動功能。·調整前燈光束。</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr><tr><td>31</td><td>*</td><td>電瓶</td><td>·檢查電瓶電壓是否正常。·清潔樁頭。</td><td></td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr></table>\n\n<!-- rescued region (engine emitted empty table) -->\n|編號|Col2|項目|檢查或維修內容|實際行駛里程（km）|Col6|Col7|Col8|Col9|Col10|\n|---|---|---|---|---|---|---|---|---|---|\n|編號|編號|項目|檢查或維修內容|1,000|4,000|8,000|12,000|16,000|20,000|\n|21|*|緩衝器總成|• 檢查作動功能及是否漏油。<br>• 必要時更換。||○|○|○|○|○|\n|22||引擎機油|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|• 更換（排放機油前先暖機）。<br>• 檢查引擎機油量及是否漏油。|\n|23|*|引擎機油濾網|• 清洗。|○||○||○||\n|24|*|冷卻系統|• 檢查冷卻液量及是否洩漏。||○|○|○|○|○|\n|24|*|冷卻系統|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|\n|25|*|齒輪油|• 檢查是否漏油。|○|○|○|○|○|○|\n|25|*|齒輪油|• 更換。|○|○|○|○|○|○|\n|26|*|V 型皮帶|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|• 更換。|\n|27|*|前、後煞車燈開關|• 檢查作動功能。|○|○|○|○|○|○|\n|28|*|活動部品及鋼索|• 潤滑。||○|○|○|○|○|\n|29|*|油門握把外殼及鋼<br>索|• 檢查作動功能及自由間隙。<br>• 必要時調整油門鋼索自由間<br>隙。<br>• 潤滑油門握把外殼及鋼索。||○|○|○|○|○|\n|30|*|各照明、訊號及開<br>關|• 檢查作動功能。<br>• 調整前燈光束。|○|○|○|○|○|○|\n\n當機油更換指示器顯示時\n每 12,000 km\n當V 型皮帶更換指示器顯示時\n• 檢查電瓶電壓是否正常。\n• 清潔樁頭。\n年度檢查\n\n## 2. 液壓煞車\n\n• 當分解煞車主缸或卡鉗後，亦須同時更換新煞車液。另應時常檢查煞車液面，必要時添加。\n\n• 每 2 年更換一次煞車主缸及煞車卡鉗的內部零件，並同時更換新的煞車液。\n\n• 每 4 年更換一次煞車軟管。若有龜裂和損壞時，請立即換新。\n\n<!-- recovered text (p82): lines the geometry pass dropped; source = PDF text layer -->\n1. 引擎空氣濾清器及V 型皮帶箱空氣濾清器\n• 此種引擎空氣濾清器濾蕊是濕紙式，不可使用壓縮空氣清潔，以免造成損壞。\n• 當常行駛在多塵與潮濕區域時，須經常性的更換引擎空氣濾清器濾蕊及清潔Ｖ型皮帶箱空氣濾清器濾\n\n[maintenance-op-汽門間隙的調整]\n汽門間隙的調整\n\n以下程序適用於所有汽門。\n\n註\n\n• 汽門間隙調整必須在引擎冷卻的室溫狀況下進行。\n\n• 測量或調整汽門間隙時，活塞必須位於壓縮行程的上死點（TDC）。\n\n1. 拆卸：\n\n• 胸蓋\n\n參閱第 4-1 頁的“一般車體（1）”。\n\n<!-- recovered text (p84): lines the geometry pass dropped; source = PDF text layer -->\nEAS30620\nECA13330\nEAS30622\n\n• 置物箱\n\n• 汽油箱外蓋\n\n參閱第 4-3 頁的“一般車體（2）”。\n\n• 下腳防護擋板螺絲“1”\n\n\n• 置腳踏板\n\n參閱第 4-23 頁的 “ 一般車體 （9）”。\n\n• 汽缸頭蓋\n\n參閱第 5-9 頁的“汽缸頭”。\n\n• 置腳踏板支架（右）“2”\n\n\n• 水箱蓋\n\n參閱第 6-1 頁的“水箱”。\n\n2. 移動：\n\n• 水箱 “1”\n\n註\n\n將水箱後端朝外移動。\n\n\n3. 移動：\n\n• 水泵浦總成 “1”\n\n註\n\n依圖示方向移動水泵浦總成。\n\n\n4. 測量：\n\n• 汽門間隙不符規格 → 調整。\n\n\n汽門間隙 （冷機狀態）進氣\n\n0.10–0.14 mm (0.0039–0.0055 in)\n\n排氣\n\n0.21–0.25 mm (0.0083–0.0098 in)\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼a. 順時針轉動曲軸。\n\n\nb. 活塞在壓縮衝程的上死點（TDC）時，將凸輪軸鏈輪上的記號“a”對齊凸輪軸停止器板上的對準記號“b”\n\n\nc. 以厚薄規“1”測量汽門間隙。不符規格 → 調整。\n\n<!-- recovered text (p85): lines the geometry pass dropped; source = PDF text layer -->\n的對準記號“b”。\n\n\n▲ ▲ ▲▲▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲▲▲\n\n5. 調整：\n\n• 汽門間隙\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼\n\na. 鬆開固定螺帽“1”。\n\nb. 將厚薄規“2”插入調整螺絲末端和汽門頂之間。\n\n\nc. 用汽門調整工具“4”將調整螺絲“3”往“a” 或 “b” 方向轉動，直到達到規定的汽門間隙。\n\n方向 “a”\n\n汽門間隙增加。方向 “b”\n\n汽門間隙減少。\n\n\n汽門調整工具90890-01311六件式汽門調整工具組YM-A5970\n\n\nd. 固定調整螺絲，避免其移動，然後按規格鎖緊固定螺帽。\n汽門間隙調整螺絲固定螺帽7 N·m （0.7 kgf·m，5.1 lb·ft）\n\ne. 再測量汽門間隙一次。\n\nf. 如果汽門間隙還是不符規格，則重複進行整套 汽門間隙調整步驟，直到達到規定的間隙。\n\n▲ ▲ ▲▲▲▲▲▲ ▲ ▲ ▲▲▲ ▲▲▲▲ ▲▲▲▲ ▲▲▲\n\n6. 安裝：\n\n• 所有拆卸的零件\n\n註\n\n安裝時，依照拆卸程序反向進行。\n\n7. 檢查：\n\n• 冷卻液量\n\n參閱第 3-21 頁的“冷卻液量的檢查”。\n\n[general-desc-引擎規格]\n{'type': 'text', 'content': '引擎規格'}\n\n<table><tr><td colspan=\"2\">引擎</td></tr><tr><td>燃燒循環</td><td>4行程</td></tr><tr><td>冷卻系統</td><td>水冷</td></tr><tr><td>汽門</td><td>SOHC</td></tr><tr><td>排氣量</td><td>155 $cm^3$ </td></tr><tr><td>汽缸數</td><td>單缸</td></tr><tr><td>內徑×行程</td><td>58.0×58.7mm(2.28×2.31in)</td></tr><tr><td>壓縮比</td><td>10.5:1</td></tr><tr><td>壓縮壓力</td><td>1566-2016kPa/860r/min(15.7-20.2kgf/ $cm^2$ /860r/min,222.7-286.7psi/860r/min)</td></tr><tr><td>起動系統</td><td>電動起動器</td></tr><tr><td colspan=\"2\">汽油</td></tr><tr><td>推薦的汽油</td><td>限用無鉛汽油(推薦使用92無鉛汽油)</td></tr><tr><td>油箱容量</td><td>7.2L(1.9USgal,1.6Imp.gal)</td></tr><tr><td colspan=\"2\">引擎機油</td></tr><tr><td>推薦的品牌</td><td>YAMALUBE</td></tr><tr><td>SAE黏稠度等級</td><td>10W-40</td></tr><tr><td>推薦的引擎機油等級</td><td>API服務等級SG類型或以上,JASO標準MA或MB</td></tr><tr><td>潤滑系統</td><td>濕式油底殼</td></tr><tr><td>引擎機油量</td><td></td></tr><tr><td>機油更換</td><td>0.90L(0.95USqt,0.79Imp.qt)</td></tr><tr><td>容量(分解)</td><td>1.00L(1.06USqt,0.88Imp.qt)</td></tr><tr><td colspan=\"2\">齒輪油</td></tr><tr><td>類型</td><td>機油SAE10W-30型SE或更高等級或齒輪油SAE85WGL-3</td></tr><tr><td>容量</td><td>0.15L(0.16USqt,0.13Imp.qt)</td></tr><tr><td>容量(分解)</td><td>0.16L(0.17USqt,0.14Imp.qt)</td></tr><tr><td colspan=\"2\">機油濾清器</td></tr><tr><td>機油濾清器類型</td><td>離心式</td></tr><tr><td colspan=\"2\">機油泵浦</td></tr><tr><td>內轉子到外轉子頂端的間隙</td><td>0.150mm(0.0059in)</td></tr><tr><td>限制</td><td>0.23mm(0.0091in)</td></tr><tr><td>外轉子到機油泵浦殼體的間隙</td><td>0.13-0.18mm(0.0051-0.0071in)</td></tr><tr><td>限制</td><td>0.25mm(0.0098in)</td></tr><tr><td>機油泵浦殼體到內外轉子的間隙</td><td>0.06-0.11mm(0.0024-0.0043in)</td></tr><tr><td>限制</td><td>0.18mm(0.0071in)</td></tr><tr><td>機油泵浦殼體到內外轉子的間隙(機油給油泵浦)</td><td>0.06-0.11mm(0.0024-0.0043in)</td></tr><tr><td>限制</td><td>0.18mm(0.0071in)</td></tr><tr><td colspan=\"2\">冷卻系統</td></tr><tr><td>冷卻液容量</td><td></td></tr><tr><td>水箱(含所有管路)</td><td>0.46L(0.49USqt,0.40Imp.qt)</td></tr><tr><td>副水箱(到達最高液位記號)</td><td>0.25 L (0.26 US qt, 0.22 Imp.qt)</td></tr><tr><td>水箱蓋閥開啟壓力</td><td>108.0-137.4 kPa (1.08-1.37 kgf/cm2, 15.7-19.9 psi)</td></tr><tr><td>恆溫器</td><td></td></tr><tr><td>閥門開口溫度</td><td>74.0-78.0 °C (165.20-172.40 °F)</td></tr><tr><td>閥門全開溫度</td><td>90.0 °C (194.00 °F)</td></tr><tr><td>閥門升程(全開)</td><td>7.0 mm (0.28 in)</td></tr><tr><td>水泵浦</td><td></td></tr><tr><td>水泵浦類型</td><td>單吸式離心泵浦</td></tr><tr><td>輪葉軸傾斜極限</td><td>0.15 mm (0.006 in)</td></tr><tr><td>火星塞</td><td></td></tr><tr><td>製造商/型號</td><td>NGK/CPR8EA</td></tr><tr><td>火星塞間隙</td><td>0.8-0.9 mm (0.031-0.035 in)</td></tr><tr><td>汽缸頭</td><td></td></tr><tr><td>彎曲限制</td><td>0.05 mm (0.0020 in)</td></tr><tr><td>凸輪軸</td><td></td></tr><tr><td>凸輪軸突部尺寸</td><td></td></tr><tr><td>突部高度(進氣)</td><td>32.211-32.311 mm (1.2681-1.2721 in)</td></tr><tr><td>限制</td><td>32.111 mm (1.2642 in)</td></tr><tr><td>突部高度(進氣高速)</td><td>32.587-32.687 mm (1.2830-1.2869 in)</td></tr><tr><td>限制(進氣高速)</td><td>32.487 mm (1.2790 in)</td></tr><tr><td>突部高度(排氣)</td><td>29.420-29.520 mm (1.1583-1.1622 in)</td></tr><tr><td>限制</td><td>29.320 mm (1.1543 in)</td></tr><tr><td>凸輪軸失圓度限制</td><td>0.030 mm (0.0012 in)</td></tr><tr><td>搖臂/搖臂軸</td><td></td></tr><tr><td>搖臂內徑</td><td>9.985-10.000 mm (0.3931-0.3937 in)</td></tr><tr><td>限制</td><td>10.015 mm (0.3943 in)</td></tr><tr><td>搖臂軸外徑</td><td>9.966-9.976 mm (0.3924-0.3928 in)</td></tr><tr><td>限制</td><td>9.935 mm (0.3911 in)</td></tr><tr><td>汽門、汽門座、汽門導管</td><td></td></tr><tr><td>汽門間隙(冷機狀態)</td><td></td></tr><tr><td>進氣</td><td>0.10-0.14 mm (0.0039-0.0055 in)</td></tr><tr><td>排氣</td><td>0.21-0.25 mm (0.0083-0.0098 in)</td></tr><tr><td>汽門尺寸</td><td></td></tr><tr><td>汽門座接觸寬度(進氣)</td><td>0.90-1.20 mm (0.0354-0.0472 in)</td></tr><tr><td>限制</td><td>1.6 mm (0.06 in)</td></tr><tr><td>汽門座接觸寬度(排氣)</td><td>0.90-1.20 mm (0.0354-0.0472 in)</td></tr><tr><td>限制</td><td>1.6 mm (0.06 in)</td></tr><tr><td>汽門桿直徑(進氣)</td><td>4.975-4.990 mm (0.1959-0.1965 in)</td></tr><tr><td>限制</td><td>4.920 mm (0.1937 in)</td></tr><tr><td>汽門桿直徑(排氣)</td><td>4.960-4.975 mm (0.1953-0.1959 in)</td></tr><tr><td>限制</td><td>4.925 mm (0.1939 in)</td></tr><tr><td>汽門導管內徑(進氣)</td><td>5.000-5.012 mm (0.1969-0.1973 in)</td></tr><tr><td>汽門導管內徑(排氣)</td><td>5.000-5.012 mm (0.1969-0.1973 in)</td></tr><tr><td>汽門桿與汽門導管之間的間隙(進氣)</td><td>0.010-0.037 mm (0.0004-0.0015 in)</td></tr><tr><td>限制</td><td>0.080 mm (0.0032 in)</td></tr><tr><td>汽門桿與汽門導管之間的間隙(排氣)</td><td>0.025-0.052 mm (0.0010-0.0020 in)</td></tr><tr><td>限制</td><td>0.100 mm (0.0039 in)</td></tr><tr><td>汽門桿失圓度</td><td>0.010 mm (0.0004 in)</td></tr><tr><td colspan=\"2\">汽門彈簧</td></tr><tr><td>自由長度(進氣)</td><td>33.79 mm (1.33 in)</td></tr><tr><td>限制</td><td>32.10 mm (1.26 in)</td></tr><tr><td>自由長度(排氣)</td><td>33.79 mm (1.33 in)</td></tr><tr><td>限制</td><td>32.10 mm (1.26 in)</td></tr><tr><td>彈簧傾斜(進氣)</td><td>1.5 mm (0.06 in)</td></tr><tr><td>彈簧傾斜(排氣)</td><td>1.5 mm (0.06 in)</td></tr><tr><td colspan=\"2\">汽缸</td></tr><tr><td>內徑</td><td>58.000-58.010 mm (2.2835-2.2839 in)</td></tr><tr><td>斜度限制</td><td>0.050 mm (0.0020 in)</td></tr><tr><td>失圓度限制</td><td>0.050 mm (0.0020 in)</td></tr><tr><td colspan=\"2\">活塞</td></tr><tr><td>活塞與汽缸之間的間隙</td><td>0.015-0.048 mm (0.0006-0.0019 in)</td></tr><tr><td>直徑</td><td>57.962-57.985 mm (2.2820-2.2829 in)</td></tr><tr><td>測量點(從活塞裙底端)</td><td>6.0 mm (0.24 in)</td></tr><tr><td>活塞銷孔內徑</td><td>14.002-14.013 mm (0.5513-0.5517 in)</td></tr><tr><td>限制</td><td>14.043 mm (0.5529 in)</td></tr><tr><td>活塞銷外徑</td><td>13.995-14.000 mm (0.5510-0.5512 in)</td></tr><tr><td>限制</td><td>13.975 mm (0.5502 in)</td></tr><tr><td>活塞銷與活塞銷孔之間的間隙</td><td>0.002-0.018 mm (0.0001-0.0007 in)</td></tr><tr><td colspan=\"2\">活塞環</td></tr><tr><td colspan=\"2\">頂環</td></tr><tr><td>環類型</td><td>筒型</td></tr><tr><td>末端間隙限制</td><td>0.50 mm (0.0197 in)</td></tr><tr><td>環邊間隙</td><td>0.030-0.065 mm (0.0012-0.0026 in)</td></tr><tr><td>邊間隙限制</td><td>0.115 mm (0.0045 in)</td></tr><tr><td colspan=\"2\">第2環</td></tr><tr><td>環類型</td><td>錐型</td></tr><tr><td>末端間隙限制</td><td>0.85 mm (0.0335 in)</td></tr><tr><td>環邊間隙</td><td>0.020-0.055 mm (0.0008-0.0022 in)</td></tr><tr><td>邊間隙限制</td><td>0.115 mm (0.0045 in)</td></tr><tr><td colspan=\"2\">曲軸</td></tr><tr><td>曲軸總成寬度</td><td>51.45-51.50 mm (2.026-2.028 in)</td></tr><tr><td>失圓度限制</td><td>0.030 mm (0.0012 in)</td></tr><tr><td colspan=\"2\">離合器</td></tr><tr><td>離合器類型</td><td>乾式、離心式、片式</td></tr><tr><td colspan=\"2\">自動離心離合器</td></tr><tr><td>離合器塊厚度</td><td>4.0 mm (0.16 in)</td></tr><tr><td>限制</td><td>2.5 mm (0.10 in)</td></tr><tr><td>離合器塊彈簧自由長度</td><td>31.0 mm (1.22 in)</td></tr><tr><td>離合器外殼內徑</td><td>125.0 mm (4.92 in)</td></tr><tr><td>限制</td><td>126.0 mm (4.96 in)</td></tr><tr><td>壓縮彈簧自由長度</td><td>95.0 mm (3.74 in)</td></tr><tr><td>限制</td><td>85.5 mm (3.37 in)</td></tr><tr><td>衡重外徑</td><td>20.0 mm (0.79 in)</td></tr><tr><td>限制</td><td>19.5 mm (0.77 in)</td></tr><tr><td>離合器接合轉速</td><td>2200-2600 r/min</td></tr><tr><td>離合器分離轉速</td><td>4700-5300 r/min</td></tr><tr><td colspan=\"2\">V皮帶</td></tr><tr><td>V皮帶寬度</td><td>25.5 mm (1.00 in)</td></tr><tr><td>限制</td><td>23.0 mm (0.91 in)</td></tr><tr><td colspan=\"2\">變速箱</td></tr><tr><td>變速類型</td><td>V皮帶、自動</td></tr><tr><td>一次減速比</td><td>1.000</td></tr><tr><td>二次減速比</td><td>10.208 (56/16 × 35/12)</td></tr><tr><td>齒輪比</td><td>2.306-0.725 : 1</td></tr><tr><td>最後驅動</td><td>齒輪</td></tr><tr><td colspan=\"2\">空氣濾清器</td></tr><tr><td>空氣濾清器濾蕊</td><td>溼紙式濾蕊</td></tr><tr><td colspan=\"2\">汽油泵浦</td></tr><tr><td>泵浦類型</td><td>電氣式</td></tr><tr><td>最大消耗安培數</td><td>3.0 A</td></tr><tr><td colspan=\"2\">噴油嘴</td></tr><tr><td>電阻</td><td>12.2Ω</td></tr><tr><td colspan=\"2\">節流閥本體</td></tr><tr><td>ID記號</td><td>BB81 00</td></tr><tr><td colspan=\"2\">節流閥位置感知器(油門位置感知器)</td></tr><tr><td>輸出電壓(惰轉時)</td><td>0.63-0.73 V</td></tr><tr><td colspan=\"2\">惰轉狀況</td></tr><tr><td>引擎惰轉轉速</td><td>1500-1700 r/min</td></tr><tr><td>排氣取樣點</td><td>排氣尾管</td></tr><tr><td>冷卻液溫度</td><td>80-90 °C (176-194 °F)</td></tr><tr><td>CO%</td><td>0.0-1.5 %</td></tr><tr><td>汽油管路壓力(惰轉時)</td><td>300-390 kPa (3.0-3.9 kgf/cm2, 43.5-56.6 psi)</td></tr><tr><td>油門握把自由間隙</td><td>3.0-7.0 mm (0.12-0.28 in)</td></tr></table>\n\n<!-- recovered text (p31): lines the geometry pass dropped; source = PDF text layer -->\nEAS20014\n1566–2016 kPa/860 r/min（15.7–20.2 kgf/cm²/860\n\n<!-- rescued region (engine emitted empty table) -->\n\n\n副水箱（到達最高液位記號）\n0.25 L （0.26 US qt，0.22 Imp.qt）\n水箱蓋閥開啟壓力\n108.0–137.4 kPa （1.08–1.37 kgf/cm²，15.7–19.9\n閥門開口溫度\n74.0–78.0 °C （165.20–172.40 °F）\n閥門全開溫度\n90.0 °C （194.00 °F）\n閥門升程（全開）\n7.0 mm (0.28 in)\n水泵浦類型\n單吸式離心泵浦\n輪葉軸傾斜極限\n0.15 mm (0.006 in)\n製造商/ 型號\nNGK/CPR8EA\n火星塞間隙\n0.8–0.9 mm (0.031–0.035 in)\n彎曲限制\n0.05 mm (0.0020 in)\n凸輪軸突部尺寸\n突部高度（進氣）\n32.211–32.311 mm (1.2681–1.2721 in)\n32.111 mm (1.2642 in)\n突部高度（進氣高速）\n32.587–32.687 mm (1.2830–1.2869 in)\n限制（進氣高速）\n32.487 mm (1.2790 in)\n突部高度（排氣）\n29.420–29.520 mm (1.1583–1.1622 in)\n29.320 mm (1.1543 in)\n凸輪軸失圓度限制\n0.030 mm (0.0012 in)\n搖臂/ 搖臂軸\n搖臂內徑\n9.985–10.000 mm (0.3931–0.3937 in)\n10.015 mm (0.3943 in)\n搖臂軸外徑\n9.966–9.976 mm (0.3924–0.3928 in)\n9.935 mm (0.3911 in)\n汽門、汽門座、汽門導管\n汽門間隙（冷機狀態）\n0.10–0.14 mm (0.0039–0.0055 in)\n0.21–0.25 mm (0.0083–0.0098 in)\n汽門尺寸\n汽門座接觸寬度（進氣）\n0.90–1.20 mm (0.0354–0.0472 in)\n1.6 mm (0.06 in)\n汽門座接觸寬度（排氣）\n0.90–1.20 mm (0.0354–0.0472 in)\n1.6 mm (0.06 in)\n汽門桿直徑（進氣）\n4.975–4.990 mm (0.1959–0.1965 in)\n4.920 mm (0.1937 in)\n汽門桿直徑（排氣）\n4.960–4.975 mm (0.1953–0.1959 in)\n4.925 mm (0.1939 in)\n汽門導管內徑（進氣）\n5.000–5.012 mm (0.1969–0.1973 in)\n汽門導管內徑（排氣）\n5.000–5.012 mm (0.1969–0.1973 in)\n汽門桿與汽門導管之間的間隙（進氣）\n0.010–0.037 mm (0.0004–0.0015 in)\n\n<!-- recovered text (p32): lines the geometry pass dropped; source = PDF text layer -->\n引擎規格\n\n<!-- rescued region (engine emitted empty table) -->\n\n\n0.080 mm (0.0032 in)\n汽門桿與汽門導管之間的間隙（排氣）\n0.025–0.052 mm (0.0010–0.0020 in)\n0.100 mm (0.0039 in)\n汽門桿失圓度\n0.010 mm (0.0004 in)\n汽門彈簧\n自由長度（進氣）\n33.79 mm (1.33 in)\n32.10 mm (1.26 in)\n自由長度（排氣）\n33.79 mm (1.33 in)\n32.10 mm (1.26 in)\n彈簧傾斜（進氣）\n1.5 mm (0.06 in)\n彈簧傾斜（排氣）\n1.5 mm (0.06 in)\n58.000–58.010 mm (2.2835–2.2839 in)\n斜度限制\n0.050 mm (0.0020 in)\n失圓度限制\n0.050 mm (0.0020 in)\n活塞與汽缸之間的間隙\n0.015–0.048 mm (0.0006–0.0019 in)\n57.962–57.985 mm (2.2820–2.2829 in)\n測量點（從活塞裙底端）\n6.0 mm (0.24 in)\n活塞銷孔內徑\n14.002–14.013 mm (0.5513–0.5517 in)\n14.043 mm (0.5529 in)\n活塞銷外徑\n13.995–14.000 mm (0.5510–0.5512 in)\n13.975 mm (0.5502 in)\n活塞銷與活塞銷孔之間的間隙\n0.002–0.018 mm (0.0001–0.0007 in)\n末端間隙限制\n0.50 mm (0.0197 in)\n環邊間隙\n0.030–0.065 mm (0.0012–0.0026 in)\n邊間隙限制\n0.115 mm (0.0045 in)\n末端間隙限制\n0.85 mm (0.0335 in)\n環邊間隙\n0.020–0.055 mm (0.0008–0.0022 in)\n邊間隙限制\n0.115 mm (0.0045 in)\n曲軸總成寬度\n51.45–51.50 mm (2.026–2.028 in)\n失圓度限制\n0.030 mm (0.0012 in)\n離合器類型\n乾式、離心式、片式\n自動離心離合器\n離合器塊厚度\n4.0 mm (0.16 in)\n2.5 mm (0.10 in)\n離合器塊彈簧自由長度\n31.0 mm (1.22 in)\n\n<!-- recovered text (p33): lines the geometry pass dropped; source = PDF text layer -->\n引擎規格\n\n<!-- rescued region (engine emitted empty table) -->\n離合器外殼內徑\n125.0 mm (4.92 in)\n126.0 mm (4.96 in)\n壓縮彈簧自由長度\n95.0 mm (3.74 in)\n85.5 mm (3.37 in)\n衡重外徑\n20.0 mm (0.79 in)\n19.5 mm (0.77 in)\n離合器接合轉速\n2200–2600 r/min\n離合器分離轉速\n4700–5300 r/min\nV 皮帶寬度\n25.5 mm (1.00 in)\n23.0 mm (0.91 in)\n變速類型\nV 皮帶、自動\n一次減速比\n二次減速比\n10.208 (56/16 × 35/12)\n2.306–0.725：1\n最後驅動\n空氣濾清器\n空氣濾清器濾蕊\n溼紙式濾蕊\n汽油泵浦\n泵浦類型\n最大消耗安培數\n節流閥本體\nID 記號\nBB81 00\n節流閥位置感知器( 油門位置感知器)\n輸出電壓（惰轉時）\n0.63–0.73 V\n惰轉狀況\n引擎惰轉轉速\n1500–1700 r/min\n排氣取樣點\n排氣尾管\n冷卻液溫度\n80–90 °C （176–194 °F）\n0.0–1.5 %\n汽油管路壓力（惰轉時）\n300–390 kPa （3.0–3.9 kgf/cm²，43.5–56.6 psi）\n油門握把自由間隙\n3.0–7.0 mm (0.12–0.28 in)\n\n<!-- recovered text (p34): lines the geometry pass dropped; source = PDF text layer -->\n引擎規格",
+    "claim_slugs": [
+     "maintenance-desc-一般定期保養-潤滑表",
+     "maintenance-op-汽門間隙的調整",
+     "general-desc-引擎規格"
+    ],
+    "read_slugs": [
+     "maintenance-desc-一般定期保養-潤滑表",
+     "maintenance-op-汽門間隙的調整",
+     "general-desc-引擎規格"
+    ],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 111267.81796664,
+    "latency_ms_llm": 157.30933472514153,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_manuals",
+      "input": {
+       "vehicle_model": "MWS-150-A"
+      },
+      "latency_ms": 28.390193358063698,
+      "is_error": false
+     },
+     {
+      "name": "list_manuals",
+      "input": {},
+      "latency_ms": 27.078572660684586,
+      "is_error": false
+     },
+     {
+      "name": "get_manual_toc",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 11.698689311742783,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "maintenance-desc-一般定期保養-潤滑表",
+       "include_subsections": true
+      },
+      "latency_ms": 10.599667206406593,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "section": "maintenance-op-汽門間隙的調整",
+       "include_subsections": true,
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 14.51161690056324,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "query": "汽門間隙",
+       "max_hits": 10
+      },
+      "latency_ms": 26.2334942817688,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "general-desc-引擎規格",
+       "include_subsections": true
+      },
+      "latency_ms": 15.668747946619987,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "query": "汽門間隙 檢查",
+       "max_hits": 10
+      },
+      "latency_ms": 23.12835305929184,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 9,
+    "obd_signal_citations": [],
+    "obd_dtc_citations": [],
+    "surfaced_images": [
+     {
+      "slug": "maintenance-desc-一般定期保養-潤滑表",
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "cited": true,
+      "image_count": 1,
+      "vision_descriptions": []
+     },
+     {
+      "slug": "maintenance-op-汽門間隙的調整",
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "cited": true,
+      "image_count": 1,
+      "vision_descriptions": []
+     },
+     {
+      "slug": "general-desc-引擎規格",
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "cited": true,
+      "image_count": 1,
+      "vision_descriptions": []
+     }
+    ]
+   },
+   "expected_det": {
+    "section_recall": 0.6,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 0.8963662690477833,
+    "citation_quality": 1.0,
+    "trajectory_efficiency": 0.75,
+    "value_accuracy": 1.0
+   },
+   "archived_grade": {
+    "section_recall": 0.6,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 0.8963662690477833,
+    "hallucination_penalty": 0.7,
+    "citation_quality": 1.0,
+    "answer_quality": 0.4,
+    "trajectory_efficiency": 0.75,
+    "value_accuracy": 1.0,
+    "overall": 0.7598183134523891,
+    "reasoning": "Pitfall violations (1, penalty=0.70): 'The output must not give only one half of the answer (e.g., ' (The output provides the clearance specifications but actively denies the existen). Omission flags (1, recall-side, no penalty): 'The output must reference the manual's 12,000 km figure as t' (The output omits the 12,000 km figure entirely and instead falsely claims the ma). Judge (0.40): The system correctly provides the cold-engine intake (0.10–0.14 mm) and exhaust (0.21–0.25 mm) clearance specifications, but it explicitly denies that the manual specifies a maintenance interval for valve clearance inspection, stating 'does not specify a prescribed maintenance interval.' This is factually wrong—the golden answer confirms the manual lists 12,000 km as item 4 in the 廢氣控制系統定期保養表. The system looked at the wrong maintenance table (一般定期保養/潤滑表 instead of the emission-control table) and drew an incorrect conclusion, misleading a technician about half the question."
+   }
+  },
+  {
+   "entry": {
+    "id": "0a2ba199-665f-41aa-a106-1163cad68d16-dtc-001",
+    "category": "dtc",
+    "question_type": "procedural",
+    "difficulty": "medium",
+    "question": "I'm getting DTC P0117 on the MWS-150-A. What does this code mean, and what is the step-by-step diagnostic procedure?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "DTC P0117 on the MWS-150-A indicates the 冷卻液溫度感知器 (coolant temperature sensor) reported a 搭鐵短路 (ground short). Its sibling code P0118 covers open-circuit and power-short variants of the same sensor. The associated diagnostic code is 06, and all checks must be performed in 引擎冷機 (engine cold) state — the procedure relies on comparing the tool's displayed temperature against ambient. The 7-step diagnosis is: (1) inspect the coolant temperature sensor connector for proper seating, bent or broken pins; secure or replace the wire harness if a connection fault is found. (2) inspect the ECU connector the same way. (3) test the wire harness for opens and shorts with both connectors disconnected — for P0117 specifically, check continuity between the coolant temperature sensor connector and ground on the 綠色 / 紅色 (green/red) wire; any continuity indicates a ground short and the harness must be replaced. (4) check the sensor's installation — confirm it is neither loose nor over-tightened, reinstalling or replacing as needed. (5) execute diagnostic mode 06 with the engine cold and confirm the displayed temperature is close to ambient air temperature; if it is not, replace the coolant temperature sensor. (6) if all earlier steps come back clean, the ECU itself is at fault — replace per page 8-101. (7) erase the DTC using the 山葉診斷工具 (Yamaha diagnostic tool) and verify the engine warning lamp extinguishes.",
+    "golden_citations": [
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "fuel-fault-故障代碼編號-p0117、p0118",
+      "quote": "[P0117] 冷卻液溫度感知器：偵測到搭鐵短路。"
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "fuel-fault-故障代碼編號-p0117、p0118",
+      "quote": "在引擎冷機狀態進行此程序。"
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "fuel-fault-故障代碼編號-p0117、p0118",
+      "quote": "[P0117] 搭鐵短路"
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "fuel-fault-故障代碼編號-p0117、p0118",
+      "quote": "冷卻液溫度感知器接頭與搭鐵之間:綠色/紅色－搭鐵"
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "fuel-fault-故障代碼編號-p0117、p0118",
+      "quote": "更換 ECU。"
+     }
+    ],
+    "expected_recall_slugs": [
+     "fuel-fault-故障代碼編號-p0117、p0118"
+    ],
+    "expected_tool_trace": [
+     "list_manuals",
+     "get_manual_toc",
+     "read_manual_section",
+     "read_manual_section",
+     "read_manual_section"
+    ],
+    "must_contain": [
+     "P0117",
+     "冷卻液溫度感知器",
+     "搭鐵短路",
+     "綠色/紅色",
+     "引擎冷機"
+    ],
+    "pitfall_directives": [
+     "The output must not assert that DTC P0117 involves the oxygen sensor (氧氣感知器) — that is a different family of DTCs (P0130–P0139).",
+     "The output must not assert that P0117 is an air-fuel-ratio (空燃比) issue — P0117 is an electrical short-to-ground on the coolant temperature sensor, not a mixture-tuning problem.",
+     "The output must not present brake-system or tire-pressure content as the primary answer to this question — P0117 is an engine-management DTC, unrelated to those domains.",
+     "The output must not specify a wire colour other than 綠色 / 紅色 (Green/Red) for the P0117 short-to-ground continuity test — using a different colour code (e.g. Black/Blue) would mislead the technician into testing the wrong wire."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [],
+    "expected_dtcs": [],
+    "expected_no_evidence": false,
+    "notes": "human-authored 2026-05-03 from direct read of lines 12047-12086 of the re-ingested manual (post-APP-52 slug format). Question targets the procedural axis: tests whether the system can reconstruct a multi-step diagnostic flow. Citations include both the section's framing facts (P0117 fault definition, engine-cold precondition) and the procedure-internal P0117-specific wire-color test (step 3-3). expected_tool_trace pending Step-5 calibration. Migrated must_not_contain → pitfall_directives 2026-05-04 (v2.12) — directives are now LLM-judged for context-aware violation detection."
+   },
+   "agent_result": {
+    "summary": "DTC P0117 means the coolant temperature sensor circuit has detected a ground short (voltage below 0.1V). Possible causes include: poor connection at the sensor or ECU, open/short in the wiring harness, improper sensor installation, faulty sensor, or ECU failure. Symptoms include difficult starting, increased emissions, and unstable idle. The fail-safe mode fixes the coolant temperature at 30°C when the ignition is ON and 80°C while riding, disabling oxygen feedback and ISC learning.\n\nDiagnostic Procedure (perform with engine cold):\n1. Check coolant temperature sensor connector: Inspect for secure connection and bent/damaged terminals. If poor, reconnect firmly or replace wiring harness. Turn ignition ON and check DTC status with Yamaha diagnostic tool. If 'Recover', go to step 7. If 'Malfunction', go to step 2.\n2. Check ECU connector: Inspect for secure connection and bent/damaged terminals. If poor, reconnect firmly or replace wiring harness. Turn ignition ON and check DTC status. If 'Recover', go to step 7. If 'Malfunction', go to step 3.\n3. Check wiring harness continuity:\n   - Disconnect ECU and coolant temperature sensor connectors.\n   - For P0117 (ground short): Check continuity between Green/Red wire at sensor connector and ground. If continuous, replace wiring harness.\n   - For P0118 (open): Check continuity between Green/Red wires (sensor to ECU) and Black/Blue wires (sensor to ECU). If no continuity, replace wiring harness.\n   - Disconnect all ECU connectors. Check for short between Green/Red terminal 'a' and any other ECU terminal 'b'. If continuous, replace wiring harness.\n   - Turn ignition ON and check DTC status. If 'Recover', go to step 7. If 'Malfunction', go to step 4.\n4. Check coolant temperature sensor installation: Ensure it is not loose or over-tightened. If improperly installed, reinstall or replace sensor. Turn ignition ON and check DTC status. If 'Recover', go to step 7. If 'Malfunction', go to step 5.\n5. Check coolant temperature sensor: Run diagnostic mode (code 06). In cold engine state, displayed temperature should be close to ambient. If not, replace the sensor. Turn ignition ON and check DTC status. If 'Recover', go to step 7. If 'Malfunction', go to step 6.\n6. Check ECU: Replace ECU if all previous steps indicate malfunction.\n7. Clear DTC: Use Yamaha diagnostic tool to confirm 'Recover' status and delete the fault code. Verify the engine malfunction warning light is off.",
+    "citations": [
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "fuel-fault-故障代碼編號-p0117、p0118",
+      "quote": ""
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "general-spec-自我診斷功能與診斷代碼表-2",
+      "quote": ""
+     }
+    ],
+    "raw_sections": [
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "fuel-fault-故障代碼編號-p0117、p0118",
+      "text": "## 故障代碼編號 P0117、P0118\n\n註\n\n在引擎冷機狀態進行此程序。\n\n<table><tr><td colspan=\"2\">故障代碼編號</td><td colspan=\"3\">P0117、P0118</td></tr><tr><td colspan=\"2\">項目</td><td colspan=\"3\">[P0117]冷卻液溫度感知器:偵測到搭鐵短路。[P0118]冷卻液溫度感知器:偵測到斷路或電源短路。</td></tr><tr><td colspan=\"2\" rowspan=\"2\">故障防護系統</td><td colspan=\"3\">可以起動引擎</td></tr><tr><td colspan=\"3\">可以騎乘機車</td></tr><tr><td colspan=\"2\">診斷代碼編號</td><td colspan=\"3\">06</td></tr><tr><td colspan=\"2\">工具顯示</td><td colspan=\"3\">引擎冷機狀態:顯示的溫度接近氣溫。引擎熱機狀態:顯示目前冷卻液溫度。</td></tr><tr><td colspan=\"2\">程序</td><td colspan=\"3\">比較實際測得的冷卻液溫度與工具顯示值。</td></tr><tr><td>項目</td><td colspan=\"2\">故障的可能原因及檢查</td><td>維修工作</td><td>維修完成確認</td></tr><tr><td>1</td><td colspan=\"2\">冷卻液溫度感知器接頭的連接。檢查接頭的固定狀況。拆離接頭並檢查接頭內各插銷(各端子有無彎曲或破損,及各插銷的固定狀況)。</td><td>連接不當→牢固的連接接頭或更換電線總成。</td><td>將主開關切換到“ON”,然後使用山葉診斷工具的故障模式檢查故障代碼狀況。狀況顯示“Recover”(復原)→移至項目7並完成維修。狀況顯示“Malfunction”(故障)→移至項目2。</td></tr><tr><td>2</td><td colspan=\"2\">ECU接頭的連接。檢查接頭的固定狀況。拆離接頭並檢查接頭內各插銷(各端子有無彎曲或破損,及各插銷的固定狀況)。</td><td>連接不當→牢固的連接接頭或更換電線總成。</td><td>將主開關切換到“ON”,然後使用山葉診斷工具的故障模式檢查故障代碼狀況。狀況顯示“Recovery”(復原)→移至項目7並完成維修。狀況顯示“Malfunction”(故障)→移至項目3。</td></tr><tr><td>3</td><td colspan=\"2\">電線總成的導通。</td><td>斷路或短路 → 更換電線總成。</td><td>將主開關切換到“ON”,然後使用山葉診斷工具的故障模式檢查故障代碼狀況。狀況顯示“Recover”(復原) →移至項目7並完成維修。狀況顯示“Malfunction”(故障) →移至項目4。</td></tr><tr><td>3-1</td><td colspan=\"4\"><img src=\"images/497bb5aa98d1cdb8d266b4682fdf89f846528ee2195a8cd123b19172b0840dd4.jpg\"/>1.冷卻液溫度感知器2.ECU3.感知器輸出導線4.感知器搭鐵導線</td></tr><tr><td>3-2</td><td colspan=\"4\">將ECU接頭從ECU拆離。將冷卻液溫度感知器接頭從冷卻液溫度感知器拆離。</td></tr><tr><td>3-3</td><td colspan=\"4\">[P0117]搭鐵短路冷卻液溫度感知器接頭與搭鐵之間:綠色/紅色-搭鐵如果導通,請更換電線總成。<img src=\"images/95fafb8b8e4f40cc956ae6302216fa96b00e62d35d33fe8f7b097d45befb8de7.jpg\"/></td></tr><tr><td>3-4</td><td colspan=\"4\">[P0118]斷路冷卻液溫度感知器接頭與ECU接頭之間:綠色/紅色-綠色/紅色如果沒有導通,請更換電線總成。<img src=\"images/5e8779926920c529cbf9ccb3d22cb644c310eecf1bc399a1e6a1ee3c996bbe6c.jpg\"/></td></tr><tr><td>3-5</td><td colspan=\"4\">[P0118]斷路冷卻液溫度感知器接頭與ECU接頭之間:黑色/藍色-黑色/藍色如果沒有導通,請更換電線總成。<img src=\"images/762df5c36bab9a7dcca55cce5b7ad969f8266e8cd3cb849e1d0f69e1b701b575.jpg\"/></td></tr><tr><td>3-6</td><td colspan=\"4\">將連接到ECU各零件的接頭拆離。參閱第8-28頁的“連接至ECU的零件”。</td></tr><tr><td>3-7</td><td colspan=\"4\">[P0117、P0118]短路ECU接頭的冷卻液溫度感知器輸出端子(綠色/紅色)“a”和任何其他的ECU接頭端子“b”之間。如果導通,請更換電線總成。<img src=\"images/7d430a1d92916d44d95599e4d061193e905a7834ee26597b273687f7dbfed5c0.jpg\"/></td></tr><tr><td>4</td><td>冷卻液溫度感知器的安裝狀況。</td><td>檢查是否鬆動或過緊。感知器安裝不當→重新安裝或更換感知器。</td><td colspan=\"2\">將主開關切換到“ON”,然後使用山葉診斷工具的故障模式檢查故障代碼狀況。狀況顯示“Recover”(復原)→移至項目7並完成維修。狀況顯示“Malfunction”(故障)→移至項目5。</td></tr><tr><td>5</td><td>冷卻液溫度感知器有瑕疵。</td><td>執行診斷模式。(代碼編號06)引擎冷機狀態:顯示的溫度接近環境溫度。顯示的溫度不接近環境溫度。→更換冷卻液溫度感知器。</td><td colspan=\"2\">將主開關切換到“ON”,然後使用山葉診斷工具的故障模式檢查故障代碼狀況。狀況顯示“Recover”(復原)→移至項目7並完成維修。狀況顯示“Malfunction”(故障)→移至項目6。</td></tr><tr><td>6</td><td>ECU故障。</td><td>更換ECU。參閱第8-101頁的“ECU(引擎控制元件)的更換”。</td><td colspan=\"2\">完成維修。</td></tr><tr><td>7</td><td>刪除故障代碼,然後檢查引擎故障警告燈是否熄滅。</td><td>使用山葉診斷工具確認故障代碼的狀況為“Recover”(復原),然後刪除故障代碼。</td><td colspan=\"2\"></td></tr></table>\n\n<!-- rescued region (engine emitted empty table) -->\n\n\n|故障代碼編號|Col2|Col3|\n|---|---|---|\n|項目|項目|項目|\n|3|電線總成的導通。|斷路或短路→ 更換電線總成。|\n|3-1|3-1|3-1|\n|3-2|3-2|3-2|\n|3-3|3-3|3-3|\n\n|淡藍 灰<br>淺綠黑/黃綠/白|藍/黑|藍/黃<br>黃/藍|綠<br>黑/白粉|/紅黃<br>紅/綠棕/|白灰/紅|紅黑/|黑/藍<br>藍 白/紅|黑|橙|\n|---|---|---|---|---|---|---|---|---|---|\n\n將主開關切換到“ON”，然後\n→ 移至項目 7 並完成維修。\n障） → 移至項目 4。\n1. 冷卻液溫度感知器\n2. ECU\n3. 感知器輸出導線\n4. 感知器搭鐵導線\n將 ECU 接頭從 ECU 拆離。\n將冷卻液溫度感知器接頭從冷卻液溫度感知器拆離。\n[P0117] 搭鐵短路\n冷卻液溫度感知器接頭與搭鐵之間：綠色/ 紅色– 搭鐵\n如果導通，請更換電線總成。\n[P0118] 斷路\n冷卻液溫度感知器接頭與 ECU 接頭之間：綠色/ 紅色– 綠色/ 紅色\n如果沒有導通，請更換電線總成。\nP0117、P0118\n[P0117] 冷卻液溫度感知器：偵測到搭鐵短路。\n[P0118] 冷卻液溫度感知器：偵測到斷路或電源短路。\n\n<!-- rescued region (engine emitted empty table) -->\n|故障代碼編號|Col2|Col3|\n|---|---|---|\n|項目|項目|項目|\n|3-5|3-5|3-5|\n|3-6|3-6|3-6|\n|3-7|3-7|3-7|\n|3-7|3-7||\n|4|冷卻液溫度感知器的安裝狀況。<br><br> <br>|檢查是否鬆動或過緊<br>感知器安裝不當→ <br>更換感知器。|\n|5|冷卻液溫度感知器有瑕疵。<br> <br><br><br><br>|執行診斷模式。（代<br>引擎冷機狀態：<br>顯示的溫度接近環境<br>顯示的溫度不接近環<br>更換冷卻液溫度感知|\n|6|ECU 故障。<br> <br> <br>|更換 ECU。<br>參閱第 8-101 頁的“<br>擎控制元件）的更換|\n\n[P0118] 斷路\n冷卻液溫度感知器接頭與 ECU 接頭之間：黑色/ 藍色– 黑色/ 藍色\n如果沒有導通，請更換電線總成。\n將連接到 ECU 各零件的接頭拆離。\n參閱第 8-28 頁的“ 連接至 ECU 的零件”。\n[P0117、P0118] 短路\nECU 接頭的冷卻液溫度感知器輸出端子（綠色/ 紅色）“a” 和任何其他的 ECU 接頭端子“b” 之\n如果導通，請更換電線總成。\n檢查是否鬆動或過緊。\n感知器安裝不當 → 重新安裝或\n將主開關切換到“ON”，然後\n→ 移至項目 7 並完成維修。\n障）→ 移至項目 5。\n執行診斷模式。（代碼編號 06）\n顯示的溫度接近環境溫度。\n顯示的溫度不接近環境溫度。→\n更換冷卻液溫度感知器。\n將主開關切換到“ON”，然後\n→ 移至項目 7 並完成維修。\n障） → 移至項目 6。\n參閱第 8-101 頁的“ECU （引\n擎控制元件）的更換”。\n完成維修。\n刪除故障代碼，然後檢查引擎故\n障警告燈是否熄滅。\n使用山葉診斷工具確認故障代碼\n的狀況為“Recover” （復原），\n然後刪除故障代碼。\nP0117、P0118\n[P0117] 冷卻液溫度感知器：偵測到搭鐵短路。\n[P0118] 冷卻液溫度感知器：偵測到斷路或電源短路。",
+      "had_images": true
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "general-spec-自我診斷功能與診斷代碼表",
+      "text": "(read, not cited)",
+      "had_images": false
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "general-spec-自我診斷功能與診斷代碼表-2",
+      "text": "## 自我診斷功能與診斷代碼表\n\n<table><tr><td>故障代碼編號</td><td>項目</td><td>故障可能原因</td><td>機車故障現象</td><td>故障防護系統運作</td></tr><tr><td>P0117P0118</td><td>[P0117]冷卻液溫度感知器(偵測到搭鐵短路)[P0118]冷卻液溫度感知器(偵測到斷路或電源短路)(未收到冷卻液溫度感知器的任何正常訊號)</td><td>[P0117]冷卻液溫度感知器電路電壓過低(0.1V以下)[P0118]冷卻液溫度感知器電路電壓過高(4.8V以上)冷卻液溫度感知器與ECU之間的接頭有瑕疵冷卻液溫度感知器與ECU之間的電線總成發生斷路或短路冷卻液溫度感知器安裝不當冷卻液溫度感知器有瑕疵ECU故障。</td><td>引擎難以起動。廢氣排放量增加。引擎惰轉轉速不穩。</td><td>不會進行含氧量回饋。不會進行 ISC 學習。主開關切為“ON”時冷卻液溫度固定為30[°C],機車行駛時冷卻液溫度固定為80[°C]。</td></tr><tr><td>P0122P0123</td><td>[P0122]節流閥位置感知器(偵測到斷路或搭鐵短路)[P0123]節流閥位置感知器(偵測到斷路或電源短路)(未收到節流閥位置感知器的任何正常訊號)</td><td>[P0122]節流閥位置感知器電路電壓過低(0.2V以下)[P0123]節流閥位置感知器電路電壓過高(4.8V以上)節流閥位置感知器與ECU之間的接頭有瑕疵節流閥位置感知器與ECU之間的電線總成發生斷路或短路節流閥位置感知器安裝錯誤節流閥位置感知器有瑕疵ECU故障。</td><td>引擎惰轉轉速過快。引擎惰轉轉速不穩。引擎反應不佳。引擎失去動力。減速不佳。廢氣排放量增加。</td><td>節流閥開度變動為0(不會進行瞬間控制)。節流閥開度固定為15[°]。進氣壓力固定為101.3[kPa]。節流閥打開,因此不會斷油。不會進行含氧量回饋。</td></tr><tr><td>P0132</td><td>含氧量感知器(偵測到電源短路)(未收到含氧量感知器的任何正常訊號)</td><td>含氧量感知器電路電壓過高(4.8V以上)含氧量感知器安裝不當。含氧量感知器與ECU之間的接頭有瑕疵。含氧量感知器與ECU之間的電線總成電源短路。含氧量感知器有瑕疵。ECU故障。</td><td>廢氣排放量增加。</td><td>不會進行含氧量回饋。</td></tr></table>\n\n<!-- recovered text (p423): lines the geometry pass dropped; source = PDF text layer -->\n發生斷路或短路。\n發生斷路或短路。\n裝錯誤。\n",
+      "had_images": false
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "general-spec-自我診斷功能與診斷代碼表-3",
+      "text": "(read, not cited)",
+      "had_images": false
+     }
+    ],
+    "tool_trace": [
+     {
+      "name": "list_manuals",
+      "input": {
+       "vehicle_model": "MWS-150-A"
+      },
+      "latency_ms": 29.114870354533195,
+      "is_error": false
+     },
+     {
+      "name": "list_manuals",
+      "input": {},
+      "latency_ms": 28.08205783367157,
+      "is_error": false
+     },
+     {
+      "name": "get_manual_toc",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 11.102527379989624,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "fuel-fault-故障代碼編號-p0117、p0118",
+       "include_subsections": true
+      },
+      "latency_ms": 12.676471844315529,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "general-spec-自我診斷功能與診斷代碼表",
+       "include_subsections": true
+      },
+      "latency_ms": 9.875554591417313,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "general-spec-自我診斷功能與診斷代碼表-2",
+       "include_subsections": true
+      },
+      "latency_ms": 12.710550799965858,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "include_subsections": true,
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "general-spec-自我診斷功能與診斷代碼表-3"
+      },
+      "latency_ms": 9.930312633514404,
+      "is_error": false
+     }
+    ],
+    "iterations": 8,
+    "total_tokens": 0,
+    "stopped_reason": "complete"
+   },
+   "archived_result": {
+    "system_label": "manual_agent",
+    "question": "I'm getting DTC P0117 on the MWS-150-A. What does this code mean, and what is the step-by-step diagnostic procedure?",
+    "output_text": "DTC P0117 means the coolant temperature sensor circuit has detected a ground short (voltage below 0.1V). Possible causes include: poor connection at the sensor or ECU, open/short in the wiring harness, improper sensor installation, faulty sensor, or ECU failure. Symptoms include difficult starting, increased emissions, and unstable idle. The fail-safe mode fixes the coolant temperature at 30°C when the ignition is ON and 80°C while riding, disabling oxygen feedback and ISC learning.\n\nDiagnostic Procedure (perform with engine cold):\n1. Check coolant temperature sensor connector: Inspect for secure connection and bent/damaged terminals. If poor, reconnect firmly or replace wiring harness. Turn ignition ON and check DTC status with Yamaha diagnostic tool. If 'Recover', go to step 7. If 'Malfunction', go to step 2.\n2. Check ECU connector: Inspect for secure connection and bent/damaged terminals. If poor, reconnect firmly or replace wiring harness. Turn ignition ON and check DTC status. If 'Recover', go to step 7. If 'Malfunction', go to step 3.\n3. Check wiring harness continuity:\n   - Disconnect ECU and coolant temperature sensor connectors.\n   - For P0117 (ground short): Check continuity between Green/Red wire at sensor connector and ground. If continuous, replace wiring harness.\n   - For P0118 (open): Check continuity between Green/Red wires (sensor to ECU) and Black/Blue wires (sensor to ECU). If no continuity, replace wiring harness.\n   - Disconnect all ECU connectors. Check for short between Green/Red terminal 'a' and any other ECU terminal 'b'. If continuous, replace wiring harness.\n   - Turn ignition ON and check DTC status. If 'Recover', go to step 7. If 'Malfunction', go to step 4.\n4. Check coolant temperature sensor installation: Ensure it is not loose or over-tightened. If improperly installed, reinstall or replace sensor. Turn ignition ON and check DTC status. If 'Recover', go to step 7. If 'Malfunction', go to step 5.\n5. Check coolant temperature sensor: Run diagnostic mode (code 06). In cold engine state, displayed temperature should be close to ambient. If not, replace the sensor. Turn ignition ON and check DTC status. If 'Recover', go to step 7. If 'Malfunction', go to step 6.\n6. Check ECU: Replace ECU if all previous steps indicate malfunction.\n7. Clear DTC: Use Yamaha diagnostic tool to confirm 'Recover' status and delete the fault code. Verify the engine malfunction warning light is off.\n\n--- Cited sections (2) ---\n\n[fuel-fault-故障代碼編號-p0117、p0118]\n## 故障代碼編號 P0117、P0118\n\n註\n\n在引擎冷機狀態進行此程序。\n\n<table><tr><td colspan=\"2\">故障代碼編號</td><td colspan=\"3\">P0117、P0118</td></tr><tr><td colspan=\"2\">項目</td><td colspan=\"3\">[P0117]冷卻液溫度感知器:偵測到搭鐵短路。[P0118]冷卻液溫度感知器:偵測到斷路或電源短路。</td></tr><tr><td colspan=\"2\" rowspan=\"2\">故障防護系統</td><td colspan=\"3\">可以起動引擎</td></tr><tr><td colspan=\"3\">可以騎乘機車</td></tr><tr><td colspan=\"2\">診斷代碼編號</td><td colspan=\"3\">06</td></tr><tr><td colspan=\"2\">工具顯示</td><td colspan=\"3\">引擎冷機狀態:顯示的溫度接近氣溫。引擎熱機狀態:顯示目前冷卻液溫度。</td></tr><tr><td colspan=\"2\">程序</td><td colspan=\"3\">比較實際測得的冷卻液溫度與工具顯示值。</td></tr><tr><td>項目</td><td colspan=\"2\">故障的可能原因及檢查</td><td>維修工作</td><td>維修完成確認</td></tr><tr><td>1</td><td colspan=\"2\">冷卻液溫度感知器接頭的連接。檢查接頭的固定狀況。拆離接頭並檢查接頭內各插銷(各端子有無彎曲或破損,及各插銷的固定狀況)。</td><td>連接不當→牢固的連接接頭或更換電線總成。</td><td>將主開關切換到“ON”,然後使用山葉診斷工具的故障模式檢查故障代碼狀況。狀況顯示“Recover”(復原)→移至項目7並完成維修。狀況顯示“Malfunction”(故障)→移至項目2。</td></tr><tr><td>2</td><td colspan=\"2\">ECU接頭的連接。檢查接頭的固定狀況。拆離接頭並檢查接頭內各插銷(各端子有無彎曲或破損,及各插銷的固定狀況)。</td><td>連接不當→牢固的連接接頭或更換電線總成。</td><td>將主開關切換到“ON”,然後使用山葉診斷工具的故障模式檢查故障代碼狀況。狀況顯示“Recovery”(復原)→移至項目7並完成維修。狀況顯示“Malfunction”(故障)→移至項目3。</td></tr><tr><td>3</td><td colspan=\"2\">電線總成的導通。</td><td>斷路或短路 → 更換電線總成。</td><td>將主開關切換到“ON”,然後使用山葉診斷工具的故障模式檢查故障代碼狀況。狀況顯示“Recover”(復原) →移至項目7並完成維修。狀況顯示“Malfunction”(故障) →移至項目4。</td></tr><tr><td>3-1</td><td colspan=\"4\"><img src=\"images/497bb5aa98d1cdb8d266b4682fdf89f846528ee2195a8cd123b19172b0840dd4.jpg\"/>1.冷卻液溫度感知器2.ECU3.感知器輸出導線4.感知器搭鐵導線</td></tr><tr><td>3-2</td><td colspan=\"4\">將ECU接頭從ECU拆離。將冷卻液溫度感知器接頭從冷卻液溫度感知器拆離。</td></tr><tr><td>3-3</td><td colspan=\"4\">[P0117]搭鐵短路冷卻液溫度感知器接頭與搭鐵之間:綠色/紅色-搭鐵如果導通,請更換電線總成。<img src=\"images/95fafb8b8e4f40cc956ae6302216fa96b00e62d35d33fe8f7b097d45befb8de7.jpg\"/></td></tr><tr><td>3-4</td><td colspan=\"4\">[P0118]斷路冷卻液溫度感知器接頭與ECU接頭之間:綠色/紅色-綠色/紅色如果沒有導通,請更換電線總成。<img src=\"images/5e8779926920c529cbf9ccb3d22cb644c310eecf1bc399a1e6a1ee3c996bbe6c.jpg\"/></td></tr><tr><td>3-5</td><td colspan=\"4\">[P0118]斷路冷卻液溫度感知器接頭與ECU接頭之間:黑色/藍色-黑色/藍色如果沒有導通,請更換電線總成。<img src=\"images/762df5c36bab9a7dcca55cce5b7ad969f8266e8cd3cb849e1d0f69e1b701b575.jpg\"/></td></tr><tr><td>3-6</td><td colspan=\"4\">將連接到ECU各零件的接頭拆離。參閱第8-28頁的“連接至ECU的零件”。</td></tr><tr><td>3-7</td><td colspan=\"4\">[P0117、P0118]短路ECU接頭的冷卻液溫度感知器輸出端子(綠色/紅色)“a”和任何其他的ECU接頭端子“b”之間。如果導通,請更換電線總成。<img src=\"images/7d430a1d92916d44d95599e4d061193e905a7834ee26597b273687f7dbfed5c0.jpg\"/></td></tr><tr><td>4</td><td>冷卻液溫度感知器的安裝狀況。</td><td>檢查是否鬆動或過緊。感知器安裝不當→重新安裝或更換感知器。</td><td colspan=\"2\">將主開關切換到“ON”,然後使用山葉診斷工具的故障模式檢查故障代碼狀況。狀況顯示“Recover”(復原)→移至項目7並完成維修。狀況顯示“Malfunction”(故障)→移至項目5。</td></tr><tr><td>5</td><td>冷卻液溫度感知器有瑕疵。</td><td>執行診斷模式。(代碼編號06)引擎冷機狀態:顯示的溫度接近環境溫度。顯示的溫度不接近環境溫度。→更換冷卻液溫度感知器。</td><td colspan=\"2\">將主開關切換到“ON”,然後使用山葉診斷工具的故障模式檢查故障代碼狀況。狀況顯示“Recover”(復原)→移至項目7並完成維修。狀況顯示“Malfunction”(故障)→移至項目6。</td></tr><tr><td>6</td><td>ECU故障。</td><td>更換ECU。參閱第8-101頁的“ECU(引擎控制元件)的更換”。</td><td colspan=\"2\">完成維修。</td></tr><tr><td>7</td><td>刪除故障代碼,然後檢查引擎故障警告燈是否熄滅。</td><td>使用山葉診斷工具確認故障代碼的狀況為“Recover”(復原),然後刪除故障代碼。</td><td colspan=\"2\"></td></tr></table>\n\n<!-- rescued region (engine emitted empty table) -->\n\n\n|故障代碼編號|Col2|Col3|\n|---|---|---|\n|項目|項目|項目|\n|3|電線總成的導通。|斷路或短路→ 更換電線總成。|\n|3-1|3-1|3-1|\n|3-2|3-2|3-2|\n|3-3|3-3|3-3|\n\n|淡藍 灰<br>淺綠黑/黃綠/白|藍/黑|藍/黃<br>黃/藍|綠<br>黑/白粉|/紅黃<br>紅/綠棕/|白灰/紅|紅黑/|黑/藍<br>藍 白/紅|黑|橙|\n|---|---|---|---|---|---|---|---|---|---|\n\n將主開關切換到“ON”，然後\n→ 移至項目 7 並完成維修。\n障） → 移至項目 4。\n1. 冷卻液溫度感知器\n2. ECU\n3. 感知器輸出導線\n4. 感知器搭鐵導線\n將 ECU 接頭從 ECU 拆離。\n將冷卻液溫度感知器接頭從冷卻液溫度感知器拆離。\n[P0117] 搭鐵短路\n冷卻液溫度感知器接頭與搭鐵之間：綠色/ 紅色– 搭鐵\n如果導通，請更換電線總成。\n[P0118] 斷路\n冷卻液溫度感知器接頭與 ECU 接頭之間：綠色/ 紅色– 綠色/ 紅色\n如果沒有導通，請更換電線總成。\nP0117、P0118\n[P0117] 冷卻液溫度感知器：偵測到搭鐵短路。\n[P0118] 冷卻液溫度感知器：偵測到斷路或電源短路。\n\n<!-- rescued region (engine emitted empty table) -->\n|故障代碼編號|Col2|Col3|\n|---|---|---|\n|項目|項目|項目|\n|3-5|3-5|3-5|\n|3-6|3-6|3-6|\n|3-7|3-7|3-7|\n|3-7|3-7||\n|4|冷卻液溫度感知器的安裝狀況。<br><br> <br>|檢查是否鬆動或過緊<br>感知器安裝不當→ <br>更換感知器。|\n|5|冷卻液溫度感知器有瑕疵。<br> <br><br><br><br>|執行診斷模式。（代<br>引擎冷機狀態：<br>顯示的溫度接近環境<br>顯示的溫度不接近環<br>更換冷卻液溫度感知|\n|6|ECU 故障。<br> <br> <br>|更換 ECU。<br>參閱第 8-101 頁的“<br>擎控制元件）的更換|\n\n[P0118] 斷路\n冷卻液溫度感知器接頭與 ECU 接頭之間：黑色/ 藍色– 黑色/ 藍色\n如果沒有導通，請更換電線總成。\n將連接到 ECU 各零件的接頭拆離。\n參閱第 8-28 頁的“ 連接至 ECU 的零件”。\n[P0117、P0118] 短路\nECU 接頭的冷卻液溫度感知器輸出端子（綠色/ 紅色）“a” 和任何其他的 ECU 接頭端子“b” 之\n如果導通，請更換電線總成。\n檢查是否鬆動或過緊。\n感知器安裝不當 → 重新安裝或\n將主開關切換到“ON”，然後\n→ 移至項目 7 並完成維修。\n障）→ 移至項目 5。\n執行診斷模式。（代碼編號 06）\n顯示的溫度接近環境溫度。\n顯示的溫度不接近環境溫度。→\n更換冷卻液溫度感知器。\n將主開關切換到“ON”，然後\n→ 移至項目 7 並完成維修。\n障） → 移至項目 6。\n參閱第 8-101 頁的“ECU （引\n擎控制元件）的更換”。\n完成維修。\n刪除故障代碼，然後檢查引擎故\n障警告燈是否熄滅。\n使用山葉診斷工具確認故障代碼\n的狀況為“Recover” （復原），\n然後刪除故障代碼。\nP0117、P0118\n[P0117] 冷卻液溫度感知器：偵測到搭鐵短路。\n[P0118] 冷卻液溫度感知器：偵測到斷路或電源短路。\n\n[general-spec-自我診斷功能與診斷代碼表-2]\n## 自我診斷功能與診斷代碼表\n\n<table><tr><td>故障代碼編號</td><td>項目</td><td>故障可能原因</td><td>機車故障現象</td><td>故障防護系統運作</td></tr><tr><td>P0117P0118</td><td>[P0117]冷卻液溫度感知器(偵測到搭鐵短路)[P0118]冷卻液溫度感知器(偵測到斷路或電源短路)(未收到冷卻液溫度感知器的任何正常訊號)</td><td>[P0117]冷卻液溫度感知器電路電壓過低(0.1V以下)[P0118]冷卻液溫度感知器電路電壓過高(4.8V以上)冷卻液溫度感知器與ECU之間的接頭有瑕疵冷卻液溫度感知器與ECU之間的電線總成發生斷路或短路冷卻液溫度感知器安裝不當冷卻液溫度感知器有瑕疵ECU故障。</td><td>引擎難以起動。廢氣排放量增加。引擎惰轉轉速不穩。</td><td>不會進行含氧量回饋。不會進行 ISC 學習。主開關切為“ON”時冷卻液溫度固定為30[°C],機車行駛時冷卻液溫度固定為80[°C]。</td></tr><tr><td>P0122P0123</td><td>[P0122]節流閥位置感知器(偵測到斷路或搭鐵短路)[P0123]節流閥位置感知器(偵測到斷路或電源短路)(未收到節流閥位置感知器的任何正常訊號)</td><td>[P0122]節流閥位置感知器電路電壓過低(0.2V以下)[P0123]節流閥位置感知器電路電壓過高(4.8V以上)節流閥位置感知器與ECU之間的接頭有瑕疵節流閥位置感知器與ECU之間的電線總成發生斷路或短路節流閥位置感知器安裝錯誤節流閥位置感知器有瑕疵ECU故障。</td><td>引擎惰轉轉速過快。引擎惰轉轉速不穩。引擎反應不佳。引擎失去動力。減速不佳。廢氣排放量增加。</td><td>節流閥開度變動為0(不會進行瞬間控制)。節流閥開度固定為15[°]。進氣壓力固定為101.3[kPa]。節流閥打開,因此不會斷油。不會進行含氧量回饋。</td></tr><tr><td>P0132</td><td>含氧量感知器(偵測到電源短路)(未收到含氧量感知器的任何正常訊號)</td><td>含氧量感知器電路電壓過高(4.8V以上)含氧量感知器安裝不當。含氧量感知器與ECU之間的接頭有瑕疵。含氧量感知器與ECU之間的電線總成電源短路。含氧量感知器有瑕疵。ECU故障。</td><td>廢氣排放量增加。</td><td>不會進行含氧量回饋。</td></tr></table>\n\n<!-- recovered text (p423): lines the geometry pass dropped; source = PDF text layer -->\n發生斷路或短路。\n發生斷路或短路。\n裝錯誤。\n",
+    "claim_slugs": [
+     "fuel-fault-故障代碼編號-p0117、p0118",
+     "general-spec-自我診斷功能與診斷代碼表-2"
+    ],
+    "read_slugs": [
+     "fuel-fault-故障代碼編號-p0117、p0118",
+     "general-spec-自我診斷功能與診斷代碼表",
+     "general-spec-自我診斷功能與診斷代碼表-2",
+     "general-spec-自我診斷功能與診斷代碼表-3"
+    ],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 115297.84815013409,
+    "latency_ms_llm": 113.4923454374075,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_manuals",
+      "input": {
+       "vehicle_model": "MWS-150-A"
+      },
+      "latency_ms": 29.114870354533195,
+      "is_error": false
+     },
+     {
+      "name": "list_manuals",
+      "input": {},
+      "latency_ms": 28.08205783367157,
+      "is_error": false
+     },
+     {
+      "name": "get_manual_toc",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 11.102527379989624,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "fuel-fault-故障代碼編號-p0117、p0118",
+       "include_subsections": true
+      },
+      "latency_ms": 12.676471844315529,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "general-spec-自我診斷功能與診斷代碼表",
+       "include_subsections": true
+      },
+      "latency_ms": 9.875554591417313,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "general-spec-自我診斷功能與診斷代碼表-2",
+       "include_subsections": true
+      },
+      "latency_ms": 12.710550799965858,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "include_subsections": true,
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "general-spec-自我診斷功能與診斷代碼表-3"
+      },
+      "latency_ms": 9.930312633514404,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 8,
+    "obd_signal_citations": [],
+    "obd_dtc_citations": [],
+    "surfaced_images": [
+     {
+      "slug": "fuel-fault-故障代碼編號-p0117、p0118",
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "cited": true,
+      "image_count": 1,
+      "vision_descriptions": []
+     }
+    ]
+   },
+   "expected_det": {
+    "section_recall": 1.0,
+    "claim_precision": 0.5,
+    "exploration_cost": 0.5,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "citation_quality": 1.0,
+    "trajectory_efficiency": 0.7142857142857143,
+    "value_accuracy": 1.0
+   },
+   "archived_grade": {
+    "section_recall": 1.0,
+    "claim_precision": 0.5,
+    "exploration_cost": 0.5,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 0.92,
+    "trajectory_efficiency": 0.7142857142857143,
+    "value_accuracy": 1.0,
+    "overall": 0.9380000000000001,
+    "reasoning": "Judge (0.92): The system output correctly identifies P0117 as a coolant temperature sensor ground short, specifies the engine-cold requirement, names diagnostic code 06, correctly identifies the Green/Red wire for the P0117 continuity test, and provides the full 7-step diagnostic procedure with the Recover/Malfunction branching logic. It also adds useful supplementary detail from the source (fail-safe temperatures, symptoms, voltage threshold). The only minor gap is omitting the page 8-101 reference for ECU replacement, but a technician could still complete the procedure without it."
+   }
+  },
+  {
+   "entry": {
+    "id": "0a2ba199-665f-41aa-a106-1163cad68d16-image-001",
+    "category": "component",
+    "question_type": "image-required",
+    "difficulty": "medium",
+    "question": "When setting the MWS-150-A engine to TDC of the compression stroke for valve-clearance adjustment, which alignment marks must be confirmed?  The valve-clearance adjustment section (3-6) shows the camshaft-sprocket alignment directly; the AC-generator-rotor (flywheel) alignment is documented with figures in the cylinder-head section (5-12 / 5-15).  Identify both alignments using the figures in those sections.",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "Confirming TDC of the compression stroke requires checking TWO alignment marks across TWO sections of the manual.  Both alignments are visual — the I-shaped marks are short tick lines whose precise position cannot be located from text alone, so the figures must be consulted directly.\n\n(1) **Camshaft side** — shown in the 汽門間隙的調整 (valve-clearance adjustment) section, page 3-6.  The tick mark on the camshaft sprocket must visually align with the matching tick mark on the camshaft stopper plate (refer to figure _page_84_Picture_28).\n\n(2) **Crankshaft side** — shown in the 汽缸頭 (cylinder head) section, pages 5-12 / 5-15.  The I-shaped tick mark on the AC generator rotor (flywheel) must visually align with the matching tick mark on the right crankcase, viewed through the inspection port (refer to figures _page_225_Picture_5 and _page_227_Picture_26).\n\nThe crankshaft-side alignment is the canonical way to find TDC; the camshaft-side alignment then disambiguates compression stroke from exhaust stroke (the engine cycles to the same crankshaft position twice per 4-stroke cycle, so the camshaft alignment is what tells you which stroke you're on).\n\nNote on figure labels: the manual marks each pair of alignment marks with figure-local letter callouts (a/b in one figure, c/d in another) — these letters are NOT universal identifiers across the manual, so a self-contained answer must describe the physical positions rather than rely on the letters.",
+    "golden_citations": [
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "maintenance-op-汽門間隙的調整",
+      "quote": "活塞在壓縮衝程的上死點 (TDC)時,將凸輪軸鏈輪上的記號 \"a\" 對齊凸輪軸停止器板上的對準記號 \"b\"。"
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "engine-ri-汽缸頭的拆卸",
+      "quote": "AC 發電機轉子的 \"I\" 記號 \"a\" (對齊右曲軸箱上的對準記號 \"b\")"
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "engine-ri-汽缸頭的拆卸",
+      "quote": "活塞在壓縮衝程的 TDC 時,將凸輪軸鏈輪上的 \"I\" 記號 \"c\" 對齊凸輪軸停止器板上的對 準記號 \"d\"。"
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "engine-ri-汽缸頭的安裝",
+      "quote": "將 AC 發電機轉子的 \"I\" 記號 \"a\" 對齊右 曲軸箱上的對準記號 \"b\"。"
+     }
+    ],
+    "expected_recall_slugs": [
+     "maintenance-op-汽門間隙的調整",
+     "engine-ri-汽缸頭的拆卸",
+     "engine-ri-汽缸頭的安裝"
+    ],
+    "expected_tool_trace": [
+     "list_manuals",
+     "get_manual_toc",
+     "read_manual_section",
+     "read_manual_section",
+     "read_manual_section"
+    ],
+    "must_contain": [
+     "對準記號",
+     "凸輪軸鏈輪",
+     "曲軸箱",
+     "上死點",
+     "TDC"
+    ],
+    "pitfall_directives": [
+     "The output must not omit one of the two required mark alignments — both the camshaft-sprocket-to-stopper-plate alignment AND the crankshaft-(flywheel)-to-crankcase alignment are mandatory for confirming TDC of compression stroke.",
+     "The output must not rely solely on figure-local letter labels (a/b/c/d) to identify which mark goes where — those letters reset per figure and are not universal identifiers; a usable answer must describe the physical positions of the marks.",
+     "The output must not omit the requirement that TDC be on the COMPRESSION stroke specifically — TDC of the exhaust stroke is a different position and would lead to incorrect valve-clearance measurements.",
+     "The output must not claim the crankshaft-side (AC-generator-rotor / right-crankcase) alignment is documented in the 汽門間隙的調整 section — that figure only lives in the 汽缸頭 (cylinder head) chapter (sections 汽缸頭的拆卸 and 汽缸頭的安裝).",
+     "The output must not present DTC P0117 / coolant-temperature-sensor / brake-system content as the answer — those topics are unrelated to camshaft timing alignment."
+    ],
+    "requires_image": true,
+    "expected_signal_citations": [],
+    "expected_dtcs": [],
+    "expected_no_evidence": false,
+    "notes": "human-authored 2026-05-10 for HARNESS-17 dashboard image-required bucket.  Rewritten 2026-05-16 in response to Towngas technician feedback (issue #89): (a) self-contained quotes that describe physical positions instead of relying on figure-local letter callouts; (b) corrected slug attribution — only the camshaft-sprocket alignment lives in 汽門間隙的調整; the AC-generator-rotor (crankshaft-side) alignment is documented in the cylinder-head chapter (汽缸頭的拆卸 + 汽缸頭的安裝); (c) figure_image_paths added per citation so the golden card can embed the manual's figure directly (no hyperlink hop)."
+   },
+   "agent_result": {
+    "summary": "To set the MWS-150-A engine to TDC of the compression stroke for valve-clearance adjustment, two alignment marks must be confirmed:\n\n1. AC-generator-rotor (flywheel) alignment: The \"I\" mark (a) on the AC generator rotor must be aligned with the alignment mark (b) on the right crankcase.\n2. Camshaft-sprocket alignment: The \"I\" mark (c) on the camshaft sprocket must be aligned with the alignment mark (d) on the camshaft stopper plate.\n\nThese alignments ensure the piston is at TDC of the compression stroke.",
+    "citations": [
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "maintenance-op-汽門間隙的調整",
+      "quote": ""
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "engine-ri-汽缸頭的拆卸",
+      "quote": ""
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "engine-ri-汽缸頭的安裝",
+      "quote": ""
+     }
+    ],
+    "raw_sections": [
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "maintenance-op-汽門間隙的調整",
+      "text": "汽門間隙的調整\n\n以下程序適用於所有汽門。\n\n註\n\n• 汽門間隙調整必須在引擎冷卻的室溫狀況下進行。\n\n• 測量或調整汽門間隙時，活塞必須位於壓縮行程的上死點（TDC）。\n\n1. 拆卸：\n\n• 胸蓋\n\n參閱第 4-1 頁的“一般車體（1）”。\n\n<!-- recovered text (p84): lines the geometry pass dropped; source = PDF text layer -->\nEAS30620\nECA13330\nEAS30622\n\n• 置物箱\n\n• 汽油箱外蓋\n\n參閱第 4-3 頁的“一般車體（2）”。\n\n• 下腳防護擋板螺絲“1”\n\n\n• 置腳踏板\n\n參閱第 4-23 頁的 “ 一般車體 （9）”。\n\n• 汽缸頭蓋\n\n參閱第 5-9 頁的“汽缸頭”。\n\n• 置腳踏板支架（右）“2”\n\n\n• 水箱蓋\n\n參閱第 6-1 頁的“水箱”。\n\n2. 移動：\n\n• 水箱 “1”\n\n註\n\n將水箱後端朝外移動。\n\n\n3. 移動：\n\n• 水泵浦總成 “1”\n\n註\n\n依圖示方向移動水泵浦總成。\n\n\n4. 測量：\n\n• 汽門間隙不符規格 → 調整。\n\n\n汽門間隙 （冷機狀態）進氣\n\n0.10–0.14 mm (0.0039–0.0055 in)\n\n排氣\n\n0.21–0.25 mm (0.0083–0.0098 in)\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼a. 順時針轉動曲軸。\n\n\nb. 活塞在壓縮衝程的上死點（TDC）時，將凸輪軸鏈輪上的記號“a”對齊凸輪軸停止器板上的對準記號“b”\n\n\nc. 以厚薄規“1”測量汽門間隙。不符規格 → 調整。\n\n<!-- recovered text (p85): lines the geometry pass dropped; source = PDF text layer -->\n的對準記號“b”。\n\n\n▲ ▲ ▲▲▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲▲▲\n\n5. 調整：\n\n• 汽門間隙\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼\n\na. 鬆開固定螺帽“1”。\n\nb. 將厚薄規“2”插入調整螺絲末端和汽門頂之間。\n\n\nc. 用汽門調整工具“4”將調整螺絲“3”往“a” 或 “b” 方向轉動，直到達到規定的汽門間隙。\n\n方向 “a”\n\n汽門間隙增加。方向 “b”\n\n汽門間隙減少。\n\n\n汽門調整工具90890-01311六件式汽門調整工具組YM-A5970\n\n\nd. 固定調整螺絲，避免其移動，然後按規格鎖緊固定螺帽。\n汽門間隙調整螺絲固定螺帽7 N·m （0.7 kgf·m，5.1 lb·ft）\n\ne. 再測量汽門間隙一次。\n\nf. 如果汽門間隙還是不符規格，則重複進行整套 汽門間隙調整步驟，直到達到規定的間隙。\n\n▲ ▲ ▲▲▲▲▲▲ ▲ ▲ ▲▲▲ ▲▲▲▲ ▲▲▲▲ ▲▲▲\n\n6. 安裝：\n\n• 所有拆卸的零件\n\n註\n\n安裝時，依照拆卸程序反向進行。\n\n7. 檢查：\n\n• 冷卻液量\n\n參閱第 3-21 頁的“冷卻液量的檢查”。",
+      "had_images": true
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "engine-ri-汽缸頭的拆卸",
+      "text": "## 汽缸頭的拆卸\n\n1. 對準：\n\n• AC 發電機轉子的 “I” 記號 “a”\n\n（對齊右曲軸箱上的對準記號“b”）\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼a. 順時針轉動曲軸。\n\n\nb. 活塞在壓縮衝程的 TDC 時，將凸輪軸鏈輪上的“I”記號“c”對齊凸輪軸停止器板上的對準記號“d”。\n\n\n2. 鬆開：\n\n• 凸輪軸鏈輪螺栓“1”\n\n註\n\n使用凸輪軸扳手“2”，鬆開凸輪軸鏈輪螺栓。\n\n\n凸輪軸扳手90890-04162凸輪軸扳手YM-04162\n\n\n3. 拆卸：\n\n• 汽缸頭\n\n## 註\n\n• 如圖所示，按照正確的順序鬆開螺栓和螺帽。\n\n• 將每個螺栓和螺帽每次鬆開 1/2 圈。待所有螺栓和螺帽都完全鬆開後，全部取下。",
+      "had_images": true
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "engine-ri-汽缸頭的安裝",
+      "text": "## 汽缸頭的安裝\n\n1. 鎖緊：\n\n• 汽缸頭螺帽 “1”\n\n• 汽缸頭螺栓“2”\n\n\n汽缸頭螺帽24 N·m （2.4 kgf·m，17 lb·ft）汽缸頭螺栓10 N·m （1.0 kgf·m，7.2 lb·ft）\n\n• 使用二硫化鉬黃油潤滑汽缸頭螺帽及墊圈。\n\n• 如圖所示，按照正確的鎖緊順序分兩段鎖緊汽缸 頭螺帽與螺栓。\n\n\n2. 安裝：\n\n• 減壓凸輪“1”\n\n• 凸輪軸鏈輪 ^ { \\ast } 2 ^ { \\prime \\prime }\n\n• 正時鏈條\n\n• 凸輪軸鏈輪螺栓\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼a. 順時針轉動曲軸。\n\nb. 將 AC 發電機轉子的 “I” 記號 “a” 對齊右曲軸箱上的對準記號“b” 。\n\n\nc. 安裝減壓凸輪。\n\nd. 將正時鏈條安裝到凸輪軸鏈輪，然後將凸輪軸鏈輪安裝到凸輪軸上，再用手鎖緊凸輪軸鏈輪螺栓。\n\n## 注 意\n\n安裝凸輪軸鏈輪時請勿轉動曲軸，避免損壞或汽門正時不正確。\n\n## 註\n\n• 將減壓凸輪的插銷裝入凸輪軸鏈輪上減壓桿的槽 孔“c”\n\n• 將凸輪軸鏈輪的“I”記號“d”對齊凸輪軸停止器板上的對準記號“e”\n\n\ne. 握住凸輪軸，暫時鎖緊凸輪軸鏈輪螺栓。\n\n3. 安裝：\n\n• 正時鏈條張力器墊片 New\n\n• 正時鏈條張力器\n\na. 拆卸正時鏈條張力器塞。\n\nb. 用手輕壓正時鏈條張力器桿時，以薄的螺絲起子“1”順時針完全轉動張力器桿到底。\n\n<!-- recovered text (p228): lines the geometry pass dropped; source = PDF text layer -->\nEAS31624\nEAS30282\n• 凸輪軸鏈輪“2”\nECA20600\n器板上的對準記號“e”。\n\n## 註\n\n確定張力器桿已順時針完全轉到底。\n\n\nc. 將墊片與正時鏈條張力器“2”裝到汽缸上。\n\n## 警 告\n\n一定要使用新的墊片。\n\n註\n\n• 安裝正時鏈條張力器的墊片，使墊片上的調整片“a” 往圖中的方向伸出。\n\n• 將山葉接合劑 No.1215 塗抹在正時鏈條張力器螺栓的螺紋上。\n\n\n山葉接合劑 No.121590890-85505（Three bond No.1215®）\n\n\n正時鏈條張力器螺栓10 N·m （1.0 kgf·m，7.2 lb·ft）\n\n\nd. 以薄的螺絲起子“1”逆時針轉動正時鏈條張力器桿，確定其鬆脫，然後安裝正時鏈條張力器塞。\n\n\n▲ ▲ ▲▲▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲▲▲\n\n4. 轉動：\n\n• 曲軸（順時針轉多圈）\n\n5. 檢查：\n\n• “I” 記號 “a”確定 AC 發電機轉子的 “I” 記號 “a” 對齊右曲軸箱上的對準記號“b”。\n\n• “I” 記號 “c”\n\n確定凸輪軸鏈輪的 “I” 記號 “c” 對齊凸輪軸停止器板上的對準記號“d”。未對準 → 修正。\n\n請參閱上述安裝步驟。\n\n\n6. 鎖緊：\n\n• 凸輪軸鏈輪螺栓“1”\n\n<table><tr><td><img src=\"images/28770d9805247966ced9c9f104a230fa911d4b86372260fbc25df8717ced3af0.jpg\"/></td><td>凸輪軸鏈輪螺栓30 N·m (3.0 kgf·m, 22 lb·ft)</td></tr><tr><td><img src=\"images/7b973a071834aa2224c97db066a6f8c6b5b915924a2cf6995aa4c2a1899c763f.jpg\"/></td><td>凸輪軸扳手90890-04162凸輪軸扳手YM-04162</td></tr></table>\n\n<!-- recovered text (p229): lines the geometry pass dropped; source = PDF text layer -->\nEWA17620\n\n## 注 意\n\n務必鎖緊凸輪軸鏈輪螺栓至指定的扭力，避免螺栓鬆開而損壞引擎。\n\n註\n\n使用凸輪軸扳手“2”鎖緊凸輪軸鏈輪螺栓。\n\n\n7. 測量：\n\n• 汽門間隙不符規格 → 調整。\n\n參閱第 3-5 頁的“汽門間隙的調整”。\n\n8. 安裝：\n\n• 油封 “1”\n\n（到汽缸頭蓋 “2” 內）\n\n註\n\n安裝油封時，使油封朝向圖示的方向。使用適當直徑的座“3”將油封壓入汽缸頭蓋內。\n\n\n9. 安裝：\n\n• VVA（可變汽門作動器）電磁閥“1”\n\n\nVVA （可變汽門作動器）電磁閥螺栓10 N·m （1.0 kgf·m，7.2 lb·ft）\n\n註\n\n握住 VVA（可變汽門作動器）電磁閥，使其接觸汽缸頭蓋“2”，然後按規格鎖緊螺栓。\n<!-- recovered text (p230): lines the geometry pass dropped; source = PDF text layer -->\nECA20610",
+      "had_images": true
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "engine-ri-曲軸總成的拆卸",
+      "text": "(read, not cited)",
+      "had_images": true
+     }
+    ],
+    "tool_trace": [
+     {
+      "name": "list_manuals",
+      "input": {
+       "vehicle_model": "MWS-150-A"
+      },
+      "latency_ms": 28.78633700311184,
+      "is_error": false
+     },
+     {
+      "name": "list_manuals",
+      "input": {},
+      "latency_ms": 30.454983934760094,
+      "is_error": false
+     },
+     {
+      "name": "get_manual_toc",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 11.408152058720589,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "maintenance-op-汽門間隙的調整",
+       "include_subsections": true
+      },
+      "latency_ms": 16.37805625796318,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "engine-ri-汽缸頭的拆卸",
+       "include_subsections": true
+      },
+      "latency_ms": 19.732113927602768,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "section": "engine-ri-汽缸頭的安裝",
+       "include_subsections": true,
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 32.30605646967888,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "engine-ri-曲軸總成的拆卸",
+       "include_subsections": true
+      },
+      "latency_ms": 11.726906523108482,
+      "is_error": false
+     }
+    ],
+    "iterations": 8,
+    "total_tokens": 0,
+    "stopped_reason": "complete"
+   },
+   "archived_result": {
+    "system_label": "manual_agent",
+    "question": "When setting the MWS-150-A engine to TDC of the compression stroke for valve-clearance adjustment, which alignment marks must be confirmed?  The valve-clearance adjustment section (3-6) shows the camshaft-sprocket alignment directly; the AC-generator-rotor (flywheel) alignment is documented with figures in the cylinder-head section (5-12 / 5-15).  Identify both alignments using the figures in those sections.",
+    "output_text": "To set the MWS-150-A engine to TDC of the compression stroke for valve-clearance adjustment, two alignment marks must be confirmed:\n\n1. AC-generator-rotor (flywheel) alignment: The \"I\" mark (a) on the AC generator rotor must be aligned with the alignment mark (b) on the right crankcase.\n2. Camshaft-sprocket alignment: The \"I\" mark (c) on the camshaft sprocket must be aligned with the alignment mark (d) on the camshaft stopper plate.\n\nThese alignments ensure the piston is at TDC of the compression stroke.\n\n--- Cited sections (3) ---\n\n[maintenance-op-汽門間隙的調整]\n汽門間隙的調整\n\n以下程序適用於所有汽門。\n\n註\n\n• 汽門間隙調整必須在引擎冷卻的室溫狀況下進行。\n\n• 測量或調整汽門間隙時，活塞必須位於壓縮行程的上死點（TDC）。\n\n1. 拆卸：\n\n• 胸蓋\n\n參閱第 4-1 頁的“一般車體（1）”。\n\n<!-- recovered text (p84): lines the geometry pass dropped; source = PDF text layer -->\nEAS30620\nECA13330\nEAS30622\n\n• 置物箱\n\n• 汽油箱外蓋\n\n參閱第 4-3 頁的“一般車體（2）”。\n\n• 下腳防護擋板螺絲“1”\n\n\n• 置腳踏板\n\n參閱第 4-23 頁的 “ 一般車體 （9）”。\n\n• 汽缸頭蓋\n\n參閱第 5-9 頁的“汽缸頭”。\n\n• 置腳踏板支架（右）“2”\n\n\n• 水箱蓋\n\n參閱第 6-1 頁的“水箱”。\n\n2. 移動：\n\n• 水箱 “1”\n\n註\n\n將水箱後端朝外移動。\n\n\n3. 移動：\n\n• 水泵浦總成 “1”\n\n註\n\n依圖示方向移動水泵浦總成。\n\n\n4. 測量：\n\n• 汽門間隙不符規格 → 調整。\n\n\n汽門間隙 （冷機狀態）進氣\n\n0.10–0.14 mm (0.0039–0.0055 in)\n\n排氣\n\n0.21–0.25 mm (0.0083–0.0098 in)\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼a. 順時針轉動曲軸。\n\n\nb. 活塞在壓縮衝程的上死點（TDC）時，將凸輪軸鏈輪上的記號“a”對齊凸輪軸停止器板上的對準記號“b”\n\n\nc. 以厚薄規“1”測量汽門間隙。不符規格 → 調整。\n\n<!-- recovered text (p85): lines the geometry pass dropped; source = PDF text layer -->\n的對準記號“b”。\n\n\n▲ ▲ ▲▲▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲▲▲\n\n5. 調整：\n\n• 汽門間隙\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼\n\na. 鬆開固定螺帽“1”。\n\nb. 將厚薄規“2”插入調整螺絲末端和汽門頂之間。\n\n\nc. 用汽門調整工具“4”將調整螺絲“3”往“a” 或 “b” 方向轉動，直到達到規定的汽門間隙。\n\n方向 “a”\n\n汽門間隙增加。方向 “b”\n\n汽門間隙減少。\n\n\n汽門調整工具90890-01311六件式汽門調整工具組YM-A5970\n\n\nd. 固定調整螺絲，避免其移動，然後按規格鎖緊固定螺帽。\n汽門間隙調整螺絲固定螺帽7 N·m （0.7 kgf·m，5.1 lb·ft）\n\ne. 再測量汽門間隙一次。\n\nf. 如果汽門間隙還是不符規格，則重複進行整套 汽門間隙調整步驟，直到達到規定的間隙。\n\n▲ ▲ ▲▲▲▲▲▲ ▲ ▲ ▲▲▲ ▲▲▲▲ ▲▲▲▲ ▲▲▲\n\n6. 安裝：\n\n• 所有拆卸的零件\n\n註\n\n安裝時，依照拆卸程序反向進行。\n\n7. 檢查：\n\n• 冷卻液量\n\n參閱第 3-21 頁的“冷卻液量的檢查”。\n\n[engine-ri-汽缸頭的拆卸]\n## 汽缸頭的拆卸\n\n1. 對準：\n\n• AC 發電機轉子的 “I” 記號 “a”\n\n（對齊右曲軸箱上的對準記號“b”）\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼a. 順時針轉動曲軸。\n\n\nb. 活塞在壓縮衝程的 TDC 時，將凸輪軸鏈輪上的“I”記號“c”對齊凸輪軸停止器板上的對準記號“d”。\n\n\n2. 鬆開：\n\n• 凸輪軸鏈輪螺栓“1”\n\n註\n\n使用凸輪軸扳手“2”，鬆開凸輪軸鏈輪螺栓。\n\n\n凸輪軸扳手90890-04162凸輪軸扳手YM-04162\n\n\n3. 拆卸：\n\n• 汽缸頭\n\n## 註\n\n• 如圖所示，按照正確的順序鬆開螺栓和螺帽。\n\n• 將每個螺栓和螺帽每次鬆開 1/2 圈。待所有螺栓和螺帽都完全鬆開後，全部取下。\n\n[engine-ri-汽缸頭的安裝]\n## 汽缸頭的安裝\n\n1. 鎖緊：\n\n• 汽缸頭螺帽 “1”\n\n• 汽缸頭螺栓“2”\n\n\n汽缸頭螺帽24 N·m （2.4 kgf·m，17 lb·ft）汽缸頭螺栓10 N·m （1.0 kgf·m，7.2 lb·ft）\n\n• 使用二硫化鉬黃油潤滑汽缸頭螺帽及墊圈。\n\n• 如圖所示，按照正確的鎖緊順序分兩段鎖緊汽缸 頭螺帽與螺栓。\n\n\n2. 安裝：\n\n• 減壓凸輪“1”\n\n• 凸輪軸鏈輪 ^ { \\ast } 2 ^ { \\prime \\prime }\n\n• 正時鏈條\n\n• 凸輪軸鏈輪螺栓\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼a. 順時針轉動曲軸。\n\nb. 將 AC 發電機轉子的 “I” 記號 “a” 對齊右曲軸箱上的對準記號“b” 。\n\n\nc. 安裝減壓凸輪。\n\nd. 將正時鏈條安裝到凸輪軸鏈輪，然後將凸輪軸鏈輪安裝到凸輪軸上，再用手鎖緊凸輪軸鏈輪螺栓。\n\n## 注 意\n\n安裝凸輪軸鏈輪時請勿轉動曲軸，避免損壞或汽門正時不正確。\n\n## 註\n\n• 將減壓凸輪的插銷裝入凸輪軸鏈輪上減壓桿的槽 孔“c”\n\n• 將凸輪軸鏈輪的“I”記號“d”對齊凸輪軸停止器板上的對準記號“e”\n\n\ne. 握住凸輪軸，暫時鎖緊凸輪軸鏈輪螺栓。\n\n3. 安裝：\n\n• 正時鏈條張力器墊片 New\n\n• 正時鏈條張力器\n\na. 拆卸正時鏈條張力器塞。\n\nb. 用手輕壓正時鏈條張力器桿時，以薄的螺絲起子“1”順時針完全轉動張力器桿到底。\n\n<!-- recovered text (p228): lines the geometry pass dropped; source = PDF text layer -->\nEAS31624\nEAS30282\n• 凸輪軸鏈輪“2”\nECA20600\n器板上的對準記號“e”。\n\n## 註\n\n確定張力器桿已順時針完全轉到底。\n\n\nc. 將墊片與正時鏈條張力器“2”裝到汽缸上。\n\n## 警 告\n\n一定要使用新的墊片。\n\n註\n\n• 安裝正時鏈條張力器的墊片，使墊片上的調整片“a” 往圖中的方向伸出。\n\n• 將山葉接合劑 No.1215 塗抹在正時鏈條張力器螺栓的螺紋上。\n\n\n山葉接合劑 No.121590890-85505（Three bond No.1215®）\n\n\n正時鏈條張力器螺栓10 N·m （1.0 kgf·m，7.2 lb·ft）\n\n\nd. 以薄的螺絲起子“1”逆時針轉動正時鏈條張力器桿，確定其鬆脫，然後安裝正時鏈條張力器塞。\n\n\n▲ ▲ ▲▲▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲▲▲\n\n4. 轉動：\n\n• 曲軸（順時針轉多圈）\n\n5. 檢查：\n\n• “I” 記號 “a”確定 AC 發電機轉子的 “I” 記號 “a” 對齊右曲軸箱上的對準記號“b”。\n\n• “I” 記號 “c”\n\n確定凸輪軸鏈輪的 “I” 記號 “c” 對齊凸輪軸停止器板上的對準記號“d”。未對準 → 修正。\n\n請參閱上述安裝步驟。\n\n\n6. 鎖緊：\n\n• 凸輪軸鏈輪螺栓“1”\n\n<table><tr><td><img src=\"images/28770d9805247966ced9c9f104a230fa911d4b86372260fbc25df8717ced3af0.jpg\"/></td><td>凸輪軸鏈輪螺栓30 N·m (3.0 kgf·m, 22 lb·ft)</td></tr><tr><td><img src=\"images/7b973a071834aa2224c97db066a6f8c6b5b915924a2cf6995aa4c2a1899c763f.jpg\"/></td><td>凸輪軸扳手90890-04162凸輪軸扳手YM-04162</td></tr></table>\n\n<!-- recovered text (p229): lines the geometry pass dropped; source = PDF text layer -->\nEWA17620\n\n## 注 意\n\n務必鎖緊凸輪軸鏈輪螺栓至指定的扭力，避免螺栓鬆開而損壞引擎。\n\n註\n\n使用凸輪軸扳手“2”鎖緊凸輪軸鏈輪螺栓。\n\n\n7. 測量：\n\n• 汽門間隙不符規格 → 調整。\n\n參閱第 3-5 頁的“汽門間隙的調整”。\n\n8. 安裝：\n\n• 油封 “1”\n\n（到汽缸頭蓋 “2” 內）\n\n註\n\n安裝油封時，使油封朝向圖示的方向。使用適當直徑的座“3”將油封壓入汽缸頭蓋內。\n\n\n9. 安裝：\n\n• VVA（可變汽門作動器）電磁閥“1”\n\n\nVVA （可變汽門作動器）電磁閥螺栓10 N·m （1.0 kgf·m，7.2 lb·ft）\n\n註\n\n握住 VVA（可變汽門作動器）電磁閥，使其接觸汽缸頭蓋“2”，然後按規格鎖緊螺栓。\n<!-- recovered text (p230): lines the geometry pass dropped; source = PDF text layer -->\nECA20610",
+    "claim_slugs": [
+     "maintenance-op-汽門間隙的調整",
+     "engine-ri-汽缸頭的拆卸",
+     "engine-ri-汽缸頭的安裝"
+    ],
+    "read_slugs": [
+     "maintenance-op-汽門間隙的調整",
+     "engine-ri-汽缸頭的拆卸",
+     "engine-ri-汽缸頭的安裝",
+     "engine-ri-曲軸總成的拆卸"
+    ],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 86226.21713206172,
+    "latency_ms_llm": 150.79260617494583,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_manuals",
+      "input": {
+       "vehicle_model": "MWS-150-A"
+      },
+      "latency_ms": 28.78633700311184,
+      "is_error": false
+     },
+     {
+      "name": "list_manuals",
+      "input": {},
+      "latency_ms": 30.454983934760094,
+      "is_error": false
+     },
+     {
+      "name": "get_manual_toc",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 11.408152058720589,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "maintenance-op-汽門間隙的調整",
+       "include_subsections": true
+      },
+      "latency_ms": 16.37805625796318,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "engine-ri-汽缸頭的拆卸",
+       "include_subsections": true
+      },
+      "latency_ms": 19.732113927602768,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "section": "engine-ri-汽缸頭的安裝",
+       "include_subsections": true,
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 32.30605646967888,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "engine-ri-曲軸總成的拆卸",
+       "include_subsections": true
+      },
+      "latency_ms": 11.726906523108482,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 8,
+    "obd_signal_citations": [],
+    "obd_dtc_citations": [],
+    "surfaced_images": [
+     {
+      "slug": "maintenance-op-汽門間隙的調整",
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "cited": true,
+      "image_count": 1,
+      "vision_descriptions": []
+     },
+     {
+      "slug": "engine-ri-汽缸頭的拆卸",
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "cited": true,
+      "image_count": 1,
+      "vision_descriptions": []
+     },
+     {
+      "slug": "engine-ri-汽缸頭的安裝",
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "cited": true,
+      "image_count": 1,
+      "vision_descriptions": []
+     },
+     {
+      "slug": "engine-ri-曲軸總成的拆卸",
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "cited": false,
+      "image_count": 1,
+      "vision_descriptions": []
+     }
+    ]
+   },
+   "expected_det": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.25,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "citation_quality": 1.0,
+    "trajectory_efficiency": 0.7142857142857143,
+    "value_accuracy": 1.0
+   },
+   "archived_grade": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.25,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 0.7,
+    "citation_quality": 1.0,
+    "answer_quality": 0.75,
+    "trajectory_efficiency": 0.7142857142857143,
+    "value_accuracy": 1.0,
+    "overall": 0.9174999999999999,
+    "reasoning": "Pitfall violations (1, penalty=0.70): 'The output must not rely solely on figure-local letter label' (The output uses parenthesized letter labels (a), (b), (c), (d) as identifiers fo). Judge (0.75): The output correctly identifies both required alignments (camshaft-sprocket-to-stopper-plate and AC-generator-rotor-to-right-crankcase) and mentions compression stroke, and the correct figures from the correct sections are surfaced. However, the output relies on figure-local letter labels (a/b/c/d) as identifiers alongside the physical descriptions, which the golden explicitly warns are not universal and could mislead a technician consulting different figures. The output also omits the functional explanation that the crankshaft alignment locates TDC while the camshaft alignment disambiguates compression from exhaust stroke."
+   }
+  },
+  {
+   "entry": {
+    "id": "0a2ba199-665f-41aa-a106-1163cad68d16-lookup-001",
+    "category": "component",
+    "question_type": "lookup",
+    "difficulty": "easy",
+    "question": "What is the valve clearance specification for the intake and exhaust valves on a cold MWS-150-A engine?",
+    "obd_context": null,
+    "vehicle": null,
+    "golden_summary": "On a cold MWS-150-A engine (冷機狀態), the valve clearance specifications are: 進氣 (intake) 0.10–0.14 mm (0.0039–0.0055 in), and 排氣 (exhaust) 0.21–0.25 mm (0.0083–0.0098 in). These specifications appear in the engine specifications table and are the values used when adjusting valve clearance — the measurement procedure requires the engine to be in cold state and the piston at top dead centre (TDC) of the compression stroke.",
+    "golden_citations": [
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "cooling-desc-冷卻系統",
+      "quote": "汽門間隙 (冷機狀態)"
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "cooling-desc-冷卻系統",
+      "quote": "0.10–0.14 mm (0.0039–0.0055 in)"
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "cooling-desc-冷卻系統",
+      "quote": "0.21–0.25 mm (0.0083–0.0098 in)"
+     }
+    ],
+    "expected_recall_slugs": [
+     "cooling-desc-冷卻系統",
+     "general-desc-引擎規格",
+     "general-desc-引擎規格"
+    ],
+    "expected_tool_trace": [
+     "list_manuals",
+     "get_manual_toc",
+     "read_manual_section",
+     "read_manual_section"
+    ],
+    "must_contain": [
+     "0.10–0.14",
+     "0.21–0.25",
+     "汽門間隙",
+     "冷機",
+     "進氣"
+    ],
+    "pitfall_directives": [
+     "The output must not state the cold valve clearance is 0.05–0.10 mm — that figure is incorrect for the MWS-150-A in cold state.",
+     "The output must not present DTC P0117 / 搭鐵短路 (short-to-ground) content as the answer — those topics are unrelated to a valve-clearance specification lookup.",
+     "The output must not omit the cold-engine prerequisite — the valve-clearance specs are state-dependent and only valid when the engine is in 冷機狀態 (cold state).",
+     "The output must not invent a torque spec for adjusting the valves — the manual specifies only the clearance figure, and inventing a torque value would mislead the technician."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [],
+    "expected_dtcs": [],
+    "expected_no_evidence": false,
+    "notes": "human-authored 2026-05-04 from direct read of the engine-spec table at lines 841-843 of the post-APP-52 manual. Promoted to live JSONL 2026-05-10 with bilingual EN+繁體 fields for the workshop-expert dashboard (HARNESS-17). Single-fact lookup question — the type RAG might plausibly compete on. Citation slug 冷卻系統 reflects a parser quirk: the spec table physically sits under that H4 heading; expected_recall_slugs accepts the parent 引擎規格 sections too."
+   },
+   "agent_result": {
+    "summary": "For a cold MWS-150-A engine, the valve clearance specifications are: Intake valves: 0.10–0.14 mm (0.0039–0.0055 in). Exhaust valves: 0.21–0.25 mm (0.0083–0.0098 in). These measurements must be performed with the engine at room temperature (cold) and the piston at top dead center (TDC) on the compression stroke.",
+    "citations": [
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "maintenance-op-汽門間隙的調整",
+      "quote": ""
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "general-desc-引擎規格",
+      "quote": ""
+     }
+    ],
+    "raw_sections": [
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "maintenance-op-汽門間隙的調整",
+      "text": "汽門間隙的調整\n\n以下程序適用於所有汽門。\n\n註\n\n• 汽門間隙調整必須在引擎冷卻的室溫狀況下進行。\n\n• 測量或調整汽門間隙時，活塞必須位於壓縮行程的上死點（TDC）。\n\n1. 拆卸：\n\n• 胸蓋\n\n參閱第 4-1 頁的“一般車體（1）”。\n\n<!-- recovered text (p84): lines the geometry pass dropped; source = PDF text layer -->\nEAS30620\nECA13330\nEAS30622\n\n• 置物箱\n\n• 汽油箱外蓋\n\n參閱第 4-3 頁的“一般車體（2）”。\n\n• 下腳防護擋板螺絲“1”\n\n\n• 置腳踏板\n\n參閱第 4-23 頁的 “ 一般車體 （9）”。\n\n• 汽缸頭蓋\n\n參閱第 5-9 頁的“汽缸頭”。\n\n• 置腳踏板支架（右）“2”\n\n\n• 水箱蓋\n\n參閱第 6-1 頁的“水箱”。\n\n2. 移動：\n\n• 水箱 “1”\n\n註\n\n將水箱後端朝外移動。\n\n\n3. 移動：\n\n• 水泵浦總成 “1”\n\n註\n\n依圖示方向移動水泵浦總成。\n\n\n4. 測量：\n\n• 汽門間隙不符規格 → 調整。\n\n\n汽門間隙 （冷機狀態）進氣\n\n0.10–0.14 mm (0.0039–0.0055 in)\n\n排氣\n\n0.21–0.25 mm (0.0083–0.0098 in)\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼a. 順時針轉動曲軸。\n\n\nb. 活塞在壓縮衝程的上死點（TDC）時，將凸輪軸鏈輪上的記號“a”對齊凸輪軸停止器板上的對準記號“b”\n\n\nc. 以厚薄規“1”測量汽門間隙。不符規格 → 調整。\n\n<!-- recovered text (p85): lines the geometry pass dropped; source = PDF text layer -->\n的對準記號“b”。\n\n\n▲ ▲ ▲▲▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲▲▲\n\n5. 調整：\n\n• 汽門間隙\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼\n\na. 鬆開固定螺帽“1”。\n\nb. 將厚薄規“2”插入調整螺絲末端和汽門頂之間。\n\n\nc. 用汽門調整工具“4”將調整螺絲“3”往“a” 或 “b” 方向轉動，直到達到規定的汽門間隙。\n\n方向 “a”\n\n汽門間隙增加。方向 “b”\n\n汽門間隙減少。\n\n\n汽門調整工具90890-01311六件式汽門調整工具組YM-A5970\n\n\nd. 固定調整螺絲，避免其移動，然後按規格鎖緊固定螺帽。\n汽門間隙調整螺絲固定螺帽7 N·m （0.7 kgf·m，5.1 lb·ft）\n\ne. 再測量汽門間隙一次。\n\nf. 如果汽門間隙還是不符規格，則重複進行整套 汽門間隙調整步驟，直到達到規定的間隙。\n\n▲ ▲ ▲▲▲▲▲▲ ▲ ▲ ▲▲▲ ▲▲▲▲ ▲▲▲▲ ▲▲▲\n\n6. 安裝：\n\n• 所有拆卸的零件\n\n註\n\n安裝時，依照拆卸程序反向進行。\n\n7. 檢查：\n\n• 冷卻液量\n\n參閱第 3-21 頁的“冷卻液量的檢查”。",
+      "had_images": true
+     },
+     {
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "slug": "general-desc-引擎規格",
+      "text": "{'type': 'text', 'content': '引擎規格'}\n\n<table><tr><td colspan=\"2\">引擎</td></tr><tr><td>燃燒循環</td><td>4行程</td></tr><tr><td>冷卻系統</td><td>水冷</td></tr><tr><td>汽門</td><td>SOHC</td></tr><tr><td>排氣量</td><td>155 $cm^3$ </td></tr><tr><td>汽缸數</td><td>單缸</td></tr><tr><td>內徑×行程</td><td>58.0×58.7mm(2.28×2.31in)</td></tr><tr><td>壓縮比</td><td>10.5:1</td></tr><tr><td>壓縮壓力</td><td>1566-2016kPa/860r/min(15.7-20.2kgf/ $cm^2$ /860r/min,222.7-286.7psi/860r/min)</td></tr><tr><td>起動系統</td><td>電動起動器</td></tr><tr><td colspan=\"2\">汽油</td></tr><tr><td>推薦的汽油</td><td>限用無鉛汽油(推薦使用92無鉛汽油)</td></tr><tr><td>油箱容量</td><td>7.2L(1.9USgal,1.6Imp.gal)</td></tr><tr><td colspan=\"2\">引擎機油</td></tr><tr><td>推薦的品牌</td><td>YAMALUBE</td></tr><tr><td>SAE黏稠度等級</td><td>10W-40</td></tr><tr><td>推薦的引擎機油等級</td><td>API服務等級SG類型或以上,JASO標準MA或MB</td></tr><tr><td>潤滑系統</td><td>濕式油底殼</td></tr><tr><td>引擎機油量</td><td></td></tr><tr><td>機油更換</td><td>0.90L(0.95USqt,0.79Imp.qt)</td></tr><tr><td>容量(分解)</td><td>1.00L(1.06USqt,0.88Imp.qt)</td></tr><tr><td colspan=\"2\">齒輪油</td></tr><tr><td>類型</td><td>機油SAE10W-30型SE或更高等級或齒輪油SAE85WGL-3</td></tr><tr><td>容量</td><td>0.15L(0.16USqt,0.13Imp.qt)</td></tr><tr><td>容量(分解)</td><td>0.16L(0.17USqt,0.14Imp.qt)</td></tr><tr><td colspan=\"2\">機油濾清器</td></tr><tr><td>機油濾清器類型</td><td>離心式</td></tr><tr><td colspan=\"2\">機油泵浦</td></tr><tr><td>內轉子到外轉子頂端的間隙</td><td>0.150mm(0.0059in)</td></tr><tr><td>限制</td><td>0.23mm(0.0091in)</td></tr><tr><td>外轉子到機油泵浦殼體的間隙</td><td>0.13-0.18mm(0.0051-0.0071in)</td></tr><tr><td>限制</td><td>0.25mm(0.0098in)</td></tr><tr><td>機油泵浦殼體到內外轉子的間隙</td><td>0.06-0.11mm(0.0024-0.0043in)</td></tr><tr><td>限制</td><td>0.18mm(0.0071in)</td></tr><tr><td>機油泵浦殼體到內外轉子的間隙(機油給油泵浦)</td><td>0.06-0.11mm(0.0024-0.0043in)</td></tr><tr><td>限制</td><td>0.18mm(0.0071in)</td></tr><tr><td colspan=\"2\">冷卻系統</td></tr><tr><td>冷卻液容量</td><td></td></tr><tr><td>水箱(含所有管路)</td><td>0.46L(0.49USqt,0.40Imp.qt)</td></tr><tr><td>副水箱(到達最高液位記號)</td><td>0.25 L (0.26 US qt, 0.22 Imp.qt)</td></tr><tr><td>水箱蓋閥開啟壓力</td><td>108.0-137.4 kPa (1.08-1.37 kgf/cm2, 15.7-19.9 psi)</td></tr><tr><td>恆溫器</td><td></td></tr><tr><td>閥門開口溫度</td><td>74.0-78.0 °C (165.20-172.40 °F)</td></tr><tr><td>閥門全開溫度</td><td>90.0 °C (194.00 °F)</td></tr><tr><td>閥門升程(全開)</td><td>7.0 mm (0.28 in)</td></tr><tr><td>水泵浦</td><td></td></tr><tr><td>水泵浦類型</td><td>單吸式離心泵浦</td></tr><tr><td>輪葉軸傾斜極限</td><td>0.15 mm (0.006 in)</td></tr><tr><td>火星塞</td><td></td></tr><tr><td>製造商/型號</td><td>NGK/CPR8EA</td></tr><tr><td>火星塞間隙</td><td>0.8-0.9 mm (0.031-0.035 in)</td></tr><tr><td>汽缸頭</td><td></td></tr><tr><td>彎曲限制</td><td>0.05 mm (0.0020 in)</td></tr><tr><td>凸輪軸</td><td></td></tr><tr><td>凸輪軸突部尺寸</td><td></td></tr><tr><td>突部高度(進氣)</td><td>32.211-32.311 mm (1.2681-1.2721 in)</td></tr><tr><td>限制</td><td>32.111 mm (1.2642 in)</td></tr><tr><td>突部高度(進氣高速)</td><td>32.587-32.687 mm (1.2830-1.2869 in)</td></tr><tr><td>限制(進氣高速)</td><td>32.487 mm (1.2790 in)</td></tr><tr><td>突部高度(排氣)</td><td>29.420-29.520 mm (1.1583-1.1622 in)</td></tr><tr><td>限制</td><td>29.320 mm (1.1543 in)</td></tr><tr><td>凸輪軸失圓度限制</td><td>0.030 mm (0.0012 in)</td></tr><tr><td>搖臂/搖臂軸</td><td></td></tr><tr><td>搖臂內徑</td><td>9.985-10.000 mm (0.3931-0.3937 in)</td></tr><tr><td>限制</td><td>10.015 mm (0.3943 in)</td></tr><tr><td>搖臂軸外徑</td><td>9.966-9.976 mm (0.3924-0.3928 in)</td></tr><tr><td>限制</td><td>9.935 mm (0.3911 in)</td></tr><tr><td>汽門、汽門座、汽門導管</td><td></td></tr><tr><td>汽門間隙(冷機狀態)</td><td></td></tr><tr><td>進氣</td><td>0.10-0.14 mm (0.0039-0.0055 in)</td></tr><tr><td>排氣</td><td>0.21-0.25 mm (0.0083-0.0098 in)</td></tr><tr><td>汽門尺寸</td><td></td></tr><tr><td>汽門座接觸寬度(進氣)</td><td>0.90-1.20 mm (0.0354-0.0472 in)</td></tr><tr><td>限制</td><td>1.6 mm (0.06 in)</td></tr><tr><td>汽門座接觸寬度(排氣)</td><td>0.90-1.20 mm (0.0354-0.0472 in)</td></tr><tr><td>限制</td><td>1.6 mm (0.06 in)</td></tr><tr><td>汽門桿直徑(進氣)</td><td>4.975-4.990 mm (0.1959-0.1965 in)</td></tr><tr><td>限制</td><td>4.920 mm (0.1937 in)</td></tr><tr><td>汽門桿直徑(排氣)</td><td>4.960-4.975 mm (0.1953-0.1959 in)</td></tr><tr><td>限制</td><td>4.925 mm (0.1939 in)</td></tr><tr><td>汽門導管內徑(進氣)</td><td>5.000-5.012 mm (0.1969-0.1973 in)</td></tr><tr><td>汽門導管內徑(排氣)</td><td>5.000-5.012 mm (0.1969-0.1973 in)</td></tr><tr><td>汽門桿與汽門導管之間的間隙(進氣)</td><td>0.010-0.037 mm (0.0004-0.0015 in)</td></tr><tr><td>限制</td><td>0.080 mm (0.0032 in)</td></tr><tr><td>汽門桿與汽門導管之間的間隙(排氣)</td><td>0.025-0.052 mm (0.0010-0.0020 in)</td></tr><tr><td>限制</td><td>0.100 mm (0.0039 in)</td></tr><tr><td>汽門桿失圓度</td><td>0.010 mm (0.0004 in)</td></tr><tr><td colspan=\"2\">汽門彈簧</td></tr><tr><td>自由長度(進氣)</td><td>33.79 mm (1.33 in)</td></tr><tr><td>限制</td><td>32.10 mm (1.26 in)</td></tr><tr><td>自由長度(排氣)</td><td>33.79 mm (1.33 in)</td></tr><tr><td>限制</td><td>32.10 mm (1.26 in)</td></tr><tr><td>彈簧傾斜(進氣)</td><td>1.5 mm (0.06 in)</td></tr><tr><td>彈簧傾斜(排氣)</td><td>1.5 mm (0.06 in)</td></tr><tr><td colspan=\"2\">汽缸</td></tr><tr><td>內徑</td><td>58.000-58.010 mm (2.2835-2.2839 in)</td></tr><tr><td>斜度限制</td><td>0.050 mm (0.0020 in)</td></tr><tr><td>失圓度限制</td><td>0.050 mm (0.0020 in)</td></tr><tr><td colspan=\"2\">活塞</td></tr><tr><td>活塞與汽缸之間的間隙</td><td>0.015-0.048 mm (0.0006-0.0019 in)</td></tr><tr><td>直徑</td><td>57.962-57.985 mm (2.2820-2.2829 in)</td></tr><tr><td>測量點(從活塞裙底端)</td><td>6.0 mm (0.24 in)</td></tr><tr><td>活塞銷孔內徑</td><td>14.002-14.013 mm (0.5513-0.5517 in)</td></tr><tr><td>限制</td><td>14.043 mm (0.5529 in)</td></tr><tr><td>活塞銷外徑</td><td>13.995-14.000 mm (0.5510-0.5512 in)</td></tr><tr><td>限制</td><td>13.975 mm (0.5502 in)</td></tr><tr><td>活塞銷與活塞銷孔之間的間隙</td><td>0.002-0.018 mm (0.0001-0.0007 in)</td></tr><tr><td colspan=\"2\">活塞環</td></tr><tr><td colspan=\"2\">頂環</td></tr><tr><td>環類型</td><td>筒型</td></tr><tr><td>末端間隙限制</td><td>0.50 mm (0.0197 in)</td></tr><tr><td>環邊間隙</td><td>0.030-0.065 mm (0.0012-0.0026 in)</td></tr><tr><td>邊間隙限制</td><td>0.115 mm (0.0045 in)</td></tr><tr><td colspan=\"2\">第2環</td></tr><tr><td>環類型</td><td>錐型</td></tr><tr><td>末端間隙限制</td><td>0.85 mm (0.0335 in)</td></tr><tr><td>環邊間隙</td><td>0.020-0.055 mm (0.0008-0.0022 in)</td></tr><tr><td>邊間隙限制</td><td>0.115 mm (0.0045 in)</td></tr><tr><td colspan=\"2\">曲軸</td></tr><tr><td>曲軸總成寬度</td><td>51.45-51.50 mm (2.026-2.028 in)</td></tr><tr><td>失圓度限制</td><td>0.030 mm (0.0012 in)</td></tr><tr><td colspan=\"2\">離合器</td></tr><tr><td>離合器類型</td><td>乾式、離心式、片式</td></tr><tr><td colspan=\"2\">自動離心離合器</td></tr><tr><td>離合器塊厚度</td><td>4.0 mm (0.16 in)</td></tr><tr><td>限制</td><td>2.5 mm (0.10 in)</td></tr><tr><td>離合器塊彈簧自由長度</td><td>31.0 mm (1.22 in)</td></tr><tr><td>離合器外殼內徑</td><td>125.0 mm (4.92 in)</td></tr><tr><td>限制</td><td>126.0 mm (4.96 in)</td></tr><tr><td>壓縮彈簧自由長度</td><td>95.0 mm (3.74 in)</td></tr><tr><td>限制</td><td>85.5 mm (3.37 in)</td></tr><tr><td>衡重外徑</td><td>20.0 mm (0.79 in)</td></tr><tr><td>限制</td><td>19.5 mm (0.77 in)</td></tr><tr><td>離合器接合轉速</td><td>2200-2600 r/min</td></tr><tr><td>離合器分離轉速</td><td>4700-5300 r/min</td></tr><tr><td colspan=\"2\">V皮帶</td></tr><tr><td>V皮帶寬度</td><td>25.5 mm (1.00 in)</td></tr><tr><td>限制</td><td>23.0 mm (0.91 in)</td></tr><tr><td colspan=\"2\">變速箱</td></tr><tr><td>變速類型</td><td>V皮帶、自動</td></tr><tr><td>一次減速比</td><td>1.000</td></tr><tr><td>二次減速比</td><td>10.208 (56/16 × 35/12)</td></tr><tr><td>齒輪比</td><td>2.306-0.725 : 1</td></tr><tr><td>最後驅動</td><td>齒輪</td></tr><tr><td colspan=\"2\">空氣濾清器</td></tr><tr><td>空氣濾清器濾蕊</td><td>溼紙式濾蕊</td></tr><tr><td colspan=\"2\">汽油泵浦</td></tr><tr><td>泵浦類型</td><td>電氣式</td></tr><tr><td>最大消耗安培數</td><td>3.0 A</td></tr><tr><td colspan=\"2\">噴油嘴</td></tr><tr><td>電阻</td><td>12.2Ω</td></tr><tr><td colspan=\"2\">節流閥本體</td></tr><tr><td>ID記號</td><td>BB81 00</td></tr><tr><td colspan=\"2\">節流閥位置感知器(油門位置感知器)</td></tr><tr><td>輸出電壓(惰轉時)</td><td>0.63-0.73 V</td></tr><tr><td colspan=\"2\">惰轉狀況</td></tr><tr><td>引擎惰轉轉速</td><td>1500-1700 r/min</td></tr><tr><td>排氣取樣點</td><td>排氣尾管</td></tr><tr><td>冷卻液溫度</td><td>80-90 °C (176-194 °F)</td></tr><tr><td>CO%</td><td>0.0-1.5 %</td></tr><tr><td>汽油管路壓力(惰轉時)</td><td>300-390 kPa (3.0-3.9 kgf/cm2, 43.5-56.6 psi)</td></tr><tr><td>油門握把自由間隙</td><td>3.0-7.0 mm (0.12-0.28 in)</td></tr></table>\n\n<!-- recovered text (p31): lines the geometry pass dropped; source = PDF text layer -->\nEAS20014\n1566–2016 kPa/860 r/min（15.7–20.2 kgf/cm²/860\n\n<!-- rescued region (engine emitted empty table) -->\n\n\n副水箱（到達最高液位記號）\n0.25 L （0.26 US qt，0.22 Imp.qt）\n水箱蓋閥開啟壓力\n108.0–137.4 kPa （1.08–1.37 kgf/cm²，15.7–19.9\n閥門開口溫度\n74.0–78.0 °C （165.20–172.40 °F）\n閥門全開溫度\n90.0 °C （194.00 °F）\n閥門升程（全開）\n7.0 mm (0.28 in)\n水泵浦類型\n單吸式離心泵浦\n輪葉軸傾斜極限\n0.15 mm (0.006 in)\n製造商/ 型號\nNGK/CPR8EA\n火星塞間隙\n0.8–0.9 mm (0.031–0.035 in)\n彎曲限制\n0.05 mm (0.0020 in)\n凸輪軸突部尺寸\n突部高度（進氣）\n32.211–32.311 mm (1.2681–1.2721 in)\n32.111 mm (1.2642 in)\n突部高度（進氣高速）\n32.587–32.687 mm (1.2830–1.2869 in)\n限制（進氣高速）\n32.487 mm (1.2790 in)\n突部高度（排氣）\n29.420–29.520 mm (1.1583–1.1622 in)\n29.320 mm (1.1543 in)\n凸輪軸失圓度限制\n0.030 mm (0.0012 in)\n搖臂/ 搖臂軸\n搖臂內徑\n9.985–10.000 mm (0.3931–0.3937 in)\n10.015 mm (0.3943 in)\n搖臂軸外徑\n9.966–9.976 mm (0.3924–0.3928 in)\n9.935 mm (0.3911 in)\n汽門、汽門座、汽門導管\n汽門間隙（冷機狀態）\n0.10–0.14 mm (0.0039–0.0055 in)\n0.21–0.25 mm (0.0083–0.0098 in)\n汽門尺寸\n汽門座接觸寬度（進氣）\n0.90–1.20 mm (0.0354–0.0472 in)\n1.6 mm (0.06 in)\n汽門座接觸寬度（排氣）\n0.90–1.20 mm (0.0354–0.0472 in)\n1.6 mm (0.06 in)\n汽門桿直徑（進氣）\n4.975–4.990 mm (0.1959–0.1965 in)\n4.920 mm (0.1937 in)\n汽門桿直徑（排氣）\n4.960–4.975 mm (0.1953–0.1959 in)\n4.925 mm (0.1939 in)\n汽門導管內徑（進氣）\n5.000–5.012 mm (0.1969–0.1973 in)\n汽門導管內徑（排氣）\n5.000–5.012 mm (0.1969–0.1973 in)\n汽門桿與汽門導管之間的間隙（進氣）\n0.010–0.037 mm (0.0004–0.0015 in)\n\n<!-- recovered text (p32): lines the geometry pass dropped; source = PDF text layer -->\n引擎規格\n\n<!-- rescued region (engine emitted empty table) -->\n\n\n0.080 mm (0.0032 in)\n汽門桿與汽門導管之間的間隙（排氣）\n0.025–0.052 mm (0.0010–0.0020 in)\n0.100 mm (0.0039 in)\n汽門桿失圓度\n0.010 mm (0.0004 in)\n汽門彈簧\n自由長度（進氣）\n33.79 mm (1.33 in)\n32.10 mm (1.26 in)\n自由長度（排氣）\n33.79 mm (1.33 in)\n32.10 mm (1.26 in)\n彈簧傾斜（進氣）\n1.5 mm (0.06 in)\n彈簧傾斜（排氣）\n1.5 mm (0.06 in)\n58.000–58.010 mm (2.2835–2.2839 in)\n斜度限制\n0.050 mm (0.0020 in)\n失圓度限制\n0.050 mm (0.0020 in)\n活塞與汽缸之間的間隙\n0.015–0.048 mm (0.0006–0.0019 in)\n57.962–57.985 mm (2.2820–2.2829 in)\n測量點（從活塞裙底端）\n6.0 mm (0.24 in)\n活塞銷孔內徑\n14.002–14.013 mm (0.5513–0.5517 in)\n14.043 mm (0.5529 in)\n活塞銷外徑\n13.995–14.000 mm (0.5510–0.5512 in)\n13.975 mm (0.5502 in)\n活塞銷與活塞銷孔之間的間隙\n0.002–0.018 mm (0.0001–0.0007 in)\n末端間隙限制\n0.50 mm (0.0197 in)\n環邊間隙\n0.030–0.065 mm (0.0012–0.0026 in)\n邊間隙限制\n0.115 mm (0.0045 in)\n末端間隙限制\n0.85 mm (0.0335 in)\n環邊間隙\n0.020–0.055 mm (0.0008–0.0022 in)\n邊間隙限制\n0.115 mm (0.0045 in)\n曲軸總成寬度\n51.45–51.50 mm (2.026–2.028 in)\n失圓度限制\n0.030 mm (0.0012 in)\n離合器類型\n乾式、離心式、片式\n自動離心離合器\n離合器塊厚度\n4.0 mm (0.16 in)\n2.5 mm (0.10 in)\n離合器塊彈簧自由長度\n31.0 mm (1.22 in)\n\n<!-- recovered text (p33): lines the geometry pass dropped; source = PDF text layer -->\n引擎規格\n\n<!-- rescued region (engine emitted empty table) -->\n離合器外殼內徑\n125.0 mm (4.92 in)\n126.0 mm (4.96 in)\n壓縮彈簧自由長度\n95.0 mm (3.74 in)\n85.5 mm (3.37 in)\n衡重外徑\n20.0 mm (0.79 in)\n19.5 mm (0.77 in)\n離合器接合轉速\n2200–2600 r/min\n離合器分離轉速\n4700–5300 r/min\nV 皮帶寬度\n25.5 mm (1.00 in)\n23.0 mm (0.91 in)\n變速類型\nV 皮帶、自動\n一次減速比\n二次減速比\n10.208 (56/16 × 35/12)\n2.306–0.725：1\n最後驅動\n空氣濾清器\n空氣濾清器濾蕊\n溼紙式濾蕊\n汽油泵浦\n泵浦類型\n最大消耗安培數\n節流閥本體\nID 記號\nBB81 00\n節流閥位置感知器( 油門位置感知器)\n輸出電壓（惰轉時）\n0.63–0.73 V\n惰轉狀況\n引擎惰轉轉速\n1500–1700 r/min\n排氣取樣點\n排氣尾管\n冷卻液溫度\n80–90 °C （176–194 °F）\n0.0–1.5 %\n汽油管路壓力（惰轉時）\n300–390 kPa （3.0–3.9 kgf/cm²，43.5–56.6 psi）\n油門握把自由間隙\n3.0–7.0 mm (0.12–0.28 in)\n\n<!-- recovered text (p34): lines the geometry pass dropped; source = PDF text layer -->\n引擎規格",
+      "had_images": true
+     }
+    ],
+    "tool_trace": [
+     {
+      "name": "list_manuals",
+      "input": {
+       "vehicle_model": "MWS-150-A"
+      },
+      "latency_ms": 28.42121198773384,
+      "is_error": false
+     },
+     {
+      "name": "list_manuals",
+      "input": {},
+      "latency_ms": 27.03164704144001,
+      "is_error": false
+     },
+     {
+      "name": "get_manual_toc",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 11.072637513279915,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "maintenance-op-汽門間隙的調整",
+       "include_subsections": true
+      },
+      "latency_ms": 20.15060745179653,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "general-desc-引擎規格",
+       "include_subsections": true
+      },
+      "latency_ms": 15.382405370473862,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "query": "汽門間隙 冷機"
+      },
+      "latency_ms": 21.46865241229534,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "query": "汽門間隙"
+      },
+      "latency_ms": 22.611817345023155,
+      "is_error": false
+     }
+    ],
+    "iterations": 8,
+    "total_tokens": 0,
+    "stopped_reason": "complete"
+   },
+   "archived_result": {
+    "system_label": "manual_agent",
+    "question": "What is the valve clearance specification for the intake and exhaust valves on a cold MWS-150-A engine?",
+    "output_text": "For a cold MWS-150-A engine, the valve clearance specifications are: Intake valves: 0.10–0.14 mm (0.0039–0.0055 in). Exhaust valves: 0.21–0.25 mm (0.0083–0.0098 in). These measurements must be performed with the engine at room temperature (cold) and the piston at top dead center (TDC) on the compression stroke.\n\n--- Cited sections (2) ---\n\n[maintenance-op-汽門間隙的調整]\n汽門間隙的調整\n\n以下程序適用於所有汽門。\n\n註\n\n• 汽門間隙調整必須在引擎冷卻的室溫狀況下進行。\n\n• 測量或調整汽門間隙時，活塞必須位於壓縮行程的上死點（TDC）。\n\n1. 拆卸：\n\n• 胸蓋\n\n參閱第 4-1 頁的“一般車體（1）”。\n\n<!-- recovered text (p84): lines the geometry pass dropped; source = PDF text layer -->\nEAS30620\nECA13330\nEAS30622\n\n• 置物箱\n\n• 汽油箱外蓋\n\n參閱第 4-3 頁的“一般車體（2）”。\n\n• 下腳防護擋板螺絲“1”\n\n\n• 置腳踏板\n\n參閱第 4-23 頁的 “ 一般車體 （9）”。\n\n• 汽缸頭蓋\n\n參閱第 5-9 頁的“汽缸頭”。\n\n• 置腳踏板支架（右）“2”\n\n\n• 水箱蓋\n\n參閱第 6-1 頁的“水箱”。\n\n2. 移動：\n\n• 水箱 “1”\n\n註\n\n將水箱後端朝外移動。\n\n\n3. 移動：\n\n• 水泵浦總成 “1”\n\n註\n\n依圖示方向移動水泵浦總成。\n\n\n4. 測量：\n\n• 汽門間隙不符規格 → 調整。\n\n\n汽門間隙 （冷機狀態）進氣\n\n0.10–0.14 mm (0.0039–0.0055 in)\n\n排氣\n\n0.21–0.25 mm (0.0083–0.0098 in)\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼a. 順時針轉動曲軸。\n\n\nb. 活塞在壓縮衝程的上死點（TDC）時，將凸輪軸鏈輪上的記號“a”對齊凸輪軸停止器板上的對準記號“b”\n\n\nc. 以厚薄規“1”測量汽門間隙。不符規格 → 調整。\n\n<!-- recovered text (p85): lines the geometry pass dropped; source = PDF text layer -->\n的對準記號“b”。\n\n\n▲ ▲ ▲▲▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲ ▲▲▲ ▲ ▲▲▲\n\n5. 調整：\n\n• 汽門間隙\n\n▼ ▼ ▼▼▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼ ▼▼▼ ▼ ▼▼▼\n\na. 鬆開固定螺帽“1”。\n\nb. 將厚薄規“2”插入調整螺絲末端和汽門頂之間。\n\n\nc. 用汽門調整工具“4”將調整螺絲“3”往“a” 或 “b” 方向轉動，直到達到規定的汽門間隙。\n\n方向 “a”\n\n汽門間隙增加。方向 “b”\n\n汽門間隙減少。\n\n\n汽門調整工具90890-01311六件式汽門調整工具組YM-A5970\n\n\nd. 固定調整螺絲，避免其移動，然後按規格鎖緊固定螺帽。\n汽門間隙調整螺絲固定螺帽7 N·m （0.7 kgf·m，5.1 lb·ft）\n\ne. 再測量汽門間隙一次。\n\nf. 如果汽門間隙還是不符規格，則重複進行整套 汽門間隙調整步驟，直到達到規定的間隙。\n\n▲ ▲ ▲▲▲▲▲▲ ▲ ▲ ▲▲▲ ▲▲▲▲ ▲▲▲▲ ▲▲▲\n\n6. 安裝：\n\n• 所有拆卸的零件\n\n註\n\n安裝時，依照拆卸程序反向進行。\n\n7. 檢查：\n\n• 冷卻液量\n\n參閱第 3-21 頁的“冷卻液量的檢查”。\n\n[general-desc-引擎規格]\n{'type': 'text', 'content': '引擎規格'}\n\n<table><tr><td colspan=\"2\">引擎</td></tr><tr><td>燃燒循環</td><td>4行程</td></tr><tr><td>冷卻系統</td><td>水冷</td></tr><tr><td>汽門</td><td>SOHC</td></tr><tr><td>排氣量</td><td>155 $cm^3$ </td></tr><tr><td>汽缸數</td><td>單缸</td></tr><tr><td>內徑×行程</td><td>58.0×58.7mm(2.28×2.31in)</td></tr><tr><td>壓縮比</td><td>10.5:1</td></tr><tr><td>壓縮壓力</td><td>1566-2016kPa/860r/min(15.7-20.2kgf/ $cm^2$ /860r/min,222.7-286.7psi/860r/min)</td></tr><tr><td>起動系統</td><td>電動起動器</td></tr><tr><td colspan=\"2\">汽油</td></tr><tr><td>推薦的汽油</td><td>限用無鉛汽油(推薦使用92無鉛汽油)</td></tr><tr><td>油箱容量</td><td>7.2L(1.9USgal,1.6Imp.gal)</td></tr><tr><td colspan=\"2\">引擎機油</td></tr><tr><td>推薦的品牌</td><td>YAMALUBE</td></tr><tr><td>SAE黏稠度等級</td><td>10W-40</td></tr><tr><td>推薦的引擎機油等級</td><td>API服務等級SG類型或以上,JASO標準MA或MB</td></tr><tr><td>潤滑系統</td><td>濕式油底殼</td></tr><tr><td>引擎機油量</td><td></td></tr><tr><td>機油更換</td><td>0.90L(0.95USqt,0.79Imp.qt)</td></tr><tr><td>容量(分解)</td><td>1.00L(1.06USqt,0.88Imp.qt)</td></tr><tr><td colspan=\"2\">齒輪油</td></tr><tr><td>類型</td><td>機油SAE10W-30型SE或更高等級或齒輪油SAE85WGL-3</td></tr><tr><td>容量</td><td>0.15L(0.16USqt,0.13Imp.qt)</td></tr><tr><td>容量(分解)</td><td>0.16L(0.17USqt,0.14Imp.qt)</td></tr><tr><td colspan=\"2\">機油濾清器</td></tr><tr><td>機油濾清器類型</td><td>離心式</td></tr><tr><td colspan=\"2\">機油泵浦</td></tr><tr><td>內轉子到外轉子頂端的間隙</td><td>0.150mm(0.0059in)</td></tr><tr><td>限制</td><td>0.23mm(0.0091in)</td></tr><tr><td>外轉子到機油泵浦殼體的間隙</td><td>0.13-0.18mm(0.0051-0.0071in)</td></tr><tr><td>限制</td><td>0.25mm(0.0098in)</td></tr><tr><td>機油泵浦殼體到內外轉子的間隙</td><td>0.06-0.11mm(0.0024-0.0043in)</td></tr><tr><td>限制</td><td>0.18mm(0.0071in)</td></tr><tr><td>機油泵浦殼體到內外轉子的間隙(機油給油泵浦)</td><td>0.06-0.11mm(0.0024-0.0043in)</td></tr><tr><td>限制</td><td>0.18mm(0.0071in)</td></tr><tr><td colspan=\"2\">冷卻系統</td></tr><tr><td>冷卻液容量</td><td></td></tr><tr><td>水箱(含所有管路)</td><td>0.46L(0.49USqt,0.40Imp.qt)</td></tr><tr><td>副水箱(到達最高液位記號)</td><td>0.25 L (0.26 US qt, 0.22 Imp.qt)</td></tr><tr><td>水箱蓋閥開啟壓力</td><td>108.0-137.4 kPa (1.08-1.37 kgf/cm2, 15.7-19.9 psi)</td></tr><tr><td>恆溫器</td><td></td></tr><tr><td>閥門開口溫度</td><td>74.0-78.0 °C (165.20-172.40 °F)</td></tr><tr><td>閥門全開溫度</td><td>90.0 °C (194.00 °F)</td></tr><tr><td>閥門升程(全開)</td><td>7.0 mm (0.28 in)</td></tr><tr><td>水泵浦</td><td></td></tr><tr><td>水泵浦類型</td><td>單吸式離心泵浦</td></tr><tr><td>輪葉軸傾斜極限</td><td>0.15 mm (0.006 in)</td></tr><tr><td>火星塞</td><td></td></tr><tr><td>製造商/型號</td><td>NGK/CPR8EA</td></tr><tr><td>火星塞間隙</td><td>0.8-0.9 mm (0.031-0.035 in)</td></tr><tr><td>汽缸頭</td><td></td></tr><tr><td>彎曲限制</td><td>0.05 mm (0.0020 in)</td></tr><tr><td>凸輪軸</td><td></td></tr><tr><td>凸輪軸突部尺寸</td><td></td></tr><tr><td>突部高度(進氣)</td><td>32.211-32.311 mm (1.2681-1.2721 in)</td></tr><tr><td>限制</td><td>32.111 mm (1.2642 in)</td></tr><tr><td>突部高度(進氣高速)</td><td>32.587-32.687 mm (1.2830-1.2869 in)</td></tr><tr><td>限制(進氣高速)</td><td>32.487 mm (1.2790 in)</td></tr><tr><td>突部高度(排氣)</td><td>29.420-29.520 mm (1.1583-1.1622 in)</td></tr><tr><td>限制</td><td>29.320 mm (1.1543 in)</td></tr><tr><td>凸輪軸失圓度限制</td><td>0.030 mm (0.0012 in)</td></tr><tr><td>搖臂/搖臂軸</td><td></td></tr><tr><td>搖臂內徑</td><td>9.985-10.000 mm (0.3931-0.3937 in)</td></tr><tr><td>限制</td><td>10.015 mm (0.3943 in)</td></tr><tr><td>搖臂軸外徑</td><td>9.966-9.976 mm (0.3924-0.3928 in)</td></tr><tr><td>限制</td><td>9.935 mm (0.3911 in)</td></tr><tr><td>汽門、汽門座、汽門導管</td><td></td></tr><tr><td>汽門間隙(冷機狀態)</td><td></td></tr><tr><td>進氣</td><td>0.10-0.14 mm (0.0039-0.0055 in)</td></tr><tr><td>排氣</td><td>0.21-0.25 mm (0.0083-0.0098 in)</td></tr><tr><td>汽門尺寸</td><td></td></tr><tr><td>汽門座接觸寬度(進氣)</td><td>0.90-1.20 mm (0.0354-0.0472 in)</td></tr><tr><td>限制</td><td>1.6 mm (0.06 in)</td></tr><tr><td>汽門座接觸寬度(排氣)</td><td>0.90-1.20 mm (0.0354-0.0472 in)</td></tr><tr><td>限制</td><td>1.6 mm (0.06 in)</td></tr><tr><td>汽門桿直徑(進氣)</td><td>4.975-4.990 mm (0.1959-0.1965 in)</td></tr><tr><td>限制</td><td>4.920 mm (0.1937 in)</td></tr><tr><td>汽門桿直徑(排氣)</td><td>4.960-4.975 mm (0.1953-0.1959 in)</td></tr><tr><td>限制</td><td>4.925 mm (0.1939 in)</td></tr><tr><td>汽門導管內徑(進氣)</td><td>5.000-5.012 mm (0.1969-0.1973 in)</td></tr><tr><td>汽門導管內徑(排氣)</td><td>5.000-5.012 mm (0.1969-0.1973 in)</td></tr><tr><td>汽門桿與汽門導管之間的間隙(進氣)</td><td>0.010-0.037 mm (0.0004-0.0015 in)</td></tr><tr><td>限制</td><td>0.080 mm (0.0032 in)</td></tr><tr><td>汽門桿與汽門導管之間的間隙(排氣)</td><td>0.025-0.052 mm (0.0010-0.0020 in)</td></tr><tr><td>限制</td><td>0.100 mm (0.0039 in)</td></tr><tr><td>汽門桿失圓度</td><td>0.010 mm (0.0004 in)</td></tr><tr><td colspan=\"2\">汽門彈簧</td></tr><tr><td>自由長度(進氣)</td><td>33.79 mm (1.33 in)</td></tr><tr><td>限制</td><td>32.10 mm (1.26 in)</td></tr><tr><td>自由長度(排氣)</td><td>33.79 mm (1.33 in)</td></tr><tr><td>限制</td><td>32.10 mm (1.26 in)</td></tr><tr><td>彈簧傾斜(進氣)</td><td>1.5 mm (0.06 in)</td></tr><tr><td>彈簧傾斜(排氣)</td><td>1.5 mm (0.06 in)</td></tr><tr><td colspan=\"2\">汽缸</td></tr><tr><td>內徑</td><td>58.000-58.010 mm (2.2835-2.2839 in)</td></tr><tr><td>斜度限制</td><td>0.050 mm (0.0020 in)</td></tr><tr><td>失圓度限制</td><td>0.050 mm (0.0020 in)</td></tr><tr><td colspan=\"2\">活塞</td></tr><tr><td>活塞與汽缸之間的間隙</td><td>0.015-0.048 mm (0.0006-0.0019 in)</td></tr><tr><td>直徑</td><td>57.962-57.985 mm (2.2820-2.2829 in)</td></tr><tr><td>測量點(從活塞裙底端)</td><td>6.0 mm (0.24 in)</td></tr><tr><td>活塞銷孔內徑</td><td>14.002-14.013 mm (0.5513-0.5517 in)</td></tr><tr><td>限制</td><td>14.043 mm (0.5529 in)</td></tr><tr><td>活塞銷外徑</td><td>13.995-14.000 mm (0.5510-0.5512 in)</td></tr><tr><td>限制</td><td>13.975 mm (0.5502 in)</td></tr><tr><td>活塞銷與活塞銷孔之間的間隙</td><td>0.002-0.018 mm (0.0001-0.0007 in)</td></tr><tr><td colspan=\"2\">活塞環</td></tr><tr><td colspan=\"2\">頂環</td></tr><tr><td>環類型</td><td>筒型</td></tr><tr><td>末端間隙限制</td><td>0.50 mm (0.0197 in)</td></tr><tr><td>環邊間隙</td><td>0.030-0.065 mm (0.0012-0.0026 in)</td></tr><tr><td>邊間隙限制</td><td>0.115 mm (0.0045 in)</td></tr><tr><td colspan=\"2\">第2環</td></tr><tr><td>環類型</td><td>錐型</td></tr><tr><td>末端間隙限制</td><td>0.85 mm (0.0335 in)</td></tr><tr><td>環邊間隙</td><td>0.020-0.055 mm (0.0008-0.0022 in)</td></tr><tr><td>邊間隙限制</td><td>0.115 mm (0.0045 in)</td></tr><tr><td colspan=\"2\">曲軸</td></tr><tr><td>曲軸總成寬度</td><td>51.45-51.50 mm (2.026-2.028 in)</td></tr><tr><td>失圓度限制</td><td>0.030 mm (0.0012 in)</td></tr><tr><td colspan=\"2\">離合器</td></tr><tr><td>離合器類型</td><td>乾式、離心式、片式</td></tr><tr><td colspan=\"2\">自動離心離合器</td></tr><tr><td>離合器塊厚度</td><td>4.0 mm (0.16 in)</td></tr><tr><td>限制</td><td>2.5 mm (0.10 in)</td></tr><tr><td>離合器塊彈簧自由長度</td><td>31.0 mm (1.22 in)</td></tr><tr><td>離合器外殼內徑</td><td>125.0 mm (4.92 in)</td></tr><tr><td>限制</td><td>126.0 mm (4.96 in)</td></tr><tr><td>壓縮彈簧自由長度</td><td>95.0 mm (3.74 in)</td></tr><tr><td>限制</td><td>85.5 mm (3.37 in)</td></tr><tr><td>衡重外徑</td><td>20.0 mm (0.79 in)</td></tr><tr><td>限制</td><td>19.5 mm (0.77 in)</td></tr><tr><td>離合器接合轉速</td><td>2200-2600 r/min</td></tr><tr><td>離合器分離轉速</td><td>4700-5300 r/min</td></tr><tr><td colspan=\"2\">V皮帶</td></tr><tr><td>V皮帶寬度</td><td>25.5 mm (1.00 in)</td></tr><tr><td>限制</td><td>23.0 mm (0.91 in)</td></tr><tr><td colspan=\"2\">變速箱</td></tr><tr><td>變速類型</td><td>V皮帶、自動</td></tr><tr><td>一次減速比</td><td>1.000</td></tr><tr><td>二次減速比</td><td>10.208 (56/16 × 35/12)</td></tr><tr><td>齒輪比</td><td>2.306-0.725 : 1</td></tr><tr><td>最後驅動</td><td>齒輪</td></tr><tr><td colspan=\"2\">空氣濾清器</td></tr><tr><td>空氣濾清器濾蕊</td><td>溼紙式濾蕊</td></tr><tr><td colspan=\"2\">汽油泵浦</td></tr><tr><td>泵浦類型</td><td>電氣式</td></tr><tr><td>最大消耗安培數</td><td>3.0 A</td></tr><tr><td colspan=\"2\">噴油嘴</td></tr><tr><td>電阻</td><td>12.2Ω</td></tr><tr><td colspan=\"2\">節流閥本體</td></tr><tr><td>ID記號</td><td>BB81 00</td></tr><tr><td colspan=\"2\">節流閥位置感知器(油門位置感知器)</td></tr><tr><td>輸出電壓(惰轉時)</td><td>0.63-0.73 V</td></tr><tr><td colspan=\"2\">惰轉狀況</td></tr><tr><td>引擎惰轉轉速</td><td>1500-1700 r/min</td></tr><tr><td>排氣取樣點</td><td>排氣尾管</td></tr><tr><td>冷卻液溫度</td><td>80-90 °C (176-194 °F)</td></tr><tr><td>CO%</td><td>0.0-1.5 %</td></tr><tr><td>汽油管路壓力(惰轉時)</td><td>300-390 kPa (3.0-3.9 kgf/cm2, 43.5-56.6 psi)</td></tr><tr><td>油門握把自由間隙</td><td>3.0-7.0 mm (0.12-0.28 in)</td></tr></table>\n\n<!-- recovered text (p31): lines the geometry pass dropped; source = PDF text layer -->\nEAS20014\n1566–2016 kPa/860 r/min（15.7–20.2 kgf/cm²/860\n\n<!-- rescued region (engine emitted empty table) -->\n\n\n副水箱（到達最高液位記號）\n0.25 L （0.26 US qt，0.22 Imp.qt）\n水箱蓋閥開啟壓力\n108.0–137.4 kPa （1.08–1.37 kgf/cm²，15.7–19.9\n閥門開口溫度\n74.0–78.0 °C （165.20–172.40 °F）\n閥門全開溫度\n90.0 °C （194.00 °F）\n閥門升程（全開）\n7.0 mm (0.28 in)\n水泵浦類型\n單吸式離心泵浦\n輪葉軸傾斜極限\n0.15 mm (0.006 in)\n製造商/ 型號\nNGK/CPR8EA\n火星塞間隙\n0.8–0.9 mm (0.031–0.035 in)\n彎曲限制\n0.05 mm (0.0020 in)\n凸輪軸突部尺寸\n突部高度（進氣）\n32.211–32.311 mm (1.2681–1.2721 in)\n32.111 mm (1.2642 in)\n突部高度（進氣高速）\n32.587–32.687 mm (1.2830–1.2869 in)\n限制（進氣高速）\n32.487 mm (1.2790 in)\n突部高度（排氣）\n29.420–29.520 mm (1.1583–1.1622 in)\n29.320 mm (1.1543 in)\n凸輪軸失圓度限制\n0.030 mm (0.0012 in)\n搖臂/ 搖臂軸\n搖臂內徑\n9.985–10.000 mm (0.3931–0.3937 in)\n10.015 mm (0.3943 in)\n搖臂軸外徑\n9.966–9.976 mm (0.3924–0.3928 in)\n9.935 mm (0.3911 in)\n汽門、汽門座、汽門導管\n汽門間隙（冷機狀態）\n0.10–0.14 mm (0.0039–0.0055 in)\n0.21–0.25 mm (0.0083–0.0098 in)\n汽門尺寸\n汽門座接觸寬度（進氣）\n0.90–1.20 mm (0.0354–0.0472 in)\n1.6 mm (0.06 in)\n汽門座接觸寬度（排氣）\n0.90–1.20 mm (0.0354–0.0472 in)\n1.6 mm (0.06 in)\n汽門桿直徑（進氣）\n4.975–4.990 mm (0.1959–0.1965 in)\n4.920 mm (0.1937 in)\n汽門桿直徑（排氣）\n4.960–4.975 mm (0.1953–0.1959 in)\n4.925 mm (0.1939 in)\n汽門導管內徑（進氣）\n5.000–5.012 mm (0.1969–0.1973 in)\n汽門導管內徑（排氣）\n5.000–5.012 mm (0.1969–0.1973 in)\n汽門桿與汽門導管之間的間隙（進氣）\n0.010–0.037 mm (0.0004–0.0015 in)\n\n<!-- recovered text (p32): lines the geometry pass dropped; source = PDF text layer -->\n引擎規格\n\n<!-- rescued region (engine emitted empty table) -->\n\n\n0.080 mm (0.0032 in)\n汽門桿與汽門導管之間的間隙（排氣）\n0.025–0.052 mm (0.0010–0.0020 in)\n0.100 mm (0.0039 in)\n汽門桿失圓度\n0.010 mm (0.0004 in)\n汽門彈簧\n自由長度（進氣）\n33.79 mm (1.33 in)\n32.10 mm (1.26 in)\n自由長度（排氣）\n33.79 mm (1.33 in)\n32.10 mm (1.26 in)\n彈簧傾斜（進氣）\n1.5 mm (0.06 in)\n彈簧傾斜（排氣）\n1.5 mm (0.06 in)\n58.000–58.010 mm (2.2835–2.2839 in)\n斜度限制\n0.050 mm (0.0020 in)\n失圓度限制\n0.050 mm (0.0020 in)\n活塞與汽缸之間的間隙\n0.015–0.048 mm (0.0006–0.0019 in)\n57.962–57.985 mm (2.2820–2.2829 in)\n測量點（從活塞裙底端）\n6.0 mm (0.24 in)\n活塞銷孔內徑\n14.002–14.013 mm (0.5513–0.5517 in)\n14.043 mm (0.5529 in)\n活塞銷外徑\n13.995–14.000 mm (0.5510–0.5512 in)\n13.975 mm (0.5502 in)\n活塞銷與活塞銷孔之間的間隙\n0.002–0.018 mm (0.0001–0.0007 in)\n末端間隙限制\n0.50 mm (0.0197 in)\n環邊間隙\n0.030–0.065 mm (0.0012–0.0026 in)\n邊間隙限制\n0.115 mm (0.0045 in)\n末端間隙限制\n0.85 mm (0.0335 in)\n環邊間隙\n0.020–0.055 mm (0.0008–0.0022 in)\n邊間隙限制\n0.115 mm (0.0045 in)\n曲軸總成寬度\n51.45–51.50 mm (2.026–2.028 in)\n失圓度限制\n0.030 mm (0.0012 in)\n離合器類型\n乾式、離心式、片式\n自動離心離合器\n離合器塊厚度\n4.0 mm (0.16 in)\n2.5 mm (0.10 in)\n離合器塊彈簧自由長度\n31.0 mm (1.22 in)\n\n<!-- recovered text (p33): lines the geometry pass dropped; source = PDF text layer -->\n引擎規格\n\n<!-- rescued region (engine emitted empty table) -->\n離合器外殼內徑\n125.0 mm (4.92 in)\n126.0 mm (4.96 in)\n壓縮彈簧自由長度\n95.0 mm (3.74 in)\n85.5 mm (3.37 in)\n衡重外徑\n20.0 mm (0.79 in)\n19.5 mm (0.77 in)\n離合器接合轉速\n2200–2600 r/min\n離合器分離轉速\n4700–5300 r/min\nV 皮帶寬度\n25.5 mm (1.00 in)\n23.0 mm (0.91 in)\n變速類型\nV 皮帶、自動\n一次減速比\n二次減速比\n10.208 (56/16 × 35/12)\n2.306–0.725：1\n最後驅動\n空氣濾清器\n空氣濾清器濾蕊\n溼紙式濾蕊\n汽油泵浦\n泵浦類型\n最大消耗安培數\n節流閥本體\nID 記號\nBB81 00\n節流閥位置感知器( 油門位置感知器)\n輸出電壓（惰轉時）\n0.63–0.73 V\n惰轉狀況\n引擎惰轉轉速\n1500–1700 r/min\n排氣取樣點\n排氣尾管\n冷卻液溫度\n80–90 °C （176–194 °F）\n0.0–1.5 %\n汽油管路壓力（惰轉時）\n300–390 kPa （3.0–3.9 kgf/cm²，43.5–56.6 psi）\n油門握把自由間隙\n3.0–7.0 mm (0.12–0.28 in)\n\n<!-- recovered text (p34): lines the geometry pass dropped; source = PDF text layer -->\n引擎規格",
+    "claim_slugs": [
+     "maintenance-op-汽門間隙的調整",
+     "general-desc-引擎規格"
+    ],
+    "read_slugs": [
+     "maintenance-op-汽門間隙的調整",
+     "general-desc-引擎規格"
+    ],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 70178.51735278964,
+    "latency_ms_llm": 146.13897912204266,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_manuals",
+      "input": {
+       "vehicle_model": "MWS-150-A"
+      },
+      "latency_ms": 28.42121198773384,
+      "is_error": false
+     },
+     {
+      "name": "list_manuals",
+      "input": {},
+      "latency_ms": 27.03164704144001,
+      "is_error": false
+     },
+     {
+      "name": "get_manual_toc",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16"
+      },
+      "latency_ms": 11.072637513279915,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "maintenance-op-汽門間隙的調整",
+       "include_subsections": true
+      },
+      "latency_ms": 20.15060745179653,
+      "is_error": false
+     },
+     {
+      "name": "read_manual_section",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "section": "general-desc-引擎規格",
+       "include_subsections": true
+      },
+      "latency_ms": 15.382405370473862,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "query": "汽門間隙 冷機"
+      },
+      "latency_ms": 21.46865241229534,
+      "is_error": false
+     },
+     {
+      "name": "search_manual_text",
+      "input": {
+       "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+       "query": "汽門間隙"
+      },
+      "latency_ms": 22.611817345023155,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 8,
+    "obd_signal_citations": [],
+    "obd_dtc_citations": [],
+    "surfaced_images": [
+     {
+      "slug": "maintenance-op-汽門間隙的調整",
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "cited": true,
+      "image_count": 1,
+      "vision_descriptions": []
+     },
+     {
+      "slug": "general-desc-引擎規格",
+      "manual_id": "0a2ba199-665f-41aa-a106-1163cad68d16",
+      "cited": true,
+      "image_count": 1,
+      "vision_descriptions": []
+     }
+    ]
+   },
+   "expected_det": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "citation_quality": 1.0,
+    "trajectory_efficiency": 0.5714285714285714,
+    "value_accuracy": 1.0
+   },
+   "archived_grade": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 1.0,
+    "trajectory_efficiency": 0.5714285714285714,
+    "value_accuracy": 1.0,
+    "overall": 1.0,
+    "reasoning": "Judge (1.00): The system output correctly provides the exact valve clearance specifications for both intake (0.10–0.14 mm) and exhaust (0.21–0.25 mm) valves on a cold MWS-150-A engine, matching the golden answer precisely. It also properly includes the cold-engine prerequisite and the TDC compression stroke requirement, giving a technician all necessary information to perform the adjustment."
+   }
+  }
+ ],
+ "obd": [
+  {
+   "entry": {
+    "id": "yamaha-road-test-signal-stats-001",
+    "category": "component",
+    "question_type": "signal_statistics",
+    "difficulty": "easy",
+    "question": "What was the peak engine RPM during this trip, and when did it occur?",
+    "obd_context": null,
+    "golden_summary": "Peak engine RPM was 3906 on the K-Line standardized signal (A_KL_RPM), reached at approximately 11:24:08 during a brief burst near the end of the trip. The Yamaha-proprietary A_YAM_RPM column shows a slightly higher peak of 4014 at the same timestamp, reflecting a different sampling source for the same physical quantity. The K-Line value is the canonical answer for standard OBD-II reporting; the proprietary reading is supplementary.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_signals",
+     "get_signal_stats"
+    ],
+    "must_contain": [
+     "RPM"
+    ],
+    "pitfall_directives": [
+     "The output must not report a peak RPM above 4500 rpm — the fixture's true maxima are 3906 (A_KL_RPM) and 4014 (A_YAM_RPM); anything higher is fabrication.",
+     "The output must not claim there is only one RPM column when both A_KL_RPM and A_YAM_RPM are present in the log."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [
+     {
+      "signal": "A_KL_RPM",
+      "stat": "max",
+      "value": 3906.0,
+      "value_tolerance_rel": 0.01,
+      "time_range": null
+     }
+    ],
+    "expected_dtcs": [],
+    "expected_no_evidence": false,
+    "notes": "Multi-source policy: standard signal canonical; proprietary acceptable as supplementary. Pitfall calibrated to allow either source's reading."
+   },
+   "agent_result": {
+    "summary": "The peak engine RPM during this trip was 4014 rpm (A_YAM_RPM signal) or 3906 rpm (A_KL_RPM signal), both occurring at 2026-05-08T11:24:08.508000. The A_YAM_RPM signal recorded the higher peak value. Both RPM signals show the maximum occurred at the same timestamp, with values remaining at peak for approximately 3 seconds before dropping.",
+    "signal_citations": [
+     {
+      "signal": "A_YAM_RPM",
+      "time_range": [
+       "2026-05-08T11:24:08.508000",
+       "2026-05-08T11:24:08.508000"
+      ],
+      "value": 4014.0,
+      "stat": "max",
+      "units": "rpm"
+     },
+     {
+      "signal": "A_KL_RPM",
+      "time_range": [
+       "2026-05-08T11:24:08.508000",
+       "2026-05-08T11:24:08.508000"
+      ],
+      "value": 3906.0,
+      "stat": "max",
+      "units": "rpm"
+     }
+    ],
+    "dtc_citations": [],
+    "raw_data": [],
+    "limitations": [],
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {
+       "subsystem": "engine",
+       "pattern": "RPM"
+      },
+      "latency_ms": 33.141039311885834,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {
+       "pattern": null,
+       "subsystem": "engine"
+      },
+      "latency_ms": 31.823279336094856,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {
+       "signals": [
+        "A_KL_RPM",
+        "A_YAM_RPM"
+       ],
+       "include": [
+        "basic",
+        "percentiles",
+        "extrema"
+       ]
+      },
+      "latency_ms": 62.620168551802635,
+      "is_error": false
+     },
+     {
+      "name": "read_window",
+      "input": {
+       "signals": [
+        "A_KL_RPM",
+        "A_YAM_RPM"
+       ],
+       "start_time": "2026-05-08T11:24:05.508000",
+       "end_time": "2026-05-08T11:24:12.508000",
+       "max_rows": 20
+      },
+      "latency_ms": 35.389646887779236,
+      "is_error": false
+     }
+    ],
+    "iterations": 5,
+    "total_tokens": 0,
+    "stopped_reason": "complete"
+   },
+   "archived_result": {
+    "system_label": "obd_agent",
+    "question": "What was the peak engine RPM during this trip, and when did it occur?",
+    "output_text": "The peak engine RPM during this trip was 4014 rpm (A_YAM_RPM signal) or 3906 rpm (A_KL_RPM signal), both occurring at 2026-05-08T11:24:08.508000. The A_YAM_RPM signal recorded the higher peak value. Both RPM signals show the maximum occurred at the same timestamp, with values remaining at peak for approximately 3 seconds before dropping.\n\n--- Signal citations (2) ---\nA_YAM_RPM (max) = 4014.0 rpm  @ [2026-05-08T11:24:08.508000, 2026-05-08T11:24:08.508000]\nA_KL_RPM (max) = 3906.0 rpm  @ [2026-05-08T11:24:08.508000, 2026-05-08T11:24:08.508000]",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 75462.16408163309,
+    "latency_ms_llm": 162.97413408756256,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {
+       "subsystem": "engine",
+       "pattern": "RPM"
+      },
+      "latency_ms": 33.141039311885834,
+      "is_error": false
+     },
+     {
+      "name": "list_signals",
+      "input": {
+       "pattern": null,
+       "subsystem": "engine"
+      },
+      "latency_ms": 31.823279336094856,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {
+       "signals": [
+        "A_KL_RPM",
+        "A_YAM_RPM"
+       ],
+       "include": [
+        "basic",
+        "percentiles",
+        "extrema"
+       ]
+      },
+      "latency_ms": 62.620168551802635,
+      "is_error": false
+     },
+     {
+      "name": "read_window",
+      "input": {
+       "signals": [
+        "A_KL_RPM",
+        "A_YAM_RPM"
+       ],
+       "start_time": "2026-05-08T11:24:05.508000",
+       "end_time": "2026-05-08T11:24:12.508000",
+       "max_rows": 20
+      },
+      "latency_ms": 35.389646887779236,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 5,
+    "obd_signal_citations": [
+     {
+      "signal": "A_YAM_RPM",
+      "time_range": [
+       "2026-05-08T11:24:08.508000",
+       "2026-05-08T11:24:08.508000"
+      ],
+      "value": 4014.0,
+      "stat": "max",
+      "units": "rpm"
+     },
+     {
+      "signal": "A_KL_RPM",
+      "time_range": [
+       "2026-05-08T11:24:08.508000",
+       "2026-05-08T11:24:08.508000"
+      ],
+      "value": 3906.0,
+      "stat": "max",
+      "units": "rpm"
+     }
+    ],
+    "obd_dtc_citations": []
+   },
+   "expected_det": {
+    "section_recall": 1.0,
+    "claim_precision": 0.5,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "citation_quality": 1.0,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0
+   },
+   "archived_grade": {
+    "section_recall": 1.0,
+    "claim_precision": 0.5,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 0.85,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 0.9275,
+    "reasoning": "Judge (0.85): The system output correctly identifies both peak RPM values (3906 for A_KL_RPM and 4014 for A_YAM_RPM) and the correct timestamp (~11:24:08), matching the golden answer's core facts. However, it omits the important context that the K-Line value is the canonical answer for standard OBD-II reporting while the proprietary reading is supplementary, which a technician would need to prioritize correctly. The additional detail about the peak lasting ~3 seconds is extraneous but not harmful."
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-signal-stats-002",
+    "category": "component",
+    "question_type": "signal_statistics",
+    "difficulty": "medium",
+    "question": "What was the vehicle's speed profile during this trip — typical and maximum?",
+    "obd_context": null,
+    "golden_summary": "Vehicle speed during the 4-minute-16-second trip ranged from 0 to 15 km/h, with a mean of approximately 7.6 km/h. The speed was modest throughout, consistent with low-speed urban riding or a yard test rather than highway operation. The p95 was 14 km/h.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_signals",
+     "get_signal_stats"
+    ],
+    "must_contain": [
+     "15",
+     "speed"
+    ],
+    "pitfall_directives": [
+     "The output must not report a maximum speed above 25 km/h — the fixture's true max is 15 km/h.",
+     "The output must not characterize this trip as highway operation; the speed profile is clearly low-speed."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [
+     {
+      "signal": "A_KL_SPEED",
+      "stat": "max",
+      "value": 15.0,
+      "value_tolerance_rel": 0.01,
+      "time_range": null
+     },
+     {
+      "signal": "A_KL_SPEED",
+      "stat": "mean",
+      "value": 7.6,
+      "value_tolerance_rel": 0.1,
+      "time_range": null
+     }
+    ],
+    "expected_dtcs": [],
+    "expected_no_evidence": false,
+    "notes": ""
+   },
+   "agent_result": {
+    "summary": "The vehicle operated at very low speeds throughout this 4-minute trip. Maximum speed reached was 15 km/h at 11:21:11. Typical speed (median) was 8 km/h, with mean speed of 7.6 km/h. The 25th-75th percentile range was 4.75-11 km/h, indicating slow urban or idle driving conditions. One speed sample was missing from the 257-sample session.",
+    "signal_citations": [
+     {
+      "signal": "A_KL_SPEED",
+      "time_range": null,
+      "value": 15.0,
+      "stat": "max",
+      "units": "km/h"
+     },
+     {
+      "signal": "A_KL_SPEED",
+      "time_range": null,
+      "value": 8.0,
+      "stat": "p50",
+      "units": "km/h"
+     },
+     {
+      "signal": "A_KL_SPEED",
+      "time_range": null,
+      "value": 7.6094,
+      "stat": "mean",
+      "units": "km/h"
+     }
+    ],
+    "dtc_citations": [],
+    "raw_data": [],
+    "limitations": [
+     "ABS ECU (Channel B) not present - no CAN-based speed data available",
+     "One speed sample missing from 257-sample session"
+    ],
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {
+       "pattern": "*SPEED*",
+       "subsystem": "all"
+      },
+      "latency_ms": 25.166017934679985,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {
+       "include": [
+        "basic",
+        "percentiles",
+        "extrema"
+       ],
+       "signals": [
+        "A_KL_SPEED"
+       ]
+      },
+      "latency_ms": 29.019013047218323,
+      "is_error": false
+     }
+    ],
+    "iterations": 3,
+    "total_tokens": 0,
+    "stopped_reason": "complete"
+   },
+   "archived_result": {
+    "system_label": "obd_agent",
+    "question": "What was the vehicle's speed profile during this trip — typical and maximum?",
+    "output_text": "The vehicle operated at very low speeds throughout this 4-minute trip. Maximum speed reached was 15 km/h at 11:21:11. Typical speed (median) was 8 km/h, with mean speed of 7.6 km/h. The 25th-75th percentile range was 4.75-11 km/h, indicating slow urban or idle driving conditions. One speed sample was missing from the 257-sample session.\n\n--- Signal citations (3) ---\nA_KL_SPEED (max) = 15.0 km/h\nA_KL_SPEED (p50) = 8.0 km/h\nA_KL_SPEED (mean) = 7.6094 km/h\n\n--- Limitations ---\n- ABS ECU (Channel B) not present - no CAN-based speed data available\n- One speed sample missing from 257-sample session",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 51068.525679409504,
+    "latency_ms_llm": 54.18503098189831,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {
+       "pattern": "*SPEED*",
+       "subsystem": "all"
+      },
+      "latency_ms": 25.166017934679985,
+      "is_error": false
+     },
+     {
+      "name": "get_signal_stats",
+      "input": {
+       "include": [
+        "basic",
+        "percentiles",
+        "extrema"
+       ],
+       "signals": [
+        "A_KL_SPEED"
+       ]
+      },
+      "latency_ms": 29.019013047218323,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 3,
+    "obd_signal_citations": [
+     {
+      "signal": "A_KL_SPEED",
+      "time_range": null,
+      "value": 15.0,
+      "stat": "max",
+      "units": "km/h"
+     },
+     {
+      "signal": "A_KL_SPEED",
+      "time_range": null,
+      "value": 8.0,
+      "stat": "p50",
+      "units": "km/h"
+     },
+     {
+      "signal": "A_KL_SPEED",
+      "time_range": null,
+      "value": 7.6094,
+      "stat": "mean",
+      "units": "km/h"
+     }
+    ],
+    "obd_dtc_citations": []
+   },
+   "expected_det": {
+    "section_recall": 1.0,
+    "claim_precision": 0.6666666666666666,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "citation_quality": 1.0,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0
+   },
+   "archived_grade": {
+    "section_recall": 1.0,
+    "claim_precision": 0.6666666666666666,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 0.88,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 0.9486666666666667,
+    "reasoning": "Judge (0.88): The system output correctly reports the maximum speed (15 km/h), mean speed (7.6 km/h), and appropriately characterizes the trip as low-speed urban/idle driving, all matching the golden answer. Minor omissions include the exact trip duration (says '4-minute' vs golden's '4-minute-16-second') and the p95 value of 14 km/h. The output adds useful supplementary statistics (median, percentile range) that don't detract from accuracy."
+   }
+  },
+  {
+   "entry": {
+    "id": "yamaha-road-test-event-finding-001",
+    "category": "symptom",
+    "question_type": "event_finding",
+    "difficulty": "medium",
+    "question": "When did the engine coolant temperature first exceed 75°C during this trip?",
+    "obd_context": null,
+    "golden_summary": "The K-Line coolant temperature (A_KL_COOLANT_TEMP) first crossed 75°C at approximately 11:23:05 and remained above that threshold for the rest of the captured session (until 11:24:56). This is a single contiguous window — coolant rose into this range as the engine warmed up during the latter half of the trip.",
+    "golden_citations": [],
+    "expected_recall_slugs": [],
+    "expected_tool_trace": [
+     "list_signals",
+     "find_events"
+    ],
+    "must_contain": [
+     "75",
+     "coolant"
+    ],
+    "pitfall_directives": [
+     "The output must not claim coolant temperature exceeded 75°C earlier than 11:22:30; the actual first crossing is at 11:23:05.",
+     "The output must not claim there are multiple separate windows where coolant exceeded 75°C; the fixture shows a single contiguous window."
+    ],
+    "requires_image": false,
+    "expected_signal_citations": [
+     {
+      "signal": "A_KL_COOLANT_TEMP",
+      "stat": null,
+      "value": null,
+      "value_tolerance_rel": 0.05,
+      "time_range": [
+       "2026-05-08T11:23:05",
+       "2026-05-08T11:24:56"
+      ]
+     }
+    ],
+    "expected_dtcs": [],
+    "expected_no_evidence": false,
+    "notes": ""
+   },
+   "agent_result": {
+    "summary": "The engine coolant temperature first exceeded 75°C at 2026-05-08T11:23:05.508, when the reading reached 76.00°C. Prior to this, the temperature was at exactly 75.00°C from 11:22:59 through 11:23:04. The temperature remained above 75°C for the remainder of the session, peaking at 89.00°C by the end of the trip.",
+    "signal_citations": [
+     {
+      "signal": "A_KL_COOLANT_TEMP",
+      "time_range": [
+       "2026-05-08T11:23:05.508000",
+       "2026-05-08T11:24:56.508000"
+      ],
+      "value": 76.0,
+      "stat": null,
+      "units": "°C"
+     }
+    ],
+    "dtc_citations": [],
+    "raw_data": [],
+    "limitations": [],
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {
+       "pattern": "*TEMP*",
+       "subsystem": "engine"
+      },
+      "latency_ms": 12.036709114909172,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {
+       "signal": "A_KL_COOLANT_TEMP",
+       "predicate": "rising_above",
+       "threshold": 75,
+       "max_events": 1
+      },
+      "latency_ms": 31.50061145424843,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {
+       "signal": "A_KL_COOLANT_TEMP",
+       "predicate": "above_threshold",
+       "threshold": 75,
+       "max_events": 5
+      },
+      "latency_ms": 29.153112322092056,
+      "is_error": false
+     },
+     {
+      "name": "read_window",
+      "input": {
+       "signals": [
+        "A_KL_COOLANT_TEMP"
+       ],
+       "start_time": "2026-05-08T11:22:50",
+       "end_time": "2026-05-08T11:23:20",
+       "max_rows": 50
+      },
+      "latency_ms": 30.372818931937218,
+      "is_error": false
+     }
+    ],
+    "iterations": 5,
+    "total_tokens": 0,
+    "stopped_reason": "complete"
+   },
+   "archived_result": {
+    "system_label": "obd_agent",
+    "question": "When did the engine coolant temperature first exceed 75°C during this trip?",
+    "output_text": "The engine coolant temperature first exceeded 75°C at 2026-05-08T11:23:05.508, when the reading reached 76.00°C. Prior to this, the temperature was at exactly 75.00°C from 11:22:59 through 11:23:04. The temperature remained above 75°C for the remainder of the session, peaking at 89.00°C by the end of the trip.\n\n--- Signal citations (1) ---\nA_KL_COOLANT_TEMP = 76.0 °C  @ [2026-05-08T11:23:05.508000, 2026-05-08T11:24:56.508000]",
+    "claim_slugs": [],
+    "read_slugs": [],
+    "retrieved_chunk_metadata": [],
+    "latency_ms_wall": 85024.89306777716,
+    "latency_ms_llm": 103.06325182318687,
+    "cost_usd": 0.0,
+    "tool_trace": [
+     {
+      "name": "list_signals",
+      "input": {
+       "pattern": "*TEMP*",
+       "subsystem": "engine"
+      },
+      "latency_ms": 12.036709114909172,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {
+       "signal": "A_KL_COOLANT_TEMP",
+       "predicate": "rising_above",
+       "threshold": 75,
+       "max_events": 1
+      },
+      "latency_ms": 31.50061145424843,
+      "is_error": false
+     },
+     {
+      "name": "find_events",
+      "input": {
+       "signal": "A_KL_COOLANT_TEMP",
+       "predicate": "above_threshold",
+       "threshold": 75,
+       "max_events": 5
+      },
+      "latency_ms": 29.153112322092056,
+      "is_error": false
+     },
+     {
+      "name": "read_window",
+      "input": {
+       "signals": [
+        "A_KL_COOLANT_TEMP"
+       ],
+       "start_time": "2026-05-08T11:22:50",
+       "end_time": "2026-05-08T11:23:20",
+       "max_rows": 50
+      },
+      "latency_ms": 30.372818931937218,
+      "is_error": false
+     }
+    ],
+    "stopped_reason": "complete",
+    "iterations": 5,
+    "obd_signal_citations": [
+     {
+      "signal": "A_KL_COOLANT_TEMP",
+      "time_range": [
+       "2026-05-08T11:23:05.508000",
+       "2026-05-08T11:24:56.508000"
+      ],
+      "value": 76.0,
+      "stat": null,
+      "units": "°C"
+     }
+    ],
+    "obd_dtc_citations": []
+   },
+   "expected_det": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "citation_quality": 1.0,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0
+   },
+   "archived_grade": {
+    "section_recall": 1.0,
+    "claim_precision": 1.0,
+    "exploration_cost": 0.0,
+    "fact_recall": 1.0,
+    "fact_density": 1.0,
+    "hallucination_penalty": 1.0,
+    "citation_quality": 1.0,
+    "answer_quality": 1.0,
+    "trajectory_efficiency": 1.0,
+    "value_accuracy": 1.0,
+    "overall": 1.0,
+    "reasoning": "Judge (1.00): The system output correctly identifies the first crossing of 75°C at 11:23:05.508 (matching the golden answer's approximate 11:23:05) and accurately states the temperature remained above 75°C for the remainder of the session, consistent with the single contiguous window described in the golden answer. The additional detail about the temperature being exactly 75.00°C just prior and peaking at 89.00°C by trip end supplements rather than contradicts the reference answer."
+   }
+  }
+ ]
+}

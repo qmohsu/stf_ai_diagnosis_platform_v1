@@ -134,6 +134,9 @@ class ManualGuardState:
     repeated_call: bool = False
     force_final: bool = False
     blocked_calls: int = 0
+    # PROD-10: the answer submitted through the ``final_answer`` tool (only
+    # offered on the force-final turn); set once, then no tool is offered.
+    final_answer: Optional[Any] = None
 
     def pin_from_vehicle(self, manufacturer: str, model: str) -> None:
         """Pin the manual matching the vehicle record when exactly one does."""

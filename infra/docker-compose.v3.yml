@@ -43,11 +43,13 @@ services:
       STF_V3_LLM_PROFILE: ${STF_V3_LLM_PROFILE:-auto}
       STF_V3_LLM_ALLOW_CLOUD: ${STF_V3_LLM_ALLOW_CLOUD:-false}
       # Cloud comparison (PROD-09 D3): off by default; key falls back to
-      # the manual-summary key (STF_V3_OPENROUTER_API_KEY / OPENROUTER_API_KEY).
+      # the manual-summary key STF_V3_OPENROUTER_API_KEY from infra/.env.
       STF_V3_CLOUD_LLM_ENABLED: ${STF_V3_CLOUD_LLM_ENABLED:-false}
       STF_V3_CLOUD_LLM_MODEL: ${STF_V3_CLOUD_LLM_MODEL:-deepseek/deepseek-v3.2}
       STF_V3_CLOUD_LLM_API_KEY: ${STF_V3_CLOUD_LLM_API_KEY:-}
-      STF_V3_OPENROUTER_API_KEY: ${STF_V3_OPENROUTER_API_KEY:-${OPENROUTER_API_KEY:-}}
+      # Single level only: podman-compose 1.5 mis-reads a nested default
+      # (${A:-${B:-}} → value + "}"), PROD-10 found the key corrupted.
+      STF_V3_OPENROUTER_API_KEY: ${STF_V3_OPENROUTER_API_KEY:-}
       STF_V3_DEFAULT_LOCALE: ${STF_V3_DEFAULT_LOCALE:-zh-TW}
       STF_V3_MANUAL_IMAGES_ENABLED: ${STF_V3_MANUAL_IMAGES_ENABLED:-false}
       PYDANTIC_AI_NO_BANNER: "1"
@@ -84,11 +86,13 @@ services:
       STF_V3_LLM_PROFILE: ${STF_V3_LLM_PROFILE:-auto}
       STF_V3_LLM_ALLOW_CLOUD: ${STF_V3_LLM_ALLOW_CLOUD:-false}
       # Cloud comparison (PROD-09 D3): off by default; key falls back to
-      # the manual-summary key (STF_V3_OPENROUTER_API_KEY / OPENROUTER_API_KEY).
+      # the manual-summary key STF_V3_OPENROUTER_API_KEY from infra/.env.
       STF_V3_CLOUD_LLM_ENABLED: ${STF_V3_CLOUD_LLM_ENABLED:-false}
       STF_V3_CLOUD_LLM_MODEL: ${STF_V3_CLOUD_LLM_MODEL:-deepseek/deepseek-v3.2}
       STF_V3_CLOUD_LLM_API_KEY: ${STF_V3_CLOUD_LLM_API_KEY:-}
-      STF_V3_OPENROUTER_API_KEY: ${STF_V3_OPENROUTER_API_KEY:-${OPENROUTER_API_KEY:-}}
+      # Single level only: podman-compose 1.5 mis-reads a nested default
+      # (${A:-${B:-}} → value + "}"), PROD-10 found the key corrupted.
+      STF_V3_OPENROUTER_API_KEY: ${STF_V3_OPENROUTER_API_KEY:-}
       STF_V3_DEFAULT_LOCALE: ${STF_V3_DEFAULT_LOCALE:-zh-TW}
       STF_V3_MANUAL_IMAGES_ENABLED: ${STF_V3_MANUAL_IMAGES_ENABLED:-false}
       PYDANTIC_AI_NO_BANNER: "1"

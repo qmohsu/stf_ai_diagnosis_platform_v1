@@ -48,10 +48,12 @@ def test_subagents_only_carry_their_own_tools() -> None:
     neither has a delegation tool (no recursion)."""
     manual = set(_tool_defs(manual_agent.MANUAL_AGENT))
     obd = set(_tool_defs(obd_agent.OBD_AGENT))
-    assert manual == {"list_manuals", "get_manual_toc", "read_manual_section", "search_manual_text"}
+    # + final_answer, offered only on the force-final turn (PROD-10)
+    assert manual == {"list_manuals", "get_manual_toc", "read_manual_section", "search_manual_text", "final_answer"}
     assert obd == {"list_signals", "read_window", "get_signal_stats", "find_events", "list_dtcs", "lookup_dtc"}
     assert not ({"delegate_to_manual_agent", "delegate_to_obd_agent"} & (manual | obd))
-    assert set(main_agent.MAIN_TOOL_NAMES) == manual | obd | {"delegate_to_manual_agent", "delegate_to_obd_agent"}
+    assert set(main_agent.MAIN_TOOL_NAMES) == (manual - {"final_answer"}) | obd | {"delegate_to_manual_agent",
+                                                                                "delegate_to_obd_agent"}
 
 
 def test_tools_and_agent_modules_never_import_the_database() -> None:

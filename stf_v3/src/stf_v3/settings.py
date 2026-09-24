@@ -98,6 +98,10 @@ class Settings(BaseSettings):
     llm_max_tokens: Optional[int] = None
     llm_temperature: Optional[float] = None
     llm_request_timeout_s: Optional[float] = None   # one model request (read timeout)
+    # Qwen thinking on the vLLM profile (PROD-09: off for speed).  Only the
+    # PROD-10 thinking-on comparison run turns it on (FM-45); never the
+    # product default.
+    llm_thinking: bool = False
     # Cloud comparison endpoint (PROD-09 D3): comparison runs only, never
     # the product path.  Empty key → the OpenRouter key above (FM-32).
     cloud_llm_enabled: bool = False
@@ -115,6 +119,10 @@ class Settings(BaseSettings):
     subagent_max_tokens: Optional[int] = None
     subagent_temperature: Optional[float] = None
     tool_result_max_tokens: int = 2000
+    # Sub-agents see tool output whole, as V2's sub-agents did (PROD-10: the
+    # 2000 cut hid half of the manual TOC and long sections); this only
+    # guards against a runaway result.
+    subagent_tool_result_max_tokens: int = 16_000
     compact_threshold_tokens: int = 60_000
     # Manual images in tool results: off until the model is known to
     # accept image parts (FM-42; PROD-09 decides per model).
