@@ -6,12 +6,13 @@
 #   bash infra/vllm_ctl.sh status         # container / pod / health / served models / GPU summary
 #   bash infra/vllm_ctl.sh stop           # down (frees both GPUs; e.g. before an Ollama fallback)
 #   bash infra/vllm_ctl.sh logs [N]       # last N container log lines
-#   bash infra/vllm_ctl.sh install-unit   # user systemd unit so the service comes back after a reboot
+#   bash infra/vllm_ctl.sh install-unit   # auto-start unit -- NOT installed: vLLM is on demand (2026-09-24)
 #
 # ALWAYS the same project name (stf_llm → pod_stf_llm): without it
 # podman-compose would put vLLM into V1/V2's pod_infra and `down` would
-# tear that pod down (FM-36; the 2026-09-12 lesson).  Startup order after
-# a reboot: this → stf-v3-gpu-worker → V3 containers (runbook §4).
+# tear that pod down (FM-36; the 2026-09-12 lesson).  Policy (2026-09-24):
+# on demand, never resident -- start only when both GPUs are free, stop after
+# use; a reboot brings up stf-v3-gpu-worker → V3 containers, not vLLM (runbook §4).
 set -uo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"

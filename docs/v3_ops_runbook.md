@@ -2,7 +2,7 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.6（PROD-10 D5 后续：基线重置示例的 OBD 验收线改为 0.884；同模型 API 预检） |
+| 版本 | v0.7（vLLM 按需拉起、不常驻：不装开机自启、重启顺序不再先起 vLLM） |
 | 日期 | 2026-09-24 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
@@ -169,9 +169,9 @@ podman cp stf-v3-api:/tmp/runs ~/prod09_runs/     # 报告 .report.md / .report.
 
 ## 4. 模型服务（vLLM）
 
-> **2026-09-24 起按需启动，不再常驻。** 2026-09-23 vLLM 被停机、GPU 让给其他团队的训练（共享服务器）。现在的做法是评测 / 验证时才开（`vllm_ctl.sh start` + `wait`，冷启动约 10 分钟），用完 `vllm_ctl.sh stop`。vLLM 停着时部署核验第 9 项会 FAIL：部署时用 `LLM_CHECK=skip LLM_CHECK_REASON="vLLM 按需启动，当前停机" bash stf_v3/scripts/deploy_check.sh`。长期是常驻还是按需，见开发计划 §4"vLLM 常驻与共享服务器"。
+> **按需拉起，不常驻（2026-09-24 用户决定；开始稳定对外服务或硬件升级时再议，见开发计划 §4）。** 2026-09-23 vLLM 被停机、GPU 让给其他团队的训练（共享服务器）。现在的做法是评测 / 验证时才开（`vllm_ctl.sh start` + `wait`，冷启动约 10 分钟），用完 `vllm_ctl.sh stop`。vLLM 停着时部署核验第 9 项会 FAIL：部署时用 `LLM_CHECK=skip LLM_CHECK_REASON="vLLM 按需启动，当前停机" bash stf_v3/scripts/deploy_check.sh`。启动前先 `nvidia-smi` 确认两张卡空闲（共享服务器：其他团队的训练任务每卡约 21 GB，占着时 vLLM 起不来，也不要去抢）。不装开机自启单元。
 
-V1/V2/V3 唯一的本地模型来源（设计文档 D7，PROD-09 D1）：`Qwen/Qwen3.6-27B-FP8` 由 vLLM 0.24 常驻，两张卡并用，思考在服务端关闭。部署文件 `infra/docker-compose.vllm.yml`，**只通过** `infra/vllm_ctl.sh` 启停（项目名固定 `stf_llm` → 自己的 pod `pod_stf_llm`，不进 V1/V2 的 `pod_infra`、不进 V3 的 `pod_stf_v3`）。V3 只通过配置指向它（§3.2）。
+V1/V2/V3 唯一的本地模型来源（设计文档 D7，PROD-09 D1）：`Qwen/Qwen3.6-27B-FP8` 由 vLLM 0.24 提供（按需拉起），两张卡并用，思考在服务端关闭。部署文件 `infra/docker-compose.vllm.yml`，**只通过** `infra/vllm_ctl.sh` 启停（项目名固定 `stf_llm` → 自己的 pod `pod_stf_llm`，不进 V1/V2 的 `pod_infra`、不进 V3 的 `pod_stf_v3`）。V3 只通过配置指向它（§3.2）。
 
 ### 4.1 启停与启动顺序
 
@@ -181,10 +181,10 @@ bash infra/vllm_ctl.sh wait           # 轮询 /v1/models 直到列出模型（�
 bash infra/vllm_ctl.sh status         # 容器状态 / 健康 / pod / 已服务模型 / 两卡显存
 bash infra/vllm_ctl.sh stop           # 停容器，释放两张卡
 bash infra/vllm_ctl.sh logs 200
-bash infra/vllm_ctl.sh install-unit   # 装用户级 systemd 单元 stf-llm.service：重启机器后自动 start（已 enable-linger）
+bash infra/vllm_ctl.sh install-unit   # 开机自启单元 stf-llm.service —— 按需策略下【不安装】；只有决定常驻时才用
 ```
 
-**服务器重启后的启动顺序**（FM-21）：① `vllm_ctl.sh start` → `wait`（或 `stf-llm.service` 自动起）；② `systemctl --user restart stf-v3-gpu-worker`；③ V3 容器 `podman-compose -p stf_v3 … up -d stf-v3-api stf-v3-worker`；④ `bash stf_v3/scripts/deploy_check.sh`。V3 容器比 vLLM 早起也不会坏——真跑脚本与（PROD-11 的）任务预检会等模型就绪，只是那约 10 分钟内的诊断请求会等或失败。
+**服务器重启后的启动顺序**（FM-21；按需策略）：① `systemctl --user restart stf-v3-gpu-worker`；② V3 容器 `podman-compose -p stf_v3 … up -d stf-v3-api stf-v3-worker`；③ `LLM_CHECK=skip LLM_CHECK_REASON="vLLM 按需" bash stf_v3/scripts/deploy_check.sh`。vLLM **不随重启自起**，要用时再按上面的步骤拉起。V3 容器在 vLLM 停着时照常运行——真跑脚本与（PROD-11 的）任务预检会等模型就绪或失败，具体行为由 PROD-11 定。
 
 **vLLM 不参与 V3 部署核验的"30 分钟内新建"检查**（FM-39）：V3 每次部署不需要重启 vLLM；核验第 9 项只看它在线、服务的是配置里的模型、能真的生成一句。
 
