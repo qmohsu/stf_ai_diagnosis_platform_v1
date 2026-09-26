@@ -1,7 +1,10 @@
 """Diagnosis event vocabulary (blueprint §3.7): one event, two consumers.
 
-The ten names below ARE the ``audit_events.event_type`` values and the SSE
-event names PROD-11 will emit.  ``EventSink`` collects a run's events in
+The names below ARE the ``audit_events.event_type`` values and the SSE
+event names (PROD-11).  This tuple is the single source (FM-13): the
+engine emits the first ten; ``waiting`` (PROD-11 D2) is written by the
+diagnosis job before the engine starts (queued / model starting / GPU
+busy …) and never by the engine itself.  ``EventSink`` collects a run's events in
 order (``seq`` is per run) and can forward each one to an async callback
 (the streaming consumer).  Sub-agent events carry
 ``parent_tool_call_id`` = the delegation tool call they belong to (FM-53).
@@ -33,10 +36,11 @@ CONTEXT_COMPACT = "context_compact"
 DIAGNOSIS_DONE = "diagnosis_done"
 DONE = "done"
 ERROR = "error"
+WAITING = "waiting"                # PROD-11 D2: job-level, before the engine runs
 
 EVENT_TYPES = (
     SESSION_START, REASONING, TOKEN, TOOL_CALL, TOOL_RESULT, HYPOTHESIS,
-    CONTEXT_COMPACT, DIAGNOSIS_DONE, DONE, ERROR,
+    CONTEXT_COMPACT, DIAGNOSIS_DONE, DONE, ERROR, WAITING,
 )
 
 

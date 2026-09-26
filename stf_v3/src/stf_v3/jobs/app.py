@@ -6,7 +6,7 @@ worker container is live and observable; PROD-06 adds the real tasks
 
 Worker command (same image as the API)::
 
-    procrastinate --app stf_v3.jobs.app.app worker -q default --concurrency 2
+    procrastinate --app stf_v3.jobs.app.app worker -q default,diagnosis --concurrency 2
 
 Author: Xiangzhu Yan
 """
@@ -32,8 +32,8 @@ def conninfo_from_sqlalchemy_url(url: str) -> str:
     return f"{scheme.split('+', 1)[0]}://{rest}"
 
 
-# Task modules are listed here so BOTH workers (container: ``default``
-# queue; host GPU worker: ``gpu`` queue) know every task definition.
+# Task modules are listed here so BOTH workers (container: ``default`` +
+# ``diagnosis`` queues; host GPU worker: ``gpu`` + ``llm``) know every task.
 # ``knowledge.tasks`` imports no heavy dependency at module level — the
 # pipeline is imported inside the task body (FM-29).
 app = procrastinate.App(
@@ -42,6 +42,7 @@ app = procrastinate.App(
     ),
     import_paths=[
         "stf_v3.knowledge.tasks",
+        "stf_v3.diagnosis.tasks",
         "stf_v3.jobs.maintenance",
         "stf_v3.jobs.drill",
     ],

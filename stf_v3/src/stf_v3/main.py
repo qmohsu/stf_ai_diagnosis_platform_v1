@@ -16,6 +16,7 @@ from sqlalchemy import text
 
 from stf_v3.auth.router import router as auth_router
 from stf_v3.db import engine
+from stf_v3.diagnosis.router import router as diagnosis_router
 from stf_v3.errors import install_error_handlers
 from stf_v3.ingest.router import router as ingest_router
 from stf_v3.ingest.storage import LogStorage
@@ -60,8 +61,13 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="STF V3 API",
-    version="0.1.0",
-    description="Vehicle-anchored AI diagnosis backend (Stage 1).",
+    version="0.2.0",
+    description=(
+        "Vehicle-anchored AI diagnosis backend (Stage 1). Contract v2 (PROD-11): all Stage 1 "
+        "endpoints — register → create a vehicle → upload a log → POST /v3/vehicles/{id}/diagnose "
+        "→ follow GET /v3/conversations/{id}/events → read GET /v3/conversations/{id}/report. "
+        "Authorize with the token from POST /v3/auth/login (the Authorize button)."
+    ),
     lifespan=lifespan,
     openapi_url="/v3/openapi.json",
     docs_url="/v3/docs",
@@ -72,6 +78,7 @@ app.include_router(auth_router)
 app.include_router(vehicles_router)
 app.include_router(ingest_router)
 app.include_router(knowledge_router)
+app.include_router(diagnosis_router)
 
 
 def gpu_worker_status() -> Dict[str, Any]:
@@ -92,7 +99,8 @@ def gpu_worker_status() -> Dict[str, Any]:
 @app.get("/health", tags=["system"])
 @app.get("/v3/health", tags=["system"])
 async def health() -> Dict[str, Any]:
-    """Liveness + DB + queue backlog + host GPU worker + disk + commit.
+    """Liveness + DB + queue backlog + host GPU worker + disk + commit,
+    plus (PROD-11) unfinished diagnoses and the on-demand model service.
 
     Served at both ``/health`` (container healthcheck) and ``/v3/health``
     (through nginx, where bare ``/health`` belongs to V1).
@@ -105,6 +113,15 @@ async def health() -> Dict[str, Any]:
                      "WHERE status = 'todo' GROUP BY queue_name")
             )
         ).all()
+        diag = (await conn.execute(text(
+            "SELECT count(*) FILTER (WHERE status = 'queued'), count(*) FILTER (WHERE status = 'running'), "
+            "EXTRACT(EPOCH FROM now() - min(created_at)) FROM diagnosis_conversations "
+            "WHERE status IN ('queued','running')"))).one()
+        llm = (await conn.execute(text(
+            "SELECT state, blocked_reason, started_by_us, "
+            "EXTRACT(EPOCH FROM now() - controller_seen_at), "
+            "EXTRACT(EPOCH FROM now() - GREATEST(last_used_at, ready_at)) "
+            "FROM model_service_state WHERE id = 1"))).first()
     backlog = {q: n for q, n in rows}
     free_gb = round(shutil.disk_usage(Path(settings.manual_storage_path).resolve()).free / 1e9, 1)
     return {
@@ -115,4 +132,16 @@ async def health() -> Dict[str, Any]:
         "gpu_worker": gpu_worker_status(),
         "disk_free_gb": free_gb,
         "commit": settings.git_commit,
+        # FM-31: how long the oldest unfinished diagnosis has waited.
+        "diagnosis": {
+            "queued": int(diag[0] or 0), "running": int(diag[1] or 0),
+            "oldest_unfinished_s": int(diag[2]) if diag[2] is not None else None,
+        },
+        # FM-31 / FM-32: the controller's view; ``idle_s`` while ready says
+        # how long vLLM has been idle (it should stop after llm_idle_stop_s).
+        "model_service": None if llm is None else {
+            "state": llm[0], "blocked_reason": llm[1], "started_by_us": llm[2],
+            "controller_seen_s": int(llm[3]) if llm[3] is not None else None,
+            "idle_s": int(llm[4]) if (llm[0] == "ready" and llm[4] is not None) else None,
+        },
     }

@@ -23,7 +23,7 @@ _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _BUSINESS_TABLES = (
     "audit_events", "reports", "messages", "diagnosis_conversations",
     "obd_logs", "vehicle_devices", "vehicles", "invite_codes",
-    "memberships", "workshops", "manuals", "users",
+    "memberships", "workshops", "manuals", "users", "model_service_state",
 )
 
 requires_db = pytest.mark.skipif(

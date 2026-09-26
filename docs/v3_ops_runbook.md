@@ -2,7 +2,7 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.7（vLLM 按需拉起、不常驻：不装开机自启、重启顺序不再先起 vLLM） |
+| 版本 | v0.8（PROD-11：诊断任务与按需模型控制器一章） |
 | 日期 | 2026-09-24 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
@@ -184,7 +184,7 @@ bash infra/vllm_ctl.sh logs 200
 bash infra/vllm_ctl.sh install-unit   # 开机自启单元 stf-llm.service —— 按需策略下【不安装】；只有决定常驻时才用
 ```
 
-**服务器重启后的启动顺序**（FM-21；按需策略）：① `systemctl --user restart stf-v3-gpu-worker`；② V3 容器 `podman-compose -p stf_v3 … up -d stf-v3-api stf-v3-worker`；③ `LLM_CHECK=skip LLM_CHECK_REASON="vLLM 按需" bash stf_v3/scripts/deploy_check.sh`。vLLM **不随重启自起**，要用时再按上面的步骤拉起。V3 容器在 vLLM 停着时照常运行——真跑脚本与（PROD-11 的）任务预检会等模型就绪或失败，具体行为由 PROD-11 定。
+**服务器重启后的启动顺序**（FM-21；按需策略）：① `systemctl --user restart stf-v3-gpu-worker`；② V3 容器 `podman-compose -p stf_v3 … up -d stf-v3-api stf-v3-worker`；③ `LLM_CHECK=skip LLM_CHECK_REASON="vLLM 按需" bash stf_v3/scripts/deploy_check.sh`。vLLM **不随重启自起**：有诊断在等模型时由按需控制器自动拉起（§6.2），评测 / 验证时按上面的步骤手动拉起。V3 容器在 vLLM 停着时照常运行，诊断会在过程里显示"等待模型"。
 
 **vLLM 不参与 V3 部署核验的"30 分钟内新建"检查**（FM-39）：V3 每次部署不需要重启 vLLM；核验第 9 项只看它在线、服务的是配置里的模型、能真的生成一句。
 
@@ -299,3 +299,63 @@ bash infra/vllm_ctl.sh stop                                       # 评测完停
 ### 5.6 基线重置
 
 模型、判卷、vLLM 版本或手册库本身换了，分数整体平移：开一个**只改** `thresholds.yaml` + 新增两份基线成绩单的 PR（`python -m stf_v3.evals accept --scorecards a.json b.json --lines manual_agent=0.831,obd_agent=0.884 --write-thresholds stf_v3/evals/thresholds.yaml`），由用户加 `baseline-reset` 标签。同一 PR 里再动受管代码 CI 会红。
+
+## 6. 诊断任务与按需模型（PROD-11）
+
+### 6.1 一次诊断怎么走
+
+`POST /v3/vehicles/{id}/diagnose`（body `{obd_log_id}`）立刻回 202 + 会话编号；同一辆车已有排队中 / 进行中的诊断时回 200 + 原会话（`existing: true`）。容器 worker（队列 `default,diagnosis`，并发 2）**一次只跑一个诊断**（诊断任务共用锁 `diagnosis-model`），其余排队。过程看 `GET /v3/conversations/{id}/events`（默认 JSON 回放；`Accept: text/event-stream` 直播），报告看 `GET /v3/conversations/{id}/report`。
+
+模型不在线时任务先等：每分钟写一条 `waiting` 事件，`reason` 说明在等什么（下表），自点击起最多 60 分钟（`STF_V3_DIAGNOSIS_MODEL_WAIT_S`），诊断自己的 15 分钟时限从模型就绪才开始算。
+
+| `waiting.reason` | 意思 | 先看哪 |
+|---|---|---|
+| `queued` | 前面还有诊断 | `GET /v3/health` → `diagnosis` |
+| `model_starting` | 控制器已拉起 vLLM，冷启动中（约 10–12 分钟） | `bash infra/vllm_ctl.sh status` |
+| `gpu_busy` | 卡被其他团队（或我们的 Ollama）占着，不抢 | `nvidia-smi`；`/v3/health` → `model_service.blocked_reason` |
+| `manual_converting` | 我们自己在转手册（MinerU 占第二张卡） | `/v3/manuals` 里 `converting` 的那本 |
+| `model_cooldown` | 刚才拉起失败，冷却 15 分钟后重试 | `journalctl --user -u stf-v3-gpu-worker -n 100 \| grep llm.` |
+| `controller_unresponsive` | 宿主机控制器 3 分钟没心跳 | `systemctl --user status stf-v3-gpu-worker` |
+
+结束状态：`done`（`report.partial` 为真表示时限 / 用量上限 / 模型错误提前结束）、`cancelled`、`error`（`error_code`：`model_unavailable` 等满 60 分钟、`model_start_failed`、`diagnosis_interrupted` worker 中途没了、`vehicle_deleted`、`log_unavailable`、`queue_unavailable`、`run_failed` 零产出、`internal_error`）。诊断**不自动重跑**：让用户重新点。
+
+### 6.2 按需模型控制器
+
+跑在宿主机 GPU worker 的 `llm` 队列（该 worker 现在是 `-q gpu,llm --concurrency 2`；手册转换靠锁 `gpu-ingest` 仍一次一本）。每分钟一次，诊断等模型时再按需加一次。它只会执行 `infra/vllm_ctl.sh start|stop`：
+
+- **拉起**：有未结束的诊断、vLLM 没在跑、不在冷却期、两张卡上没有别人的显存（其他用户的进程、查不到主人的进程、我们的 MinerU / Ollama 都算占用；阈值 `STF_V3_LLM_GPU_FREE_MIB` = 2000 MiB）。拉起时的显存快照写进 `model_service_state.gpu_snapshot` 和日志 `llm.start`。
+- **不重复拉起**：加载中只等；超过 25 分钟没就绪或进程退出 → 标失败、停掉、冷却 15 分钟（`STF_V3_LLM_START_COOLDOWN_S`），等待中的诊断立即以 `model_start_failed` 结束。
+- **自动停机**：只停**控制器自己拉起**的那次，且空闲满 30 分钟（`STF_V3_LLM_IDLE_STOP_S`）、没有未结束诊断、没有评测锁（`~/stf_v3_evals/.lock`）、vLLM 没有进行中的请求。**手动 `vllm_ctl.sh start` 拉起的不会被自动停**——用完自己 `stop`。
+- 状态：`GET /v3/health` → `model_service`（`state`、`blocked_reason`、`started_by_us`、`controller_seen_s`、`idle_s`）。空闲超过 30 分钟仍 `ready` 且 `started_by_us: true` → 查 `journalctl` 里的 `llm.ctl`。
+- 临时关掉自动拉起：`infra/.env` 加 `STF_V3_LLM_AUTOSTART=false`，重启宿主机 worker（诊断照样等，靠人工拉起）。
+
+### 6.3 部署前检查（FM-34）
+
+每次 `down`/`up` V3 容器或重启宿主机 worker **之前**：
+
+```
+bash stf_v3/scripts/predeploy_check.sh          # 有未结束诊断或手册转换中 → 拒绝（退出码 3）
+ALLOW_INTERRUPT=1 bash stf_v3/scripts/predeploy_check.sh   # 确认要打断：未结束的诊断会以 diagnosis_interrupted 结束
+```
+
+宿主机 worker 的单元文件本 ticket 改过（队列与并发），部署后跑 `bash stf_v3/gpu_worker/install.sh`（重写单元 + reload）再 `systemctl --user restart stf-v3-gpu-worker`；之后每次部署照旧只需 restart。
+
+### 6.4 卡住的会话
+
+- 每 2 分钟的清扫任务会关掉：排队超过 5 分钟却没有任务编号的（`queue_unavailable`）、任务已结束或消失但会话没结束的（`diagnosis_interrupted`）。worker 心跳超过 2 分钟的诊断任务不重排，直接标失败并关掉会话。
+- 判断"死没死"只看任务是否仍被活着的 worker 持有，不看跑了多久：等模型 60 分钟 + 诊断 15 分钟的正常会话不会被误关。
+- `GET /v3/health` → `diagnosis.oldest_unfinished_s` 超过 80 分钟就有问题：`bash stf_v3/scripts/queue_ops.sh status` 看诊断任务状态。
+
+### 6.5 回滚（FM-30）
+
+回滚到 PROD-11 之前的版本前：① `predeploy_check.sh` 确认没有未结束诊断（或让它们结束）；② 清掉诊断队列里没开始的任务：`bash stf_v3/scripts/queue_ops.sh cancel <job_id>`（逐个）；③ 老代码不认识 `diagnosis` / `llm` 队列与新表，降级迁移 `alembic downgrade b2c3d4e5f6a7` 会**删除消息表的所有行**（新旧形状不兼容，按设计有损）；④ 宿主机 worker 按旧单元重装（`install.sh`）。
+
+### 6.6 测试车队（D3：前端联调与 Swagger 评审）
+
+真库里另建一个与真车队隔离的车队，邀请码写进只有自己可读的文件、不进聊天记录：
+
+```
+podman exec stf-v3-api python scripts/create_workshop.py --name "测试车队（前端联调）"     --manager-codes 1 --technician-codes 1 > ~/stf_v3_test_workshop_codes.txt && chmod 600 ~/stf_v3_test_workshop_codes.txt
+```
+
+学生注册后核对他只看得到测试车队（VIN 只显示后 4 位）：`podman exec stf-v3-api python scripts/visible_vehicles.py --username <学生的用户名>`。测试车用假 VIN（如 `1HGCM82633A123456`），日志用仓库里的 Yamaha 路试日志 `stf_v3/evals/fixtures/yamaha_road_test.csv`。

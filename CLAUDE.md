@@ -337,8 +337,23 @@ tolerance: manual 0.03, OBD 0.06; no golden with baseline ≥ 0.6 below 0.4;
 baseline 2026-09-24: manual 0.878, OBD 0.885).  Run it on the server with
 `bash stf_v3/scripts/run_golden_eval.sh --purpose gate` (one-off container,
 never inside stf-v3-api; runbook §5); the user alone adds `eval-exempt` /
-`baseline-reset` labels.  No diagnosis endpoint,
-job, SSE or persistence yet — that is PROD-11.
+`baseline-reset` labels.
+**Diagnosis jobs (PROD-11, contract v2)**: `POST /v3/vehicles/{id}/diagnose`
+(202; one unfinished conversation per vehicle, a repeat click returns it) →
+`diagnosis.run` on the `diagnosis` queue (container worker `-q
+default,diagnosis`, one diagnosis at a time via the job lock
+`diagnosis-model`, never retried — a stalled one is closed as
+`diagnosis_interrupted`) → waits for the model with a `waiting` event per
+minute (≤ 60 min from the click) → engine → events via one ordered writer
+into `audit_events` → messages / report / status / `done` in ONE transaction.
+`GET /v3/conversations/{id}/events` = JSON replay, or SSE with `Accept:
+text/event-stream` (ends at `done`, 15 s keepalive, `Last-Event-ID`).  The
+**on-demand model controller** (`llm.reconcile`, `llm` queue) runs ONLY on
+the host GPU worker (now `-q gpu,llm --concurrency 2`; manual ingest keeps
+one-at-a-time via lock `gpu-ingest`): starts vLLM when a diagnosis waits and
+both GPUs are free of anyone else, stops only a vLLM it started after 30 min
+idle (no eval lock, no request in flight); state in `model_service_state`,
+visible in `/v3/health` (`diagnosis`, `model_service`).  Ops: runbook §6.
 **vLLM policy (user decision 2026-09-24): started on demand, never
 resident** — revisit only when we provide a stable service or the hardware
 is upgraded.  Start it only when both GPUs are free (shared server; check
@@ -358,7 +373,8 @@ shared with a **host** GPU worker: systemd user service
 Python 3.11 venv (`~/venv-stf-v3`, editable install of the checkout) and
 consumes only the `gpu` queue (manual ingest = MinerU external CLI at
 `STF_V3_MINERU_BIN` → index build → cloud summaries → gates). Install /
-re-check with `bash stf_v3/gpu_worker/install.sh [--check]`; **restart it
+re-check with `bash stf_v3/gpu_worker/install.sh [--check]` (re-run it without
+`--check` whenever the unit file changes — PROD-11 changed its queues); **restart it
 after every deploy** (`systemctl --user restart stf-v3-gpu-worker`) or
 `deploy_check.sh` check 7 fails on a commit mismatch. Logs:
 `journalctl --user -u stf-v3-gpu-worker -n 50`. Never restart it while a
@@ -368,6 +384,7 @@ re-queued and rerun. Queue ops: `bash stf_v3/scripts/queue_ops.sh status|failed|
 **Branch verification (every V3 PR)** — run on the server:
 ```
 cd ~/stf_ai_diagnosis_platform_v1 && git fetch origin && git checkout <branch> && git pull origin <branch>
+bash stf_v3/scripts/predeploy_check.sh                                 # PROD-11: refuses while a diagnosis is unfinished / a manual converts (ALLOW_INTERRUPT=1 to override)
 bash stf_v3/scripts/isolation_check.sh snapshot                       # V1/V2 baseline
 cd infra && GIT_COMMIT=$(git rev-parse HEAD) ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml build && cd ..
 ~/.local/bin/podman-compose --profile migrate -p stf_v3 -f infra/docker-compose.v3.yml -f infra/docker-compose.v3.polyu.yml run --rm stf-v3-migrate alembic upgrade head   # --profile migrate is required: without it podman-compose 1.5 only warns 'missing services' and exits 0
@@ -390,7 +407,7 @@ Podman 3.4 gotcha applies: always `down` + `up`, never trust `up -d --build`.
 image whose commit label differs from `git rev-parse HEAD`.
 
 **Main deployment** — same as above minus the smoke DB, after merging:
-pull main → build with `GIT_COMMIT` → `--profile migrate … run --rm stf-v3-migrate alembic upgrade head`
+pull main → `predeploy_check.sh` → build with `GIT_COMMIT` → `--profile migrate … run --rm stf-v3-migrate alembic upgrade head`
 → `down` + `up -d stf-v3-api stf-v3-worker` → `deploy_check.sh` → `isolation_check.sh compare`.
 
 **CI** (`.github/workflows/v3.yml`, V3 paths only): unit + contract

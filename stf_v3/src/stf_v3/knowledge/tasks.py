@@ -118,9 +118,15 @@ def gpu_heartbeat(timestamp: int) -> None:
     log.info("gpu_worker.heartbeat", commit=worker_commit()[:12])
 
 
+# PROD-11: the host worker now also runs the model controller (queue
+# ``llm``) with concurrency 2; the lock keeps manual conversions strictly
+# one at a time on the spare GPU, as before.
+INGEST_LOCK = "gpu-ingest"
+
+
 @app.task(
     name=INGEST_TASK, queue=GPU_QUEUE, pass_context=True,
-    retry=IngestRetry(max_attempts=3, wait_s=60),
+    retry=IngestRetry(max_attempts=3, wait_s=60), lock=INGEST_LOCK,
 )
 def ingest_manual(context: procrastinate.JobContext, manual_id: str) -> None:
     """Runs the one-step ingest pipeline for one manual (sync, in worker).

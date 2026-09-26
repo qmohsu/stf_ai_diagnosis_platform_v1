@@ -56,16 +56,36 @@ def test_subagents_only_carry_their_own_tools() -> None:
                                                                                 "delegate_to_obd_agent"}
 
 
+def _uses_db(path: pathlib.Path) -> bool:
+    text = path.read_text(encoding="utf-8")
+    return "from stf_v3.db" in text or "import stf_v3.db" in text or "SessionLocal" in text
+
+
+# PROD-11 (round-2 FM-51): the product layer of the diagnosis module (API,
+# queue tasks, persistence) lives beside the engine and talks to the DB;
+# these are the ONLY such modules.  A new one must be added here on
+# purpose, in the PR that introduces it.
+DB_MODULES_OUTSIDE_ENGINE = {"models.py", "job.py", "router.py", "service.py", "tasks.py"}
+
+
 def test_tools_and_agent_modules_never_import_the_database() -> None:
-    """FM-50: only ``bootstrap.py`` (row → deps) may import the DB layer."""
+    """FM-50: inside the engine (agent/ and tools/) only ``bootstrap.py``
+    (row → deps) may import the DB layer."""
     offenders = []
-    for path in SRC.rglob("*.py"):
-        if path.name in ("bootstrap.py", "models.py"):   # row → deps, and the ORM tables
-            continue
-        text = path.read_text(encoding="utf-8")
-        if "from stf_v3.db" in text or "import stf_v3.db" in text or "SessionLocal" in text:
-            offenders.append(str(path.relative_to(SRC)))
+    for sub in ("agent", "tools"):
+        for path in (SRC / sub).rglob("*.py"):
+            if path.name == "bootstrap.py":
+                continue
+            if _uses_db(path):
+                offenders.append(str(path.relative_to(SRC)))
     assert offenders == []
+
+
+def test_db_access_in_the_diagnosis_module_is_whitelisted() -> None:
+    """FM-51: outside the engine, DB access is limited to an explicit list of
+    product-layer modules (renaming a file cannot sneak DB access in)."""
+    users = {p.name for p in SRC.glob("*.py") if _uses_db(p)}
+    assert users <= DB_MODULES_OUTSIDE_ENGINE, users - DB_MODULES_OUTSIDE_ENGINE
 
 
 def test_runtime_imports_without_network() -> None:

@@ -72,8 +72,11 @@ services:
   stf-v3-worker:
     image: stf-v3:local
     container_name: stf-v3-worker
+    # PROD-11: + the diagnosis queue.  Diagnosis jobs share one lock, so
+    # this worker runs ONE diagnosis at a time while the second slot keeps
+    # serving heartbeat / sweep / stalled-job recovery.
     command: ["procrastinate", "--app", "stf_v3.jobs.app.app", "worker",
-              "-q", "default", "--concurrency", "2"]
+              "-q", "default,diagnosis", "--concurrency", "2"]
     environment:
       STF_V3_DATABASE_URL: ${STF_V3_APP_DATABASE_URL:?set STF_V3_APP_DATABASE_URL}
       STF_V3_LOG_LEVEL: ${STF_V3_LOG_LEVEL:-INFO}

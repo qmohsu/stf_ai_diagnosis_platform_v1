@@ -36,5 +36,6 @@ EXPECTED_TABLES = frozenset(
         "reports",
         "audit_events",
         "manuals",
+        "model_service_state",
     }
 )
