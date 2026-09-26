@@ -208,3 +208,109 @@ def test_ci_checks_out_full_history_and_the_pr_head() -> None:
     assert checkout["with"]["fetch-depth"] == 0
     assert "pull_request.head.sha" in checkout["with"]["ref"]
     assert "check_eval_gate.py" in json.dumps(job["steps"])
+
+
+# ── #253: contention records beside scorecards (T-6) and the step summary (T-10) ──
+
+NEW_STAMP = "20260928T010000Z"          # on / after CONTENTION_SINCE → a record is expected
+
+
+def _record(base: str, **over: Any) -> str:
+    rec: Dict[str, Any] = {
+        "schema": 1, "kind": "gpu_contention", "run": "stf-v3-eval-20260928T005900Z", "scorecard": base,
+        "started_at": "2026-09-28T00:59:00Z", "ended_at": "2026-09-28T01:30:00Z", "interval_s": 30,
+        "samples": 60, "sample_errors": 0, "concurrency": 3, "preemptions_before": 0, "preemptions_after": 0,
+        "preemption_delta": 0, "vllm_restarted": False,
+        "gpus": [{"index": 0, "total_mib": 46068, "others_mib_max": 0, "others_mib_mean": 0,
+                  "others_sm_pct_max": 0, "others_sm_pct_mean": 0, "vllm_mib_max": 28400,
+                  "project_other_mib_max": 0, "ollama_mib_max": 0, "util_pct_max": 90, "util_pct_mean": 60}]}
+    rec.update(over)
+    return json.dumps(rec)
+
+
+def _passing_pr_with(repo: Repo, extra: Dict[str, str], stamp: str = NEW_STAMP):
+    a = repo.commit("prompt", {PROMPT: "v2\n"})
+    card_text = _card_json(a, 0.86, stamp=stamp)
+    base = json.loads(card_text)["meta"]["base"]
+    files = {f"docs/evals/{base}.json": card_text}
+    files.update({k.replace("{base}", base): v.replace("{base}", base) for k, v in extra.items()})
+    repo.commit("card", files)
+    return base, repo.decide()
+
+
+def test_a_contention_record_is_never_read_as_a_scorecard(repo: Repo) -> None:
+    """① FM-1: the record beside the scorecard is not a second run."""
+    base, (code, lines) = _passing_pr_with(repo, {"docs/evals/{base}.contention.json": _record("{base}")})
+    assert code == 0 and lines[-1] == "PASS"
+    assert not any("ignored" in line for line in lines)
+    assert not cg._is_scorecard(f"docs/evals/{base}.contention.json")
+
+
+def test_a_new_scorecard_without_its_record_warns_but_passes(repo: Repo) -> None:
+    """② FM-7: new scorecards are expected to bring the record; old ones are not."""
+    _, (code, lines) = _passing_pr_with(repo, {})
+    assert code == 0 and any("no contention record" in line for line in lines)
+
+
+def test_an_old_scorecard_without_a_record_is_not_warned_about(repo: Repo) -> None:
+    _, (code, lines) = _passing_pr_with(repo, {}, stamp="20260926T000000Z")
+    assert code == 0 and not any("contention" in line for line in lines)
+
+
+@pytest.mark.parametrize("text,expect", [
+    ("{not json", "contention record unreadable"),                                      # ③ FM-2
+    (None, "schema 7 unknown"),                                                          # ④ FM-12
+    ("mismatch", "belongs to"),                                                          # ⑤ FM-5
+])
+def test_bad_records_only_warn(repo: Repo, text: Optional[str], expect: str) -> None:
+    """③–⑤: a broken, unknown-version or mismatched record → one WARN; the
+    verdict is the same as without a record."""
+    if text is None:
+        body = _record("{base}", schema=7)
+    elif text == "mismatch":
+        body = _record("20260101T000000Z_deadbeef_gate")
+    else:
+        body = text
+    _, (code, lines) = _passing_pr_with(repo, {"docs/evals/{base}.contention.json": body})
+    assert code == 0 and lines[-1] == "PASS"
+    assert any(line.startswith("WARN") and expect in line for line in lines), lines
+
+
+def test_contention_warnings_show_up_in_the_step_summary_and_annotations(
+        repo: Repo, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    """T-10 / FM-13: in Actions, WARN lines become annotations and the
+    verdict + lines go to the step summary (visible on the PR)."""
+    busy = _record("{base}", gpus=[{"index": 1, "total_mib": 46068, "others_mib_max": 9000,
+                                    "others_mib_mean": 8000, "others_sm_pct_max": 95,
+                                    "others_sm_pct_mean": 80, "vllm_mib_max": 28400,
+                                    "project_other_mib_max": 0, "ollama_mib_max": 0,
+                                    "util_pct_max": 100, "util_pct_mean": 90}])
+    _passing_pr_with(repo, {"docs/evals/{base}.contention.json": busy})
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    code = cg.main(["--base", "main", "--head", "HEAD", "--repo", str(repo.root)])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "::warning title=golden eval gate::WARN" in out and "other workloads held up to 9000 MiB" in out
+    text = summary.read_text(encoding="utf-8")
+    assert text.startswith("## Golden eval gate") and "**PASS**" in text and "9000 MiB" in text
+
+
+def test_no_summary_variable_is_fine(repo: Repo, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Outside Actions nothing is written and nothing fails."""
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    repo.commit("api", {API: "v2\n"})
+    assert cg.main(["--base", "main", "--head", "HEAD", "--repo", str(repo.root)]) == 0
+
+
+def test_a_pending_confirmation_is_red_with_its_own_wording(repo: Repo) -> None:
+    """FM-30: a dip in the only run → exit 1, 'pending confirmation / 未通过：待确认'."""
+    a = repo.commit("prompt", {PROMPT: "v2\n"})
+    c = card({M: {"g-000": 0.30, "g-001": 0.95, "g-002": 0.95, "g-003": 0.95}}, commit=a,
+             stamp="20260926T000001Z")
+    repo.commit("card", {"docs/evals/run1.json": json.dumps(c)})
+    code, lines = repo.decide()
+    assert code == 1 and "pending confirmation" in lines[-1] and "未通过：待确认" in lines[-1]

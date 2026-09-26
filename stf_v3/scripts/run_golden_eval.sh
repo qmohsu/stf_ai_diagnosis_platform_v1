@@ -9,6 +9,7 @@
 # manual library mounted READ-ONLY, output on the host:
 #   $STF_V3_EVAL_OUT (default ~/stf_v3_evals)/<container name>/
 #     run.log  preflight.txt  exit_code  <base>.json  <base>.slim.json  <base>.md  <base>.progress.jsonl
+#     <base>.contention.json  (GPU contention during the run, #253 — commit it with the scorecard)
 # Follow a run:  tail -f ~/stf_v3_evals/<name>/run.log     (safe to disconnect SSH)
 # A V3 redeploy (down/up of stf-v3-api/worker) does not touch the eval container.
 #
@@ -117,6 +118,18 @@ podman run -d --rm --name "$NAME" --network host \
 echo "[run_golden_eval] started $NAME"
 echo "[run_golden_eval] follow: tail -f $RUN_DIR/run.log    result: cat $RUN_DIR/exit_code"
 
+# 6. GPU contention record (#253): a host-side sampler, its own transient
+#    user service (outlives this shell, --wait or not), follows the eval
+#    container and writes <base>.contention.json into the run directory when
+#    it ends.  Numbers only — never user names or command lines (FM-18).
+#    Copy it to docs/evals/ together with the scorecard (runbook §5.2).
+CONTENTION_UNIT="${NAME}-contention"
+if [ $CLOUD -eq 0 ]; then
+  CONC=$(printf '%s
+' "${PASS[@]}" | awk 'prev == "--concurrency" {print; exit} {prev = $0}')
+  systemd-run --user --collect --quiet --unit="$CONTENTION_UNIT"     "$(command -v python3)" "$REPO_DIR/stf_v3/scripts/gpu_contention.py" sample     --container "$NAME" --run-dir "$RUN_DIR" --concurrency "${CONC:-6}" >/dev/null 2>&1     && echo "[run_golden_eval] contention sampler: $CONTENTION_UNIT"     || echo "[run_golden_eval] WARN: contention sampler did not start (the run continues; no record)"
+fi
+
 if [ $WAIT -eq 1 ]; then
   while podman container exists "$NAME" 2>/dev/null; do sleep 15; done
   CODE=$(cat "$RUN_DIR/exit_code" 2>/dev/null || echo 5)
@@ -124,6 +137,11 @@ if [ $WAIT -eq 1 ]; then
     AFTER=$(curl -sf http://127.0.0.1:8010/metrics | awk '/^vllm:num_preemptions_total/ {s+=$2} END {printf "%d", s}')
     echo "vllm preemptions_after=$AFTER (before ${PREEMPT:-?})" | tee -a "$PRE"
   fi
+  for _ in $(seq 1 24); do       # the sampler notices within one interval (30 s)
+    systemctl --user is-active --quiet "$CONTENTION_UNIT" 2>/dev/null || break
+    sleep 5
+  done
+  ls "$RUN_DIR"/*.contention.json "$RUN_DIR"/contention.json 2>/dev/null | sed 's/^/contention record: /' || true
   tail -n 8 "$RUN_DIR/run.log"
   exit "$CODE"
 fi
