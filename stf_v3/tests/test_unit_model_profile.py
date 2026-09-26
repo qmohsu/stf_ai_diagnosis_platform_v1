@@ -188,7 +188,7 @@ async def test_unparsed_tool_call_markup_makes_the_report_partial() -> None:
     out = await run_diagnosis(make_deps(), script.model())
     assert out.stopped_reason == "complete" and out.report.partial
     assert TOOL_CALL_RESIDUE_LIMITATION in out.report.limitations
-    assert out.report.content_md.startswith("> **Partial report**") and out.report.citations == []
+    assert out.report.content_md.startswith("> **部分報告**") and out.report.citations == []
     assert out.events[-1].payload["partial"] is True
 
 

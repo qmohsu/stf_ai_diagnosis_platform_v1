@@ -67,11 +67,23 @@ logger = structlog.get_logger(__name__)
 MAIN_TOOLS = OBD_SIGNAL_TOOLS + OBD_DTC_TOOLS + MANUAL_TOOLS + DELEGATION_TOOLS
 MAIN_TOOL_NAMES = tuple(fn.__name__ for fn in MAIN_TOOLS)
 
-_PARTIAL_NOTE = {
-    "timeout": "wall-clock budget exhausted",
-    "budget": "usage budget exhausted",
-    "cancelled": "run cancelled",
-    "error": "model or runtime error",
+# Partial-report banner in the report's language (PROD-11: an English
+# banner on top of a zh-TW report).
+_PARTIAL_NOTE: Dict[str, Dict[str, str]] = {
+    "timeout": {"zh-TW": "已達時間上限", "zh-CN": "已达时间上限", "en": "wall-clock budget exhausted"},
+    "budget": {"zh-TW": "已達用量上限", "zh-CN": "已达用量上限", "en": "usage budget exhausted"},
+    "cancelled": {"zh-TW": "診斷已取消", "zh-CN": "诊断已取消", "en": "run cancelled"},
+    "error": {"zh-TW": "模型或執行時發生錯誤", "zh-CN": "模型或运行时发生错误", "en": "model or runtime error"},
+}
+_PARTIAL_HEADER: Dict[str, str] = {
+    "zh-TW": "> **部分報告** — {note}。以下是調查已確認的內容。\n\n",
+    "zh-CN": "> **部分报告** — {note}。以下是调查已确认的内容。\n\n",
+    "en": "> **Partial report** — {note}. The findings below are what the investigation had established.\n\n",
+}
+_NO_TEXT: Dict[str, str] = {
+    "zh-TW": "_診斷停止前未產生任何內容。_",
+    "zh-CN": "_诊断停止前未产生任何内容。_",
+    "en": "_No diagnosis text was produced before the run stopped._",
 }
 # Gate sentence in the report's language: (kind, limit) from the runner.
 _GATE_SENTENCE: Dict[str, str] = {
@@ -95,20 +107,26 @@ WRAPUP_INSTRUCTION = (
 _WRAPUP_REASONS = ("timeout", "budget")
 
 
+def _lang(locale: str) -> str:
+    return locale if locale in ("zh-TW", "zh-CN", "en") else ("zh-TW" if locale.startswith("zh") else "en")
+
+
 def gate_sentence(gate: Tuple[str, int], locale: str) -> str:
     """The gate that stopped a run, as one sentence in the report's language."""
-    key = locale if locale in _GATE_SENTENCE else ("zh-TW" if locale.startswith("zh") else "en")
+    key = _lang(locale)
     kind, limit = gate
     names = _GATE_NAME.get(kind)
     name = names[key].format(n=f"{limit:,}") if names else f"{kind} {limit:,}"
     return _GATE_SENTENCE[key].format(name=name)
 
 
-_TOOL_CALL_RESIDUE_HEADER = (
-    "> **Partial report** — the model's tool-call text was not parsed by the "
-    "endpoint, so the investigation did not run as intended. Treat the findings "
-    "below as unverified.\n\n"
-)
+_TOOL_CALL_RESIDUE_HEADER: Dict[str, str] = {
+    "zh-TW": "> **部分報告** — 模型的工具呼叫文字未被端點解析，調查未照預期進行；以下內容請視為未經查證。\n\n",
+    "zh-CN": "> **部分报告** — 模型的工具调用文字未被端点解析，调查未按预期进行；以下内容请视为未经查证。\n\n",
+    "en": ("> **Partial report** — the model's tool-call text was not parsed by the "
+           "endpoint, so the investigation did not run as intended. Treat the findings "
+           "below as unverified.\n\n"),
+}
 
 
 def thinking_chars(messages: Sequence[ModelMessage]) -> int:
@@ -246,9 +264,9 @@ def build_report(deps: DiagDeps, outcome: RunOutcome, model: Model,
     text = outcome.output if not partial else ""
     if partial:
         text = (wrapup_text or "").strip() or last_assistant_text(outcome.messages)
-        note = _PARTIAL_NOTE.get(outcome.stopped_reason, outcome.stopped_reason)
-        header = f"> **Partial report** — {note}. The findings below are what the investigation had established.\n\n"
-        text = header + (text or "_No diagnosis text was produced before the run stopped._")
+        lang = _lang(deps.locale)
+        note = _PARTIAL_NOTE.get(outcome.stopped_reason, {}).get(lang, outcome.stopped_reason)
+        text = _PARTIAL_HEADER[lang].format(note=note) + (text or _NO_TEXT[lang])
     # PROD-09 residue checks: thinking blocks are stripped (FM-1), unparsed
     # tool-call markup makes the report partial (FM-41).
     text, filter_hits, filter_removed = strip_thinking_residue(text or "")
@@ -259,7 +277,7 @@ def build_report(deps: DiagDeps, outcome: RunOutcome, model: Model,
         limitations.append(TOOL_CALL_RESIDUE_LIMITATION)
         if not partial:
             partial = True
-            text = _TOOL_CALL_RESIDUE_HEADER + text
+            text = _TOOL_CALL_RESIDUE_HEADER[_lang(deps.locale)] + text
     dtc_trace = any(t.name == "list_dtcs" and not t.is_error for t in deps.trace)
     citations = extract_citations(
         text or "", deps.trace, [m.id for m in deps.manuals],

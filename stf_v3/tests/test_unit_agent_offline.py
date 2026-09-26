@@ -157,7 +157,7 @@ async def _partial(deps, model):  # type: ignore[no-untyped-def]
     out = await run_diagnosis(deps, model)
     types = [e.event_type for e in out.events]
     assert types[-1] == ev.DONE and ev.ERROR in types
-    assert out.report.partial and out.report.content_md.startswith("> **Partial report**")
+    assert out.report.partial and out.report.content_md.startswith("> **部分報告**")   # zh-TW default
     return out
 
 
@@ -235,6 +235,20 @@ async def test_qwen_style_wrap_up_is_caught_by_the_submit_report_tool() -> None:
     kept = await _partial(make_deps(budgets=budgets), make(submits=False))
     assert "TEXT-ON-WRAP-UP-TURN" in kept.report.content_md
     assert "MAP sensor" not in kept.report.content_md
+
+
+async def test_the_partial_banner_follows_the_report_language() -> None:
+    """PROD-11: the partial-report banner is in the report's language (it was
+    English on top of a zh-TW report); English deployments keep English."""
+    budgets = Budgets(request_limit=2, wall_clock_s=30)
+    cn = make_deps(budgets=budgets)
+    cn.locale = "zh-CN"
+    out = await run_diagnosis(cn, _looper().model())
+    assert out.report.content_md.startswith("> **部分报告** — 已达用量上限")
+    en = make_deps(budgets=budgets)
+    en.locale = "en"
+    out = await run_diagnosis(en, _looper().model())
+    assert out.report.content_md.startswith("> **Partial report** — usage budget exhausted")
 
 
 async def test_wrap_up_can_be_switched_off_and_a_failed_wrap_up_falls_back() -> None:
