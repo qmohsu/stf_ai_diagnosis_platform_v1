@@ -128,6 +128,9 @@ class Settings(BaseSettings):
     # guards against a runaway result.
     subagent_tool_result_max_tokens: int = 16_000
     compact_threshold_tokens: int = 60_000
+    # After a wall-clock / usage gate: one tool-less turn (at most this
+    # long) to write the report from the evidence so far; 0 = off (PROD-11).
+    agent_wrapup_s: float = 180.0
     # Manual images in tool results: off until the model is known to
     # accept image parts (FM-42; PROD-09 decides per model).
     manual_images_enabled: bool = False

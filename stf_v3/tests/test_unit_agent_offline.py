@@ -165,7 +165,7 @@ async def test_request_limit_ends_in_partial_report() -> None:
     """A model that never stops calling tools hits the request gate."""
     deps = make_deps(budgets=Budgets(request_limit=3, wall_clock_s=30))
     out = await _partial(deps, _looper().model())
-    assert out.stopped_reason == "budget" and out.usage.requests <= 3
+    assert out.stopped_reason == "budget" and out.usage.requests <= 3 + 2   # gate + wrap-up turn (≤ 2)
 
 
 async def test_tool_calls_limit_ends_in_partial_report() -> None:
@@ -178,6 +178,45 @@ async def test_total_tokens_limit_ends_in_partial_report() -> None:
     deps = make_deps(budgets=Budgets(request_limit=50, total_tokens_limit=500, wall_clock_s=30))
     out = await _partial(deps, _looper(tokens=300).model())
     assert out.stopped_reason == "budget"
+
+
+def _investigator(tokens: int = 300) -> FunctionModel:
+    """Calls tools while it has tools; writes a report once it has none."""
+
+    def fn(messages, info):  # type: ignore[no-untyped-def]
+        if info.function_tools:
+            return response(tool_call("list_signals", pattern="*"), tokens=tokens)
+        return response(TEXT(content="## 診斷摘要\nWRAPUP-REPORT from the gathered evidence"))
+
+    return FunctionModel(fn, model_name="investigator")
+
+
+async def test_a_usage_gate_is_followed_by_a_tool_less_wrap_up_report() -> None:
+    """PROD-11 server finding: after a usage gate the model gets one more
+    turn WITHOUT tools and writes the report from the evidence so far — the
+    user gets a report (still marked partial), not the last narration line;
+    the gate is named in the report's language, never the raw library text."""
+    deps = make_deps(budgets=Budgets(request_limit=50, total_tokens_limit=1500, wall_clock_s=30))
+    out = await _partial(deps, _investigator())
+    assert out.stopped_reason == "budget"
+    assert "WRAPUP-REPORT" in out.report.content_md
+    assert out.report.limitations[0] == "診斷提前結束：已達總 token 上限 1,500"
+    assert "pydantic.dev" not in json.dumps(out.report.limitations)
+    types = [e.event_type for e in out.events]
+    assert types.index(ev.ERROR) < types.index(ev.DIAGNOSIS_DONE) < types.index(ev.DONE)
+
+
+async def test_wrap_up_can_be_switched_off_and_a_failed_wrap_up_falls_back() -> None:
+    """``agent_wrapup_s = 0`` keeps the old behaviour; a wrap-up turn that
+    still tries to call tools ends cleanly with the last assistant text."""
+    from stf_v3.settings import Settings
+
+    deps = make_deps(budgets=Budgets(request_limit=50, total_tokens_limit=1500, wall_clock_s=30))
+    off = await run_diagnosis(deps, _investigator(), settings=Settings(agent_wrapup_s=0))
+    assert off.report.partial and "WRAPUP-REPORT" not in off.report.content_md
+    deps2 = make_deps(budgets=Budgets(request_limit=50, total_tokens_limit=500, wall_clock_s=30))
+    out = await _partial(deps2, _looper(tokens=300).model())          # never stops calling tools
+    assert out.stopped_reason == "budget" and out.events[-1].event_type == ev.DONE
 
 
 async def test_wall_clock_ends_in_partial_report() -> None:

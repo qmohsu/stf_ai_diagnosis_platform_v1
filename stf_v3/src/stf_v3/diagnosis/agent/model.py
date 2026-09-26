@@ -74,7 +74,10 @@ VLLM_NO_THINKING_EXTRA_BODY: Dict[str, Any] = {
 # row.  Every value can be overridden by its ``STF_V3_*`` setting.
 _PROFILE_DEFAULTS: Dict[str, Dict[str, Any]] = {
     PROFILE_QWEN_VLLM: dict(
-        wall_clock_s=900.0, request_limit=60, tool_calls_limit=100, total_tokens_limit=1_000_000,
+        # total tokens 1M -> 2M (PROD-11): a one-click diagnosis of a real
+        # road-test log used 0.87-1.02M (context re-sent every request), so
+        # 1M cut it half the time; the goldens' max is 0.29M.
+        wall_clock_s=900.0, request_limit=60, tool_calls_limit=100, total_tokens_limit=2_000_000,
         # Sub-agent gates from the PROD-10 golden calibration (45 goldens at 2x
         # budget, 6-way concurrency, 0 censored, after the sub-agent fixes):
         # p95 wall 198 s (max 299) / requests 13 (max 17), x 1.5.

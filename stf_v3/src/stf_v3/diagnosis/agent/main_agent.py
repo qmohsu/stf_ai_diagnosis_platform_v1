@@ -9,8 +9,12 @@ events as they happen — a single-use async iterator (FM-10).
 The model ends with plain text (five-section markdown); the runtime packs
 it into a ``DiagnosisReport`` with citations proven from the tool trace.
 A gate (wall clock, requests, tool calls, tokens), a cancel, or a model
-error produces a PARTIAL report from the last assistant text instead of
-an exception (FM-7 / FM-14 / FM-17).
+error produces a PARTIAL report instead of an exception (FM-7 / FM-14 /
+FM-17).  After a wall-clock or usage gate the model gets ONE more turn
+without tools to write the report from the evidence it already gathered
+(PROD-11 server finding: the last narration line -- "Let me also check..."
+-- used to be the whole "report"); if that turn fails too, the last
+assistant text is used as before.
 
 Author: Xiangzhu Yan
 """
@@ -20,11 +24,11 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator, List, Optional, Sequence
+from typing import Any, AsyncIterator, Dict, List, Optional, Sequence, Tuple
 
 import structlog
 from pydantic_ai import Agent, Tool
-from pydantic_ai.messages import ModelMessage, ModelResponse, ThinkingPart
+from pydantic_ai.messages import ModelMessage, ModelResponse, ThinkingPart, ToolCallPart
 from pydantic_ai.models import Model
 from pydantic_ai.usage import RunUsage
 
@@ -58,6 +62,35 @@ _PARTIAL_NOTE = {
     "cancelled": "run cancelled",
     "error": "model or runtime error",
 }
+# Gate sentence in the report's language: (kind, limit) from the runner.
+_GATE_SENTENCE: Dict[str, str] = {
+    "zh-TW": "診斷提前結束：已達{name}",
+    "zh-CN": "诊断提前结束：已达{name}",
+    "en": "run stopped early: reached the {name}",
+}
+_GATE_NAME: Dict[str, Dict[str, str]] = {
+    "wall_clock": {"zh-TW": "時間上限 {n} 秒", "zh-CN": "时间上限 {n} 秒", "en": "wall-clock limit of {n} s"},
+    "request": {"zh-TW": "模型請求次數上限 {n}", "zh-CN": "模型请求次数上限 {n}", "en": "request limit of {n}"},
+    "tool_calls": {"zh-TW": "工具呼叫次數上限 {n}", "zh-CN": "工具调用次数上限 {n}", "en": "tool-call limit of {n}"},
+    "total_tokens": {"zh-TW": "總 token 上限 {n}", "zh-CN": "总 token 上限 {n}", "en": "total-token limit of {n}"},
+}
+WRAPUP_INSTRUCTION = (
+    "The investigation budget is used up: no more tools can be called.  Write the final "
+    "diagnosis report now, in the required format and language, using only the evidence "
+    "already gathered above.  Say plainly what could not be checked."
+)
+_WRAPUP_REASONS = ("timeout", "budget")
+
+
+def gate_sentence(gate: Tuple[str, int], locale: str) -> str:
+    """The gate that stopped a run, as one sentence in the report's language."""
+    key = locale if locale in _GATE_SENTENCE else ("zh-TW" if locale.startswith("zh") else "en")
+    kind, limit = gate
+    names = _GATE_NAME.get(kind)
+    name = names[key].format(n=f"{limit:,}") if names else f"{kind} {limit:,}"
+    return _GATE_SENTENCE[key].format(name=name)
+
+
 _TOOL_CALL_RESIDUE_HEADER = (
     "> **Partial report** — the model's tool-call text was not parsed by the "
     "endpoint, so the investigation did not run as intended. Treat the findings "
@@ -82,6 +115,38 @@ def build_main_agent() -> Agent[DiagDeps, str]:
 
 
 MAIN_AGENT: Agent[DiagDeps, str] = build_main_agent()
+# The wrap-up turn: same instructions, no tools (so no more investigation).
+WRAPUP_AGENT: Agent[DiagDeps, str] = Agent(None, deps_type=DiagDeps, output_type=str,
+                                           instructions=SYSTEM_PROMPT, retries=1,
+                                           name="diagnosis_wrapup")
+
+
+def _answered_history(messages: Sequence[ModelMessage]) -> List[ModelMessage]:
+    """The history minus a trailing response whose tool calls never ran."""
+    out = list(messages)
+    while out and isinstance(out[-1], ModelResponse) and \
+            any(isinstance(p, ToolCallPart) for p in out[-1].parts):
+        out.pop()
+    return out
+
+
+async def _wrap_up(deps: DiagDeps, model: Model, outcome: RunOutcome, settings: Any) -> Optional[RunOutcome]:
+    """One tool-less turn to write the report after a wall-clock / usage gate."""
+    wrap_s = float(getattr(settings, "agent_wrapup_s", 0) or 0)
+    history = _answered_history(outcome.messages)
+    if outcome.stopped_reason not in _WRAPUP_REASONS or wrap_s <= 0:
+        return None
+    if not any(isinstance(m, ModelResponse) for m in history):
+        return None                       # the model never answered: nothing to summarise
+    wrap = await drive(
+        WRAPUP_AGENT, WRAPUP_INSTRUCTION, model=model, deps=deps, sink=deps.events,
+        parent_tool_call_id=None, usage_limits=make_limits(2),
+        model_settings=model_settings(settings, model=model), wall_clock_s=wrap_s,
+        message_history=history, compact_threshold=deps.budgets.compact_threshold_tokens,
+    )
+    logger.info("agent.wrapup", stopped_reason=wrap.stopped_reason, requests=wrap.requests,
+                chars=len(wrap.output) if isinstance(wrap.output, str) else 0)
+    return wrap
 
 
 @dataclass
@@ -122,12 +187,17 @@ def _dtcs_seen(deps: DiagDeps) -> List[str]:
         return []
 
 
-def build_report(deps: DiagDeps, outcome: RunOutcome, model: Model) -> DiagnosisReport:
-    """Pack a run outcome into the report object (partial when a gate hit)."""
+def build_report(deps: DiagDeps, outcome: RunOutcome, model: Model,
+                 wrapup_text: Optional[str] = None) -> DiagnosisReport:
+    """Pack a run outcome into the report object (partial when a gate hit).
+
+    ``wrapup_text`` is the report written on the tool-less wrap-up turn
+    after a gate; without it the last assistant text is used.
+    """
     partial = outcome.stopped_reason != "complete"
     text = outcome.output if not partial else ""
     if partial:
-        text = last_assistant_text(outcome.messages)
+        text = (wrapup_text or "").strip() or last_assistant_text(outcome.messages)
         note = _PARTIAL_NOTE.get(outcome.stopped_reason, outcome.stopped_reason)
         header = f"> **Partial report** — {note}. The findings below are what the investigation had established.\n\n"
         text = header + (text or "_No diagnosis text was produced before the run stopped._")
@@ -135,6 +205,8 @@ def build_report(deps: DiagDeps, outcome: RunOutcome, model: Model) -> Diagnosis
     # tool-call markup makes the report partial (FM-41).
     text, filter_hits, filter_removed = strip_thinking_residue(text or "")
     limitations = list(outcome.limitations)
+    if outcome.gate is not None and limitations:
+        limitations[0] = gate_sentence(outcome.gate, deps.locale)   # the runner puts it first
     if has_tool_call_residue(text):
         limitations.append(TOOL_CALL_RESIDUE_LIMITATION)
         if not partial:
@@ -205,7 +277,15 @@ async def run_diagnosis(
         message_history=message_history,
         compact_threshold=deps.budgets.compact_threshold_tokens,
     )
-    report = build_report(deps, outcome, model)
+    wrap = await _wrap_up(deps, model, outcome, settings)
+    wrapup_text: Optional[str] = None
+    if wrap is not None:
+        outcome.usage = outcome.usage + wrap.usage
+        outcome.requests += wrap.requests
+        if wrap.stopped_reason == "complete" and isinstance(wrap.output, str) and wrap.output.strip():
+            wrapup_text = wrap.output
+            outcome.messages = wrap.messages
+    report = build_report(deps, outcome, model, wrapup_text)
     if outcome.stopped_reason == "complete":
         sink.emit(ev.DIAGNOSIS_DONE, {
             "chars": len(report.content_md), "citations": len(report.citations),
@@ -283,5 +363,6 @@ def stream_diagnosis(deps: DiagDeps, model: Model, **kwargs: Any) -> DiagnosisSt
     return DiagnosisStream(deps, model, **kwargs)
 
 
-__all__ = ["MAIN_AGENT", "MAIN_TOOL_NAMES", "DiagnosisOutcome", "DiagnosisStream", "build_main_agent",
-           "build_report", "run_diagnosis", "stream_diagnosis", "EventSink"]
+__all__ = ["MAIN_AGENT", "MAIN_TOOL_NAMES", "WRAPUP_AGENT", "WRAPUP_INSTRUCTION", "DiagnosisOutcome",
+           "DiagnosisStream", "build_main_agent", "build_report", "gate_sentence", "run_diagnosis",
+           "stream_diagnosis", "EventSink"]
