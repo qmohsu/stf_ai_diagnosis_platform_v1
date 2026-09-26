@@ -2,7 +2,7 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.9（#253：golden 塌方线跨次判定 + 显卡争用记录；v0.8 为 PROD-11 诊断任务与按需模型控制器） |
+| 版本 | v0.10（#255：控制器按容器 / 服务认进程 + 等待原因细分；v0.9 为 #253 塌方线跨次判定与显卡争用记录） |
 | 日期 | 2026-09-24 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
@@ -313,7 +313,10 @@ bash infra/vllm_ctl.sh stop                                       # 评测完停
 |---|---|---|
 | `queued` | 前面还有诊断 | `GET /v3/health` → `diagnosis` |
 | `model_starting` | 控制器已拉起 vLLM，冷启动中（约 10–12 分钟） | `bash infra/vllm_ctl.sh status` |
-| `gpu_busy` | 卡被其他团队（或我们的 Ollama）占着，不抢 | `nvidia-smi`；`/v3/health` → `model_service.blocked_reason` |
+| `gpu_busy` | 卡被其他团队（其他用户）占着，不抢 | `nvidia-smi`；`/v3/health` → `model_service.blocked_reason` / `blocked_by` |
+| `gpu_busy_internal` | 卡被**本账号的其他项目**占着（如 Gemma 竞赛自己的 vLLM、别的容器）——对外说「服务器上的另一项内部任务」 | `/v3/health` → `blocked_by` 含 `same_account`；`journalctl … \| grep llm.blocked` 看是哪个容器 / 会话 |
+| `gpu_old_model` | V1/V2 的 Ollama 驻留着模型 | `podman exec stf-ollama ollama ps`，需要时 `podman stop stf-ollama` |
+| `gpu_project_task` | V3 自己的其他任务占着卡（非手册转换） | `/v3/health` → `blocked_by` |
 | `manual_converting` | 我们自己在转手册（MinerU 占第二张卡） | `/v3/manuals` 里 `converting` 的那本 |
 | `model_cooldown` | 刚才拉起失败，冷却 15 分钟后重试 | `journalctl --user -u stf-v3-gpu-worker -n 100 \| grep llm.` |
 | `controller_unresponsive` | 宿主机控制器 3 分钟没心跳 | `systemctl --user status stf-v3-gpu-worker` |
@@ -324,7 +327,7 @@ bash infra/vllm_ctl.sh stop                                       # 评测完停
 
 跑在宿主机 GPU worker 的 `llm` 队列（该 worker 现在是 `-q gpu,llm --concurrency 2`；手册转换靠锁 `gpu-ingest` 仍一次一本）。每分钟一次，诊断等模型时再按需加一次。它只会执行 `infra/vllm_ctl.sh start|stop`：
 
-- **拉起**：有未结束的诊断、vLLM 没在跑、不在冷却期、两张卡上没有别人的显存（其他用户的进程、查不到主人的进程、我们的 MinerU / Ollama 都算占用；按**每张卡合计**判断：除我们 vLLM 外的显存加起来 ≥ `STF_V3_LLM_GPU_FREE_MIB` = 6000 MiB 即算忙——别人多个小进程也算；2026-09-27 用户决定由 2 GB 放宽到 6 GB：vLLM 占 46 GB 里的 36.9 GB，给对方留约 3 GB 余量，两边同时跑都会变慢）。拉起时的显存快照写进 `model_service_state.gpu_snapshot` 和日志 `llm.start`。
+- **拉起**：有未结束的诊断、vLLM 没在跑、不在冷却期、两张卡上没有别人的显存（其他用户的进程、查不到主人的进程、**本账号在 V3 容器 / 宿主机 GPU worker 之外的进程**（#255：如 Gemma 竞赛自己的 vLLM、别的项目的容器）、我们的 MinerU / Ollama 都算占用——按进程的**账号 + 所在容器 / 服务**认，只有 `stf-vllm` 容器里的才算 V3 的 vLLM，从不看命令行；按**每张卡合计**判断：除我们 vLLM 外的显存加起来 ≥ `STF_V3_LLM_GPU_FREE_MIB` = 6000 MiB 即算忙——别人多个小进程也算；2026-09-27 用户决定由 2 GB 放宽到 6 GB：vLLM 占 46 GB 里的 36.9 GB，给对方留约 3 GB 余量，两边同时跑都会变慢）。拉起时的显存快照写进 `model_service_state.gpu_snapshot` 和日志 `llm.start`。
 - **不重复拉起**：加载中只等；超过 25 分钟没就绪或进程退出 → 标失败、停掉、冷却 15 分钟（`STF_V3_LLM_START_COOLDOWN_S`），等待中的诊断立即以 `model_start_failed` 结束。
 - **被外部停掉不硬拉**：控制器拉起、已就绪的 vLLM 不是控制器停的却没了（有人手动 `stop`、崩溃）→ 标失败（`failure_reason` = stopped externally）+ 冷却 15 分钟，等待中的诊断以 `model_stopped` 结束，不会每分钟重新拉起跟人对着干。
 - **独立 scope**：`start` 经 `systemd-run --user --scope` 执行，vLLM 的 conmon 落在自己的 `stf-llm-start-*.scope` 里，不在 GPU worker 服务的 cgroup 中——部署后重启宿主机 worker 不会连带杀掉 vLLM（`STF_V3_LLM_CTL_SCOPE=false` 关掉）。

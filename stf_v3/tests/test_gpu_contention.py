@@ -26,7 +26,11 @@ ME, MARTIN = 1006, 1003
 GPUS = "0, GPU-a, 34000, 46068, 95\n1, GPU-b, 30000, 46068, 40\n"
 BASE = "20260927T010203Z_0123abcd_gate_local_think-off"
 # pid → (uid, command line): our vLLM on both cards, Martin's training on GPU 0
-POD = "0::/user.slice/user-1006.slice/user@1006.service/user.slice/libpod-9bb1.scope"
+VLLM_ID, SANDBOX_ID = "a" * 64, "d" * 64
+CONTAINERS = {VLLM_ID: "stf-vllm", "b" * 64: "stf-ollama", SANDBOX_ID: "sleepy_sandbox"}
+POD = f"0::/user.slice/user-1006.slice/user@1006.service/user.slice/libpod-{VLLM_ID}.scope"
+OLLAMA_POD = "0::/user.slice/user-1006.slice/user@1006.service/user.slice/libpod-" + "b" * 64 + ".scope"
+SANDBOX_POD = f"0::/user.slice/user-1006.slice/user@1006.service/user.slice/libpod-{SANDBOX_ID}.scope"
 WORKER = "0::/user.slice/user-1006.slice/user@1006.service/app.slice/stf-v3-gpu-worker.service"
 SSH = "0::/user.slice/user-1006.slice/session-479435.scope"
 # pid → (uid, command line, cgroup): our vLLM on both cards, Martin's
@@ -35,8 +39,9 @@ SSH = "0::/user.slice/user-1006.slice/session-479435.scope"
 PROCS: Dict[int, tuple] = {
     11: (ME, "VLLM::Worker_TP0", POD), 12: (ME, "VLLM::Worker_TP1", POD),
     21: (MARTIN, "/home/martin/venv/bin/python pl_b2.py train secret-project --api-key=zzfake987", ""),
-    31: (ME, "/usr/bin/ollama runner", POD), 41: (ME, "mineru -p manual.pdf", WORKER),
+    31: (ME, "/usr/bin/ollama runner", OLLAMA_POD), 41: (ME, "mineru -p manual.pdf", WORKER),
     51: (ME, "/home/talon/gemma4_agent_comp/.venv_vllm/bin/python -m vllm.entrypoints.openai.api_server", SSH),
+    61: (ME, "vllm serve in another project's container", SANDBOX_POD),
 }
 
 
@@ -53,6 +58,8 @@ class FakeHost:
     def run(self, argv: Sequence[str], timeout: float) -> Optional[str]:
         self.calls.append(list(argv))
         assert timeout <= gc.CALL_TIMEOUT_S           # FM-11: every call has a timeout
+        if argv[:2] == ["podman", "ps"]:
+            return "".join(f"{cid} {name}\n" for cid, name in CONTAINERS.items())
         if argv[:3] == ["podman", "container", "exists"]:
             self.i += 1
             return "" if self.i < self.alive_for else None
@@ -69,7 +76,7 @@ class FakeHost:
 
 def _classify(pid: int) -> str:
     uid, cmd, cg = PROCS.get(pid, (None, "", ""))
-    return gc.classify(pid, ME, owner=lambda p: uid, cmdline=lambda p: cmd.lower(), cgroup=lambda p: cg)
+    return gc.classify(pid, ME, owner=lambda p: uid, cgroup=lambda p: cg, containers=CONTAINERS)
 
 
 def test_this_accounts_processes_outside_v3_count_as_other_workloads() -> None:
@@ -77,6 +84,9 @@ def test_this_accounts_processes_outside_v3_count_as_other_workloads() -> None:
     same account is NOT our vLLM; MinerU under the GPU worker is V3."""
     assert _classify(11) == "vllm" and _classify(31) == "ollama" and _classify(41) == "project_other"
     assert _classify(51) == "others" and _classify(21) == "others" and _classify(999) == "others"
+    # #255 FM-30: another project's CONTAINER on this account is not V3 either
+    assert _classify(61) == "others"
+    assert gc.classify(11, ME, owner=lambda p: ME, cgroup=lambda p: POD, containers=None) == "others"
 
 
 def _run(host: FakeHost, tmp: pathlib.Path, before: float = 3, after: float = 3) -> Dict[str, Any]:

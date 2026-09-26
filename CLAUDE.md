@@ -355,7 +355,10 @@ text/event-stream` (ends at `done`, 15 s keepalive, `Last-Event-ID`).  The
 the host GPU worker (now `-q gpu,llm --concurrency 2`; manual ingest keeps
 one-at-a-time via lock `gpu-ingest`): starts vLLM when a diagnosis waits and
 anyone else holds < 6 GB on each GPU (user decision 2026-09-27; was "both
-empty"), stops only a vLLM it started after 30 min
+empty"; since #255 "anyone else" includes this account's processes outside
+the V3 containers / host GPU worker — e.g. the Gemma competition's own vLLM —
+processes are told apart by account + container / service, never command
+line), stops only a vLLM it started after 30 min
 idle (no eval lock, no request in flight); state in `model_service_state`,
 visible in `/v3/health` (`diagnosis`, `model_service`).  Ops: runbook §6.
 **vLLM policy (user decision 2026-09-24): started on demand, never

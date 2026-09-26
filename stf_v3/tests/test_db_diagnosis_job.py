@@ -274,6 +274,8 @@ async def test_wait_reasons_follow_the_controller_and_time_out(client, workshop_
     ({"state": "'blocked'", "blocked_reason": "'other_tenant'", "controller_seen_at": "now()"}, "gpu_busy"),
     ({"state": "'blocked'", "blocked_reason": "'manual_converting'", "controller_seen_at": "now()"},
      "manual_converting"),
+    ({"state": "'blocked'", "blocked_reason": "'same_account'", "controller_seen_at": "now()"},
+     "gpu_busy_internal"),                                   # #255: another project of this account
 ])
 async def test_wait_reason_comes_from_the_state_row(client, workshop_with_codes, monkeypatch, cols, reason) -> None:  # type: ignore[no-untyped-def]
     """T-17: starting (with an ETA), another team's GPU use, our own manual
