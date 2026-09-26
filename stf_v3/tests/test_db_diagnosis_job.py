@@ -297,6 +297,24 @@ async def test_failed_start_ends_waiting_runs_at_once(client, workshop_with_code
     assert (await conversation_row(cid)).error_code == "model_start_failed" and time.monotonic() - t0 < 5
 
 
+async def test_an_external_stop_ends_waiting_runs_with_its_own_code(client, workshop_with_codes, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """PROD-11 server finding: someone outside the controller stopped the
+    vLLM it had started → the waiting run ends now with ``model_stopped``
+    (not "failed to start"), and the user sees that sentence."""
+    from stf_v3.diagnosis.model_service import STOPPED_EXTERNALLY
+
+    _, cid = await _queued(client, workshop_with_codes, monkeypatch)
+    await _state(state="'failed'", failed_at="now()", failure_reason=f"'{STOPPED_EXTERNALLY}'",
+                 cooldown_until="now() + interval '15 minutes'", controller_seen_at="now()")
+    assert await _run(cid, TestModel(), ready_fn=_never) == "error"
+    assert (await conversation_row(cid)).error_code == "model_stopped"
+    errors = [p for _, t, p in await events_of(cid) if t == "error"]
+    from stf_v3.diagnosis.texts import ERROR_CODES
+
+    assert errors[-1]["code"] == "model_stopped"
+    assert errors[-1]["message"] in ERROR_CODES["model_stopped"].values()
+
+
 async def test_the_wait_counts_from_the_click(client, workshop_with_codes, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     """T-17 / FM-22: a run queued long ago behind others fails fast instead of
     starting its own full wait."""

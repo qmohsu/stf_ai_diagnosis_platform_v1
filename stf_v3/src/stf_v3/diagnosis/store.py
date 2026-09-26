@@ -45,6 +45,9 @@ from stf_v3.diagnosis.models import (
 )
 from stf_v3.diagnosis.texts import error_text
 
+# Multi-table flushes below need every FK target registered (see jobs/app.py).
+import stf_v3.metadata  # noqa: E402,F401,I001
+
 log = structlog.get_logger(__name__)
 
 SessionFactory = async_sessionmaker

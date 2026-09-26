@@ -151,6 +151,7 @@ class Settings(BaseSettings):
     llm_start_cooldown_s: int = 900               # FM-24: after a failed start
     llm_gpu_free_mib: int = 2000                  # a card counts as free below this
     vllm_ctl_path: str = ""                       # default: <repo_dir>/infra/vllm_ctl.sh
+    llm_ctl_scope: bool = True                    # start vLLM in its own systemd scope
     eval_lock_path: str = "~/stf_v3_evals/.lock"  # FM-26: never stop under an eval
     # SSE (blueprint §3.7): poll the black box, keep the proxy chain alive.
     sse_poll_s: float = 0.25

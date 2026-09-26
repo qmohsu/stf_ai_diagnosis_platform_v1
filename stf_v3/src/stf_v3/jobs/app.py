@@ -45,6 +45,13 @@ app = procrastinate.App(
         "stf_v3.diagnosis.tasks",
         "stf_v3.jobs.maintenance",
         "stf_v3.jobs.drill",
+        # PROD-11 server finding: a worker imports only its task modules, which
+        # never import the auth / workshop models — a multi-table flush then
+        # failed with NoReferencedTableError ("users") and a finished diagnosis
+        # stayed "running".  Every worker registers EVERY table at startup (a
+        # module name here, not an import, so the layer contract holds);
+        # tests/test_unit_worker_model_registry.py runs a fresh worker process.
+        "stf_v3.metadata",
     ],
 )
 

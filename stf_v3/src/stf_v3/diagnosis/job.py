@@ -48,7 +48,13 @@ from stf_v3.diagnosis.agent.context import last_assistant_text
 from stf_v3.diagnosis.agent.main_agent import DiagnosisOutcome, stream_diagnosis
 from stf_v3.diagnosis.agent.memory import messages_to_jsonable
 from stf_v3.diagnosis.agent.model import build_model
-from stf_v3.diagnosis.model_service import get_state, model_ready, touch_last_used, wait_reason
+from stf_v3.diagnosis.model_service import (
+    STOPPED_EXTERNALLY,
+    get_state,
+    model_ready,
+    touch_last_used,
+    wait_reason,
+)
 from stf_v3.diagnosis.models import DiagnosisConversation
 from stf_v3.diagnosis.store import (
     EventWriter,
@@ -105,7 +111,7 @@ async def _wait_for_model(
     session_factory: Any, settings: Any, cid: uuid.UUID, created_at: Any, writer: EventWriter,
     *, ready_fn: ReadyFn, request_reconcile: RequestFn, sleep: Callable[[float], Awaitable[None]],
 ) -> str:
-    """``ready`` / ``cancelled`` / ``timeout`` / ``start_failed`` (see module doc)."""
+    """``ready`` / ``cancelled`` / ``timeout`` / ``start_failed`` / ``stopped``."""
     last_event = -1e18
     last_request = -1e18
     while True:
@@ -124,7 +130,7 @@ async def _wait_for_model(
             return "timeout"
         if state is not None and state.state == "failed" and state.failed_at is not None \
                 and state.failed_at >= created_at:
-            return "start_failed"
+            return "stopped" if state.failure_reason == STOPPED_EXTERNALLY else "start_failed"
         mono = time.monotonic()
         if mono - last_request >= settings.diagnosis_wait_event_s:
             try:
@@ -252,9 +258,8 @@ async def run_conversation(
                 if verdict == "cancelled":
                     await close_cancelled(sf, cid, from_statuses=("running",))
                     return "cancelled"
-                await close_with_error(
-                    sf, cid, "model_unavailable" if verdict == "timeout" else "model_start_failed",
-                    locale=locale, stage="wait_model")
+                code = {"timeout": "model_unavailable", "stopped": "model_stopped"}.get(verdict, "model_start_failed")
+                await close_with_error(sf, cid, code, locale=locale, stage="wait_model")
                 return "error"
         await touch_last_used(sf)
 

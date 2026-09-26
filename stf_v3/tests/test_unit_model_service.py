@@ -92,7 +92,8 @@ async def test_readiness_checks_the_model_name() -> None:
 async def test_only_the_two_fixed_commands_can_run(monkeypatch) -> None:  # type: ignore[no-untyped-def]
     """T-14 / FM-40 / FM-45: the controller runs exactly
     ``bash <repo>/infra/vllm_ctl.sh start|stop`` — nothing else, no arguments
-    from the queue."""
+    from the queue.  ``start`` is wrapped in its own systemd scope so a
+    GPU-worker restart cannot take vLLM down (PROD-11 server finding)."""
     seen: List[List[str]] = []
     io = ms.HostIO(SimpleNamespace(vllm_ctl_path="", repo_dir="/home/x/repo"))
 
@@ -106,7 +107,12 @@ async def test_only_the_two_fixed_commands_can_run(monkeypatch) -> None:  # type
     import pathlib
 
     ctl = str(pathlib.Path("/home/x/repo") / "infra" / "vllm_ctl.sh")
-    assert seen == [["bash", ctl, "start"], ["bash", ctl, "stop"]]
+    start, stop = seen
+    assert start[:5] == ["systemd-run", "--user", "--scope", "--quiet", "--collect"]
+    assert start[5].startswith("--unit=stf-llm-start-") and start[6:] == ["bash", ctl, "start"]
+    assert stop == ["bash", ctl, "stop"]
+    plain = ms.HostIO(SimpleNamespace(vllm_ctl_path="/x/vllm_ctl.sh", repo_dir="", llm_ctl_scope=False))
+    assert plain.ctl_argv("start") == ["bash", "/x/vllm_ctl.sh", "start"]
     with pytest.raises(ValueError):
         await io.run_ctl("rm -rf /")
     from stf_v3.diagnosis.tasks import llm_reconcile
@@ -114,6 +120,24 @@ async def test_only_the_two_fixed_commands_can_run(monkeypatch) -> None:  # type
     import inspect
     params = list(inspect.signature(llm_reconcile.func).parameters)
     assert params == ["timestamp"]                     # periodic stamp only, no payload
+
+
+def test_an_external_stop_is_not_fought() -> None:
+    """PROD-11 server finding: the vLLM WE started vanished without the
+    controller stopping it → failed + cooldown (waiting runs end with
+    ``model_stopped``), no command; demand during the cooldown does not
+    restart it.  One started by hand that vanished is simply "stopped"."""
+    ours = ms.StateView(state="ready", started_by_us=True, ready_at=ago(600), last_used_at=ago(60))
+    d = ms.decide(obs(demand=1), ours, S, NOW)
+    assert d.action is None and d.fields["state"] == "failed"
+    assert d.fields["failure_reason"] == ms.STOPPED_EXTERNALLY
+    assert d.fields["cooldown_until"] == NOW + dt.timedelta(seconds=900)
+    after = ms.StateView(state="failed", failure_reason=ms.STOPPED_EXTERNALLY,
+                         cooldown_until=d.fields["cooldown_until"])
+    assert ms.decide(obs(demand=1), after, S, NOW + dt.timedelta(seconds=60)).action is None
+    by_hand = ms.StateView(state="ready", started_by_us=False, ready_at=ago(600))
+    d2 = ms.decide(obs(), by_hand, S, NOW)
+    assert d2.action is None and d2.fields["state"] == "stopped"
 
 
 def test_vllm_ctl_only_touches_its_own_compose_project() -> None:

@@ -317,7 +317,7 @@ bash infra/vllm_ctl.sh stop                                       # 评测完停
 | `model_cooldown` | 刚才拉起失败，冷却 15 分钟后重试 | `journalctl --user -u stf-v3-gpu-worker -n 100 \| grep llm.` |
 | `controller_unresponsive` | 宿主机控制器 3 分钟没心跳 | `systemctl --user status stf-v3-gpu-worker` |
 
-结束状态：`done`（`report.partial` 为真表示时限 / 用量上限 / 模型错误提前结束）、`cancelled`、`error`（`error_code`：`model_unavailable` 等满 60 分钟、`model_start_failed`、`diagnosis_interrupted` worker 中途没了、`vehicle_deleted`、`log_unavailable`、`queue_unavailable`、`run_failed` 零产出、`internal_error`）。诊断**不自动重跑**：让用户重新点。
+结束状态：`done`（`report.partial` 为真表示时限 / 用量上限 / 模型错误提前结束）、`cancelled`、`error`（`error_code`：`model_unavailable` 等满 60 分钟、`model_start_failed`、`model_stopped` 控制器拉起的 vLLM 被外部停掉、`diagnosis_interrupted` worker 中途没了、`vehicle_deleted`、`log_unavailable`、`queue_unavailable`、`run_failed` 零产出、`internal_error`）。诊断**不自动重跑**：让用户重新点。
 
 ### 6.2 按需模型控制器
 
@@ -325,6 +325,8 @@ bash infra/vllm_ctl.sh stop                                       # 评测完停
 
 - **拉起**：有未结束的诊断、vLLM 没在跑、不在冷却期、两张卡上没有别人的显存（其他用户的进程、查不到主人的进程、我们的 MinerU / Ollama 都算占用；阈值 `STF_V3_LLM_GPU_FREE_MIB` = 2000 MiB）。拉起时的显存快照写进 `model_service_state.gpu_snapshot` 和日志 `llm.start`。
 - **不重复拉起**：加载中只等；超过 25 分钟没就绪或进程退出 → 标失败、停掉、冷却 15 分钟（`STF_V3_LLM_START_COOLDOWN_S`），等待中的诊断立即以 `model_start_failed` 结束。
+- **被外部停掉不硬拉**：控制器拉起、已就绪的 vLLM 不是控制器停的却没了（有人手动 `stop`、崩溃）→ 标失败（`failure_reason` = stopped externally）+ 冷却 15 分钟，等待中的诊断以 `model_stopped` 结束，不会每分钟重新拉起跟人对着干。
+- **独立 scope**：`start` 经 `systemd-run --user --scope` 执行，vLLM 的 conmon 落在自己的 `stf-llm-start-*.scope` 里，不在 GPU worker 服务的 cgroup 中——部署后重启宿主机 worker 不会连带杀掉 vLLM（`STF_V3_LLM_CTL_SCOPE=false` 关掉）。
 - **自动停机**：只停**控制器自己拉起**的那次，且空闲满 30 分钟（`STF_V3_LLM_IDLE_STOP_S`）、没有未结束诊断、没有评测锁（`~/stf_v3_evals/.lock`）、vLLM 没有进行中的请求。**手动 `vllm_ctl.sh start` 拉起的不会被自动停**——用完自己 `stop`。
 - 状态：`GET /v3/health` → `model_service`（`state`、`blocked_reason`、`started_by_us`、`controller_seen_s`、`idle_s`）。空闲超过 30 分钟仍 `ready` 且 `started_by_us: true` → 查 `journalctl` 里的 `llm.ctl`。
 - 临时关掉自动拉起：`infra/.env` 加 `STF_V3_LLM_AUTOSTART=false`，重启宿主机 worker（诊断照样等，靠人工拉起）。

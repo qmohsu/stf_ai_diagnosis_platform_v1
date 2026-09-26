@@ -47,6 +47,7 @@ from stf_v3.diagnosis.models import ACTIVE_STATUSES, DiagnosisConversation, Mode
 log = structlog.get_logger(__name__)
 
 CONTROLLER_STALE_S = 180          # no controller heartbeat for 3 min → "unresponsive"
+STOPPED_EXTERNALLY = "stopped externally (not by the controller)"
 VLLM_CONTAINER = "stf-vllm"
 COLD_START_S = 720                # typical cold start (10–12 min) for the ETA
 
@@ -274,6 +275,13 @@ def decide(obs: Observation, st: StateView, settings: Any, now: dt.datetime) -> 
         upd.update(state="failed", failed_at=now, failure_reason="vLLM exited while starting",
                    cooldown_until=now + cooldown, started_by_us=False, ready_at=None)
         return Decision("stop", upd, "exited while starting")
+    if st.state == "ready" and st.started_by_us:
+        # PROD-11 server finding: something outside the controller stopped the
+        # vLLM we started.  Do not fight it: fail + cool down; waiting runs end
+        # with ``model_stopped`` instead of re-starting it every minute.
+        upd.update(state="failed", failed_at=now, failure_reason=STOPPED_EXTERNALLY,
+                   cooldown_until=now + cooldown, started_by_us=False, ready_at=None)
+        return Decision(None, upd, "stopped externally")
     upd.update(started_by_us=False, ready_at=None)
     if obs.demand > 0:
         if st.cooldown_until is not None and now < st.cooldown_until:
@@ -374,11 +382,25 @@ class HostIO:
             return self.settings.vllm_ctl_path
         return str(Path(self.settings.repo_dir or ".") / "infra" / "vllm_ctl.sh")
 
-    async def run_ctl(self, action: str) -> Tuple[int, str]:
-        """``vllm_ctl.sh start|stop`` — the only commands the controller runs (FM-40)."""
+    def ctl_argv(self, action: str) -> List[str]:
+        """The command line for ``vllm_ctl.sh start|stop`` (FM-40: nothing else).
+
+        ``start`` runs inside its own transient systemd scope: podman's conmon
+        (the process that keeps the container alive) would otherwise sit in
+        this worker service's cgroup, and every "restart the GPU worker after
+        a deploy" would take vLLM down with it (PROD-11 server finding).
+        """
         if action not in ("start", "stop"):
             raise ValueError(action)
-        rc, out, err = await self._run(["bash", self.ctl_path(), action], 300)
+        base = ["bash", self.ctl_path(), action]
+        if action == "start" and getattr(self.settings, "llm_ctl_scope", True):
+            return ["systemd-run", "--user", "--scope", "--quiet", "--collect",
+                    f"--unit=stf-llm-start-{os.getpid()}-{int(dt.datetime.now().timestamp())}"] + base
+        return base
+
+    async def run_ctl(self, action: str) -> Tuple[int, str]:
+        """``vllm_ctl.sh start|stop`` — the only commands the controller runs (FM-40)."""
+        rc, out, err = await self._run(self.ctl_argv(action), 300)
         return rc, (err or out)[-500:]
 
 

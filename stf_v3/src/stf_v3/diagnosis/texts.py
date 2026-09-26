@@ -54,6 +54,11 @@ ERROR_CODES: Dict[str, Dict[str, str]] = {
         "zh-CN": "模型启动失败，请稍后重新诊断",
         "en": "The model failed to start; please try again later",
     },
+    "model_stopped": {
+        "zh-TW": "模型服務被停止，請稍後重新診斷",
+        "zh-CN": "模型服务被停止，请稍后重新诊断",
+        "en": "The model service was stopped; please try again later",
+    },
     "diagnosis_interrupted": {
         "zh-TW": "診斷被中斷，請重新發起",
         "zh-CN": "诊断被中断，请重新发起",
