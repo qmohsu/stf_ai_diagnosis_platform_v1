@@ -143,7 +143,7 @@ podman cp stf-v3-api:/tmp/runs ~/prod09_runs/     # 报告 .report.md / .report.
 - 事件逐条打印：`tool_call / tool_result` 带工具名、耗时、结果长度；`(in <id>)` 表示子代理内部的事件；`reasoning` 是模型思考——vLLM 档（默认）关了思考，这类事件应为 0，末行 `thinking_chars=0`；只有回退到 Ollama 的 qwen3.5 才会有。`session_start` 与报告的 `model_source` 写明 `local|cloud 档名 @主机`。
 - 输出目录永远不能是日志卷或手册卷（脚本会拒绝）；文件名只含时间与日志编号前 8 位，不含 VIN；报告正文可能含 VIN，**不要把报告文件拷出服务器贴进 PR / issue**。
 - 耗时：vLLM + Qwen3.6-27B 一轮见 §4.6 的实测表；Ollama qwen3.5 回退档一轮 5–40 分钟。默认墙钟随档：vLLM 15 分钟、Ollama 20 分钟（`STF_V3_AGENT_WALL_CLOCK_S` 显式设置则以设置为准）。
-- 总 token 上限：vLLM 档（及经 OpenRouter 的同款 Qwen）200 万（PROD-11 由 100 万调高：一键诊断真实路试日志实测 87–102 万，每次请求都重发上下文）。撞上墙钟或用量上限后，主 Agent 再得一轮**不带工具**的收尾（最多 3 分钟，`STF_V3_AGENT_WRAPUP_S`，0 = 关），按已查到的证据写报告；报告仍标"部分"，局限一栏写明是哪道上限。
+- 总 token 上限：vLLM 档（及经 OpenRouter 的同款 Qwen）200 万（PROD-11 由 100 万调高：一键诊断真实路试日志实测 87–102 万，每次请求都重发上下文）。撞上墙钟或用量上限后，主 Agent 再得一轮**不带工具**的收尾（最多 7 分钟，`STF_V3_AGENT_WRAPUP_S`，0 = 关；显卡被别人抢算力时单路只有约 16 token/秒，一份四千字报告要 3–5 分钟），按已查到的证据写报告；报告仍标"部分"，局限一栏写明是哪道上限。
 
 ### 3.2 配置项（全在 `infra/.env`，前缀 `STF_V3_`）
 
