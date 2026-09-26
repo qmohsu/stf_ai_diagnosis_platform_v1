@@ -351,13 +351,16 @@ text/event-stream` (ends at `done`, 15 s keepalive, `Last-Event-ID`).  The
 **on-demand model controller** (`llm.reconcile`, `llm` queue) runs ONLY on
 the host GPU worker (now `-q gpu,llm --concurrency 2`; manual ingest keeps
 one-at-a-time via lock `gpu-ingest`): starts vLLM when a diagnosis waits and
-both GPUs are free of anyone else, stops only a vLLM it started after 30 min
+anyone else holds < 6 GB on each GPU (user decision 2026-09-27; was "both
+empty"), stops only a vLLM it started after 30 min
 idle (no eval lock, no request in flight); state in `model_service_state`,
 visible in `/v3/health` (`diagnosis`, `model_service`).  Ops: runbook §6.
 **vLLM policy (user decision 2026-09-24): started on demand, never
 resident** — revisit only when we provide a stable service or the hardware
-is upgraded.  Start it only when both GPUs are free (shared server; check
-`nvidia-smi`), stop it right after evals / verification; never install the
+is upgraded.  Start it only when anyone else holds < 6 GB per GPU (shared
+server; check `nvidia-smi`; user decision 2026-09-27 — vLLM takes 36.9 of
+46 GB, so the other tenant keeps ~3 GB to grow), stop it right after evals /
+verification; never install the
 `stf-llm.service` auto-start unit.  While it is off (the normal state), run
 `deploy_check.sh` with `LLM_CHECK=skip LLM_CHECK_REASON=…`.  **vLLM lifecycle is separate from V3 deploys**: `bash infra/vllm_ctl.sh
 start|wait|status|stop|logs|install-unit` (compose project `stf_llm`,

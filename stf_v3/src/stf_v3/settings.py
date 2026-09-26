@@ -152,7 +152,10 @@ class Settings(BaseSettings):
     llm_idle_stop_s: int = 1800
     llm_start_timeout_s: int = 1500               # cold start ≈ 10–12 min
     llm_start_cooldown_s: int = 900               # FM-24: after a failed start
-    llm_gpu_free_mib: int = 2000                  # a card counts as free below this
+    # User decision 2026-09-27: a card counts as free while everything on it
+    # except our vLLM stays below 6 GB (vLLM takes 36.9 of 46 GB, leaving
+    # the other tenant ~3 GB to grow); was 2 GB ("both cards empty").
+    llm_gpu_free_mib: int = 6000
     vllm_ctl_path: str = ""                       # default: <repo_dir>/infra/vllm_ctl.sh
     llm_ctl_scope: bool = True                    # start vLLM in its own systemd scope
     eval_lock_path: str = "~/stf_v3_evals/.lock"  # FM-26: never stop under an eval

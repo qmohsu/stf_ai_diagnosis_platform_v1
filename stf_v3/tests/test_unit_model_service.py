@@ -252,6 +252,23 @@ def test_many_small_processes_of_another_team_make_a_busy_card() -> None:
     assert idle.free and idle.snapshot == []
 
 
+def test_the_default_line_is_6_gb_of_someone_else_per_card() -> None:
+    """User decision 2026-09-27: vLLM may start while anyone else holds less
+    than 6 GB on each card (it takes 36.9 of 46 GB, leaving ~3 GB to grow);
+    the old "both cards empty" line kept diagnoses and the golden gate
+    waiting for hours behind another team's small jobs."""
+    from stf_v3.settings import Settings
+
+    line = Settings().llm_gpu_free_mib
+    assert line == 6000
+    other = {1: ("martin", "python train.py")}
+    under = ms.classify_gpus(_gpus(5871, 609), [("GPU-a", 1, 5712)], other, our_user="talon",
+                             free_mib=line, manual_converting=False)
+    over = ms.classify_gpus(_gpus(6300, 609), [("GPU-a", 1, 6150)], other, our_user="talon",
+                            free_mib=line, manual_converting=False)
+    assert under.free and not over.free and over.reason == "other_tenant"
+
+
 def test_memory_no_process_accounts_for_blocks_as_another_tenant() -> None:
     """T-16: used memory on a card with no visible process → not free."""
     v = ms.classify_gpus(_gpus(21000, 0), [], {}, our_user="talon", free_mib=2000, manual_converting=False)
