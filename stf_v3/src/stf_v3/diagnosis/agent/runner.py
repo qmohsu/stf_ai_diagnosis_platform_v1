@@ -14,9 +14,10 @@ Author: Xiangzhu Yan
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, List, Optional, Sequence
+from typing import Any, Callable, List, Optional, Sequence, Tuple
 
 import structlog
 from pydantic_ai import (
@@ -79,6 +80,18 @@ class RunOutcome:
     tool_calls: int = 0
     events_emitted: int = 0
     limitations: List[str] = field(default_factory=list)
+    # Which gate stopped the run: (kind, limit) with kind wall_clock /
+    # request / tool_calls / total_tokens; the report words it per locale.
+    gate: Optional[Tuple[str, int]] = None
+
+
+_LIMIT_RE = re.compile(r"the (request|tool_calls|total_tokens|input_tokens|output_tokens)_limit of (\d+)")
+
+
+def usage_gate(exc: BaseException) -> Optional[Tuple[str, int]]:
+    """``(kind, limit)`` from a ``UsageLimitExceeded`` message (None if unknown)."""
+    m = _LIMIT_RE.search(str(exc))
+    return (m.group(1), int(m.group(2))) if m else None
 
 
 def _emit_response(response: ModelResponse, sink: EventSink, parent: Optional[str]) -> None:
@@ -171,6 +184,7 @@ async def drive(
     run_usage = usage if usage is not None else RunUsage()
     run_ref: Any = None
     limitations: List[str] = []
+    gate: Optional[Tuple[str, int]] = None
 
     def _on_compact(record: CompactionRecord) -> None:
         sink.emit(ev.CONTEXT_COMPACT, {
@@ -203,11 +217,15 @@ async def drive(
                     run_usage = result.usage
     except TimeoutError:
         stopped = "timeout"
+        gate = ("wall_clock", int(wall_clock_s))
         limitations.append(f"run exceeded its wall-clock budget ({wall_clock_s:.0f} s)")
     except UsageLimitExceeded as exc:
         stopped = "budget"
         error = redact_error(exc)
-        limitations.append(f"run exceeded a usage budget ({exc})")
+        gate = usage_gate(exc)
+        # Never the raw library message (it carries a docs URL, PROD-11 finding).
+        limitations.append("run exceeded a usage budget"
+                           + (f" ({gate[0]} limit {gate[1]:,})" if gate else ""))
     except RunCancelled:
         stopped = "cancelled"
         limitations.append("run was cancelled")
@@ -237,7 +255,7 @@ async def drive(
     return RunOutcome(
         output=output, messages=messages, usage=run_usage, stopped_reason=stopped, error=error,
         requests=run_usage.requests, elapsed_s=elapsed, tool_calls=run_usage.tool_calls,
-        events_emitted=len(sink.events) - events_before, limitations=limitations,
+        events_emitted=len(sink.events) - events_before, limitations=limitations, gate=gate,
     )
 
 
@@ -251,4 +269,4 @@ def make_limits(request_limit: int, tool_calls_limit: Optional[int] = None,
     )
 
 
-__all__ = ["RunOutcome", "drive", "make_limits", "redact_error", "Callable"]
+__all__ = ["RunOutcome", "drive", "make_limits", "redact_error", "usage_gate", "Callable"]

@@ -86,14 +86,17 @@ def test_gpu_tasks_registered_on_gpu_queue_only() -> None:
     assert names["jobs.recover_stalled"].queue == "default"   # FM-7 / T-18
 
 
-def test_compose_container_worker_listens_default_only() -> None:
-    """FM-8 guard: the container worker command names only the default queue."""
+def test_compose_container_worker_never_takes_host_queues() -> None:
+    """FM-8 guard: the container worker consumes ``default`` (+ ``diagnosis``,
+    PROD-11) and never the host-only ``gpu`` / ``llm`` queues."""
     compose_path = pathlib.Path(__file__).parents[2] / "infra" / "docker-compose.v3.yml"
     if not compose_path.is_file():
         pytest.skip("compose file not present (running inside the image)")
-    compose = compose_path.read_text()
+    compose = compose_path.read_text(encoding="utf-8")
     worker_cmd = compose.split("stf-v3-worker:", 1)[1].split("restart:", 1)[0]
-    assert '"-q", "default"' in worker_cmd and "gpu" not in worker_cmd
+    queues = worker_cmd.split('"-q", "', 1)[1].split('"', 1)[0].split(",")
+    assert queues == ["default", "diagnosis"]
+    assert "gpu" not in queues and "llm" not in queues
 
 
 def test_retry_strategy_never_retries_permanent_errors() -> None:

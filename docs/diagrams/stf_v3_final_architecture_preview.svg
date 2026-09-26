@@ -38,7 +38,7 @@
 <polyline points="240,610 240,790" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
 <polyline points="890,610 880,790" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
 <polyline points="90,580 35,580 35,1015 90,1015" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
-<text x="60" y="-21.60" font-size="24" fill="#f8f9fa">STF V3 产品化架构 — Final（设计文档 v1.4 · 2026-09-11 · 开发计划 v1.2 · PROD-02 进行中）</text>
+<text x="60" y="-21.60" font-size="24" fill="#f8f9fa">STF V3 产品化架构 — Final（设计文档 v1.15 · 2026-09-25 · 开发计划 v1.14 · PROD-11 诊断任务）</text>
 <text x="170.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">开源 / 第三方采用</text>
 <text x="420.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">沿用 V1/V2 资产</text>
 <text x="660.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">V3 新做</text>
@@ -71,7 +71,7 @@
 <text x="900.0" y="384.20" text-anchor="middle" font-size="12" fill="#f1f3f5">审计 / 会话回写胶水</text>
 <text x="1210.0" y="354.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">任务队列: procrastinate</text>
 <text x="1210.0" y="369.20" text-anchor="middle" font-size="12" fill="#f1f3f5">(Postgres 表 · 零新组件)</text>
-<text x="1210.0" y="384.20" text-anchor="middle" font-size="12" fill="#f1f3f5">jobs: 手册入库 · 诊断 · 定时</text>
+<text x="1210.0" y="384.20" text-anchor="middle" font-size="12" fill="#f1f3f5">jobs: 手册入库 · 诊断 · 定时 · 启停 vLLM</text>
 <text x="430" y="456.70" font-size="12" fill="#ced4da">每次诊断请求</text>
 <text x="80" y="482.62" font-size="15" fill="#b197fc" font-weight="600">Agent 核心</text>
 <text x="240.0" y="549.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">Agent Runtime: Pydantic AI</text>
@@ -88,11 +88,12 @@
 <text x="1205.0" y="579.20" text-anchor="middle" font-size="12" fill="#f1f3f5">(学生项目 · 外部 · 只读)</text>
 <text x="565.0" y="649.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">相似案例工具 (第二批)</text>
 <text x="80" y="752.62" font-size="15" fill="#51cf66" font-weight="600">数据层（独立新库 —— V3 专属）</text>
-<text x="260.0" y="819.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">PostgreSQL (新建库 stf_v3 · 无 pgvector)</text>
-<text x="260.0" y="834.20" text-anchor="middle" font-size="12" fill="#f1f3f5">workshops · memberships · users · invite_codes</text>
-<text x="260.0" y="849.20" text-anchor="middle" font-size="12" fill="#f1f3f5">vehicles (VIN=身份 · 车牌=标签) · vehicle_devices</text>
-<text x="260.0" y="864.20" text-anchor="middle" font-size="12" fill="#f1f3f5">obd_logs · conversations · messages · reports</text>
-<text x="260.0" y="879.20" text-anchor="middle" font-size="12" fill="#f1f3f5">audit_events · procrastinate 任务表</text>
+<text x="260.0" y="811.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">PostgreSQL (新建库 stf_v3 · 无 pgvector)</text>
+<text x="260.0" y="826.70" text-anchor="middle" font-size="12" fill="#f1f3f5">workshops · memberships · users · invite_codes</text>
+<text x="260.0" y="841.70" text-anchor="middle" font-size="12" fill="#f1f3f5">vehicles (VIN=身份 · 车牌=标签) · vehicle_devices</text>
+<text x="260.0" y="856.70" text-anchor="middle" font-size="12" fill="#f1f3f5">obd_logs · conversations · messages · reports</text>
+<text x="260.0" y="871.70" text-anchor="middle" font-size="12" fill="#f1f3f5">audit_events · procrastinate 任务表</text>
+<text x="260.0" y="886.70" text-anchor="middle" font-size="12" fill="#f1f3f5">model_service_state（按需模型状态 · PROD-11）</text>
 <text x="595.0" y="834.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">manuals (元数据) + Markdown 文件</text>
 <text x="595.0" y="849.20" text-anchor="middle" font-size="12" fill="#f1f3f5">无向量库 · 公共知识库</text>
 <text x="595.0" y="864.20" text-anchor="middle" font-size="12" fill="#f1f3f5">手册转换走 jobs gpu 队列</text>
@@ -105,11 +106,11 @@
 <text x="250" y="710.73" font-size="11" fill="#ced4da">会话/审计回写 + 业务读写</text>
 <text x="895" y="710.73" font-size="11" fill="#ced4da">读原始字节 / Manual MD</text>
 <text x="250.0" y="1011.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">本地 vLLM + Qwen3.6-27B</text>
-<text x="250.0" y="1026.70" text-anchor="middle" font-size="12" fill="#f1f3f5">唯一模型来源 · V1/V2/V3 共用</text>
+<text x="250.0" y="1026.70" text-anchor="middle" font-size="12" fill="#f1f3f5">唯一模型来源 · 按需拉起 · 空闲自停</text>
 <text x="590.0" y="1011.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">云端接口 (保留)</text>
 <text x="590.0" y="1026.70" text-anchor="middle" font-size="12" fill="#f1f3f5">仅供对比测试用</text>
 <text x="960.0" y="1011.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">Golden 评测 Gate (沿用)</text>
-<text x="960.0" y="1026.70" text-anchor="middle" font-size="12" fill="#f1f3f5">0.831 / 0.938 基线 · 一切改动的验收</text>
+<text x="960.0" y="1026.70" text-anchor="middle" font-size="12" fill="#f1f3f5">手册 0.878 · OBD 0.885 基线 · 受管改动必过</text>
 <text x="95" y="951.70" font-size="12" fill="#ced4da">LLM 调用（quirks 收敛在 Runtime 模型适配层）</text>
 <text x="60" y="1102.67" font-size="13" fill="#adb5bd">交互四阶段 S1 一键报告 → S2 报告内追问 → S3 车辆级对话 → S4 主动触发（详见 v3_design_doc.md §1.2）。</text>
 <text x="60" y="1118.92" font-size="13" fill="#adb5bd">V1/V2 并行运行直至废弃；不做清单见设计文档 A3 / 开发计划 §4；每笔原始数据必须绑定车档（不允许 V-UNKNOWN）。</text>

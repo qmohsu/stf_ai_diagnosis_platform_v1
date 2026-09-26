@@ -128,11 +128,42 @@ class Settings(BaseSettings):
     # guards against a runaway result.
     subagent_tool_result_max_tokens: int = 16_000
     compact_threshold_tokens: int = 60_000
+    # After a wall-clock / usage gate: one tool-less turn (at most this
+    # long) to write the report from the evidence so far; 0 = off (PROD-11).
+    agent_wrapup_s: float = 420.0
     # Manual images in tool results: off until the model is known to
     # accept image parts (FM-42; PROD-09 decides per model).
     manual_images_enabled: bool = False
     # Report language when the caller does not specify one (D2).
     default_locale: str = "zh-TW"
+
+    # ── Diagnosis jobs, SSE and the on-demand model (PROD-11) ───────
+    # D2: a diagnosis waits at most this long for the model, counted from
+    # the click (FM-22); a ``waiting`` event every ``…_wait_event_s``.
+    diagnosis_model_wait_s: int = 3600
+    diagnosis_wait_event_s: int = 60
+    diagnosis_wait_poll_s: float = 10.0
+    diagnosis_cancel_poll_s: float = 2.0          # FM-49: flag read off-loop
+    diagnosis_event_flush_s: float = 0.5          # FM-1: events visible within ~1 s
+    diagnosis_queue_stale_s: int = 300            # FM-9: queued without a job
+    # D1: the host controller starts vLLM on demand (both GPUs free) and
+    # stops it after ``llm_idle_stop_s`` idle, only if it started it.
+    llm_autostart: bool = True
+    llm_idle_stop_s: int = 1800
+    llm_start_timeout_s: int = 1500               # cold start ≈ 10–12 min
+    llm_start_cooldown_s: int = 900               # FM-24: after a failed start
+    # User decision 2026-09-27: a card counts as free while everything on it
+    # except our vLLM stays below 6 GB (vLLM takes 36.9 of 46 GB, leaving
+    # the other tenant ~3 GB to grow); was 2 GB ("both cards empty").
+    llm_gpu_free_mib: int = 6000
+    vllm_ctl_path: str = ""                       # default: <repo_dir>/infra/vllm_ctl.sh
+    llm_ctl_scope: bool = True                    # start vLLM in its own systemd scope
+    eval_lock_path: str = "~/stf_v3_evals/.lock"  # FM-26: never stop under an eval
+    # SSE (blueprint §3.7): poll the black box, keep the proxy chain alive.
+    sse_poll_s: float = 0.25
+    sse_keepalive_s: float = 15.0
+    sse_max_stream_s: int = 7200                  # FM-36: no endless stream
+    sse_gap_wait_s: float = 5.0                   # FM-19: wait for a missing seq
 
     @property
     def llm_is_local(self) -> bool:

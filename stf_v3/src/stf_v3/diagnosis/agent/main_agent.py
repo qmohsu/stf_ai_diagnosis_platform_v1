@@ -9,8 +9,15 @@ events as they happen — a single-use async iterator (FM-10).
 The model ends with plain text (five-section markdown); the runtime packs
 it into a ``DiagnosisReport`` with citations proven from the tool trace.
 A gate (wall clock, requests, tool calls, tokens), a cancel, or a model
-error produces a PARTIAL report from the last assistant text instead of
-an exception (FM-7 / FM-14 / FM-17).
+error produces a PARTIAL report instead of an exception (FM-7 / FM-14 /
+FM-17).  After a wall-clock or usage gate the model gets ONE more turn
+without investigation tools to write the report from the evidence it
+already gathered; that turn offers exactly one tool, ``submit_report``,
+because Qwen3.6 kept "calling tools" when none were offered (same lesson
+as the manual sub-agent's ``final_answer``, PROD-10) and gathered
+(PROD-11 server finding: the last narration line -- "Let me also check..."
+-- used to be the whole "report"); if that turn fails too, the last
+assistant text is used as before.
 
 Author: Xiangzhu Yan
 """
@@ -20,11 +27,19 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator, List, Optional, Sequence
+from typing import Any, AsyncIterator, Dict, List, Optional, Sequence, Tuple
 
 import structlog
-from pydantic_ai import Agent, Tool
-from pydantic_ai.messages import ModelMessage, ModelResponse, ThinkingPart
+from pydantic import BaseModel, Field
+from pydantic_ai import Agent, Tool, ToolOutput
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    ThinkingPart,
+    ToolCallPart,
+    UserPromptPart,
+)
 from pydantic_ai.models import Model
 from pydantic_ai.usage import RunUsage
 
@@ -52,17 +67,66 @@ logger = structlog.get_logger(__name__)
 MAIN_TOOLS = OBD_SIGNAL_TOOLS + OBD_DTC_TOOLS + MANUAL_TOOLS + DELEGATION_TOOLS
 MAIN_TOOL_NAMES = tuple(fn.__name__ for fn in MAIN_TOOLS)
 
-_PARTIAL_NOTE = {
-    "timeout": "wall-clock budget exhausted",
-    "budget": "usage budget exhausted",
-    "cancelled": "run cancelled",
-    "error": "model or runtime error",
+# Partial-report banner in the report's language (PROD-11: an English
+# banner on top of a zh-TW report).
+_PARTIAL_NOTE: Dict[str, Dict[str, str]] = {
+    "timeout": {"zh-TW": "已達時間上限", "zh-CN": "已达时间上限", "en": "wall-clock budget exhausted"},
+    "budget": {"zh-TW": "已達用量上限", "zh-CN": "已达用量上限", "en": "usage budget exhausted"},
+    "cancelled": {"zh-TW": "診斷已取消", "zh-CN": "诊断已取消", "en": "run cancelled"},
+    "error": {"zh-TW": "模型或執行時發生錯誤", "zh-CN": "模型或运行时发生错误", "en": "model or runtime error"},
 }
-_TOOL_CALL_RESIDUE_HEADER = (
-    "> **Partial report** — the model's tool-call text was not parsed by the "
-    "endpoint, so the investigation did not run as intended. Treat the findings "
-    "below as unverified.\n\n"
+_PARTIAL_HEADER: Dict[str, str] = {
+    "zh-TW": "> **部分報告** — {note}。以下是調查已確認的內容。\n\n",
+    "zh-CN": "> **部分报告** — {note}。以下是调查已确认的内容。\n\n",
+    "en": "> **Partial report** — {note}. The findings below are what the investigation had established.\n\n",
+}
+_NO_TEXT: Dict[str, str] = {
+    "zh-TW": "_診斷停止前未產生任何內容。_",
+    "zh-CN": "_诊断停止前未产生任何内容。_",
+    "en": "_No diagnosis text was produced before the run stopped._",
+}
+# Gate sentence in the report's language: (kind, limit) from the runner.
+_GATE_SENTENCE: Dict[str, str] = {
+    "zh-TW": "診斷提前結束：已達{name}",
+    "zh-CN": "诊断提前结束：已达{name}",
+    "en": "run stopped early: reached the {name}",
+}
+_GATE_NAME: Dict[str, Dict[str, str]] = {
+    "wall_clock": {"zh-TW": "時間上限 {n} 秒", "zh-CN": "时间上限 {n} 秒", "en": "wall-clock limit of {n} s"},
+    "request": {"zh-TW": "模型請求次數上限 {n}", "zh-CN": "模型请求次数上限 {n}", "en": "request limit of {n}"},
+    "tool_calls": {"zh-TW": "工具呼叫次數上限 {n}", "zh-CN": "工具调用次数上限 {n}", "en": "tool-call limit of {n}"},
+    "total_tokens": {"zh-TW": "總 token 上限 {n}", "zh-CN": "总 token 上限 {n}", "en": "total-token limit of {n}"},
+}
+SUBMIT_REPORT_TOOL = "submit_report"
+WRAPUP_INSTRUCTION = (
+    "The investigation budget is used up: no investigation tools are available any more.  "
+    "Write the final diagnosis report now, in the required format and language, using only "
+    "the evidence already gathered above; say plainly what could not be checked.  Submit it "
+    "by calling the `submit_report` tool with the whole report in `report_md`."
 )
+_WRAPUP_REASONS = ("timeout", "budget")
+
+
+def _lang(locale: str) -> str:
+    return locale if locale in ("zh-TW", "zh-CN", "en") else ("zh-TW" if locale.startswith("zh") else "en")
+
+
+def gate_sentence(gate: Tuple[str, int], locale: str) -> str:
+    """The gate that stopped a run, as one sentence in the report's language."""
+    key = _lang(locale)
+    kind, limit = gate
+    names = _GATE_NAME.get(kind)
+    name = names[key].format(n=f"{limit:,}") if names else f"{kind} {limit:,}"
+    return _GATE_SENTENCE[key].format(name=name)
+
+
+_TOOL_CALL_RESIDUE_HEADER: Dict[str, str] = {
+    "zh-TW": "> **部分報告** — 模型的工具呼叫文字未被端點解析，調查未照預期進行；以下內容請視為未經查證。\n\n",
+    "zh-CN": "> **部分报告** — 模型的工具调用文字未被端点解析，调查未按预期进行；以下内容请视为未经查证。\n\n",
+    "en": ("> **Partial report** — the model's tool-call text was not parsed by the "
+           "endpoint, so the investigation did not run as intended. Treat the findings "
+           "below as unverified.\n\n"),
+}
 
 
 def thinking_chars(messages: Sequence[ModelMessage]) -> int:
@@ -82,6 +146,73 @@ def build_main_agent() -> Agent[DiagDeps, str]:
 
 
 MAIN_AGENT: Agent[DiagDeps, str] = build_main_agent()
+
+
+class WrapUpReport(BaseModel):
+    """The wrap-up turn's one tool: the finished report."""
+
+    report_md: str = Field(description="The complete diagnosis report (markdown), in the "
+                                       "required format and language.")
+
+
+# The wrap-up turn: same instructions, no investigation tools; the report
+# comes back through ``submit_report`` (or as plain text).
+WRAPUP_AGENT: Agent[DiagDeps, Any] = Agent(
+    None, deps_type=DiagDeps, instructions=SYSTEM_PROMPT, retries=2, name="diagnosis_wrapup",
+    output_type=[ToolOutput(WrapUpReport, name=SUBMIT_REPORT_TOOL,
+                            description="Submit the finished diagnosis report."), str],
+)
+
+
+def _answered_history(messages: Sequence[ModelMessage]) -> List[ModelMessage]:
+    """The history minus a trailing response whose tool calls never ran."""
+    out = list(messages)
+    while out and isinstance(out[-1], ModelResponse) and \
+            any(isinstance(p, ToolCallPart) for p in out[-1].parts):
+        out.pop()
+    return out
+
+
+def _wrapup_replies(messages: Sequence[ModelMessage]) -> List[ModelMessage]:
+    """The messages after the wrap-up instruction (the wrap-up turn's own replies)."""
+    msgs = list(messages)
+    for i in range(len(msgs) - 1, -1, -1):
+        m = msgs[i]
+        if isinstance(m, ModelRequest) and any(
+                isinstance(p, UserPromptPart) and p.content == WRAPUP_INSTRUCTION for p in m.parts):
+            return msgs[i + 1:]
+    return []
+
+
+async def _wrap_up(deps: DiagDeps, model: Model, outcome: RunOutcome,
+                   settings: Any) -> Tuple[Optional[RunOutcome], str]:
+    """One turn without investigation tools to write the report after a gate.
+
+    Returns the wrap-up run (None when skipped) and the report text (empty
+    when none was written).  When the turn fails, text the model wrote on
+    it is still kept: on the server Qwen wrote the report AND called a
+    tool in the same reply, which the runtime treats as "not finished".
+    """
+    wrap_s = float(getattr(settings, "agent_wrapup_s", 0) or 0)
+    history = _answered_history(outcome.messages)
+    if outcome.stopped_reason not in _WRAPUP_REASONS or wrap_s <= 0:
+        return None, ""
+    if not any(isinstance(m, ModelResponse) for m in history):
+        return None, ""                   # the model never answered: nothing to summarise
+    wrap = await drive(
+        WRAPUP_AGENT, WRAPUP_INSTRUCTION, model=model, deps=deps, sink=deps.events,
+        parent_tool_call_id=None, usage_limits=make_limits(3),
+        model_settings=model_settings(settings, model=model), wall_clock_s=wrap_s,
+        message_history=history, compact_threshold=deps.budgets.compact_threshold_tokens,
+    )
+    out = wrap.output if wrap.stopped_reason == "complete" else None
+    text = out.report_md if isinstance(out, WrapUpReport) else (out if isinstance(out, str) else "")
+    via = "tool" if isinstance(out, WrapUpReport) else "text"
+    if not text.strip():
+        text, via = last_assistant_text(_wrapup_replies(wrap.messages), max_chars=40_000), "fallback"
+    logger.info("agent.wrapup", stopped_reason=wrap.stopped_reason, requests=wrap.requests,
+                chars=len(text), via=via)
+    return wrap, text
 
 
 @dataclass
@@ -122,24 +253,31 @@ def _dtcs_seen(deps: DiagDeps) -> List[str]:
         return []
 
 
-def build_report(deps: DiagDeps, outcome: RunOutcome, model: Model) -> DiagnosisReport:
-    """Pack a run outcome into the report object (partial when a gate hit)."""
+def build_report(deps: DiagDeps, outcome: RunOutcome, model: Model,
+                 wrapup_text: Optional[str] = None) -> DiagnosisReport:
+    """Pack a run outcome into the report object (partial when a gate hit).
+
+    ``wrapup_text`` is the report written on the tool-less wrap-up turn
+    after a gate; without it the last assistant text is used.
+    """
     partial = outcome.stopped_reason != "complete"
     text = outcome.output if not partial else ""
     if partial:
-        text = last_assistant_text(outcome.messages)
-        note = _PARTIAL_NOTE.get(outcome.stopped_reason, outcome.stopped_reason)
-        header = f"> **Partial report** — {note}. The findings below are what the investigation had established.\n\n"
-        text = header + (text or "_No diagnosis text was produced before the run stopped._")
+        text = (wrapup_text or "").strip() or last_assistant_text(outcome.messages)
+        lang = _lang(deps.locale)
+        note = _PARTIAL_NOTE.get(outcome.stopped_reason, {}).get(lang, outcome.stopped_reason)
+        text = _PARTIAL_HEADER[lang].format(note=note) + (text or _NO_TEXT[lang])
     # PROD-09 residue checks: thinking blocks are stripped (FM-1), unparsed
     # tool-call markup makes the report partial (FM-41).
     text, filter_hits, filter_removed = strip_thinking_residue(text or "")
     limitations = list(outcome.limitations)
+    if outcome.gate is not None and limitations:
+        limitations[0] = gate_sentence(outcome.gate, deps.locale)   # the runner puts it first
     if has_tool_call_residue(text):
         limitations.append(TOOL_CALL_RESIDUE_LIMITATION)
         if not partial:
             partial = True
-            text = _TOOL_CALL_RESIDUE_HEADER + text
+            text = _TOOL_CALL_RESIDUE_HEADER[_lang(deps.locale)] + text
     dtc_trace = any(t.name == "list_dtcs" and not t.is_error for t in deps.trace)
     citations = extract_citations(
         text or "", deps.trace, [m.id for m in deps.manuals],
@@ -205,7 +343,13 @@ async def run_diagnosis(
         message_history=message_history,
         compact_threshold=deps.budgets.compact_threshold_tokens,
     )
-    report = build_report(deps, outcome, model)
+    wrap, wrapup_text = await _wrap_up(deps, model, outcome, settings)
+    if wrap is not None:
+        outcome.usage = outcome.usage + wrap.usage
+        outcome.requests += wrap.requests
+        if wrapup_text.strip():
+            outcome.messages = wrap.messages
+    report = build_report(deps, outcome, model, wrapup_text)
     if outcome.stopped_reason == "complete":
         sink.emit(ev.DIAGNOSIS_DONE, {
             "chars": len(report.content_md), "citations": len(report.citations),
@@ -283,5 +427,7 @@ def stream_diagnosis(deps: DiagDeps, model: Model, **kwargs: Any) -> DiagnosisSt
     return DiagnosisStream(deps, model, **kwargs)
 
 
-__all__ = ["MAIN_AGENT", "MAIN_TOOL_NAMES", "DiagnosisOutcome", "DiagnosisStream", "build_main_agent",
-           "build_report", "run_diagnosis", "stream_diagnosis", "EventSink"]
+__all__ = ["MAIN_AGENT", "MAIN_TOOL_NAMES", "SUBMIT_REPORT_TOOL", "WRAPUP_AGENT", "WRAPUP_INSTRUCTION",
+           "WrapUpReport", "DiagnosisOutcome",
+           "DiagnosisStream", "build_main_agent", "build_report", "gate_sentence", "run_diagnosis",
+           "stream_diagnosis", "EventSink"]

@@ -146,6 +146,295 @@
         "title": "Body_upload_manual_v3_manuals_post",
         "type": "object"
       },
+      "CancelOut": {
+        "description": "Result of a cancel request.",
+        "properties": {
+          "cancel_requested": {
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "conversation_id": {
+            "format": "uuid",
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "status": {
+            "description": "Status right after the request (queued runs end at once).",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "status",
+          "cancel_requested"
+        ],
+        "title": "CancelOut",
+        "type": "object"
+      },
+      "ConversationDetailOut": {
+        "description": "Conversation + (optionally) its stored model messages.",
+        "properties": {
+          "cancel_requested": {
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stable code when status is error.",
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Short sentence for the user.",
+            "title": "Error Message"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "has_report": {
+            "default": false,
+            "title": "Has Report",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "messages": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MessageOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only with ?include_messages=true (can be large).",
+            "title": "Messages"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "obd_log_id": {
+            "format": "uuid",
+            "title": "Obd Log Id",
+            "type": "string"
+          },
+          "report_partial": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Partial"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "description": "queued | running | done | error | cancelled",
+            "title": "Status",
+            "type": "string"
+          },
+          "vehicle_id": {
+            "format": "uuid",
+            "title": "Vehicle Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "vehicle_id",
+          "obd_log_id",
+          "status",
+          "stage",
+          "cancel_requested",
+          "created_at"
+        ],
+        "title": "ConversationDetailOut",
+        "type": "object"
+      },
+      "ConversationOut": {
+        "description": "One diagnosis conversation.",
+        "properties": {
+          "cancel_requested": {
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stable code when status is error.",
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Short sentence for the user.",
+            "title": "Error Message"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "has_report": {
+            "default": false,
+            "title": "Has Report",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "obd_log_id": {
+            "format": "uuid",
+            "title": "Obd Log Id",
+            "type": "string"
+          },
+          "report_partial": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Partial"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "description": "queued | running | done | error | cancelled",
+            "title": "Status",
+            "type": "string"
+          },
+          "vehicle_id": {
+            "format": "uuid",
+            "title": "Vehicle Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "vehicle_id",
+          "obd_log_id",
+          "status",
+          "stage",
+          "cancel_requested",
+          "created_at"
+        ],
+        "title": "ConversationOut",
+        "type": "object"
+      },
       "DeviceCreatedOut": {
         "description": "Device credential with the plaintext token (returned exactly once).",
         "properties": {
@@ -283,6 +572,56 @@
         "title": "DeviceOut",
         "type": "object"
       },
+      "DiagnoseIn": {
+        "description": "Start a diagnosis of one uploaded log of this vehicle.",
+        "properties": {
+          "obd_log_id": {
+            "description": "An uploaded log of THIS vehicle (see GET /v3/vehicles/{id}/logs).",
+            "format": "uuid",
+            "title": "Obd Log Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "obd_log_id"
+        ],
+        "title": "DiagnoseIn",
+        "type": "object"
+      },
+      "DiagnoseOut": {
+        "description": "The conversation that runs (or already runs) the diagnosis.",
+        "properties": {
+          "conversation_id": {
+            "format": "uuid",
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "existing": {
+            "description": "True when this vehicle already had an unfinished diagnosis; that one is returned and no new one is created (one at a time per vehicle).",
+            "title": "Existing",
+            "type": "boolean"
+          },
+          "obd_log_id": {
+            "description": "The log the returned conversation diagnoses.",
+            "format": "uuid",
+            "title": "Obd Log Id",
+            "type": "string"
+          },
+          "status": {
+            "description": "queued | running | done | error | cancelled",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "status",
+          "existing",
+          "obd_log_id"
+        ],
+        "title": "DiagnoseOut",
+        "type": "object"
+      },
       "ErrorModel": {
         "properties": {
           "detail": {
@@ -305,6 +644,56 @@
         ],
         "title": "ErrorModel",
         "type": "object"
+      },
+      "EventOut": {
+        "description": "One event of the black box (the same object an SSE frame carries).",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "event_type": {
+            "$ref": "#/components/schemas/EventType",
+            "description": "SSE `event:` name."
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "seq": {
+            "description": "1-based, gapless per conversation; SSE `id:`; resume after it.",
+            "title": "Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seq",
+          "event_type",
+          "payload",
+          "created_at"
+        ],
+        "title": "EventOut",
+        "type": "object"
+      },
+      "EventType": {
+        "description": "Diagnosis event names (= audit_events.event_type = SSE event names).",
+        "enum": [
+          "session_start",
+          "reasoning",
+          "token",
+          "tool_call",
+          "tool_result",
+          "hypothesis",
+          "context_compact",
+          "diagnosis_done",
+          "done",
+          "error",
+          "waiting"
+        ],
+        "title": "EventType",
+        "type": "string"
       },
       "HTTPValidationError": {
         "properties": {
@@ -746,6 +1135,31 @@
         "title": "MembershipOut",
         "type": "object"
       },
+      "MessageOut": {
+        "description": "One stored model message (request or response), verbatim.",
+        "properties": {
+          "content": {
+            "additionalProperties": true,
+            "title": "Content",
+            "type": "object"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seq",
+          "kind",
+          "content"
+        ],
+        "title": "MessageOut",
+        "type": "object"
+      },
       "ObdLogOut": {
         "description": "Metadata of one stored log (never the bytes).",
         "properties": {
@@ -927,6 +1341,121 @@
           "invite_code"
         ],
         "title": "RegisterIn",
+        "type": "object"
+      },
+      "ReportOut": {
+        "description": "The diagnosis report.",
+        "properties": {
+          "citations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "content_md": {
+            "title": "Content Md",
+            "type": "string"
+          },
+          "conversation_id": {
+            "format": "uuid",
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "elapsed_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed S"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "model_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Source"
+          },
+          "partial": {
+            "description": "True when a limit, a cancel or an error stopped the run early.",
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "requests": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requests"
+          },
+          "stopped_reason": {
+            "description": "complete | timeout | budget | cancelled | error",
+            "title": "Stopped Reason",
+            "type": "string"
+          },
+          "tool_calls": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Calls"
+          },
+          "total_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Tokens"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "content_md",
+          "citations",
+          "partial",
+          "stopped_reason",
+          "limitations",
+          "model",
+          "created_at"
+        ],
+        "title": "ReportOut",
         "type": "object"
       },
       "SearchHit": {
@@ -1393,15 +1922,15 @@
     }
   },
   "info": {
-    "description": "Vehicle-anchored AI diagnosis backend (Stage 1).",
+    "description": "Vehicle-anchored AI diagnosis backend (Stage 1). Contract v2 (PROD-11): all Stage 1 endpoints — register → create a vehicle → upload a log → POST /v3/vehicles/{id}/diagnose → follow GET /v3/conversations/{id}/events → read GET /v3/conversations/{id}/report. Authorize with the token from POST /v3/auth/login (the Authorize button).",
     "title": "STF V3 API",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "openapi": "3.1.0",
   "paths": {
     "/health": {
       "get": {
-        "description": "Liveness + DB + queue backlog + host GPU worker + disk + commit.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
+        "description": "Liveness + DB + queue backlog + host GPU worker + disk + commit,\nplus (PROD-11) unfinished diagnoses and the on-demand model service.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
         "operationId": "health_health_get",
         "responses": {
           "200": {
@@ -1561,6 +2090,313 @@
         ]
       }
     },
+    "/v3/conversations/{conversation_id}": {
+      "get": {
+        "description": "One conversation: status (`queued | running | done | error | cancelled`),\ntiming, error code / sentence, whether a report exists and is partial.",
+        "operationId": "get_conversation_v3_conversations__conversation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Add the stored model messages (large).",
+            "in": "query",
+            "name": "include_messages",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Add the stored model messages (large).",
+              "title": "Include Messages",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "vehicle_not_found",
+                  "detail": "Vehicle not found"
+                }
+              }
+            },
+            "description": "`{detail, code}`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Conversation",
+        "tags": [
+          "diagnosis"
+        ]
+      }
+    },
+    "/v3/conversations/{conversation_id}/cancel": {
+      "post": {
+        "description": "Cancels a diagnosis.\n\nA queued one ends at once (`status: cancelled`).  A running one stops\nbefore its next model request — usually within a minute; the event\nstream then ends with `done` (`stopped_reason: cancelled`) and any text\nproduced so far is kept as a partial report.  409\n`conversation_finished` when it already ended.",
+        "operationId": "cancel_conversation_v3_conversations__conversation_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "vehicle_not_found",
+                  "detail": "Vehicle not found"
+                }
+              }
+            },
+            "description": "`{detail, code}`"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "vehicle_not_found",
+                  "detail": "Vehicle not found"
+                }
+              }
+            },
+            "description": "`{detail, code}`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Cancel Conversation",
+        "tags": [
+          "diagnosis"
+        ]
+      }
+    },
+    "/v3/conversations/{conversation_id}/events": {
+      "get": {
+        "description": "The diagnosis process: replay (JSON) or live stream (SSE).\n\n**Replay** (default, what Swagger shows): every stored event with\n`seq > after_seq`, in order.\n\n**Live**: send `Accept: text/event-stream`.  Frames are\n`event: <event_type>` / `id: <seq>` / `data: <the same JSON object>`;\n`: keepalive` comments every 15 s.  The stream ends after the `done`\nevent (a partial run sends `error`, then `diagnosis_done`, then\n`done` — keep reading until `done`).  To resume after a disconnect,\nreconnect with `Last-Event-ID: <last seq>` (or `?after_seq=`); only\nthe missing events are sent.  The token goes in the `Authorization`\nheader only — browsers use `fetch()` with a streaming body reader\n(the native `EventSource` cannot send headers)::\n\n    curl -N -H \"Authorization: Bearer $TOKEN\" -H \"Accept: text/event-stream\" \\\n         https://<host>/v3/conversations/<id>/events\n\nEvent names: `waiting` (queued / model starting / GPU busy …, with\n`reason` and `message`), `session_start`, `reasoning`, `token` (report\ntext, one piece per model reply), `tool_call`, `tool_result`,\n`hypothesis`, `context_compact`, `diagnosis_done` (with `report_id`),\n`error` (`code` + `message`), `done`.  Sub-agent events carry\n`payload.parent_tool_call_id`.",
+        "operationId": "conversation_events_v3_conversations__conversation_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only events with seq > after_seq.",
+            "in": "query",
+            "name": "after_seq",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Only events with seq > after_seq.",
+              "minimum": 0,
+              "title": "After Seq",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "SSE reconnect: the last `id:` received.",
+            "in": "header",
+            "name": "Last-Event-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "SSE reconnect: the last `id:` received.",
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EventOut"
+                  },
+                  "title": "Response Conversation Events V3 Conversations  Conversation Id  Events Get",
+                  "type": "array"
+                }
+              },
+              "text/event-stream": {
+                "example": "event: tool_call\nid: 7\ndata: {\"seq\":7,\"event_type\":\"tool_call\",\"payload\":{...},\"created_at\":\"...\"}\n\n",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "JSON array (replay), or `text/event-stream` when the request sends `Accept: text/event-stream`."
+          },
+          "401": {
+            "description": "Missing / expired token: refresh it, then reconnect with Last-Event-ID."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "vehicle_not_found",
+                  "detail": "Vehicle not found"
+                }
+              }
+            },
+            "description": "`{detail, code}`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Conversation Events",
+        "tags": [
+          "diagnosis"
+        ]
+      }
+    },
+    "/v3/conversations/{conversation_id}/report": {
+      "get": {
+        "description": "The diagnosis report (Markdown + citations).\n\n`partial: true` means a time / usage limit, a cancel or an error\nstopped the run early; `limitations` says why.  Errors: 404\n`report_not_ready` (still running), 404 `report_unavailable` (the\ndiagnosis ended without a report — see the conversation's\n`error_code`), 404 `conversation_not_found`.",
+        "operationId": "get_report_v3_conversations__conversation_id__report_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "vehicle_not_found",
+                  "detail": "Vehicle not found"
+                }
+              }
+            },
+            "description": "`{detail, code}`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Report",
+        "tags": [
+          "diagnosis"
+        ]
+      }
+    },
     "/v3/devices/{device_id}": {
       "delete": {
         "description": "Revokes a device credential (manager of the vehicle's workshop).",
@@ -1606,7 +2442,7 @@
     },
     "/v3/health": {
       "get": {
-        "description": "Liveness + DB + queue backlog + host GPU worker + disk + commit.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
+        "description": "Liveness + DB + queue backlog + host GPU worker + disk + commit,\nplus (PROD-11) unfinished diagnoses and the on-demand model service.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
         "operationId": "health_v3_health_get",
         "responses": {
           "200": {
@@ -2292,6 +3128,93 @@
         ]
       }
     },
+    "/v3/vehicles/{vehicle_id}/conversations": {
+      "get": {
+        "description": "Diagnosis history of one vehicle, newest first (status, report flags).",
+        "operationId": "list_conversations_v3_vehicles__vehicle_id__conversations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vehicle_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vehicle Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConversationOut"
+                  },
+                  "title": "Response List Conversations V3 Vehicles  Vehicle Id  Conversations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "vehicle_not_found",
+                  "detail": "Vehicle not found"
+                }
+              }
+            },
+            "description": "`{detail, code}`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Conversations",
+        "tags": [
+          "diagnosis"
+        ]
+      }
+    },
     "/v3/vehicles/{vehicle_id}/devices": {
       "get": {
         "description": "Lists device credentials of a vehicle (members).",
@@ -2401,6 +3324,97 @@
         "tags": [
           "vehicles",
           "devices"
+        ]
+      }
+    },
+    "/v3/vehicles/{vehicle_id}/diagnose": {
+      "post": {
+        "description": "Starts a one-click diagnosis of one uploaded log of this vehicle.\n\nReturns **202** with `conversation_id` at once — the diagnosis runs in\nthe background.  Follow it with `GET /v3/conversations/{id}/events`,\nthen read `GET /v3/conversations/{id}/report`.\n\n* One diagnosis at a time per vehicle: if one is still queued or\n  running, it is returned with **200** and `existing: true` (no new one).\n* The model is started on demand; the first diagnosis after a pause\n  waits about 10–12 minutes (the event stream shows `waiting` events\n  with the reason) and gives up after 60 minutes.\n* Errors: 404 `vehicle_not_found` (no such vehicle or not your\n  workshop), 404 `log_not_found` (the log is not one of THIS vehicle's),\n  503 `queue_unavailable`.",
+        "operationId": "diagnose_v3_vehicles__vehicle_id__diagnose_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vehicle_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vehicle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiagnoseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagnoseOut"
+                }
+              }
+            },
+            "description": "This vehicle already had an unfinished diagnosis; that conversation is returned (`existing: true`)."
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagnoseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "vehicle_not_found",
+                  "detail": "Vehicle not found"
+                }
+              }
+            },
+            "description": "`{detail, code}`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "vehicle_not_found",
+                  "detail": "Vehicle not found"
+                }
+              }
+            },
+            "description": "`{detail, code}`"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Diagnose",
+        "tags": [
+          "diagnosis"
         ]
       }
     },

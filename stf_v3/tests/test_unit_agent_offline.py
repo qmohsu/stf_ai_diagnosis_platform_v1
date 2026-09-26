@@ -157,7 +157,7 @@ async def _partial(deps, model):  # type: ignore[no-untyped-def]
     out = await run_diagnosis(deps, model)
     types = [e.event_type for e in out.events]
     assert types[-1] == ev.DONE and ev.ERROR in types
-    assert out.report.partial and out.report.content_md.startswith("> **Partial report**")
+    assert out.report.partial and out.report.content_md.startswith("> **部分報告**")   # zh-TW default
     return out
 
 
@@ -165,7 +165,7 @@ async def test_request_limit_ends_in_partial_report() -> None:
     """A model that never stops calling tools hits the request gate."""
     deps = make_deps(budgets=Budgets(request_limit=3, wall_clock_s=30))
     out = await _partial(deps, _looper().model())
-    assert out.stopped_reason == "budget" and out.usage.requests <= 3
+    assert out.stopped_reason == "budget" and out.usage.requests <= 3 + 3   # gate + wrap-up turn (≤ 3)
 
 
 async def test_tool_calls_limit_ends_in_partial_report() -> None:
@@ -178,6 +178,90 @@ async def test_total_tokens_limit_ends_in_partial_report() -> None:
     deps = make_deps(budgets=Budgets(request_limit=50, total_tokens_limit=500, wall_clock_s=30))
     out = await _partial(deps, _looper(tokens=300).model())
     assert out.stopped_reason == "budget"
+
+
+def _investigator(tokens: int = 300) -> FunctionModel:
+    """Calls tools while it has tools; writes a report once it has none."""
+
+    def fn(messages, info):  # type: ignore[no-untyped-def]
+        if info.function_tools:
+            return response(tool_call("list_signals", pattern="*"), tokens=tokens)
+        return response(TEXT(content="## 診斷摘要\nWRAPUP-REPORT from the gathered evidence"))
+
+    return FunctionModel(fn, model_name="investigator")
+
+
+async def test_a_usage_gate_is_followed_by_a_tool_less_wrap_up_report() -> None:
+    """PROD-11 server finding: after a usage gate the model gets one more
+    turn WITHOUT tools and writes the report from the evidence so far — the
+    user gets a report (still marked partial), not the last narration line;
+    the gate is named in the report's language, never the raw library text."""
+    deps = make_deps(budgets=Budgets(request_limit=50, total_tokens_limit=1500, wall_clock_s=30))
+    out = await _partial(deps, _investigator())
+    assert out.stopped_reason == "budget"
+    assert "WRAPUP-REPORT" in out.report.content_md
+    assert out.report.limitations[0] == "診斷提前結束：已達總 token 上限 1,500"
+    assert "pydantic.dev" not in json.dumps(out.report.limitations)
+    types = [e.event_type for e in out.events]
+    assert types.index(ev.ERROR) < types.index(ev.DIAGNOSIS_DONE) < types.index(ev.DONE)
+
+
+async def test_qwen_style_wrap_up_is_caught_by_the_submit_report_tool() -> None:
+    """PROD-11 server run: on the wrap-up turn Qwen wrote text AND called an
+    investigation tool that no longer exists.  The unknown call is refused,
+    the next reply goes through ``submit_report`` and becomes the report;
+    if the model never submits, the text it wrote on the wrap-up turn is
+    kept (not the main run's last narration line)."""
+    from stf_v3.diagnosis.agent.main_agent import SUBMIT_REPORT_TOOL
+
+    def make(submits: bool) -> FunctionModel:
+        wrap_calls = {"n": 0}
+
+        def fn(messages, info):  # type: ignore[no-untyped-def]
+            if info.function_tools:
+                return response(TEXT(content="Let me also check the MAP sensor"),
+                                tool_call("list_signals", pattern="*"), tokens=300)
+            wrap_calls["n"] += 1
+            if submits and wrap_calls["n"] > 1:
+                return response(tool_call(SUBMIT_REPORT_TOOL, report_md="## 摘要\nSUBMITTED-REPORT"))
+            return response(TEXT(content="## 摘要\nTEXT-ON-WRAP-UP-TURN"),
+                            tool_call("search_manual_text", manual_id="m1", query="ECT"))
+
+        return FunctionModel(fn, model_name="qwen-like")
+
+    budgets = Budgets(request_limit=50, total_tokens_limit=1500, wall_clock_s=30)
+    ok = await _partial(make_deps(budgets=budgets), make(submits=True))
+    assert "SUBMITTED-REPORT" in ok.report.content_md and "MAP sensor" not in ok.report.content_md
+    kept = await _partial(make_deps(budgets=budgets), make(submits=False))
+    assert "TEXT-ON-WRAP-UP-TURN" in kept.report.content_md
+    assert "MAP sensor" not in kept.report.content_md
+
+
+async def test_the_partial_banner_follows_the_report_language() -> None:
+    """PROD-11: the partial-report banner is in the report's language (it was
+    English on top of a zh-TW report); English deployments keep English."""
+    budgets = Budgets(request_limit=2, wall_clock_s=30)
+    cn = make_deps(budgets=budgets)
+    cn.locale = "zh-CN"
+    out = await run_diagnosis(cn, _looper().model())
+    assert out.report.content_md.startswith("> **部分报告** — 已达用量上限")
+    en = make_deps(budgets=budgets)
+    en.locale = "en"
+    out = await run_diagnosis(en, _looper().model())
+    assert out.report.content_md.startswith("> **Partial report** — usage budget exhausted")
+
+
+async def test_wrap_up_can_be_switched_off_and_a_failed_wrap_up_falls_back() -> None:
+    """``agent_wrapup_s = 0`` keeps the old behaviour; a wrap-up turn that
+    still tries to call tools ends cleanly with the last assistant text."""
+    from stf_v3.settings import Settings
+
+    deps = make_deps(budgets=Budgets(request_limit=50, total_tokens_limit=1500, wall_clock_s=30))
+    off = await run_diagnosis(deps, _investigator(), settings=Settings(agent_wrapup_s=0))
+    assert off.report.partial and "WRAPUP-REPORT" not in off.report.content_md
+    deps2 = make_deps(budgets=Budgets(request_limit=50, total_tokens_limit=500, wall_clock_s=30))
+    out = await _partial(deps2, _looper(tokens=300).model())          # never stops calling tools
+    assert out.stopped_reason == "budget" and out.events[-1].event_type == ev.DONE
 
 
 async def test_wall_clock_ends_in_partial_report() -> None:

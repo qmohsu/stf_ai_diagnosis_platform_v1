@@ -67,7 +67,9 @@ PRE="$RUN_DIR/preflight.txt"
   nvidia-smi --query-gpu=index,memory.used,memory.total --format=csv,noheader | sed 's/^/gpu /'
 } | tee "$PRE"
 MAXUSED=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | sort -n | tail -1)
-[ "$MAXUSED" -le 42000 ] || fail "a GPU holds ${MAXUSED} MiB (> vLLM's 36.8 GB share): Ollama / MinerU / another tenant is resident"
+# vLLM 36.9 GB + at most 6 GB of anyone else per card (user decision
+# 2026-09-27, same line as the controller's STF_V3_LLM_GPU_FREE_MIB).
+[ "$MAXUSED" -le 43000 ] || fail "a GPU holds ${MAXUSED} MiB (> vLLM's 36.9 GB share + 6 GB): Ollama / MinerU / another tenant holds too much"
 if podman container exists stf-ollama 2>/dev/null && [ "$(podman inspect -f '{{.State.Running}}' stf-ollama)" = "true" ]; then
   LOADED=$(podman exec stf-ollama ollama ps 2>/dev/null | tail -n +2 | grep -c . || true)
   [ "$LOADED" -eq 0 ] || fail "Ollama has a model loaded — never together with vLLM (runbook §4.4)"

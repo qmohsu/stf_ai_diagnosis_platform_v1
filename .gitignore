@@ -105,3 +105,6 @@ obd_agent/__pycache__/
 
 # local virtualenv for stf_v3 (PROD-08 offline tests)
 stf_v3/.venv/
+
+# V3 local runs / DB tests write uploaded logs and manuals here (never commit)
+stf_v3/data/
