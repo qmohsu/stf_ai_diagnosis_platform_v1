@@ -140,6 +140,31 @@ def test_an_external_stop_is_not_fought() -> None:
     assert d2.action is None and d2.fields["state"] == "stopped"
 
 
+async def test_a_stale_eval_lock_does_not_keep_vllm_up(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """PROD-11 server finding: the PROD-10 eval left its lock file (the eval
+    script never deletes it) and the controller never stopped vLLM again.
+    The lock counts only while the container it names is running; a missing
+    or empty lock is no lock."""
+    lock = tmp_path / ".lock"
+    io_ = ms.HostIO(SimpleNamespace(eval_lock_path=str(lock)))
+    running = {"stf-v3-eval-20260924T110231Z": "false", "stf-v3-eval-now": "true"}
+
+    async def fake_run(argv: List[str], timeout: float) -> Tuple[int, str, str]:
+        name = argv[3]
+        return (0, running[name] + "\n", "") if name in running else (125, "", "no such container")
+
+    monkeypatch.setattr(io_, "_run", fake_run)
+    assert await io_.eval_locked() is False                       # no lock file
+    lock.write_text("", encoding="utf-8")
+    assert await io_.eval_locked() is False                       # empty
+    lock.write_text("stf-v3-eval-20260924T110231Z\n", encoding="utf-8")
+    assert await io_.eval_locked() is False                       # container finished
+    lock.write_text("stf-v3-eval-gone", encoding="utf-8")
+    assert await io_.eval_locked() is False                       # container removed
+    lock.write_text("stf-v3-eval-now", encoding="utf-8")
+    assert await io_.eval_locked() is True                        # eval running
+
+
 def test_vllm_ctl_only_touches_its_own_compose_project() -> None:
     """FM-45: the control script pins the ``stf_llm`` project (never V1/V2's pod)."""
     import pathlib
@@ -285,7 +310,7 @@ class FakeIO(ms.HostIO):
     def our_user(self) -> str:
         return "talon"
 
-    def eval_locked(self) -> bool:
+    async def eval_locked(self) -> bool:
         return False
 
     async def run_ctl(self, action: str) -> Tuple[int, str]:

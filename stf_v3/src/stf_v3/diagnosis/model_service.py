@@ -390,8 +390,24 @@ class HostIO:
     def our_user(self) -> str:
         return getpass.getuser()
 
-    def eval_locked(self) -> bool:
-        return Path(os.path.expanduser(self.settings.eval_lock_path)).exists()
+    async def eval_locked(self) -> bool:
+        """An eval holds vLLM only while the container named in the lock runs.
+
+        ``run_golden_eval.sh`` never deletes the lock (the eval container is
+        detached with ``--rm``) and itself treats a lock naming a stopped
+        container as stale.  PROD-11 server finding: checking only that the
+        file exists kept vLLM resident forever after the first eval.
+        """
+        path = Path(os.path.expanduser(self.settings.eval_lock_path))
+        try:
+            name = path.read_text(encoding="utf-8").strip()
+        except OSError:
+            return False
+        if not name:
+            return False
+        rc, out, _ = await self._run(
+            ["podman", "container", "inspect", name, "--format", "{{.State.Running}}"], 30)
+        return rc == 0 and out.strip().lower() == "true"
 
     def ctl_path(self) -> str:
         if self.settings.vllm_ctl_path:
@@ -433,7 +449,7 @@ async def observe(io: HostIO, settings: Any, *, demand: int, manual_converting: 
     return Observation(
         container_running=running, ready=ready,
         running_requests=await io.running_requests() if ready else 0,
-        gpu=verdict, eval_locked=io.eval_locked(), demand=demand,
+        gpu=verdict, eval_locked=await io.eval_locked(), demand=demand,
         last_finished_at=last_finished_at,
     )
 
