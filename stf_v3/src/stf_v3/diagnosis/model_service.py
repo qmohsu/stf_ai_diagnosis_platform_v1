@@ -170,6 +170,11 @@ class Decision:
     note: str = ""
 
 
+# Memory a card shows with no process on it (driver / persistence daemon);
+# below this, unaccounted memory is not counted as another tenant's.
+_DRIVER_NOISE_MIB = 512
+
+
 def classify_gpus(
     gpus: Sequence[Tuple[int, str, int]],
     apps: Sequence[Tuple[str, int, int]],
@@ -186,18 +191,23 @@ def classify_gpus(
         apps: ``(gpu uuid, pid, used MiB)`` per compute process.
         procs: pid → ``(user, command line)``; None when unknown.
         our_user: The account the controller runs as.
-        free_mib: A process / card below this counts as free.
+        free_mib: A card whose memory held by anything but our vLLM adds
+            up to less than this counts as free.
         manual_converting: A manual conversion is running (our MinerU).
 
     A process of another user — or one whose owner cannot be read — is
     ``other_tenant`` (never grab a card we cannot account for); our own
     vLLM does not block; our Ollama or other processes do.  Memory on a
     card that no listed process accounts for counts as another tenant's.
+    The line is per CARD, not per process: nine 0.7–0.9 GB processes of
+    another user are a busy card (PROD-11 server finding — the per-process
+    rule started vLLM on top of them).
     """
     index_of = {u: i for i, u, _ in gpus}
     snapshot: List[Dict[str, Any]] = []
     blockers: List[str] = []
     listed: Dict[str, int] = {}
+    load: Dict[str, Dict[str, int]] = {}      # card → kind → MiB (all but our vLLM)
     for gpu_uuid, pid, used in apps:
         info = procs.get(pid)
         if info is None:
@@ -215,12 +225,18 @@ def classify_gpus(
                 kind = "ours"
         listed[gpu_uuid] = listed.get(gpu_uuid, 0) + used
         snapshot.append({"gpu": index_of.get(gpu_uuid), "pid": pid, "mib": used, "kind": kind})
-        if kind != "vllm" and used >= free_mib:
-            blockers.append(kind)
+        if kind != "vllm":
+            per = load.setdefault(gpu_uuid, {})
+            per[kind] = per.get(kind, 0) + used
     for idx, gpu_uuid, used in gpus:
-        if used - listed.get(gpu_uuid, 0) >= free_mib:
-            blockers.append("other_tenant")
-            snapshot.append({"gpu": idx, "pid": None, "mib": used - listed.get(gpu_uuid, 0), "kind": "unaccounted"})
+        extra = used - listed.get(gpu_uuid, 0)
+        if extra >= _DRIVER_NOISE_MIB:
+            per = load.setdefault(gpu_uuid, {})
+            per["other_tenant"] = per.get("other_tenant", 0) + extra
+            snapshot.append({"gpu": idx, "pid": None, "mib": extra, "kind": "unaccounted"})
+    for per in load.values():
+        if sum(per.values()) >= free_mib:
+            blockers.extend(kind for kind, mib in per.items() if mib > 0)
     if not blockers:
         return GpuVerdict(free=True, snapshot=snapshot)
     if "other_tenant" in blockers:

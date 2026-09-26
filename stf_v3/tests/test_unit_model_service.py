@@ -209,6 +209,24 @@ def test_gpu_verdict_tells_ours_from_others(apps: Any, procs: Any, converting: b
     assert v.free is free and v.reason == reason
 
 
+def test_many_small_processes_of_another_team_make_a_busy_card() -> None:
+    """PROD-11 server finding (2026-09-26 15:24): another user ran nine
+    0.6–0.9 GB processes; each was under the line, so the per-process rule
+    called the cards free and started vLLM on top of them.  The line is per
+    card now; one small process and the driver's idle memory stay free."""
+    a = [("GPU-a", p, m) for p, m in ((1, 662), (2, 676), (3, 912), (4, 912), (5, 912), (6, 912))]
+    b = [("GPU-b", p, m) for p, m in ((7, 676), (8, 912), (9, 912))]
+    procs = {i: ("martin", "python train.py") for i in range(1, 10)}
+    v = ms.classify_gpus(_gpus(4986 + 150, 2500 + 20), a + b, procs, our_user="talon",
+                         free_mib=2000, manual_converting=False)
+    assert not v.free and v.reason == "other_tenant"
+    one = ms.classify_gpus(_gpus(900 + 150, 20), [("GPU-a", 1, 900)], {1: ("martin", "python x.py")},
+                           our_user="talon", free_mib=2000, manual_converting=False)
+    assert one.free
+    idle = ms.classify_gpus(_gpus(158, 18), [], {}, our_user="talon", free_mib=2000, manual_converting=False)
+    assert idle.free and idle.snapshot == []
+
+
 def test_memory_no_process_accounts_for_blocks_as_another_tenant() -> None:
     """T-16: used memory on a card with no visible process → not free."""
     v = ms.classify_gpus(_gpus(21000, 0), [], {}, our_user="talon", free_mib=2000, manual_converting=False)

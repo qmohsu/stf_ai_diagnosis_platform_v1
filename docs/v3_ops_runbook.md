@@ -323,7 +323,7 @@ bash infra/vllm_ctl.sh stop                                       # 评测完停
 
 跑在宿主机 GPU worker 的 `llm` 队列（该 worker 现在是 `-q gpu,llm --concurrency 2`；手册转换靠锁 `gpu-ingest` 仍一次一本）。每分钟一次，诊断等模型时再按需加一次。它只会执行 `infra/vllm_ctl.sh start|stop`：
 
-- **拉起**：有未结束的诊断、vLLM 没在跑、不在冷却期、两张卡上没有别人的显存（其他用户的进程、查不到主人的进程、我们的 MinerU / Ollama 都算占用；阈值 `STF_V3_LLM_GPU_FREE_MIB` = 2000 MiB）。拉起时的显存快照写进 `model_service_state.gpu_snapshot` 和日志 `llm.start`。
+- **拉起**：有未结束的诊断、vLLM 没在跑、不在冷却期、两张卡上没有别人的显存（其他用户的进程、查不到主人的进程、我们的 MinerU / Ollama 都算占用；按**每张卡合计**判断：除我们 vLLM 外的显存加起来 ≥ `STF_V3_LLM_GPU_FREE_MIB` = 2000 MiB 即算忙——别人多个小进程也算）。拉起时的显存快照写进 `model_service_state.gpu_snapshot` 和日志 `llm.start`。
 - **不重复拉起**：加载中只等；超过 25 分钟没就绪或进程退出 → 标失败、停掉、冷却 15 分钟（`STF_V3_LLM_START_COOLDOWN_S`），等待中的诊断立即以 `model_start_failed` 结束。
 - **被外部停掉不硬拉**：控制器拉起、已就绪的 vLLM 不是控制器停的却没了（有人手动 `stop`、崩溃）→ 标失败（`failure_reason` = stopped externally）+ 冷却 15 分钟，等待中的诊断以 `model_stopped` 结束，不会每分钟重新拉起跟人对着干。
 - **独立 scope**：`start` 经 `systemd-run --user --scope` 执行，vLLM 的 conmon 落在自己的 `stf-llm-start-*.scope` 里，不在 GPU worker 服务的 cgroup 中——部署后重启宿主机 worker 不会连带杀掉 vLLM（`STF_V3_LLM_CTL_SCOPE=false` 关掉）。
