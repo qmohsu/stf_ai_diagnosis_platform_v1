@@ -333,7 +333,10 @@ tests drive the agent with Pydantic AI's `TestModel` / `FunctionModel`
 copied verbatim) + data in `stf_v3/evals/` (hash-checked).  A PR touching the
 managed paths in `stf_v3/evals/thresholds.yaml` must add a fresh passing
 scorecard under `docs/evals/` (CI job `eval-gate`; mean ≥ baseline − lane
-tolerance: manual 0.03, OBD 0.06; no golden with baseline ≥ 0.6 below 0.4;
+tolerance: manual 0.03, OBD 0.06; floor since #253: a golden with baseline ≥ 0.6
+fails only when < 0.4 in two of the PR's runs or three dip in one run — a dip in
+the only run is "pending confirmation", run once more; copy `<base>.contention.json`
+with the scorecard — GPU contention warnings never change the verdict;
 baseline 2026-09-24: manual 0.878, OBD 0.885).  Run it on the server with
 `bash stf_v3/scripts/run_golden_eval.sh --purpose gate` (one-off container,
 never inside stf-v3-api; runbook §5); the user alone adds `eval-exempt` /

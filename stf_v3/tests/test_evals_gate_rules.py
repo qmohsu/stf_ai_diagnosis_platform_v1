@@ -49,8 +49,9 @@ def test_one_rerun_allowed_second_passing_run_lets_it_through() -> None:
     bad = card(uniform(M, 4, 0.70), stamp="20260923T000001Z")
     good = card(uniform(M, 4, 0.86), stamp="20260923T000002Z")
     assert gate.decide([bad, good], t)[0] is True
-    # three runs: the oldest passing one is outside the window
-    assert gate.decide([good, bad, bad], t)[0] is False
+    # three runs: the oldest passing one is outside the window (order = run stamp, #253 FM-29)
+    old_good = card(uniform(M, 4, 0.86), stamp="20260922T000001Z")
+    assert gate.decide([bad, old_good, card(uniform(M, 4, 0.70), stamp="20260923T000003Z")], t)[0] is False
 
 
 def test_missing_baseline_goldens_fail_the_lane() -> None:

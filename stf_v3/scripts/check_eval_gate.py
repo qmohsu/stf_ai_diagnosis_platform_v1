@@ -19,10 +19,18 @@ Decision (printed line by line, exit 0 = green, 1 = red):
    eligible (local, thinking off, gate/baseline, complete, valid, same
    judge) and **fresh** — their ``git_commit`` is an ancestor of head and
    no managed path changed after it (FM-4 / FM-45) — are checked against
-   the baseline (mean ≥ baseline − the lane's tolerance: manual 0.03,
-   OBD 0.06; no golden with baseline ≥ 0.6 below 0.4; one of the newest
-   two may pass).  Unmanaged config drift
-   against the baseline prints a warning (FM-28).
+   the baseline: one of the newest two runs of a lane passes the mean
+   (≥ baseline − the lane's tolerance: manual 0.03, OBD 0.06, every
+   baseline golden present); the floor holds across all comparable runs
+   (#253: a golden with baseline ≥ 0.6 under 0.4 in two runs, or three
+   under it in one run, fails; a dip in the only run is "pending
+   confirmation" — red until another run).  Unmanaged config drift
+   against the baseline prints a warning (FM-28); a contention record
+   ``<base>.contention.json`` beside a scorecard only prints warnings
+   (other users on the GPUs, Ollama, vLLM preemptions — #253).
+
+Warnings and the verdict also go to the GitHub step summary / annotations
+when run in Actions (#253 FM-13).
 
 Only needs Python + PyYAML + git (imports ``stf_v3.evals.gate`` by path).
 
@@ -44,6 +52,9 @@ sys.path.insert(0, str(_SRC))
 from stf_v3.evals import gate  # noqa: E402
 
 SCORECARD_DIR = "docs/evals"
+CONTENTION_SINCE = "20260928T000000Z"
+"""Scorecards stamped from here on are expected to carry a contention record
+(#253 FM-7); older ones are not warned about."""
 THRESHOLDS = "stf_v3/evals/thresholds.yaml"
 
 
@@ -75,7 +86,7 @@ def _changed(repo: Path, a: str, b: str, filt: Optional[str] = None) -> List[str
 
 def _is_scorecard(path: str) -> bool:
     return (path.startswith(SCORECARD_DIR + "/") and path.endswith(".json")
-            and not path.endswith(".partial.json"))
+            and not path.endswith(".partial.json") and not path.endswith(gate.CONTENTION_SUFFIX))
 
 
 def _pick_per_run(paths: Sequence[str]) -> List[str]:
@@ -106,8 +117,25 @@ def _load_cards(repo: Path, head: str, paths: Sequence[str]) -> List[Dict[str, A
         c = json.loads(_show(repo, head, p))
         c["_path"] = Path(p).name
         cards.append(c)
-    cards.sort(key=lambda c: c.get("meta", {}).get("stamp", ""))
+    cards.sort(key=gate.order_key)
     return cards
+
+
+def _contention_lines(repo: Path, head: str, card: Dict[str, Any]) -> List[str]:
+    """WARN lines from the run's contention record, if any (#253; never a verdict)."""
+    meta = card.get("meta", {})
+    base = str(meta.get("base", ""))
+    path = f"{SCORECARD_DIR}/{base}{gate.CONTENTION_SUFFIX}"
+    if not base or not _exists_at(repo, head, path):
+        if str(meta.get("stamp", "")) >= CONTENTION_SINCE:
+            return [f"WARN {card['_path']}: no contention record ({Path(path).name}) — copy it with the "
+                    f"scorecard (runbook §5.2)"]
+        return []
+    try:
+        rec = json.loads(_show(repo, head, path))
+    except (RuntimeError, ValueError):
+        return [f"WARN {card['_path']}: contention record unreadable ({Path(path).name})"]
+    return [f"WARN {card['_path']}: {w}" for w in gate.contention_warnings(rec, base)]
 
 
 def _fresh(repo: Path, head: str, card: Dict[str, Any], patterns: Sequence[str],
@@ -194,7 +222,30 @@ def decide(repo: Path, base: str, head: str, labels: Sequence[str]) -> Tuple[int
     out += lines
     for c in fresh_cards:
         out += [f"WARN {c['_path']}: {w}" for w in gate.stale_warnings(c, t)]
-    return (0 if ok else 1), out + ["PASS" if ok else "FAIL: golden eval below the gate"]
+        out += _contention_lines(repo, head, c)
+    if ok:
+        return 0, out + ["PASS"]
+    if any(gate.PENDING_MARK in line for line in lines) and not any("FAIL" in line and "floor" in line
+                                                                     for line in lines):
+        return 1, out + ["FAIL: NOT PASSED — pending confirmation (未通过：待确认): run the gate once more"]
+    return 1, out + ["FAIL: golden eval below the gate"]
+
+
+def _publish(code: int, lines: Sequence[str]) -> None:
+    """GitHub Actions: warnings as annotations, verdict in the step summary (#253 FM-13)."""
+    import os
+
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        for line in lines:
+            if line.startswith("WARN"):
+                print(f"::warning title=golden eval gate::{line}")
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary:
+        return
+    verdict = lines[-1] if lines else ("PASS" if code == 0 else "FAIL")
+    body = ["## Golden eval gate", "", f"**{verdict}**", "", "```", *lines, "```", ""]
+    with open(summary, "a", encoding="utf-8") as fh:
+        fh.write("\n".join(body))
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -211,6 +262,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         code, lines = 1, [f"FAIL: {exc}"]
     for line in lines:
         print(line)
+    _publish(code, lines)
     return code
 
 

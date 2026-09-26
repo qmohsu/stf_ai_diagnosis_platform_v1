@@ -9,13 +9,19 @@ Rules (decided on the PROD-10 board):
   purpose ``gate`` or ``baseline``, complete, valid, judged by the
   baseline's judge model.  Cloud / thinking-on / demo / calibration /
   invalid / incomplete scorecards never count.
-* **Lane passes** (D1 + FM-3 + D6): mean ≥ baseline mean − the lane's
-  tolerance (manual 0.03; OBD 0.06 — 15 goldens, the same code scored
-  0.897 / 0.872 / 0.844 on three runs),
-  and no golden whose baseline score is ≥ 0.6 falls below the floor
-  (0.4); every baseline golden must be present.  A lane passes when
-  either of the (at most two) newest eligible scorecards passes it —
-  "one re-run allowed".
+* **Lane passes** (D1 + FM-3 + D6, floor revised by #253 on 2026-09-27):
+  one of the (at most two) newest eligible runs of the lane has every
+  baseline golden and a mean ≥ baseline mean − the lane's tolerance
+  (manual 0.03; OBD 0.06 — 15 goldens, the same code scored
+  0.897 / 0.872 / 0.844 on three runs) — "one re-run allowed"; and the
+  **floor** holds across ALL comparable eligible runs of the PR: no golden
+  whose baseline is ≥ 0.6 is under 0.4 in two or more runs, no single run
+  has three goldens under it, and a dip seen in the only run is "pending
+  confirmation" (not passed — run once more).  One random dip per run no
+  longer fails a PR (PROD-11 hit it twice on different goldens).
+* **Contention record** (#253): ``<base>.contention.json`` next to a
+  scorecard (GPU memory / compute of other users, Ollama, vLLM
+  preemptions during the run) only produces warnings.
 * **Acceptance of a baseline** (FM-11): per lane, the mean of the two
   run means ≥ the acceptance line, and each run ≥ line − the lane's
   tolerance.  OBD's acceptance line is V3's own first baseline (D5: the
@@ -170,7 +176,8 @@ def lane_means(card: Dict[str, Any]) -> Dict[str, float]:
 
 
 def check_lane(scores: Dict[str, float], base: LaneBaseline, t: Thresholds) -> Tuple[bool, List[str]]:
-    """One lane of one scorecard against its baseline."""
+    """One lane of one scorecard against its baseline, floor included
+    (the per-run form, kept for callers; the gate uses ``_judge_lane``)."""
     why: List[str] = []
     missing = sorted(set(base.per_item) - set(scores))
     if missing:
@@ -188,37 +195,246 @@ def check_lane(scores: Dict[str, float], base: LaneBaseline, t: Thresholds) -> T
     return (not why), why
 
 
-def decide(cards: Sequence[Dict[str, Any]], t: Thresholds) -> Tuple[bool, List[str]]:
-    """Gate verdict over the PR's current scorecards (newest last).
+FLOOR_MAX_DIPS_PER_RUN = 3
+"""#253 FM-24: a single run with this many goldens under the floor fails the
+floor on its own (the observed noise is 1-2 per run)."""
 
-    Only eligible scorecards count; per lane, pass if one of the newest
-    ``max_runs_considered`` eligible scorecards passes.
+PENDING_MARK = "pending confirmation"
+"""Substring of the verdict line when a lone run has dips (#253 D2)."""
+
+
+def _name(card: Dict[str, Any]) -> str:
+    return str(card.get("_path") or card.get("meta", {}).get("stamp", "?"))
+
+
+def order_key(card: Dict[str, Any]) -> Tuple[str, str]:
+    """#253 FM-29: newest last by the run stamp recorded in the scorecard, then name."""
+    return (str(card.get("meta", {}).get("stamp", "")), _name(card))
+
+
+def check_mean(scores: Dict[str, float], base: LaneBaseline, t: Thresholds) -> Tuple[bool, List[str]]:
+    """One lane of one scorecard: every baseline golden present and the mean
+    ≥ baseline − the lane's tolerance (the floor is judged across runs)."""
+    why: List[str] = []
+    missing = sorted(set(base.per_item) - set(scores))
+    if missing:
+        why.append(f"{len(missing)} baseline goldens missing: {', '.join(missing[:3])}")
+    if not scores:
+        return False, why + ["no scores"]
+    mean = statistics.mean(scores.values())
+    tol = base.tolerance if base.tolerance is not None else t.tolerance
+    if mean < base.mean - tol - 1e-9:
+        why.append(f"mean {mean:.3f} < baseline {base.mean:.3f} − {tol:.2f}")
+    return (not why), why
+
+
+def floor_dips(scores: Dict[str, float], base: LaneBaseline, t: Thresholds) -> Dict[str, float]:
+    """Goldens whose baseline is ≥ ``floor_min_baseline`` and whose score is
+    strictly below the floor; a missing score counts as 0 (#253 FM-26 / FM-27)."""
+    out: Dict[str, float] = {}
+    for gid, b in sorted(base.per_item.items()):
+        if b < t.floor_min_baseline:
+            continue
+        s = scores.get(gid, 0.0)
+        if s < t.floor:
+            out[gid] = s
+    return out
+
+
+def _signature(card: Dict[str, Any], lane: str) -> Tuple[Any, ...]:
+    """What must match for two runs of a lane to be compared (#253 FM-26)."""
+    data = card.get("meta", {}).get("config", {}).get("data_sha256")
+    return (tuple(sorted(lane_scores(card).get(lane, {}))), repr(data))
+
+
+def _judge_lane(lane: str, base: LaneBaseline, cards: Sequence[Dict[str, Any]],
+                t: Thresholds) -> Tuple[bool, List[str]]:
+    """One lane across the PR's eligible runs (#253).
+
+    * **Mean** (unchanged, D1): one of the newest ``max_runs_considered``
+      runs that contain this lane must have every baseline golden and a
+      mean ≥ baseline − tolerance.
+    * **Floor**: counted over every comparable run of the lane (same golden
+      ids and golden data as the newest, FM-26 / FM-31).  It fails when one
+      golden is under the floor in two or more runs (FM-23), or one run has
+      ``FLOOR_MAX_DIPS_PER_RUN`` goldens under it (FM-24).  A dip seen in
+      only one comparable run is "pending confirmation" (D2): not passed,
+      until another run shows it does not repeat.
+    """
+    lines: List[str] = []
+    lane_cards = [c for c in cards if lane_scores(c).get(lane)]
+    if not lane_cards:
+        return False, [f"{lane}: FAIL: no eligible scorecard has this lane"]
+    tol = base.tolerance if base.tolerance is not None else t.tolerance
+    window = lane_cards[-t.max_runs_considered:]
+    newest = lane_cards[-1]
+    group = [c for c in lane_cards if _signature(c, lane) == _signature(newest, lane)]
+    lines.append(f"{lane}: mean from {', '.join(_name(c) for c in window)}; "
+                 f"floor over {len(group)} comparable run(s)")
+    for c in lane_cards:
+        if c not in group:
+            lines.append(f"{lane}: {_name(c)} not compared for the floor (different goldens or golden data "
+                         f"than {_name(newest)})")
+    for c in lane_cards:
+        if c not in window:
+            lines.append(f"{lane}: {_name(c)} older than the newest {t.max_runs_considered} — not used for the mean")
+
+    mean_ok = False
+    for c in window:
+        scores = lane_scores(c)[lane]
+        ok, why = check_mean(scores, base, t)
+        mean = statistics.mean(scores.values()) if scores else float("nan")
+        lines.append(f"{lane} @ {_name(c)}: mean {mean:.3f} vs baseline {base.mean:.3f} → "
+                     f"{'PASS' if ok else 'FAIL: ' + '; '.join(why)}")
+        if scores and mean < base.mean - 2 * tol - 1e-9:
+            lines.append(f"WARN {lane} @ {_name(c)}: mean {mean:.3f} is below baseline − 2×tolerance "
+                         f"({base.mean - 2 * tol:.3f}); if the lane passes, it passes on another run's mean")
+        mean_ok = mean_ok or ok
+
+    dips = {_name(c): floor_dips(lane_scores(c)[lane], base, t) for c in group}
+    runs_with = {}  # type: Dict[str, List[str]]
+    for name, d in dips.items():
+        for gid in d:
+            runs_with.setdefault(gid, []).append(name)
+    for gid in sorted(runs_with):
+        b = base.per_item.get(gid, float("nan"))
+        others = ", ".join(f"{_name(c)}={lane_scores(c)[lane].get(gid, 0.0):.3f}"
+                           for c in group if _name(c) not in runs_with[gid])
+        for name in runs_with[gid]:
+            lines.append(f"{lane}: {gid} fell to {dips[name][gid]:.3f} (< floor {t.floor}; baseline {b:.3f}) "
+                         f"in {name}; other runs: {others or 'none'}")
+    confirmed = sorted(g for g, names in runs_with.items() if len(names) >= 2)
+    collapsed = sorted(n for n, d in dips.items() if len(d) >= FLOOR_MAX_DIPS_PER_RUN)
+    pending = sorted(runs_with) if runs_with and len(group) < 2 else []
+    floor_ok = not (confirmed or collapsed or pending)
+    for gid in confirmed:
+        lines.append(f"{lane}: FAIL floor: {gid} is under {t.floor} in {len(runs_with[gid])} runs")
+    for name in collapsed:
+        lines.append(f"{lane}: FAIL floor: {name} has {len(dips[name])} goldens under {t.floor} "
+                     f"(≥ {FLOOR_MAX_DIPS_PER_RUN} in one run)")
+    if pending and not (confirmed or collapsed):
+        lines.append(f"{lane}: NOT PASSED — {PENDING_MARK} (未通过：待确认): {', '.join(pending)} fell under "
+                     f"the floor in the only comparable run; run the gate once more — it passes if they do "
+                     f"not fall again")
+    ok = mean_ok and floor_ok
+    lines.append(f"{lane}: {'PASS' if ok else 'FAIL'}")
+    return ok, lines
+
+
+def decide(cards: Sequence[Dict[str, Any]], t: Thresholds) -> Tuple[bool, List[str]]:
+    """Gate verdict over the PR's current scorecards.
+
+    Only eligible scorecards count, ordered by their run stamp (FM-29);
+    each lane is judged by ``_judge_lane`` (#253).
     """
     lines: List[str] = []
     eligible: List[Dict[str, Any]] = []
-    for c in cards:
+    for c in sorted(cards, key=order_key):
         ok, why = eligibility(c, t.judge_model)
-        name = c.get("_path", c.get("meta", {}).get("stamp", "?"))
         if ok:
             eligible.append(c)
         else:
-            lines.append(f"ignored {name}: {'; '.join(why)}")
+            lines.append(f"ignored {_name(c)}: {'; '.join(why)}")
     if not eligible:
         return False, lines + ["no eligible scorecard (local, thinking off, gate/baseline, complete, valid)"]
-    considered = eligible[-t.max_runs_considered:]
     overall_ok = True
     for lane, base in t.lanes.items():
-        lane_ok = False
-        for c in considered:
-            scores = lane_scores(c).get(lane, {})
-            ok, why = check_lane(scores, base, t)
-            name = c.get("_path", c.get("meta", {}).get("stamp", "?"))
-            mean = statistics.mean(scores.values()) if scores else float("nan")
-            lines.append(f"{lane} @ {name}: mean {mean:.3f} vs baseline {base.mean:.3f} → "
-                         f"{'PASS' if ok else 'FAIL: ' + '; '.join(why)}")
-            lane_ok = lane_ok or ok
-        overall_ok = overall_ok and lane_ok
+        ok, lane_lines = _judge_lane(lane, base, eligible, t)
+        lines += lane_lines
+        overall_ok = overall_ok and ok
     return overall_ok, lines
+
+
+# ── GPU contention record (#253) ──────────────────────────────────
+
+CONTENTION_SCHEMA = 1
+CONTENTION_SUFFIX = ".contention.json"
+CONTENTION_TOP_KEYS = frozenset({
+    "schema", "kind", "run", "scorecard", "started_at", "ended_at", "interval_s", "samples",
+    "sample_errors", "concurrency", "preemptions_before", "preemptions_after", "preemption_delta",
+    "vllm_restarted", "gpus",
+})
+CONTENTION_GPU_KEYS = frozenset({
+    "index", "total_mib", "others_mib_max", "others_mib_mean", "others_sm_pct_max", "others_sm_pct_mean",
+    "vllm_mib_max", "project_other_mib_max", "ollama_mib_max", "util_pct_max", "util_pct_mean",
+})
+CONTENTION_OTHERS_MIB_WARN = 2048
+CONTENTION_OTHERS_SM_WARN = 20.0
+_STRING_KEYS = {"kind", "run", "scorecard", "started_at", "ended_at"}
+
+
+def _allowed_string(key: str, value: str) -> bool:
+    import re
+
+    pattern = {
+        "kind": r"gpu_contention",
+        "run": r"stf-v3-eval-\d{8}T\d{6}Z",
+        "scorecard": r"\d{8}T\d{6}Z(?:_[0-9A-Za-z-]{1,40}){1,6}",
+        "started_at": r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z",
+        "ended_at": r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z",
+    }[key]
+    if any(bad in value.lower() for bad in ("key", "token", "secret", "sk-", "bearer")):
+        return False                       # FM-19: nothing secret-looking, ever
+    return re.fullmatch(pattern, value) is not None
+
+
+def validate_contention(rec: Any) -> List[str]:
+    """Why a contention record cannot be used (empty = usable).
+
+    Whitelist only (#253 FM-18 / FM-19): numbers per GPU, the run and
+    scorecard names, UTC times; anything else — names, command lines,
+    environment — makes the record unusable.
+    """
+    if not isinstance(rec, dict):
+        return ["not a JSON object"]
+    if rec.get("schema") != CONTENTION_SCHEMA:
+        return [f"schema {rec.get('schema')!r} unknown (this gate reads {CONTENTION_SCHEMA})"]
+    extra = sorted(set(rec) - CONTENTION_TOP_KEYS)
+    if extra:
+        return [f"fields outside the whitelist: {', '.join(extra[:5])}"]
+    for key in _STRING_KEYS:
+        v = rec.get(key)
+        if v is not None and not (isinstance(v, str) and _allowed_string(key, v)):
+            return [f"field {key} has an unexpected value"]
+    for key in CONTENTION_TOP_KEYS - _STRING_KEYS - {"gpus", "schema", "vllm_restarted"}:
+        v = rec.get(key)
+        if v is not None and not isinstance(v, (int, float)):
+            return [f"field {key} is not a number"]
+    gpus = rec.get("gpus")
+    if not isinstance(gpus, list):
+        return ["gpus is not a list"]
+    for g in gpus:
+        if not isinstance(g, dict) or set(g) - CONTENTION_GPU_KEYS or \
+                any(v is not None and not isinstance(v, (int, float)) for v in g.values()):
+            return ["a GPU entry has fields outside the whitelist or non-numbers"]
+    return []
+
+
+def contention_warnings(rec: Any, scorecard_base: str) -> List[str]:
+    """Warning lines for one run's contention record — never a verdict (#253 D3)."""
+    bad = validate_contention(rec)
+    if bad:
+        return [f"contention record unusable: {bad[0]}"]
+    out: List[str] = []
+    if rec.get("scorecard") and rec["scorecard"] != scorecard_base:
+        out.append(f"contention record belongs to {rec['scorecard']}, not {scorecard_base}")
+    if not rec.get("samples"):
+        out.append("contention record has no samples")
+    for g in rec.get("gpus", []):
+        i = g.get("index")
+        if (g.get("others_mib_max") or 0) > CONTENTION_OTHERS_MIB_WARN:
+            out.append(f"GPU {i}: other workloads held up to {g['others_mib_max']:.0f} MiB during the run "
+                       f"(other users, or this account outside the V3 services)")
+        if (g.get("others_sm_pct_max") or 0) > CONTENTION_OTHERS_SM_WARN:
+            out.append(f"GPU {i}: other workloads' compute peaked at {g['others_sm_pct_max']:.0f} % during the run "
+                       f"(scores may be slower / more time-outs)")
+        if (g.get("ollama_mib_max") or 0) > 0:
+            out.append(f"GPU {i}: Ollama held {g['ollama_mib_max']:.0f} MiB during the run (must not share with vLLM)")
+    if rec.get("vllm_restarted"):
+        out.append("vLLM restarted during the run (preemption counter went backwards)")
+    elif (rec.get("preemption_delta") or 0) > 0:
+        out.append(f"vLLM preempted {rec['preemption_delta']} request(s) during the run")
+    return out
 
 
 def acceptance(cards: Sequence[Dict[str, Any]], lines: Dict[str, float],
@@ -331,6 +547,9 @@ def calibrate(card: Dict[str, Any], margin: float = 1.5, max_censored: float = 0
     return out
 
 
-__all__ = ["DEFAULT_JUDGE_MODEL", "DEFAULT_LANE_TOLERANCE", "DEFAULT_MANAGED_PATHS", "LANES", "LaneBaseline", "Thresholds", "acceptance", "build_baseline",
-           "calibrate", "check_lane", "decide", "eligibility", "is_managed", "lane_means", "lane_scores",
-           "load_thresholds", "managed", "p95", "parse_thresholds", "stale_warnings"]
+__all__ = ["CONTENTION_SCHEMA", "CONTENTION_SUFFIX", "DEFAULT_JUDGE_MODEL", "DEFAULT_LANE_TOLERANCE",
+           "DEFAULT_MANAGED_PATHS", "FLOOR_MAX_DIPS_PER_RUN", "LANES", "LaneBaseline", "PENDING_MARK",
+           "Thresholds", "acceptance", "build_baseline", "calibrate", "check_lane", "check_mean",
+           "contention_warnings", "decide", "eligibility", "floor_dips", "is_managed", "lane_means",
+           "lane_scores", "load_thresholds", "managed", "order_key", "p95", "parse_thresholds",
+           "stale_warnings", "validate_contention"]
