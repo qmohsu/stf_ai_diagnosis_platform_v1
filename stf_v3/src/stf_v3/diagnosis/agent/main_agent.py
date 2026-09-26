@@ -11,7 +11,10 @@ it into a ``DiagnosisReport`` with citations proven from the tool trace.
 A gate (wall clock, requests, tool calls, tokens), a cancel, or a model
 error produces a PARTIAL report instead of an exception (FM-7 / FM-14 /
 FM-17).  After a wall-clock or usage gate the model gets ONE more turn
-without tools to write the report from the evidence it already gathered
+without investigation tools to write the report from the evidence it
+already gathered; that turn offers exactly one tool, ``submit_report``,
+because Qwen3.6 kept "calling tools" when none were offered (same lesson
+as the manual sub-agent's ``final_answer``, PROD-10) and gathered
 (PROD-11 server finding: the last narration line -- "Let me also check..."
 -- used to be the whole "report"); if that turn fails too, the last
 assistant text is used as before.
@@ -27,8 +30,16 @@ from dataclasses import dataclass, field
 from typing import Any, AsyncIterator, Dict, List, Optional, Sequence, Tuple
 
 import structlog
-from pydantic_ai import Agent, Tool
-from pydantic_ai.messages import ModelMessage, ModelResponse, ThinkingPart, ToolCallPart
+from pydantic import BaseModel, Field
+from pydantic_ai import Agent, Tool, ToolOutput
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    ThinkingPart,
+    ToolCallPart,
+    UserPromptPart,
+)
 from pydantic_ai.models import Model
 from pydantic_ai.usage import RunUsage
 
@@ -74,10 +85,12 @@ _GATE_NAME: Dict[str, Dict[str, str]] = {
     "tool_calls": {"zh-TW": "工具呼叫次數上限 {n}", "zh-CN": "工具调用次数上限 {n}", "en": "tool-call limit of {n}"},
     "total_tokens": {"zh-TW": "總 token 上限 {n}", "zh-CN": "总 token 上限 {n}", "en": "total-token limit of {n}"},
 }
+SUBMIT_REPORT_TOOL = "submit_report"
 WRAPUP_INSTRUCTION = (
-    "The investigation budget is used up: no more tools can be called.  Write the final "
-    "diagnosis report now, in the required format and language, using only the evidence "
-    "already gathered above.  Say plainly what could not be checked."
+    "The investigation budget is used up: no investigation tools are available any more.  "
+    "Write the final diagnosis report now, in the required format and language, using only "
+    "the evidence already gathered above; say plainly what could not be checked.  Submit it "
+    "by calling the `submit_report` tool with the whole report in `report_md`."
 )
 _WRAPUP_REASONS = ("timeout", "budget")
 
@@ -115,10 +128,22 @@ def build_main_agent() -> Agent[DiagDeps, str]:
 
 
 MAIN_AGENT: Agent[DiagDeps, str] = build_main_agent()
-# The wrap-up turn: same instructions, no tools (so no more investigation).
-WRAPUP_AGENT: Agent[DiagDeps, str] = Agent(None, deps_type=DiagDeps, output_type=str,
-                                           instructions=SYSTEM_PROMPT, retries=1,
-                                           name="diagnosis_wrapup")
+
+
+class WrapUpReport(BaseModel):
+    """The wrap-up turn's one tool: the finished report."""
+
+    report_md: str = Field(description="The complete diagnosis report (markdown), in the "
+                                       "required format and language.")
+
+
+# The wrap-up turn: same instructions, no investigation tools; the report
+# comes back through ``submit_report`` (or as plain text).
+WRAPUP_AGENT: Agent[DiagDeps, Any] = Agent(
+    None, deps_type=DiagDeps, instructions=SYSTEM_PROMPT, retries=2, name="diagnosis_wrapup",
+    output_type=[ToolOutput(WrapUpReport, name=SUBMIT_REPORT_TOOL,
+                            description="Submit the finished diagnosis report."), str],
+)
 
 
 def _answered_history(messages: Sequence[ModelMessage]) -> List[ModelMessage]:
@@ -130,23 +155,46 @@ def _answered_history(messages: Sequence[ModelMessage]) -> List[ModelMessage]:
     return out
 
 
-async def _wrap_up(deps: DiagDeps, model: Model, outcome: RunOutcome, settings: Any) -> Optional[RunOutcome]:
-    """One tool-less turn to write the report after a wall-clock / usage gate."""
+def _wrapup_replies(messages: Sequence[ModelMessage]) -> List[ModelMessage]:
+    """The messages after the wrap-up instruction (the wrap-up turn's own replies)."""
+    msgs = list(messages)
+    for i in range(len(msgs) - 1, -1, -1):
+        m = msgs[i]
+        if isinstance(m, ModelRequest) and any(
+                isinstance(p, UserPromptPart) and p.content == WRAPUP_INSTRUCTION for p in m.parts):
+            return msgs[i + 1:]
+    return []
+
+
+async def _wrap_up(deps: DiagDeps, model: Model, outcome: RunOutcome,
+                   settings: Any) -> Tuple[Optional[RunOutcome], str]:
+    """One turn without investigation tools to write the report after a gate.
+
+    Returns the wrap-up run (None when skipped) and the report text (empty
+    when none was written).  When the turn fails, text the model wrote on
+    it is still kept: on the server Qwen wrote the report AND called a
+    tool in the same reply, which the runtime treats as "not finished".
+    """
     wrap_s = float(getattr(settings, "agent_wrapup_s", 0) or 0)
     history = _answered_history(outcome.messages)
     if outcome.stopped_reason not in _WRAPUP_REASONS or wrap_s <= 0:
-        return None
+        return None, ""
     if not any(isinstance(m, ModelResponse) for m in history):
-        return None                       # the model never answered: nothing to summarise
+        return None, ""                   # the model never answered: nothing to summarise
     wrap = await drive(
         WRAPUP_AGENT, WRAPUP_INSTRUCTION, model=model, deps=deps, sink=deps.events,
-        parent_tool_call_id=None, usage_limits=make_limits(2),
+        parent_tool_call_id=None, usage_limits=make_limits(3),
         model_settings=model_settings(settings, model=model), wall_clock_s=wrap_s,
         message_history=history, compact_threshold=deps.budgets.compact_threshold_tokens,
     )
+    out = wrap.output if wrap.stopped_reason == "complete" else None
+    text = out.report_md if isinstance(out, WrapUpReport) else (out if isinstance(out, str) else "")
+    via = "tool" if isinstance(out, WrapUpReport) else "text"
+    if not text.strip():
+        text, via = last_assistant_text(_wrapup_replies(wrap.messages), max_chars=40_000), "fallback"
     logger.info("agent.wrapup", stopped_reason=wrap.stopped_reason, requests=wrap.requests,
-                chars=len(wrap.output) if isinstance(wrap.output, str) else 0)
-    return wrap
+                chars=len(text), via=via)
+    return wrap, text
 
 
 @dataclass
@@ -277,13 +325,11 @@ async def run_diagnosis(
         message_history=message_history,
         compact_threshold=deps.budgets.compact_threshold_tokens,
     )
-    wrap = await _wrap_up(deps, model, outcome, settings)
-    wrapup_text: Optional[str] = None
+    wrap, wrapup_text = await _wrap_up(deps, model, outcome, settings)
     if wrap is not None:
         outcome.usage = outcome.usage + wrap.usage
         outcome.requests += wrap.requests
-        if wrap.stopped_reason == "complete" and isinstance(wrap.output, str) and wrap.output.strip():
-            wrapup_text = wrap.output
+        if wrapup_text.strip():
             outcome.messages = wrap.messages
     report = build_report(deps, outcome, model, wrapup_text)
     if outcome.stopped_reason == "complete":
@@ -363,6 +409,7 @@ def stream_diagnosis(deps: DiagDeps, model: Model, **kwargs: Any) -> DiagnosisSt
     return DiagnosisStream(deps, model, **kwargs)
 
 
-__all__ = ["MAIN_AGENT", "MAIN_TOOL_NAMES", "WRAPUP_AGENT", "WRAPUP_INSTRUCTION", "DiagnosisOutcome",
+__all__ = ["MAIN_AGENT", "MAIN_TOOL_NAMES", "SUBMIT_REPORT_TOOL", "WRAPUP_AGENT", "WRAPUP_INSTRUCTION",
+           "WrapUpReport", "DiagnosisOutcome",
            "DiagnosisStream", "build_main_agent", "build_report", "gate_sentence", "run_diagnosis",
            "stream_diagnosis", "EventSink"]
