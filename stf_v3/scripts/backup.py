@@ -741,12 +741,23 @@ def drill_psql(host: Host, db: str, sql: str) -> List[str]:
     return [ln for ln in res.out.splitlines() if ln.strip()]
 
 
+def remove_drill_container(host: Host, timeout: float = 120) -> None:
+    """Drops the drill container together with its data volume.
+
+    The Postgres image declares a VOLUME for its data directory, so the
+    container gets an anonymous volume holding a full plaintext copy of both
+    restored databases; ``rm -f`` without ``-v`` left one behind per drill
+    (seven found 2026-09-28).
+    """
+    host.run(["podman", "rm", "-f", "-v", DRILL_CONTAINER], timeout)
+
+
 def start_drill_container(cfg: Config, host: Host) -> None:
     """Throwaway Postgres, same image, NO network (only podman exec reaches it)."""
     img = host.run(["podman", "inspect", cfg.pg_container, "--format", "{{.ImageName}}"], 30)
     if img.rc != 0 or not img.out.strip():
         raise BackupError("cannot read the database image name")
-    host.run(["podman", "rm", "-f", DRILL_CONTAINER], 60)
+    remove_drill_container(host, 60)
     res = host.run(["podman", "run", "-d", "--rm", "--name", DRILL_CONTAINER, "--network", "none",
                     "-e", "POSTGRES_HOST_AUTH_METHOD=trust", "-e", "POSTGRES_USER=postgres",
                     img.out.strip()], 300)
@@ -947,7 +958,7 @@ def run_drill(cfg: Config, host: Host, *, offsite: bool, ask: bool, keep: bool,
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
         if not keep:
-            host.run(["podman", "rm", "-f", DRILL_CONTAINER], 120)
+            remove_drill_container(host)
     status = load_status(cfg)
     status["last_drill"] = {"at": host.now().isoformat(), "ok": report["ok"],
                             "source": report.get("source"), "bundle": report.get("bundle"),
