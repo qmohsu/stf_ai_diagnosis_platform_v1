@@ -1,0 +1,22 @@
+# PROD-15A T-27 / FM-52: this repository is PUBLIC — no real VIN may enter it.
+# Every PR and every push to main, no path filter (a VIN can land in any file,
+# V1/V2 included).  Findings are printed masked, never in full.
+name: vin-scan
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  vin-scan:
+    name: no real VINs in tracked files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: python3 stf_v3/scripts/check_no_vins.py

@@ -154,3 +154,19 @@ async def cancel_ingest(job_id: int) -> None:
         await app.job_manager.cancel_job_by_id_async(job_id, abort=True)
     except Exception as exc:  # noqa: BLE001 - job may already be finished
         log.info("manual.cancel_noop", job_id=job_id, reason=str(exc))
+
+
+WORKDIR_TASK = "knowledge.clean_work_dirs"
+
+
+# PROD-15A T-18: daily at 20:40 UTC (04:40 Hong Kong, after the 03:30
+# backup).  The ingest lock means it never runs while a manual converts;
+# the queueing lock keeps at most one waiting (FM-29).
+@app.periodic(cron="40 20 * * *")
+@app.task(name=WORKDIR_TASK, queue=GPU_QUEUE, pass_context=False, lock=INGEST_LOCK,
+          queueing_lock=WORKDIR_TASK)
+def clean_work_dirs(timestamp: int) -> None:
+    """Removes manual work dirs failed / orphaned for 7+ days (host worker)."""
+    import importlib
+
+    importlib.import_module("stf_v3.knowledge.ingest").clean_work_dirs()

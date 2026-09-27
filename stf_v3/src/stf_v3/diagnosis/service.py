@@ -134,6 +134,7 @@ def _conversation_out(conv: DiagnosisConversation, report: Optional[Report]) -> 
     out = ConversationOut.model_validate(conv)
     out.has_report = report is not None
     out.report_partial = report.partial if report is not None else None
+    out.events_archived = conv.events_archived_at is not None      # PROD-15A FM-42
     return out
 
 

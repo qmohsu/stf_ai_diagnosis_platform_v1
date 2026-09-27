@@ -35,7 +35,8 @@ log = structlog.get_logger("stf_v3")
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Startup guardrails: logging, secret check, DB reachability."""
-    configure_logging(settings.log_level)
+    configure_logging(settings.log_level,
+                      process=os.environ.get("STF_V3_PROCESS", "api"))
     if settings.environment == "prod" and settings.jwt_secret == "change-me-in-deployment":
         raise RuntimeError("STF_V3_JWT_SECRET must be set in prod")
     async with engine.connect() as conn:
@@ -130,6 +131,7 @@ def backup_status() -> Dict[str, Any]:
     out = judge(raw.get("last_success_at"))
     out["last_result"] = raw.get("last_result")
     out["offsite"] = judge((raw.get("offsite") or {}).get("last_success_at"))
+    out["last_verify"] = raw.get("last_verify")     # PROD-15A ②: weekly check {at, ok}
     return out
 
 
@@ -138,7 +140,8 @@ def backup_status() -> Dict[str, Any]:
 async def health() -> Dict[str, Any]:
     """Liveness + DB + queue backlog + host GPU worker + disk + commit,
     plus (PROD-11) unfinished diagnoses and the on-demand model service,
-    plus (PROD-15A) the time of the last successful backup.
+    plus (PROD-15A) the time of the last successful backup and the
+    runtime role's connections against its limit.
 
     Served at both ``/health`` (container healthcheck) and ``/v3/health``
     (through nginx, where bare ``/health`` belongs to V1).
@@ -160,6 +163,13 @@ async def health() -> Dict[str, Any]:
             "EXTRACT(EPOCH FROM now() - controller_seen_at), "
             "EXTRACT(EPOCH FROM now() - GREATEST(last_used_at, ready_at)), gpu_snapshot "
             "FROM model_service_state WHERE id = 1"))).first()
+        # PROD-15A FM-45: this role's connections vs its limit, and the whole
+        # shared instance (V1/V2 included) vs max_connections.
+        conns = (await conn.execute(text(
+            "SELECT count(*) FILTER (WHERE usename = current_user), "
+            "(SELECT rolconnlimit FROM pg_roles WHERE rolname = current_user), "
+            "count(*), current_setting('max_connections')::int "
+            "FROM pg_stat_activity WHERE backend_type = 'client backend'"))).one()
     backlog = {q: n for q, n in rows}
     free_gb = round(shutil.disk_usage(Path(settings.manual_storage_path).resolve()).free / 1e9, 1)
     return {
@@ -187,4 +197,8 @@ async def health() -> Dict[str, Any]:
         },
         # PROD-15A FM-40: last SUCCESSFUL backup (stale after 36 h).
         "backup": backup_status(),
+        "db_connections": {
+            "role": int(conns[0]), "role_limit": None if conns[1] in (None, -1) else int(conns[1]),
+            "instance": int(conns[2]), "instance_max": int(conns[3]),
+        },
     }

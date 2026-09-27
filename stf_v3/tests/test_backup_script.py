@@ -73,6 +73,10 @@ class FakeHost:
         self.state_dir = tmp / "state_volume"
         self.state_dir.mkdir()
 
+    def owner_sql(self, sql: str) -> Any:
+        """Maintenance SQL; an empty V3 database here (see test_backup_maintenance)."""
+        return bk.Result(0, "0\n" if "count(" in sql else "")
+
     # -- Host interface ------------------------------------------------
     def now(self) -> dt.datetime:
         return NOW
@@ -97,6 +101,8 @@ class FakeHost:
             if a[3] == bk.STATE_VOLUME:
                 return R(0, f"{self.state_dir}\n")
             return R(0, f"/fake/volumes/{a[3]}/_data\n")
+        if a[:2] == ["podman", "exec"] and "psql" in a and "-c" in a:
+            return self.owner_sql(a[-1])                   # PROD-15A ② maintenance (as the owner)
         if a[:2] == ["podman", "exec"] and "pg_isready" in a:
             return R(0 if self.fail != "db_down" else 2)
         if a[:2] == ["podman", "exec"] and "pg_dump" in a:
@@ -363,7 +369,10 @@ def test_the_health_copy_carries_no_secret_or_path_detail(tmp_path: pathlib.Path
     bk.run_backup(cfg, host)
     public = json.loads((host.state_dir / "status.json").read_text())
     assert set(public) <= {"schema", "updated_at", "last_attempt_at", "last_result", "last_success_at",
-                           "last_success_size", "offsite", "last_error"}
+                           "last_success_size", "offsite", "last_error", "last_verify"}
+    bk.run_verify(cfg, host)
+    public = json.loads((host.state_dir / "status.json").read_text())
+    assert set(public["last_verify"]) == {"at", "ok"}              # PROD-15A ②: time + result only
 
 
 # ── T-5: the manifest ──────────────────────────────────────────────────

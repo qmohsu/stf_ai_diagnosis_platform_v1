@@ -185,6 +185,26 @@ if [ -d "$bk_root" ]; then
   [ "${bk_gb:-0}" -le "${BACKUP_WARN_GB:-50}" ] || echo "WARN  local backups use ${bk_gb} GB (> ${BACKUP_WARN_GB:-50} GB, FM-44)"
   [ "$(stat -c %a "$bk_root")" = "700" ] || echo "WARN  $bk_root is not mode 700 (FM-49)"
 fi
+# PROD-15A ②: the weekly light check and the after-backup maintenance (WARN only).
+python3 - "$bk_root/status.json" <<'PY' 2>/dev/null || true
+import datetime as dt, json, sys
+try:
+    s = json.load(open(sys.argv[1]))
+except (OSError, ValueError):
+    raise SystemExit(0)
+v, m = s.get("last_verify") or {}, s.get("maintenance") or {}
+if not v:
+    print("WARN  no weekly backup check yet (backup.py verify / stf-v3-backup-verify.timer, FM-47)")
+else:
+    age_d = (dt.datetime.now(dt.timezone.utc) - dt.datetime.fromisoformat(v["at"])).days
+    if not v.get("ok") or age_d > 8:
+        print(f"WARN  weekly backup check: ok={v.get('ok')} {age_d} days ago {v.get('error') or ''}")
+if m.get("error"):
+    print(f"WARN  maintenance after backup failed: {m['error']}")
+PY
+
+# Storage report (PROD-15A T-26): sizes + re-created volumes + modes, WARN only.
+bash "$REPO_DIR/stf_v3/scripts/storage_report.sh" "$bk_root"
 
 if [ "$FAILS" -eq 0 ]; then echo "DEPLOY CHECK ALL PASS"; exit 0; fi
 echo "DEPLOY CHECK FAILED ($FAILS)"; exit 1

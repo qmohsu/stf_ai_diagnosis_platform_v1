@@ -28,6 +28,7 @@ from stf_v3.diagnosis.schemas import (
 )
 from stf_v3.diagnosis.sse import event_dict, stream_events
 from stf_v3.diagnosis.store import read_events
+from stf_v3.errors import ApiError
 from stf_v3.settings import settings
 
 router = APIRouter(prefix="/v3", tags=["diagnosis"])
@@ -110,6 +111,11 @@ async def get_conversation(
                           "\"payload\":{...},\"created_at\":\"...\"}\n\n"}}},
         401: {"description": "Missing / expired token: refresh it, then reconnect with Last-Event-ID."},
         404: _ERR,
+        410: {"description": "`events_archived`: this finished diagnosis is older than 180 days "
+                             "and its process was moved to the archive (the conversation shows "
+                             "`events_archived: true`; report and messages remain).",
+              "content": {"application/json": {"example": {
+                  "detail": "The process of this diagnosis was archived", "code": "events_archived"}}}},
     },
 )
 async def conversation_events(
@@ -147,6 +153,10 @@ async def conversation_events(
     `payload.parent_tool_call_id`.
     """
     conv = await service.authorised_conversation(session, user, conversation_id)
+    if conv.events_archived_at is not None:
+        # PROD-15A FM-42: say so, instead of an empty replay or a live stream
+        # that would wait forever for a `done` that is in the archive.
+        raise ApiError(410, "events_archived", "The process of this diagnosis was archived")
     start = after_seq
     if last_event_id and last_event_id.strip().isdigit():
         start = max(start, int(last_event_id.strip()))

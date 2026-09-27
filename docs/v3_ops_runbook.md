@@ -2,7 +2,7 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.13（§7.3 / §7.4 演练容器连同数据卷一起删；v0.12 为 PROD-15A PR ① 数据库访问规则、备份与恢复） |
+| 版本 | v0.14（PROD-15A PR ②：§1.5 连接上限、§5.2 评测只读账号、§7.2 备份后维护、§7.5 归档与清理、§7.6 每周核对、§7.7 VIN 扫描、§8 日志落盘、§9 常见故障速查；v0.13 为演练数据卷） |
 | 日期 | 2026-09-28 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
@@ -72,9 +72,16 @@ DRILL PASS: job re-picked after restart (attempts = 2)
 
 宿主机工人同理：`kill -9` 正在入库的手册任务 → 2 分钟内被回收 → 从工作目录续跑（MinerU 产物已在，跳过显卡阶段）。**正常部署请不要在手册 `converting` 时重启宿主机工人**（会触发一次不必要的回收重跑）。
 
-### 1.5 连接预算（FM-25）
+### 1.5 连接预算与上限（FM-25；PROD-15A FM-45）
 
-Postgres `max_connections = 100`。2026-09-14 实测占用：系统 5、V1 库 1、V3 库 16（接口池 5 + 容器工人 + 宿主机工人 + 空闲）。V3 的池上限在 `settings.db_pool_size`（默认 5）；两个工人各持 1–2 条长连接。总和远低于 80% 上限，不需要调整；新增工人或提高并发时重新核一次。
+Postgres `max_connections = 100`，V1/V2 与 V3 共用。2026-09-14 实测占用：系统 5、V1 库 1、V3 库 16。
+
+**V3 运行账号 `stf_v3_app` 最多 50 条连接**（`stf_v3/scripts/sql/ops_roles.sql`，由 `db_roles.sh` 设置）：V3 泄漏或压力再大也挤不掉 V1/V2。算式 = 各连接池的最大值之和 + 余量：每个进程的数据库池 5 + 溢出 5（`STF_V3_DB_MAX_OVERFLOW`）+ 队列连接 4 = 14，API 和容器工人各 14，宿主机 GPU 工人再加手册入库的 1 条 = 15，合计 43，留 7 条给在容器里跑的运维脚本。`/v3/health` 的 `db_connections` 显示 V3 当前连接数 / 上限，以及整个实例的连接数 / `max_connections`。
+
+- 新增工人、提高并发或改池大小时，按上面算式重算，并改 `ops_roles.sql` 里的数字后重跑 `bash stf_v3/scripts/db_roles.sh`。
+- 演练（一次性容器，不碰生产）：`bash stf_v3/scripts/conn_limit_drill.sh`——模拟 V3 账号压到上限，多开一条被拒，模拟 V1/V2 的账号照常连、照常写。
+- 生产上核一次（没有诊断在跑时）：`bash stf_v3/scripts/conn_limit_drill.sh --live`——对 `stf_v3_app` 多开一条，必须被拒（3 秒后自动全部关闭）。
+- **回退**（上限误伤正常业务时）：`podman exec stf-postgres psql -U <超级用户> -d postgres -c "ALTER ROLE stf_v3_app CONNECTION LIMIT -1"`。
 
 ### 1.6 宿主机 GPU 工人
 
@@ -91,6 +98,8 @@ bash stf_v3/gpu_worker/install.sh                    # 首次安装 / 升级环�
 ### 1.7 磁盘（FM-13）
 
 手册入库开始前检查手册卷所在盘余量，低于 `STF_V3_MANUAL_MIN_FREE_GB`（默认 30）直接标失败不开工；失败后工作目录清理；`deploy_check.sh` 第 8 项与 `/v3/health.disk_free_gb` 报水位。这块盘与 V1/V2 的 Postgres 共用——盘满会让旧系统一起停写。
+
+**存储巡检**（PROD-15A，`stf_v3/scripts/storage_report.sh`，部署检查最后自动跑，只报数、只警告）：各 V3 卷、日志目录、备份目录、存档目录的大小；某个卷的**创建时间变了**（被清理后重建，旧数据已丢——从备份恢复）；目录权限不是 700。卷的创建时间记在 `~/.config/stf/volume_created.tsv`。转换失败的手册工作目录（`~/stf_v3_manual_builds/<手册编号>`）由 GPU 工人每天 04:40（香港时间）清理：只删「永久失败或已入库、7 天没动」和「手册已删、目录 7 天没动」的；排队、转换中、等重试、有待跑任务的一律不动；与手册转换共用锁 `gpu-ingest`，转换进行时不会跑。
 
 ## 2. 设备接入（Jetson 上传器，PROD-07）
 
@@ -274,6 +283,8 @@ cat ~/stf_v3_evals/<容器名>/exit_code                             # 0 有效 
 bash infra/vllm_ctl.sh stop                                       # 评测完停机，把 GPU 还给别人
 ```
 
+**评测只用只读数据库账号**（PROD-15A FM-12 / FM-15）：评测容器只拿到 `stf_v3_eval` 的连接信息（只能读手册目录一张表、事务只读、最多 10 条连接），不拿运行账号或属主账号的。启动前脚本核对身份，不是 `stf_v3_eval on` 就拒跑，身份写进 `preflight.txt`。第一次使用前：`bash stf_v3/scripts/db_roles.sh --init-eval-password`（生成口令写进 `infra/.env` 的 `STF_V3_EVAL_DB_PASSWORD` / `STF_V3_EVAL_DATABASE_URL`，屏幕上只出现变量名）。以后评测若要读别的表，先改 `ops_roles.sql` 的授权——CI 用只读账号跑一遍评测的全部查询，缺权限会在 CI 先红。
+
 **显卡被占时的同模型预检**（PROD-10 D5 后续）：`--cloud --cloud-model qwen/qwen3.6-27b --cloud-provider DeepInfra --purpose comparison --lanes obd`——同一 Qwen3.6-27B（FP8 托管）经 OpenRouter，关思考、预算同本地；只作参考，成绩单记为云端，**永不计入门槛**，合并仍须本地门槛评测。
 
 常用参数：`--lanes manual|obd`、`--ids lookup-001,cross-003`（按题号结尾匹配；两条 lane 同名时两边都跑）、`--thinking on --budget-scale 2`（开思考对照）、`--cloud`（deepseek 对照，不做预热、VIN 用假名）、`--purpose calibration --budget-scale 2`（预算校准）、`--wait`（等跑完再返回）。输出目录：`<base>.json`（完整）、`.slim.json`（精简，门槛 PR 入库用）、`.md`（摘要）、`.progress.jsonl`、`run.log`、`preflight.txt`。
@@ -387,7 +398,8 @@ V1/V2 和 V3 在同一个 Postgres 容器 `stf-postgres` 里（不同库、不�
 4. 整包用 gpg AES256 加密（口令文件 `~/.config/stf/backup_passphrase`，600），解密核对与原包一致才算成功；
 5. 本机 `~/stf_v3_backups/daily/`（700）一份；实验室共享盘 `/localnvme/stf_v3_backups/`（先确认是网络盘）一份，校验后再改名；缺的日子下次补传；
 6. 保留：最近 14 份成功的 + 再往前每周一份共 8 周；最新一份成功备份永不删除；
-7. 状态写到 `~/stf_v3_backups/status.json`，并写一份到 `stf_v3_backup_state` 卷给 `/v3/health` 的 `backup` 读。
+7. 状态写到 `~/stf_v3_backups/status.json`，并写一份到 `stf_v3_backup_state` 卷给 `/v3/health` 的 `backup` 读；
+8. **备份成功之后**才做维护（§7.5）：归档 180 天前已结束诊断的过程记录、清理 30 天前的队列流水。维护出错不影响备份本身的结果。
 
 ```
 bash stf_v3/ops/install_backup.sh              # 首次安装 / 单元文件改动后：账号 + 目录 + 口令文件 + 定时器
@@ -412,8 +424,9 @@ journalctl --user -u stf-v3-backup -n 30       # 这次跑的输出
 | `stf_v3_manuals`、`infra_diagnostic_api_manuals` | 备份（每天完整一份） |
 | `infra_diagnostic_api_audio` | 备份（V1 录音反馈） |
 | `infra/.env` | 备份（只在加密包里） |
+| `~/stf_v3_backups/archive/`（过程记录存档，§7.5） | 备份（随第二天的加密包；存档删掉的记录在当天备份里） |
 | `vllm_hf_cache`、`infra_ollama_data`、`ollama_data` | 不备份：可重新下载 |
-| `infra_diagnostic_api_logs`、`diagnostic_api_logs`、`stf_v3_backup_state` | 不备份：日志 / 状态 |
+| `infra_diagnostic_api_logs`、`diagnostic_api_logs`、`stf_v3_logs`、`~/stf_v3_logs`、`stf_v3_backup_state` | 不备份：日志（留 30 天）/ 状态 |
 | 匿名卷（其中一个约 3.1 GB，未被任何容器使用） | 不是 V3 的，不动 |
 
 **禁止**：`podman volume prune`、`podman system prune --volumes`、`podman-compose down -v`——部署 `down` 期间所有卷都「没在用」，会被一起删掉（FM-8）。
@@ -451,3 +464,63 @@ podman rm -f -v stf-v3-restore-drill                        # 用完删掉（-v 
 ```
 
 车辆必须还在真库里（软删除的也算）。原始日志文件另外从备份包取回，不覆盖已有文件：解密解包后 `podman unshare tar -C <stf_v3_obd_logs 卷目录> -xzf vol_stf_v3_obd_logs.tar.gz --skip-old-files ./<车辆编号>/`。文档和命令示例只用假 VIN。
+
+### 7.5 归档与清理（每天备份成功后）
+
+| 什么 | 留多久 | 怎么处理 |
+|---|---|---|
+| 诊断过程记录（`audit_events`，回放 / 直播用） | 已结束的诊断 180 天 | 导出到 `~/stf_v3_backups/archive/audit_events_<时间>_<运行编号>.tsv.gz`（+ 同名 `.json` 清单：行数、校验值、会话编号），重读核对行数和校验值后，**由数据库属主账号**在一个事务里删掉恰好这些行，并在会话上标 `events_archived_at`；行数不符整个回滚，存档文件也撤掉 |
+| 队列流水（procrastinate 已成功 / 已取消的任务） | 30 天 | 删；**失败的保留**供排查；定时任务防重复表还指着的跳过 |
+| 手册转换工作目录 | 失败 7 天 | GPU 工人清理（§1.7） |
+
+- **上线先只记数**：`~/stf_v3_backups/maintenance.apply` 这个文件不存在时，只记「候选 / 行数 / 删除 0」三个数到状态里（`backup.py status` 的 `maintenance`，`install_backup.sh --check` 也会报）。**人工核对一次数字合理后**再 `touch ~/stf_v3_backups/maintenance.apply` 打开删除；关掉就删这个文件。
+- 当天没有成功备份（24 小时内）就跳过并记警告——被删的记录一定在某份备份里（FM-5）。
+- 运行账号 `stf_v3_app` 对过程记录**永远只能追加**（黑匣子）；删除只由宿主机维护用属主账号做。
+- 手动跑一次：`python3 stf_v3/scripts/backup.py maintain`（按开关）或 `maintain --apply`（这一次真删，仍要当天备份成功）。
+- 已归档的诊断：`GET /v3/conversations/{id}` 显示 `events_archived: true`；回放 / 直播回 **410 `events_archived`**（报告和消息仍在）。
+- **把一份存档导回去**（例如要回放一次老诊断）：
+  ```
+  gunzip -c ~/stf_v3_backups/archive/<文件>.tsv.gz > /tmp/a.tsv && podman cp /tmp/a.tsv stf-postgres:/tmp/a.tsv && rm /tmp/a.tsv
+  podman exec stf-postgres psql -U stf_v3 -d stf_v3 -c "\copy audit_events FROM '/tmp/a.tsv'"
+  podman exec stf-postgres psql -U stf_v3 -d stf_v3 -c "UPDATE diagnosis_conversations SET events_archived_at = NULL WHERE id IN (<同名 .json 里的会话编号>)"
+  podman exec stf-postgres rm -f /tmp/a.tsv
+  ```
+
+### 7.6 每周核对
+
+`stf-v3-backup-verify.timer`：每周日 05:00（香港时间），解密共享盘上最新的一份，逐个核对清单里每个文件都在、校验值一致；不做恢复，明文用完即删。结果记在状态的 `last_verify`，`/v3/health` 的 `backup.last_verify` 显示时间与结果；超过 8 天没核对或核对失败，部署检查警告。手动：`python3 stf_v3/scripts/backup.py verify`（`--local` 核对本机那份）。**完整恢复演练每季度一次**（§7.3），用 Google Drive 里的钥匙文件从共享盘恢复。
+
+### 7.7 公开仓库：不许有真实 VIN
+
+仓库是公开的。CI 任务 `vin-scan`（每个 PR、每次推 main，不限路径）扫描全部入库文件里的 17 位 VIN 形状，只放行 `JHMGK5830HX202404`、`1HGCM82633A123456` 两个项目假 VIN（外加 obd_agent 测试用的教科书示例 VIN）；发现就失败，并且只打印打码后的形式。本地：`python3 stf_v3/scripts/check_no_vins.py`。issue / PR 里也只写假 VIN——2026-09-28 清理过一次真实 VIN（`#135`、`#136`、`#167`），评论已删了重发；#167 正文在 GitHub 编辑历史里的原始版本自己删不掉，由负责人向 GitHub 支持申请清除。
+
+## 8. 日志（PROD-15A）
+
+每个长期运行的进程把同一行 JSON 日志写两处：标准输出（`podman logs` / `journalctl`）和**自己的文件**。业务日志和框架日志（uvicorn、procrastinate、SQLAlchemy）走同一个出口。
+
+| 进程 | 文件 |
+|---|---|
+| API（`stf-v3-api`） | 卷 `stf_v3_logs` 里的 `api.log` |
+| 容器工人（`stf-v3-worker`） | 卷 `stf_v3_logs` 里的 `worker.log` |
+| 宿主机 GPU 工人 | `~/stf_v3_logs/gpu-worker.log` |
+
+- 每天 UTC 零点滚动为 `<进程>.log.<日期>.gz`，留 30 天（`STF_V3_LOG_KEEP_DAYS`），每个进程最多 2 GB（`STF_V3_LOG_MAX_MB`，超了先删最旧的一天）；文件 600、目录 700；不进备份。
+- 重建容器后日志仍在：
+  ```
+  podman unshare cat $(podman volume inspect stf_v3_logs --format '{{.Mountpoint}}')/api.log | tail -20
+  zcat ~/stf_v3_logs/gpu-worker.log.<日期>.gz | grep manual.ingest
+  ```
+- 日志里从来不写口令、令牌、邀请码（2026-09-28 开始写文件之前抽查过一整天：零命中）；新增日志字段时保持这一点。
+
+## 9. 常见故障速查
+
+| 现象 | 先看 | 章节 |
+|---|---|---|
+| 诊断一直排队 / 进行中 | `/v3/health` 的 `diagnosis`、`model_service`；`queue_ops.sh status` | §6.2、§6.4 |
+| 模型起不来或被停 | `bash infra/vllm_ctl.sh status`、`nvidia-smi` | §4.7 |
+| 手册转换卡住或失败 | `/v3/manuals` 状态、`journalctl --user -u stf-v3-gpu-worker` | §1.6、§1.7 |
+| 设备上传被拒 | `podman logs stf-v3-api \| grep ingest.rejected` | §2.2 |
+| 部署检查第 10 项红（备份过期） | `backup.py status`、`journalctl --user -u stf-v3-backup` | §7.2 |
+| 新请求报连接失败 | `/v3/health` 的 `db_connections`；必要时临时回退上限 | §1.5 |
+| 存储巡检警告「卷被重建」 | 卷里旧数据已丢，从最近一份备份恢复该卷 | §7.2、§7.3 |
+| 要回滚到旧版本 | 部署前检查 + 回滚步骤 | §6.5 |

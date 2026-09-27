@@ -3,6 +3,7 @@
 Author: Xiangzhu Yan
 """
 
+import os
 from typing import AsyncIterator
 
 from sqlalchemy import MetaData
@@ -33,6 +34,14 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=_NAMING_CONVENTION)
 
 
+# PROD-15A (FM-45): the runtime role has a connection limit (ops_roles.sql),
+# sized from every pool's maximum: this engine 5 + 5 overflow + the queue
+# connector 4 = 14 per process (API, container worker) and + 1 for the GPU
+# worker's ingest engine = 15 -> 43, limit 50 (7 spare for ops scripts run in
+# a container).  Read from the environment: settings.py is gate-managed.
+DB_MAX_OVERFLOW = int(os.environ.get("STF_V3_DB_MAX_OVERFLOW", "5"))
+
+
 def create_engine() -> AsyncEngine:
     """Creates the async engine from settings.
 
@@ -42,6 +51,7 @@ def create_engine() -> AsyncEngine:
     return create_async_engine(
         settings.database_url,
         pool_size=settings.db_pool_size,
+        max_overflow=DB_MAX_OVERFLOW,
         pool_pre_ping=True,
     )
 

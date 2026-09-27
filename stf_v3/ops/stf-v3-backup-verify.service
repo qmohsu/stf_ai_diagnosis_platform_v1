@@ -1,0 +1,19 @@
+# STF V3 weekly light backup check (PROD-15A T-28 / FM-47).  Rendered and
+# installed by stf_v3/ops/install_backup.sh; started by stf-v3-backup-verify.timer.
+# Decrypts the newest bundle on the network share and checks every file the
+# manifest names; restores nothing.  The full restore drill stays quarterly
+# and by hand (runbook §7.3).
+[Unit]
+Description=STF V3 weekly backup check (decrypt + manifest checksums)
+
+[Service]
+Type=oneshot
+UMask=0077
+Environment=STF_V3_REPO=@REPO@
+Environment=STF_V3_BACKUP_ROOT=@HOME@/stf_v3_backups
+Environment=STF_V3_BACKUP_OFFSITE_DIR=@OFFSITE@
+Environment=STF_V3_BACKUP_PASSPHRASE_FILE=@HOME@/.config/stf/backup_passphrase
+ExecStart=/usr/bin/python3 @REPO@/stf_v3/scripts/backup.py verify
+TimeoutStartSec=1h
+Nice=10
+IOSchedulingClass=idle

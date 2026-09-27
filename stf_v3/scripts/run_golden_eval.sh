@@ -101,10 +101,37 @@ fi
 # 5. The same model / key settings as the running API; nothing else (no JWT
 #    secret, never STF_V3_LLM_ALLOW_CLOUD — FM-34).  Values are passed by
 #    name only, so they never appear on a command line.
-for v in STF_V3_DATABASE_URL STF_V3_LLM_BASE_URL STF_V3_LLM_MODEL STF_V3_LLM_API_KEY STF_V3_LLM_PROFILE \
+for v in STF_V3_LLM_BASE_URL STF_V3_LLM_MODEL STF_V3_LLM_API_KEY STF_V3_LLM_PROFILE \
          STF_V3_CLOUD_LLM_MODEL STF_V3_CLOUD_LLM_API_KEY STF_V3_OPENROUTER_API_KEY; do
   export "$v=$(podman exec stf-v3-api printenv "$v" 2>/dev/null || true)"
 done
+# 5a. Database: ONLY the read-only eval role (manual catalog; PROD-15A FM-12 /
+#     FM-15) — never the runtime or owner URL.  Checked before the run: the
+#     identity must be stf_v3_eval with read-only transactions.
+STF_V3_DATABASE_URL="$(ENV_FILE="$REPO_DIR/infra/.env" python3 -c '
+import os
+for ln in open(os.environ["ENV_FILE"], encoding="utf-8"):
+    if ln.startswith("STF_V3_EVAL_DATABASE_URL="):
+        print(ln.split("=", 1)[1].strip())
+        break
+')"
+export STF_V3_DATABASE_URL
+[ -n "$STF_V3_DATABASE_URL" ] || fail "no STF_V3_EVAL_DATABASE_URL in infra/.env — run: bash stf_v3/scripts/db_roles.sh --init-eval-password"
+WHO="$(podman run -i --rm --network host -e STF_V3_DATABASE_URL "$IMAGE" python - 2>/dev/null <<'PY' || true
+import asyncio, os
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
+async def main() -> None:
+    engine = create_async_engine(os.environ["STF_V3_DATABASE_URL"])
+    async with engine.connect() as conn:
+        row = (await conn.execute(text("SELECT current_user, current_setting('transaction_read_only')"))).one()
+    await engine.dispose()
+    print(row[0], row[1])
+asyncio.run(main())
+PY
+)"
+[ "$WHO" = "stf_v3_eval on" ] || fail "eval database identity is '${WHO:-unreachable}', expected 'stf_v3_eval on' (read-only eval role, FM-15)"
+echo "eval database identity: stf_v3_eval (read-only transactions)" | tee -a "$PRE"
 export STF_V3_CLOUD_LLM_ENABLED=$([ $CLOUD -eq 1 ] && echo true || echo false)
 
 echo "$NAME" > "$LOCK"

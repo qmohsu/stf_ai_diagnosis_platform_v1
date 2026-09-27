@@ -86,6 +86,10 @@ class DiagnosisConversation(Base):
     error_message: Mapped[Optional[str]] = mapped_column(Text)
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    # PROD-15A FM-42: set when this finished conversation's process events
+    # (audit_events, > 180 days) were moved to the archive by the host
+    # maintenance service; the replay then answers 410 ``events_archived``.
+    events_archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

@@ -208,6 +208,25 @@
             "description": "Short sentence for the user.",
             "title": "Error Message"
           },
+          "events_archived": {
+            "default": false,
+            "description": "True once the process events (the replay / live stream) were moved to the archive — finished diagnoses older than 180 days.  The replay then answers 410 `events_archived`; the report and messages stay.",
+            "title": "Events Archived",
+            "type": "boolean"
+          },
+          "events_archived_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the process events were archived.",
+            "title": "Events Archived At"
+          },
           "finished_at": {
             "anyOf": [
               {
@@ -346,6 +365,25 @@
             ],
             "description": "Short sentence for the user.",
             "title": "Error Message"
+          },
+          "events_archived": {
+            "default": false,
+            "description": "True once the process events (the replay / live stream) were moved to the archive — finished diagnoses older than 180 days.  The replay then answers 410 `events_archived`; the report and messages stay.",
+            "title": "Events Archived",
+            "type": "boolean"
+          },
+          "events_archived_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the process events were archived.",
+            "title": "Events Archived At"
           },
           "finished_at": {
             "anyOf": [
@@ -1930,7 +1968,7 @@
   "paths": {
     "/health": {
       "get": {
-        "description": "Liveness + DB + queue backlog + host GPU worker + disk + commit,\nplus (PROD-11) unfinished diagnoses and the on-demand model service,\nplus (PROD-15A) the time of the last successful backup.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
+        "description": "Liveness + DB + queue backlog + host GPU worker + disk + commit,\nplus (PROD-11) unfinished diagnoses and the on-demand model service,\nplus (PROD-15A) the time of the last successful backup and the\nruntime role's connections against its limit.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
         "operationId": "health_health_get",
         "responses": {
           "200": {
@@ -2315,6 +2353,17 @@
             },
             "description": "`{detail, code}`"
           },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "events_archived",
+                  "detail": "The process of this diagnosis was archived"
+                }
+              }
+            },
+            "description": "`events_archived`: this finished diagnosis is older than 180 days and its process was moved to the archive (the conversation shows `events_archived: true`; report and messages remain)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -2442,7 +2491,7 @@
     },
     "/v3/health": {
       "get": {
-        "description": "Liveness + DB + queue backlog + host GPU worker + disk + commit,\nplus (PROD-11) unfinished diagnoses and the on-demand model service,\nplus (PROD-15A) the time of the last successful backup.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
+        "description": "Liveness + DB + queue backlog + host GPU worker + disk + commit,\nplus (PROD-11) unfinished diagnoses and the on-demand model service,\nplus (PROD-15A) the time of the last successful backup and the\nruntime role's connections against its limit.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
         "operationId": "health_v3_health_get",
         "responses": {
           "200": {
