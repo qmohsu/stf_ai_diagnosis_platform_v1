@@ -29,10 +29,13 @@ pip install ./obd_agent          # or: pip install -r obd_agent/requirements.txt
 python -m obd_agent.jetson_uploader \
     --base-url https://stf-diagnosis.dev \
     --username <user> \
-    --password <password> \
+    --password-file ~/.config/stf/v2_password \
     --log-file /var/log/obd/trip_20260505_164119.csv
 ```
 
+- Password sources, first match wins: `--password` (lands in shell
+  history / `ps`), `--password-file` (first line of a chmod-600 file),
+  the `STF_V2_PASSWORD` env var (#258).
 - Exit code `0` and a `session_id` on stdout indicate success.
 - Accepted formats: native TSV, OBDWIZ CSVLog, obd_maxlog CSV,
   Yamaha Dual OBDLink EX CSV (`A_KL_*` / `A_YAM_*` columns), generic

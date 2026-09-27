@@ -31,6 +31,11 @@ and exits non-zero on failure.  Token caching is intentionally not
 implemented; long-lived deployments should re-issue ``/auth/login``
 once per upload, which is cheap.
 
+The V2 password can come from ``--password``, ``--password-file`` (first
+line of a 600-mode file) or the ``STF_V2_PASSWORD`` env var, in that
+order.  Prefer the file or the env var: a value on the command line
+lands in shell history and ``ps`` output (#258).
+
 V3 dual push (PROD-07)
 ----------------------
 When a V3 env file exists (default ``~/.config/stf/v3_uploader.env``,
@@ -39,7 +44,10 @@ file is ALSO pushed to the V3 device endpoint (``POST /v3/ingest/device``
 with ``X-Device-Token``), *after* the V2 upload above.  The V2 leg is
 byte-for-byte what it was before PROD-07; the two legs succeed or fail
 independently.  Without the env file the script behaves exactly as
-before (V2 only) — that is also the rollback path.
+before (V2 only) — that is also the rollback path.  Any local failure
+of the V3 leg (unreadable or non-UTF-8 env file, spool dir that cannot
+be created, a crash while spooling) becomes a V3 ``config_error``; it
+never stops or changes the V2 upload (#258).
 
 Env file keys (``KEY=VALUE`` lines, ``#`` comments; the token is never
 accepted as a CLI flag so it cannot land in shell history)::
@@ -58,6 +66,8 @@ V3 leg behaviour:
   copy is deleted.
 * ``413`` / ``422`` (the file itself is refused) → moved to
   ``<spool>/rejected/`` with a ``.error.txt`` beside it; never retried.
+  VINs in the server's reason are masked as ``<VIN>`` everywhere the
+  script writes them (#258).
 * ``401`` (token invalid or revoked) is a configuration problem: the
   file stays pending, the run stops, exit code 2.
 * the response's ``vehicle_id`` is compared with ``STF_V3_VEHICLE_ID``
@@ -78,6 +88,7 @@ import json
 import logging
 import logging.handlers
 import os
+import re
 import shutil
 import stat
 import sys
@@ -119,6 +130,10 @@ OUTCOME_SPOOL_FULL = "spool_full"
 _V3_FAILURE_OUTCOMES = frozenset(
     {OUTCOME_REJECTED, OUTCOME_CONFIG_ERROR, OUTCOME_VEHICLE_MISMATCH, OUTCOME_SPOOL_FULL}
 )
+
+# ISO 3779 shape (no I, O, Q); used only to mask VINs in text we write.
+_VIN_RE = re.compile(r"(?<![A-Za-z0-9])[A-HJ-NPR-Z0-9]{17}(?![A-Za-z0-9])")
+_V2_PASSWORD_ENV: str = "STF_V2_PASSWORD"
 
 
 class UploadError(Exception):
@@ -351,11 +366,19 @@ def load_v3_config(env_file: Path) -> Optional[V3Config]:
 
     Raises:
         V3ConfigError: File present but ``STF_V3_BASE_URL`` /
-            ``STF_V3_DEVICE_TOKEN`` missing, or the vehicle id malformed.
+            ``STF_V3_DEVICE_TOKEN`` missing, the vehicle id malformed, or
+            the file unreadable (permissions, not UTF-8) — #258: a V3
+            config problem must never escape and stop the V2 leg.
     """
-    if not env_file.exists():
-        return None
-    values = _parse_env_file(env_file.read_text(encoding="utf-8"))
+    try:
+        if not env_file.exists():
+            return None
+        text = env_file.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise V3ConfigError(
+            f"{env_file}: cannot read ({type(exc).__name__}: {exc})"
+        ) from exc
+    values = _parse_env_file(text)
     base_url = values.get("STF_V3_BASE_URL", "").strip().rstrip("/")
     token = values.get("STF_V3_DEVICE_TOKEN", "").strip()
     if not base_url or not token:
@@ -384,14 +407,29 @@ def load_v3_config(env_file: Path) -> Optional[V3Config]:
 
 def _warn_if_world_readable(env_file: Path) -> None:
     """FM-22: the env file holds the device token; warn on loose modes."""
+    _warn_if_loose_mode(env_file, "v3_env_file_permissions")
+
+
+def _warn_if_loose_mode(path: Path, event: str) -> None:
+    """Warns when a secret-holding file is readable by group / others."""
     if os.name != "posix":
         return
-    mode = stat.S_IMODE(env_file.stat().st_mode)
+    try:
+        mode = stat.S_IMODE(path.stat().st_mode)
+    except OSError:
+        return
     if mode & 0o077:
-        logger.warning(
-            "v3_env_file_permissions: %s is mode %o; run: chmod 600 %s",
-            env_file, mode, env_file,
-        )
+        logger.warning("%s: %s is mode %o; run: chmod 600 %s", event, path, mode, path)
+
+
+def mask_vins(text: str) -> str:
+    """Replaces every VIN-shaped token with ``<VIN>`` (#258).
+
+    Rejection reasons from the server quote the log's VIN and the
+    vehicle's VIN; what this script prints or stores may be pasted into
+    tickets, so it never carries a VIN.
+    """
+    return _VIN_RE.sub("<VIN>", text)
 
 
 def v3_timeout(size_bytes: int) -> httpx.Timeout:
@@ -609,7 +647,7 @@ def _classify(cfg: V3Config, response: httpx.Response) -> V3Result:
             "device token invalid or revoked (401); fix the env file",
         )
     if 400 <= code < 500:
-        return V3Result(OUTCOME_REJECTED, code, response.text[:300])
+        return V3Result(OUTCOME_REJECTED, code, mask_vins(response.text)[:300])
     return V3Result(OUTCOME_SPOOLED, code, f"server error {code}")
 
 
@@ -874,8 +912,18 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--password",
         help=(
-            "Diagnostic API account password.  Pass via stdin or "
-            "env-substitution to avoid leaking into shell history."
+            "Diagnostic API account password.  Prefer --password-file or "
+            f"the {_V2_PASSWORD_ENV} env var: a value given here lands in "
+            "shell history and ps output."
+        ),
+    )
+    parser.add_argument(
+        "--password-file",
+        type=Path,
+        help=(
+            "File whose first line is the diagnostic API password (keep "
+            f"it chmod 600).  Used when --password is absent; else "
+            f"${_V2_PASSWORD_ENV}."
         ),
     )
     parser.add_argument(
@@ -943,6 +991,32 @@ def _require(args: argparse.Namespace, names: List[str]) -> bool:
     return True
 
 
+def _resolve_password(args: argparse.Namespace) -> bool:
+    """Fills ``args.password`` from ``--password-file`` or the env var.
+
+    Precedence: ``--password`` > ``--password-file`` >
+    ``$STF_V2_PASSWORD``.  The value is never logged.
+
+    Returns:
+        False when ``--password-file`` was given but cannot be read (the
+        caller exits 1: the V2 leg cannot run), else True.
+    """
+    if args.password:
+        return True
+    if args.password_file is not None:
+        try:
+            lines = args.password_file.read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeDecodeError) as exc:
+            logger.error("password_file_unreadable: %s (%s)",
+                         args.password_file, type(exc).__name__)
+            return False
+        _warn_if_loose_mode(args.password_file, "password_file_permissions")
+        args.password = lines[0] if lines else ""
+        return True
+    args.password = os.environ.get(_V2_PASSWORD_ENV) or None
+    return True
+
+
 def _run_drain(env_file: Path) -> int:
     try:
         cfg = load_v3_config(env_file)
@@ -953,14 +1027,21 @@ def _run_drain(env_file: Path) -> int:
         logger.error("v3_disabled: env file not found: %s (nothing to drain)", env_file)
         return 2
     spool = Spool(cfg.spool_dir)
-    _install_run_log(spool)
     lock = RunLock(spool.lock_path)
-    if not lock.acquire():
-        logger.info("v3_locked: another uploader is running; exiting")
-        return 0
+    try:
+        _install_run_log(spool)
+        if not lock.acquire():
+            logger.info("v3_locked: another uploader is running; exiting")
+            return 0
+    except OSError as exc:
+        logger.error("v3_config_error: spool dir unusable: %s: %s", cfg.spool_dir, exc)
+        return 2
     try:
         with httpx.Client() as client:
             summary = drain(cfg, spool, client)
+    except OSError as exc:
+        logger.error("v3_drain_local_error: %s", exc)
+        return 2
     finally:
         lock.release()
     logger.info("v3_drain_done: uploaded=%d rejected=%d stopped=%s skipped=%s",
@@ -987,6 +1068,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     if args.drain:
         return _run_drain(args.v3_env_file)
 
+    if not _resolve_password(args):
+        return 1
     if not _require(args, ["base-url", "username", "password", "log-file"]):
         return 1
 
@@ -1013,7 +1096,17 @@ def main(argv: Optional[list[str]] = None) -> int:
     if v3_cfg is not None:
         logger.info("v3: enabled base_url=%s expected_vehicle=%s spool=%s",
                     v3_cfg.base_url, v3_cfg.expected_vehicle_id or "-", v3_cfg.spool_dir)
-        _install_run_log(Spool(v3_cfg.spool_dir))
+        try:
+            _install_run_log(Spool(v3_cfg.spool_dir))
+        except OSError as exc:
+            # #258: e.g. the trip hook runs as another user than the one
+            # who created the spool; switch the V3 leg off, keep V2.
+            v3_result = V3Result(
+                OUTCOME_CONFIG_ERROR, None,
+                f"spool dir unusable: {v3_cfg.spool_dir}: {exc}",
+            )
+            logger.error("v3: enabled but unusable: %s", v3_result.detail)
+            v3_cfg = None
     elif v3_result.outcome == OUTCOME_DISABLED:
         logger.info("v3: disabled (env file not found: %s)", args.v3_env_file)
 
@@ -1041,18 +1134,14 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     # ---- V3 leg ---------------------------------------------------------
     if v3_cfg is not None:
-        spool = Spool(v3_cfg.spool_dir)
-        lock = RunLock(spool.lock_path)
-        if not lock.acquire():
-            logger.warning("v3_locked: another uploader is running; spooling %s",
-                           args.log_file.name)
-            v3_result = _spool_or_full(spool, args.log_file, "lock held")
-        else:
-            try:
-                with httpx.Client() as client:
-                    v3_result = v3_push_trip(v3_cfg, spool, args.log_file, client)
-            finally:
-                lock.release()
+        try:
+            v3_result = _v3_trip_leg(v3_cfg, args.log_file)
+        except Exception as exc:  # noqa: BLE001 - #258: V3 must never break V2
+            v3_result = V3Result(
+                OUTCOME_CONFIG_ERROR, None,
+                f"v3 leg failed locally: {type(exc).__name__}: {exc}",
+            )
+    if v3_cfg is not None or v3_result.outcome == OUTCOME_CONFIG_ERROR:
         logger.info("v3_result: %s status=%s log_id=%s %s",
                     v3_result.outcome, v3_result.status_code,
                     v3_result.log_id, v3_result.detail)
@@ -1061,6 +1150,21 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 1
     print(session_id)
     return 2 if v3_result.outcome in _V3_FAILURE_OUTCOMES else 0
+
+
+def _v3_trip_leg(cfg: V3Config, log_file: Path) -> V3Result:
+    """Runs the V3 leg for one trip file under the spool's run lock."""
+    spool = Spool(cfg.spool_dir)
+    lock = RunLock(spool.lock_path)
+    if not lock.acquire():
+        logger.warning("v3_locked: another uploader is running; spooling %s",
+                       log_file.name)
+        return _spool_or_full(spool, log_file, "lock held")
+    try:
+        with httpx.Client() as client:
+            return v3_push_trip(cfg, spool, log_file, client)
+    finally:
+        lock.release()
 
 
 if __name__ == "__main__":
