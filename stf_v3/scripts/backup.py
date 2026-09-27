@@ -347,6 +347,46 @@ def save_status(cfg: Config, host: Host, status: Dict[str, Any]) -> None:
             print(f"warning: could not write health status: {exc}", file=sys.stderr)
 
 
+# ── moving files in and out of containers ──────────────────────────────
+#
+# 2026-09-28: large output streamed through `podman exec` (podman 3.4) was
+# cut short at random — a pg_dump written to a host file that way came out
+# 15 MB instead of 20 MB and still "listed" fine.  So data never travels
+# through an exec stream: commands write files INSIDE the container, and
+# `podman cp` moves them, checked by sha256 on both sides.
+
+
+def container_sha256(host: "Host", container: str, inner: str) -> str:
+    res = host.run(["podman", "exec", container, "sha256sum", inner], 600)
+    if res.rc != 0 or not res.out.split():
+        raise BackupError(f"cannot checksum {inner} in {container}")
+    return res.out.split()[0]
+
+
+def copy_out(host: "Host", container: str, inner: str, out: Path) -> None:
+    """``podman cp`` a container file to the host; checksums must match."""
+    want = container_sha256(host, container, inner)
+    res = host.run(["podman", "cp", f"{container}:{inner}", str(out)], 1800)
+    if res.rc != 0 or not out.is_file():
+        raise BackupError(f"podman cp {inner} failed: {res.err.strip()[:200]}")
+    os.chmod(out, 0o600)
+    if sha256_file(out) != want:
+        raise BackupError(f"{inner} changed while copying out of {container}")
+
+
+def copy_in(host: "Host", src: Path, container: str, inner: str) -> None:
+    """``podman cp`` a host file into a container; checksums must match."""
+    res = host.run(["podman", "cp", str(src), f"{container}:{inner}"], 1800)
+    if res.rc != 0:
+        raise BackupError(f"podman cp into {container} failed: {res.err.strip()[:200]}")
+    if container_sha256(host, container, inner) != sha256_file(src):
+        raise BackupError(f"{src.name} changed while copying into {container}")
+
+
+def remove_inner(host: "Host", container: str, inner: str) -> None:
+    host.run(["podman", "exec", container, "rm", "-f", inner], 60)
+
+
 # ── database snapshot + dump ───────────────────────────────────────────
 
 COUNT_SQL = """
@@ -385,21 +425,27 @@ def dump_database(cfg: Config, host: Host, db: str, out: Path) -> Dict[str, Any]
         if session.query("SELECT to_regclass('public.alembic_version') IS NOT NULL")[0].strip() == "t":
             alembic = session.query("SELECT coalesce(string_agg(version_num, ','), '') FROM alembic_version")
         stats = table_stats(session.query)
-        res = host.run(["podman", "exec", cfg.pg_container, "pg_dump", "-U", cfg.role, "-d", db,
-                        "-Fc", f"--snapshot={snap}", f"--lock-wait-timeout={cfg.lock_wait_s}s"],
-                       timeout=3600, stdout_path=out)
-        if res.rc != 0:
-            raise BackupError(f"pg_dump {db} failed rc={res.rc}: {res.err.strip()[:300]}")
+        inner = f"/tmp/stf_backup_{uuid.uuid4().hex[:8]}_{db}.dump"
+        try:
+            res = host.run(["podman", "exec", cfg.pg_container, "pg_dump", "-U", cfg.role, "-d", db,
+                            "-Fc", f"--snapshot={snap}", f"--lock-wait-timeout={cfg.lock_wait_s}s",
+                            "-f", inner], timeout=3600)
+            if res.rc != 0:
+                raise BackupError(f"pg_dump {db} failed rc={res.rc}: {res.err.strip()[:300]}")
+            # FM-1: read EVERY byte back (a TOC listing passes on a cut file)
+            full = host.run(["podman", "exec", cfg.pg_container, "pg_restore", "-f", "/dev/null", inner], 3600)
+            if full.rc != 0:
+                raise BackupError(f"dump of {db} is incomplete: {full.err.strip()[:200]}")
+            listing = host.run(["podman", "exec", cfg.pg_container, "pg_restore", "--list", inner], 600)
+            data_entries = sum(1 for ln in listing.out.splitlines() if " TABLE DATA " in ln)
+            if listing.rc != 0 or data_entries < len(stats):
+                raise BackupError(f"dump of {db} lists {data_entries} table data entries, "
+                                  f"snapshot saw {len(stats)} tables")
+            copy_out(host, cfg.pg_container, inner, out)
+        finally:
+            remove_inner(host, cfg.pg_container, inner)
     finally:
         session.close()
-    listing = host.run(["podman", "exec", "-i", cfg.pg_container, "pg_restore", "--list"],
-                       timeout=600, stdin_path=out)
-    if listing.rc != 0:
-        raise BackupError(f"dump of {db} does not list: {listing.err.strip()[:200]}")
-    data_entries = sum(1 for ln in listing.out.splitlines() if " TABLE DATA " in ln)
-    tables_with_rows = len(stats)
-    if data_entries < tables_with_rows:
-        raise BackupError(f"dump of {db} lists {data_entries} table data entries, snapshot saw {tables_with_rows} tables")
     return {"snapshot_at": taken, "server_version": version,
             "alembic": (alembic[0].strip() if alembic else ""), "tables": stats,
             "file": out.name, "bytes": out.stat().st_size, "sha256": sha256_file(out)}
@@ -407,10 +453,15 @@ def dump_database(cfg: Config, host: Host, db: str, out: Path) -> Dict[str, Any]
 
 def dump_roles(cfg: Config, host: Host, out: Path) -> Dict[str, Any]:
     """Role definitions without passwords (they come back from .env)."""
-    res = host.run(["podman", "exec", cfg.pg_container, "pg_dumpall", "-U", cfg.role,
-                    "--roles-only", "--no-role-passwords"], timeout=300, stdout_path=out)
-    if res.rc != 0:
-        raise BackupError(f"role dump failed: {res.err.strip()[:200]}")
+    inner = f"/tmp/stf_backup_{uuid.uuid4().hex[:8]}_roles.sql"
+    try:
+        res = host.run(["podman", "exec", cfg.pg_container, "pg_dumpall", "-U", cfg.role,
+                        "--roles-only", "--no-role-passwords", "-f", inner], timeout=300)
+        if res.rc != 0:
+            raise BackupError(f"role dump failed: {res.err.strip()[:200]}")
+        copy_out(host, cfg.pg_container, inner, out)
+    finally:
+        remove_inner(host, cfg.pg_container, inner)
     return {"file": out.name, "sha256": sha256_file(out)}
 
 
@@ -698,8 +749,8 @@ def start_drill_container(cfg: Config, host: Host) -> None:
 
 def restore_into_drill(host: Host, stage: Path, manifest: Dict[str, Any]) -> Dict[str, Any]:
     """Roles, then each database; compares counts + samples with the manifest."""
-    roles = drill_exec(host, ["psql", "-U", "postgres", "-d", "postgres", "-X", "-q"],
-                       stdin_path=stage / manifest["roles"]["file"])
+    copy_in(host, stage / manifest["roles"]["file"], DRILL_CONTAINER, "/tmp/roles.sql")
+    roles = drill_exec(host, ["psql", "-U", "postgres", "-d", "postgres", "-X", "-q", "-f", "/tmp/roles.sql"])
     role_errors = [ln for ln in roles.err.splitlines() if "ERROR" in ln and "already exists" not in ln]
     if role_errors:
         raise BackupError(f"roles restore: {role_errors[0][:200]}")
@@ -708,8 +759,10 @@ def restore_into_drill(host: Host, stage: Path, manifest: Dict[str, Any]) -> Dic
         mk = drill_exec(host, ["createdb", "-U", "postgres", "-T", "template0", db], 120)
         if mk.rc != 0:
             raise BackupError(f"createdb {db}: {mk.err.strip()[:200]}")
-        rs = drill_exec(host, ["pg_restore", "-U", "postgres", "-d", db, "--exit-on-error"], 3600,
-                        stdin_path=stage / info["file"])
+        copy_in(host, stage / info["file"], DRILL_CONTAINER, f"/tmp/{info['file']}")
+        rs = drill_exec(host, ["pg_restore", "-U", "postgres", "-d", db, "--exit-on-error",
+                               f"/tmp/{info['file']}"], 3600)
+        remove_inner(host, DRILL_CONTAINER, f"/tmp/{info['file']}")
         if rs.rc != 0:
             raise BackupError(f"pg_restore {db}: {rs.err.strip()[:300]}")
         got = table_stats(lambda sql, _db=db: drill_psql(host, _db, sql))
@@ -770,15 +823,18 @@ def copy_content(host: Host, src: Tuple[str, str, str], dst: Tuple[str, str, str
         # through a pipe arrived cut mid-row on the server (2026-09-28);
         # pg_dump's output written the same way is intact.
         data_file = work / f"copy-{uuid.uuid4().hex[:8]}-{table}.tsv"
-        out = host.run(["podman", "exec", src[0], "psql", "-U", src[1], "-d", src[2], "-X", "-q",
-                        "-c", f"COPY (SELECT * FROM {table} WHERE {filters[table]}) TO STDOUT"], 600,
-                       stdout_path=data_file)
-        try:
-            rows = data_file.read_text(encoding="utf-8")
-        finally:
-            data_file.unlink()
+        inner = f"/tmp/stf_copy_{table}.tsv"
+        out = host.run(["podman", "exec", src[0], "psql", "-U", src[1], "-d", src[2], "-X", "-q", "-c",
+                        f"\\copy (SELECT * FROM {table} WHERE {filters[table]}) TO '{inner}'"], 600)
         if out.rc != 0:
             raise BackupError(f"read {table} from backup: {out.err.strip()[:200]}")
+        try:
+            copy_out(host, src[0], inner, data_file)
+            rows = data_file.read_text(encoding="utf-8")
+        finally:
+            remove_inner(host, src[0], inner)
+            if data_file.exists():
+                data_file.unlink()
         copied[table] = rows.count("\n")
         script += [f"CREATE TEMP TABLE s_{table} (LIKE {table});", f"COPY s_{table} FROM STDIN;"]
         script.append(rows.rstrip("\n") + ("\n\\." if rows else "\\."))
@@ -789,11 +845,13 @@ def copy_content(host: Host, src: Tuple[str, str, str], dst: Tuple[str, str, str
     fd = os.open(script_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as fh:
         fh.write("\n".join(script) + "\n")
+    inner = f"/tmp/{script_file.name}"
     try:
-        res = host.run(["podman", "exec", "-i", dst[0], "psql", "-U", dst[1], "-d", dst[2], "-X", "-q"], 600,
-                       stdin_path=script_file)
+        copy_in(host, script_file, dst[0], inner)
+        res = host.run(["podman", "exec", dst[0], "psql", "-U", dst[1], "-d", dst[2], "-X", "-q", "-f", inner], 600)
     finally:
         script_file.unlink()
+        remove_inner(host, dst[0], inner)
     if res.rc != 0:
         raise BackupError(f"write into target failed (nothing written): {res.err.strip()[:300]}")
     return copied

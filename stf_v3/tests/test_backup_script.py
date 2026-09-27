@@ -68,6 +68,7 @@ class FakeHost:
         self.tmp, self.fail, self.fstype, self.free = tmp, fail, fstype, free_gb
         self.calls: List[List[str]] = []
         self.sessions: List[str] = []
+        self.inner: Dict[str, bytes] = {}          # files inside containers
         self.state_dir = tmp / "state_volume"
         self.state_dir.mkdir()
 
@@ -98,16 +99,39 @@ class FakeHost:
         if a[:2] == ["podman", "exec"] and "pg_isready" in a:
             return R(0 if self.fail != "db_down" else 2)
         if a[:2] == ["podman", "exec"] and "pg_dump" in a:
+            assert stdout_path is None                     # never streamed out (2026-09-28)
+            inner = a[a.index("-f") + 1]
             if self.fail == "pg_dump":
-                stdout_path.write_bytes(b"PGDMP-half")
+                self.inner[inner] = b"PGDMP-half"
                 return R(1, "", "pg_dump: error: connection lost")
-            stdout_path.write_bytes(b"PGDMP-" + a[a.index("-d") + 1].encode())
+            db = a[a.index("-d") + 1]
+            self.inner[inner] = b"PGDMP-" + db.encode() + (b"-CUT" if self.fail == "dump_truncated" else b"")
             return R(0)
+        if "pg_restore" in a and "/dev/null" in a:
+            data = self.inner[a[-1]]
+            return R(1, "", "pg_restore: error: could not read from input file: end of file") \
+                if data.endswith(b"-CUT") else R(0)
         if "pg_restore" in a and "--list" in a:
-            db = stdin_path.read_bytes().decode().split("-", 1)[1]
+            db = self.inner[a[-1]].decode().split("-")[1]
             return R(0, "".join(f"1; 0 0 TABLE DATA public {t} owner\n" for t in TABLES[db]))
         if "pg_dumpall" in a:
-            stdout_path.write_text("CREATE ROLE stf_v3;\n")
+            self.inner[a[a.index("-f") + 1]] = b"CREATE ROLE stf_v3;\n"
+            return R(0)
+        if a[:2] == ["podman", "exec"] and "sha256sum" in a:
+            import hashlib
+            return R(0, hashlib.sha256(self.inner[a[-1]]).hexdigest() + "  " + a[-1] + "\n")
+        if a[:2] == ["podman", "exec"] and a[3:5] == ["rm", "-f"]:
+            self.inner.pop(a[5], None)
+            return R(0)
+        if a[:2] == ["podman", "cp"]:
+            src, dst = a[2], a[3]
+            if ":" in src and not src.startswith("/") and not src[1:3] == ":\\":
+                data = self.inner[src.split(":", 1)[1]]
+                if self.fail == "cp_differs":
+                    data = data + b"?"
+                pathlib.Path(dst).write_bytes(data)
+            else:
+                self.inner[dst.split(":", 1)[1]] = pathlib.Path(src).read_bytes()
             return R(0)
         if a[:3] == ["podman", "unshare", "find"]:
             return R(0, "...")                               # 3 files in each volume
@@ -187,6 +211,8 @@ def test_a_clean_run_produces_one_verified_encrypted_bundle(tmp_path: pathlib.Pa
     ("tar", "tar of stf_v3_obd_logs failed"),
     ("tar_short", "has 2 files, volume had 3"),
     ("decrypt_differs", "does not decrypt to the same bytes"),
+    ("dump_truncated", "dump of stf_v3 is incomplete"),
+    ("cp_differs", "changed while copying out"),
     ("db_down", "database not ready"),
 ])
 def test_any_failed_step_is_a_failed_run_with_no_bundle(tmp_path: pathlib.Path, fail: str, why: str) -> None:
@@ -365,6 +391,8 @@ def test_the_manifest_records_versions_counts_and_order(tmp_path: pathlib.Path) 
     # counts and dump come from ONE snapshot (FM-41)
     dump = [c for c in host.calls if "pg_dump" in c][0]
     assert "--snapshot=00000003-0000001B-1" in dump and "--lock-wait-timeout=60s" in dump
+    assert any("/dev/null" in c for c in host.calls if "pg_restore" in c)   # every byte read back
+    assert host.inner == {}                                                # nothing left in the container
     assert host.sessions.index("stf_v3: close") > host.sessions.index("stf_v3: SELECT")
 
 
