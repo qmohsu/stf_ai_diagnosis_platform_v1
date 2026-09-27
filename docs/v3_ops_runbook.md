@@ -2,8 +2,8 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.12（PROD-15A PR ①：§7 数据库访问规则、备份与恢复；v0.11 为 PROD-15 拆分） |
-| 日期 | 2026-09-27 |
+| 版本 | v0.13（§7.3 / §7.4 演练容器连同数据卷一起删；v0.12 为 PROD-15A PR ① 数据库访问规则、备份与恢复） |
+| 日期 | 2026-09-28 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
 
@@ -427,7 +427,7 @@ python3 stf_v3/scripts/backup.py drill                      # 用最新的本机
 python3 stf_v3/scripts/backup.py drill --offsite --passphrase-file <托管的钥匙文件>   # 用共享盘副本 + 托管的钥匙（验收 T-9）
 ```
 
-它会：解密 → 恢复账号定义与两个库 → 逐表比对行数和抽样摘要（与备份时同一快照里记下的清单比，不与此刻的真库比）→ 执行恢复收尾（`stf_v3/scripts/sql/restore_finalize.sql`：排队中的任务取消、进行中的任务标失败、模型控制器状态复位）→ 在演练库副本上演示「只找回一辆车的诊断」→ 删掉容器和所有明文。输出一段 JSON，`ok: true` 才算通过；结果也记进 `status.json` 的 `last_drill`。每季度完整演练一次。
+它会：解密 → 恢复账号定义与两个库 → 逐表比对行数和抽样摘要（与备份时同一快照里记下的清单比，不与此刻的真库比）→ 执行恢复收尾（`stf_v3/scripts/sql/restore_finalize.sql`：排队中的任务取消、进行中的任务标失败、模型控制器状态复位）→ 在演练库副本上演示「只找回一辆车的诊断」→ 删掉容器、它的数据卷和所有明文。输出一段 JSON，`ok: true` 才算通过；结果也记进 `status.json` 的 `last_drill`。每季度完整演练一次。
 
 **整库恢复（真出事时）**：
 
@@ -447,7 +447,7 @@ python3 stf_v3/scripts/backup.py drill --offsite --passphrase-file <托管的钥
 ```
 python3 stf_v3/scripts/backup.py drill --keep               # 先把备份恢复进演练容器并保留它
 python3 stf_v3/scripts/backup.py restore-vehicle --vehicle-id <车辆编号> [--conversation-id <会话编号>] --i-am-restoring-live
-podman rm -f stf-v3-restore-drill                           # 用完删掉
+podman rm -f -v stf-v3-restore-drill                        # 用完删掉（-v 连同它的数据卷，否则留下两个库的明文副本）
 ```
 
 车辆必须还在真库里（软删除的也算）。原始日志文件另外从备份包取回，不覆盖已有文件：解密解包后 `podman unshare tar -C <stf_v3_obd_logs 卷目录> -xzf vol_stf_v3_obd_logs.tar.gz --skip-old-files ./<车辆编号>/`。文档和命令示例只用假 VIN。

@@ -446,3 +446,31 @@ def test_the_gpu_worker_heartbeat_is_left_out_of_volume_archives(tmp_path: pathl
         names = a[a.index("--") + 1:]
         assert names == ["Corolla E11 Haynes", "uploads"]
         assert "." not in a[a.index("-czf"):]
+
+
+class _DrillHost(FakeHost):
+    """FakeHost that also answers the drill container's own commands."""
+
+    def run(self, argv: Sequence[str], timeout: float = 600, **kw: Any) -> Any:
+        a = list(argv)
+        if a[:2] == ["podman", "rm"] or a[:3] == ["podman", "run", "-d"]:
+            self.calls.append(a)
+            return bk.Result(0)
+        if a[:2] == ["podman", "inspect"]:
+            self.calls.append(a)
+            return bk.Result(0, "docker.io/pgvector/pgvector:0.7.4-pg15\n")
+        return super().run(argv, timeout, **kw)
+
+
+def test_the_drill_container_goes_with_its_data_volume(tmp_path: pathlib.Path) -> None:
+    """2026-09-28 server finding: the Postgres image gives the drill container
+    an anonymous data volume (a full plaintext copy of both restored DBs);
+    ``rm -f`` without ``-v`` left seven behind.  Both the pre-clean at start
+    and the clean-up after a failed drill must take the volume with them."""
+    cfg, host = _cfg(tmp_path), _DrillHost(tmp_path)
+    bk.start_drill_container(cfg, host)
+    rc = bk.run_drill(cfg, host, offsite=False, ask=False, keep=False,
+                      bundle=str(tmp_path / "missing.tar.gpg"))
+    removals = [c for c in host.calls if c[:2] == ["podman", "rm"]]
+    assert rc == 1 and len(removals) == 2
+    assert all(c == ["podman", "rm", "-f", "-v", bk.DRILL_CONTAINER] for c in removals)
