@@ -397,7 +397,7 @@ systemctl --user start stf-v3-backup.service   # 立刻跑一次（部署前检�
 journalctl --user -u stf-v3-backup -n 30       # 这次跑的输出
 ```
 
-**离线口令（必须做一次）**：`install_backup.sh` 生成口令文件后，**你本人**在自己的终端里 `cat ~/.config/stf/backup_passphrase` 抄进密码管理器；它从不在任何输出里出现。服务器系统盘坏了时，只有「共享盘加密副本 + 这份离线口令」能恢复。
+**恢复钥匙托管（用户决定 2026-09-27）**：不靠任何人记住或自己保管口令（「自己存的一定会丢」）。钥匙文件 `STF_V3_备份恢复钥匙_backup-recovery-key_<日期>.txt` 由我们从服务器直接拷到用户电脑桌面、从不显示内容，用户放进自己的 **Google Drive**；文件第一行是钥匙，下面是用途与用法说明（gpg 只读第一行）。服务器系统盘坏了时靠「共享盘加密副本 + Google Drive 里这份钥匙文件」恢复；在 Google Drive 搜「STF 备份恢复钥匙」或「backup recovery key」。**以后若换钥匙**，新钥匙文件照同样方式托管，旧文件保留（旧备份只能用旧钥匙打开）。
 
 部署检查第 10 项：最近一次**成功**备份超过 36 小时判失败（看成功时间，不看有没有失败记录）；本地备份超过 50 GB、目录权限不是 700、异地副本过期只警告。
 
@@ -422,7 +422,7 @@ journalctl --user -u stf-v3-backup -n 30       # 这次跑的输出
 
 ```
 python3 stf_v3/scripts/backup.py drill                      # 用最新的本机备份
-python3 stf_v3/scripts/backup.py drill --offsite --ask-passphrase   # 用共享盘副本 + 手输离线口令（验收 T-9）
+python3 stf_v3/scripts/backup.py drill --offsite --passphrase-file <托管的钥匙文件>   # 用共享盘副本 + 托管的钥匙（验收 T-9）
 ```
 
 它会：解密 → 恢复账号定义与两个库 → 逐表比对行数和抽样摘要（与备份时同一快照里记下的清单比，不与此刻的真库比）→ 执行恢复收尾（`stf_v3/scripts/sql/restore_finalize.sql`：排队中的任务取消、进行中的任务标失败、模型控制器状态复位）→ 在演练库副本上演示「只找回一辆车的诊断」→ 删掉容器和所有明文。输出一段 JSON，`ok: true` 才算通过；结果也记进 `status.json` 的 `last_drill`。每季度完整演练一次。

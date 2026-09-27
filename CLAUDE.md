@@ -402,7 +402,8 @@ the raw-log / manual volumes and `infra/.env` → one gpg-encrypted bundle in
 `~/stf_v3_backups/daily` + a verified copy on `/localnvme/stf_v3_backups`;
 14 daily + 8 weekly successes kept.  Install / check with `bash
 stf_v3/ops/install_backup.sh [--check]`; status `python3 stf_v3/scripts/backup.py
-status`; restore drill `backup.py drill [--offsite --ask-passphrase]` (throwaway
+status`; restore drill `backup.py drill [--offsite --passphrase-file <escrowed key>]`
+(the recovery key is escrowed in the user's Google Drive, never self-kept; throwaway
 no-network container, never the live instance); runbook §7.  `/v3/health`
 `backup` and `deploy_check.sh` check 10 fail when the last SUCCESSFUL backup is
 older than 36 h.  Never `podman volume prune` / `system prune --volumes` /

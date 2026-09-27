@@ -29,7 +29,7 @@ Subcommands::
     backup.py init                   # dirs + passphrase file (prints no secret)
     backup.py run                    # the daily backup (systemd)
     backup.py status                 # print the status file
-    backup.py drill [--offsite] [--ask-passphrase] [--keep]
+    backup.py drill [--offsite] [--ask-passphrase | --passphrase-file KEYFILE] [--keep]
     backup.py restore-vehicle --vehicle-id UUID [--conversation-id UUID] --i-am-restoring-live
 
 Author: Xiangzhu Yan
@@ -799,8 +799,15 @@ def copy_content(host: Host, src: Tuple[str, str, str], dst: Tuple[str, str, str
     return copied
 
 
-def read_passphrase(cfg: Config, ask: bool, tmpdir: Path) -> Path:
-    """The passphrase file to use; with ``ask`` the operator types it (FM-51)."""
+def read_passphrase(cfg: Config, ask: bool, tmpdir: Path, key_file: Optional[str] = None) -> Path:
+    """The passphrase file to use (FM-51).
+
+    ``key_file``: the escrowed recovery-key file (only its FIRST line is the
+    key; gpg reads just that line).  ``ask``: the operator types it.
+    Default: the server's own copy.
+    """
+    if key_file:
+        return Path(key_file)
     if not ask:
         return cfg.passphrase_file
     typed = getpass.getpass("backup passphrase (offline copy): ")
@@ -829,7 +836,7 @@ def pick_bundle(cfg: Config, host: Host, offsite: bool, explicit: Optional[str])
 
 
 def run_drill(cfg: Config, host: Host, *, offsite: bool, ask: bool, keep: bool,
-              bundle: Optional[str] = None) -> int:
+              bundle: Optional[str] = None, key_file: Optional[str] = None) -> int:
     """Restores the latest bundle into a throwaway container and checks it."""
     ensure_private_dir(cfg.tmp)
     tmp = cfg.tmp / f"drill-{uuid.uuid4().hex[:8]}"
@@ -839,7 +846,8 @@ def run_drill(cfg: Config, host: Host, *, offsite: bool, ask: bool, keep: bool,
         src = pick_bundle(cfg, host, offsite, bundle)
         report["bundle"] = src.name
         report["source"] = "offsite" if offsite else "local"
-        pp = read_passphrase(cfg, ask, tmp)
+        pp = read_passphrase(cfg, ask, tmp, key_file)
+        report["key"] = "recovery-key file" if key_file else ("typed" if ask else "server copy")
         plain = tmp / "bundle.tar"
         decrypt(cfg, host, src, plain, pp)
         stage = tmp / "stage"
@@ -952,6 +960,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     d = sub.add_parser("drill")
     d.add_argument("--offsite", action="store_true", help="use the newest bundle on the network share")
     d.add_argument("--ask-passphrase", action="store_true", help="type the offline passphrase (FM-51)")
+    d.add_argument("--passphrase-file", help="the escrowed recovery-key file (first line = key)")
     d.add_argument("--keep", action="store_true", help="keep the drill container for restore-vehicle")
     d.add_argument("--bundle", help="explicit bundle path")
     r = sub.add_parser("restore-vehicle")
@@ -971,7 +980,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
     if args.cmd == "drill":
         return run_drill(cfg, host, offsite=args.offsite, ask=args.ask_passphrase, keep=args.keep,
-                         bundle=args.bundle)
+                         bundle=args.bundle, key_file=args.passphrase_file)
     return run_restore_vehicle(cfg, host, args.vehicle_id, args.conversation_id)
 
 

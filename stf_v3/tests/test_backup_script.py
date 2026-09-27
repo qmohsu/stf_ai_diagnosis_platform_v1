@@ -389,3 +389,14 @@ def test_the_backup_role_sql_is_read_only_and_passwordless() -> None:
     assert "GRANT pg_read_all_data TO stf_v3_backup" in sql
     assert "PASSWORD NULL" in sql and "default_transaction_read_only = on" in sql
     assert "NOSUPERUSER" in sql and "CONNECTION LIMIT 4" in sql
+
+
+def test_the_escrowed_recovery_key_file_is_used_as_is(tmp_path: pathlib.Path) -> None:
+    """FM-51 (user decision 2026-09-27): recovery uses the key file kept in the
+    user's cloud drive (first line = key, notes below it; gpg reads only the
+    first line), never a remembered passphrase."""
+    cfg = _cfg(tmp_path)
+    key = tmp_path / "STF_V3_recovery-key.txt"
+    key.write_text("k3y\n\nnotes for humans\n")
+    assert bk.read_passphrase(cfg, False, tmp_path, str(key)) == key
+    assert bk.read_passphrase(cfg, False, tmp_path) == cfg.passphrase_file
