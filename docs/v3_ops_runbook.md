@@ -2,12 +2,12 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.10（#255：控制器按容器 / 服务认进程 + 等待原因细分；v0.9 为 #253 塌方线跨次判定与显卡争用记录） |
-| 日期 | 2026-09-24 |
+| 版本 | v0.11（PROD-15 拆为 15A / 15B：备份与恢复、常见故障归 PROD-15A；v0.10 为 #255 控制器按容器 / 服务认进程） |
+| 日期 | 2026-09-27 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
 
-后续章节按里程碑追加：部署 / 回滚（PROD-04 已在 CLAUDE.md "V3 Deployment"）、备份与恢复（PROD-15）、常见故障（PROD-15）。
+后续章节按里程碑追加：部署 / 回滚（PROD-04 已在 CLAUDE.md "V3 Deployment"）、备份与恢复（PROD-15A）、常见故障（PROD-15A）。
 
 ## 1. 队列（procrastinate）
 
