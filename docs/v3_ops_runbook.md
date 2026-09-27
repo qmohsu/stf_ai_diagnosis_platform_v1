@@ -397,7 +397,7 @@ systemctl --user reset-failed stf-v3-backup.service && systemctl --user start st
 journalctl --user -u stf-v3-backup -n 30       # 这次跑的输出
 ```
 
-**恢复钥匙托管（用户决定 2026-09-27）**：不靠任何人记住或自己保管口令（「自己存的一定会丢」）。钥匙文件 `STF_V3_备份恢复钥匙_backup-recovery-key_<日期>.txt` 由我们从服务器直接拷到用户电脑桌面、从不显示内容，用户放进自己的 **Google Drive**；文件第一行是钥匙，下面是用途与用法说明（gpg 只读第一行）。服务器系统盘坏了时靠「共享盘加密副本 + Google Drive 里这份钥匙文件」恢复；在 Google Drive 搜「STF 备份恢复钥匙」或「backup recovery key」。**以后若换钥匙**，新钥匙文件照同样方式托管，旧文件保留（旧备份只能用旧钥匙打开）。
+**恢复钥匙托管（用户决定 2026-09-27）**：不靠任何人记住或自己保管口令（「自己存的一定会丢」）。钥匙文件 `STF_V3_备份恢复钥匙_backup-recovery-key_<日期>.txt` 由我们从服务器直接拷到用户电脑桌面、从不显示内容，用户放进自己的 **Google Drive**；文件第一行是钥匙，下面是用途与用法说明（gpg 只读第一行）。服务器系统盘坏了时靠「共享盘加密副本 + Google Drive 里这份钥匙文件」恢复；在 Google Drive 搜「STF 备份恢复钥匙」或「backup recovery key」。该文件只有项目负责人的 Google 账号能打开（钥匙从此与这个账号绑定，不靠任何人保管）；它的链接记在服务器 `~/stf_v3_backups/RECOVERY_KEY_LOCATION.txt`（600）和项目记忆里，**不写进公开仓库**。**以后若换钥匙**，新钥匙文件照同样方式托管，旧文件保留（旧备份只能用旧钥匙打开）。
 
 **数据不走 `podman exec` 的输出流**（2026-09-28 实测：服务器上的 podman 3.4 会随机把经 exec 流出的大段数据截短——一份导出从 20 MB 变成 15 MB，而只读目录的核对照样通过）：导出、账号定义、恢复时的数据一律先在容器里写成文件，用 `podman cp` 进出并两边核对校验值；导出文件从头到尾读一遍（`pg_restore -f /dev/null`）才算完整。被截短的那份备份已改名为 `quarantine_truncated-dump_*`，不参与保留与恢复。
 
