@@ -371,7 +371,7 @@ ALLOW_INTERRUPT=1 bash stf_v3/scripts/predeploy_check.sh   # 确认要打断：�
 cd ~/stf_ai_diagnosis_platform_v1
 bash stf_v3/scripts/predeploy_check.sh                                   # 没有未结束的诊断 / 转换 / 备份
 git diff --name-only <旧提交> HEAD -- stf_v3/alembic/versions             # 旧提交之后新增了哪些迁移
-git show <旧提交>:stf_v3/alembic/versions | sort | tail -1                # 旧提交里最新的迁移文件 → 其中的 revision 就是目标
+git ls-tree --name-only <旧提交> stf_v3/alembic/versions/ | grep '[.]py$' | sort | tail -1   # 旧提交里最新的迁移文件 → 文件名里的 revision 就是目标
 # 有新增迁移时：先读它 downgrade() 的说明（有的按设计有损），再用【当前】镜像降级（旧镜像不认识新迁移）：
 ~/.local/bin/podman-compose --profile migrate -p stf_v3 -f infra/docker-compose.v3.yml -f infra/docker-compose.v3.polyu.yml run --rm stf-v3-migrate alembic downgrade <目标 revision>
 git checkout <旧提交>
