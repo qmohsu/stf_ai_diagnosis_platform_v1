@@ -660,12 +660,16 @@ FINALIZE_SQL = Path(__file__).with_name("sql") / "restore_finalize.sql"
 
 
 def drill_exec(host: Host, argv: Sequence[str], timeout: float = 600, **kw: Any) -> Result:
-    return host.run(["podman", "exec", "-i", DRILL_CONTAINER] + list(argv), timeout, **kw)
+    """``podman exec`` into the drill container; ``-i`` only when stdin is fed
+    (with ``-i`` and piped output, large output was cut mid-row)."""
+    fed = kw.get("stdin_path") is not None or kw.get("input_text") is not None
+    return host.run(["podman", "exec"] + (["-i"] if fed else []) + [DRILL_CONTAINER] + list(argv),
+                    timeout, **kw)
 
 
 def drill_psql(host: Host, db: str, sql: str) -> List[str]:
     res = drill_exec(host, ["psql", "-U", "postgres", "-d", db, "-X", "-A", "-t", "-q",
-                            "-v", "ON_ERROR_STOP=1"], input_text=sql)
+                            "-v", "ON_ERROR_STOP=1", "-c", sql])
     if res.rc != 0:
         raise BackupError(f"drill psql on {db}: {res.err.strip()[:300]}")
     return [ln for ln in res.out.splitlines() if ln.strip()]
@@ -754,27 +758,33 @@ def copy_content(host: Host, src: Tuple[str, str, str], dst: Tuple[str, str, str
     copy is one transaction on the target.
     """
     filters = content_filters(vehicle_id, conversation_id)
-    exists = host.run(["podman", "exec", "-i", dst[0], "psql", "-U", dst[1], "-d", dst[2], "-X", "-A", "-t", "-q",
+    work = workdir or Path(os.environ.get("TMPDIR", "/tmp"))
+    exists = host.run(["podman", "exec", dst[0], "psql", "-U", dst[1], "-d", dst[2], "-X", "-A", "-t", "-q",
                        "-c", f"SELECT count(*) FROM vehicles WHERE id = '{vehicle_id}'"], 60)
     if exists.rc != 0 or exists.out.strip() != "1":
         raise BackupError("vehicle not in the target database: restore the whole database or add it first")
     script = ["\\set ON_ERROR_STOP on", "BEGIN;"]
     copied: Dict[str, int] = {}
     for table in CONTENT_TABLES:
-        out = host.run(["podman", "exec", "-i", src[0], "psql", "-U", src[1], "-d", src[2], "-X", "-q",
-                        "-c", f"COPY (SELECT * FROM {table} WHERE {filters[table]}) TO STDOUT"], 600)
+        # Read into a FILE and without `-i`: large output of `podman exec -i`
+        # through a pipe arrived cut mid-row on the server (2026-09-28);
+        # pg_dump's output written the same way is intact.
+        data_file = work / f"copy-{uuid.uuid4().hex[:8]}-{table}.tsv"
+        out = host.run(["podman", "exec", src[0], "psql", "-U", src[1], "-d", src[2], "-X", "-q",
+                        "-c", f"COPY (SELECT * FROM {table} WHERE {filters[table]}) TO STDOUT"], 600,
+                       stdout_path=data_file)
+        try:
+            rows = data_file.read_text(encoding="utf-8")
+        finally:
+            data_file.unlink()
         if out.rc != 0:
             raise BackupError(f"read {table} from backup: {out.err.strip()[:200]}")
-        rows = out.out
         copied[table] = rows.count("\n")
         script += [f"CREATE TEMP TABLE s_{table} (LIKE {table});", f"COPY s_{table} FROM STDIN;"]
         script.append(rows.rstrip("\n") + ("\n\\." if rows else "\\."))
         script.append(f"INSERT INTO {table} OVERRIDING SYSTEM VALUE SELECT * FROM s_{table} ON CONFLICT DO NOTHING;")
     script.append("COMMIT;")
-    # The script (COPY data inline) goes to psql from a private FILE: a large
-    # stdin pipe through `podman exec -i` arrived truncated mid-row on the
-    # server (2026-09-28); files (as for pg_restore) are read intact.
-    work = workdir or Path(os.environ.get("TMPDIR", "/tmp"))
+    # The script (COPY data inline) also goes to psql from a private file.
     script_file = work / f"copy-{uuid.uuid4().hex[:8]}.sql"
     fd = os.open(script_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as fh:
