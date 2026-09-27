@@ -53,6 +53,10 @@ class DailyFileHandler(logging.FileHandler):
                  clock: Callable[[], float] = time.time) -> None:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        try:                                        # a volume's directory arrives 0755
+            os.chmod(path.parent, 0o700)
+        except OSError:
+            pass
         self.keep_days, self.max_bytes, self._clock = keep_days, max_bytes, clock
         super().__init__(path, encoding="utf-8", delay=True)
         # A file left by a run on an earlier day is rolled at the first write.

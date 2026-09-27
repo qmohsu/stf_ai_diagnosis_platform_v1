@@ -365,7 +365,23 @@ ALLOW_INTERRUPT=1 bash stf_v3/scripts/predeploy_check.sh   # 确认要打断：�
 
 ### 6.5 回滚（FM-30）
 
-回滚到 PROD-11 之前的版本前：① `predeploy_check.sh` 确认没有未结束诊断（或让它们结束）；② 清掉诊断队列里没开始的任务：`bash stf_v3/scripts/queue_ops.sh cancel <job_id>`（逐个）；③ 老代码不认识 `diagnosis` / `llm` 队列与新表，降级迁移 `alembic downgrade b2c3d4e5f6a7` 会**删除消息表的所有行**（新旧形状不兼容，按设计有损）；④ 宿主机 worker 按旧单元重装（`install.sh`）。
+**通用步骤**（回到某个旧提交 `<旧提交>`，例如上一次的 main；2026-09-28 按此从 PROD-15A ② 回滚到 main 再前滚，走通）：
+
+```
+cd ~/stf_ai_diagnosis_platform_v1
+bash stf_v3/scripts/predeploy_check.sh                                   # 没有未结束的诊断 / 转换 / 备份
+git diff --name-only <旧提交> HEAD -- stf_v3/alembic/versions             # 旧提交之后新增了哪些迁移
+git show <旧提交>:stf_v3/alembic/versions | sort | tail -1                # 旧提交里最新的迁移文件 → 其中的 revision 就是目标
+# 有新增迁移时：先读它 downgrade() 的说明（有的按设计有损），再用【当前】镜像降级（旧镜像不认识新迁移）：
+~/.local/bin/podman-compose --profile migrate -p stf_v3 -f infra/docker-compose.v3.yml -f infra/docker-compose.v3.polyu.yml run --rm stf-v3-migrate alembic downgrade <目标 revision>
+git checkout <旧提交>
+# 然后按 CLAUDE.md「Main deployment」：带 GIT_COMMIT 构建 → down + up → 重跑 gpu_worker/install.sh 并重启宿主机工人
+# （单元文件可能不同）→ 单元文件变了再跑 ops/install_backup.sh → deploy_check.sh → isolation_check.sh compare
+```
+
+前滚 = 正常部署（迁移 `upgrade head` 会把降掉的补回来）。回滚期间备份定时器照常运行，用的是检出的那份 `backup.py`。
+
+**特例：回滚到 PROD-11 之前的版本**前：① `predeploy_check.sh` 确认没有未结束诊断（或让它们结束）；② 清掉诊断队列里没开始的任务：`bash stf_v3/scripts/queue_ops.sh cancel <job_id>`（逐个）；③ 老代码不认识 `diagnosis` / `llm` 队列与新表，降级迁移 `alembic downgrade b2c3d4e5f6a7` 会**删除消息表的所有行**（新旧形状不兼容，按设计有损）；④ 宿主机 worker 按旧单元重装（`install.sh`）。
 
 ### 6.6 测试车队（D3：前端联调与 Swagger 评审）
 
