@@ -1,0 +1,22 @@
+# STF V3 daily encrypted backup (PROD-15A).  Rendered and installed by
+# stf_v3/ops/install_backup.sh; started by stf-v3-backup.timer.
+[Unit]
+Description=STF V3 daily encrypted backup (databases + raw logs + manuals)
+# at most one automatic retry per run (FM-28): 2 starts per 4 hours
+StartLimitIntervalSec=4h
+StartLimitBurst=2
+
+[Service]
+Type=oneshot
+UMask=0077
+Environment=STF_V3_REPO=@REPO@
+Environment=STF_V3_BACKUP_ROOT=@HOME@/stf_v3_backups
+Environment=STF_V3_BACKUP_OFFSITE_DIR=@OFFSITE@
+Environment=STF_V3_BACKUP_PASSPHRASE_FILE=@HOME@/.config/stf/backup_passphrase
+ExecStart=/usr/bin/python3 @REPO@/stf_v3/scripts/backup.py run
+# a hung network share must not block every later day (FM-32)
+TimeoutStartSec=2h
+Restart=on-failure
+RestartSec=30min
+Nice=10
+IOSchedulingClass=idle

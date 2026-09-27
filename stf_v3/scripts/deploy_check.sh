@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Post-deploy verification for V3 on the PolyU server (code design §10).
-# Answers "is what is running the thing I meant to deploy?"  Nine checks
+# Answers "is what is running the thing I meant to deploy?"  Ten checks
 # (containers fresh, image commit, alembic head, /v3/health via nginx,
 # worker heartbeat, storage volume writable, host GPU worker alive on the
-# same commit, disk headroom, model service local + serving + generating);
-# exits non-zero if any fails.
+# same commit, disk headroom, model service local + serving + generating,
+# last successful backup younger than 36 h); exits non-zero if any fails.
+# Sizes only ever WARN (PROD-15A FM-44); the network share is never walked
+# (FM-32) — only the status file the backup service writes is read.
 #
 #   bash stf_v3/scripts/deploy_check.sh [--max-age-min N] [--expect-commit SHA]
 #   LLM_CHECK=skip LLM_CHECK_REASON="…" bash stf_v3/scripts/deploy_check.sh   # skip check 9, visibly
@@ -160,6 +162,28 @@ else
     nvidia-smi --query-gpu=index,memory.used,memory.total --format=csv,noheader 2>/dev/null | sed 's/^/      gpu  /'
     nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv,noheader 2>/dev/null | sed 's/^/      proc /'
   fi
+fi
+
+# 10. backup freshness (PROD-15A, FM-40): judged by the time of the last
+#     SUCCESSFUL backup, not by the absence of failures.
+BACKUP_STALE_H="${BACKUP_STALE_H:-36}"
+bk="$(curl -sf "$NGINX_URL/v3/health" 2>/dev/null | python3 -c '
+import json, sys
+b = json.load(sys.stdin).get("backup") or {}
+o = b.get("offsite") or {}
+print(b.get("state"), b.get("age_h"), o.get("state"), o.get("age_h"), b.get("last_result"))' 2>/dev/null || echo "unknown None unknown None None")"
+read -r bk_state bk_age off_state off_age bk_last <<< "$bk"
+if [ "$bk_state" = "ok" ]; then
+  report "last backup < ${BACKUP_STALE_H} h" 1 "${bk_age} h ago; offsite ${off_state} (${off_age} h); last run ${bk_last}"
+else
+  report "last backup < ${BACKUP_STALE_H} h" 0 "state=${bk_state} age_h=${bk_age} last run ${bk_last} — see: python3 stf_v3/scripts/backup.py status"
+fi
+[ "$off_state" = "ok" ] || echo "WARN  offsite copy state=${off_state} age_h=${off_age} (network share)"
+bk_root="${STF_V3_BACKUP_ROOT:-$HOME/stf_v3_backups}"
+if [ -d "$bk_root" ]; then
+  bk_gb="$(du -s --block-size=1G "$bk_root" 2>/dev/null | cut -f1)"
+  [ "${bk_gb:-0}" -le "${BACKUP_WARN_GB:-50}" ] || echo "WARN  local backups use ${bk_gb} GB (> ${BACKUP_WARN_GB:-50} GB, FM-44)"
+  [ "$(stat -c %a "$bk_root")" = "700" ] || echo "WARN  $bk_root is not mode 700 (FM-49)"
 fi
 
 if [ "$FAILS" -eq 0 ]; then echo "DEPLOY CHECK ALL PASS"; exit 0; fi

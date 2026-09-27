@@ -36,6 +36,7 @@ services:
       STF_V3_LOG_LEVEL: ${STF_V3_LOG_LEVEL:-INFO}
       STF_V3_OBD_LOG_STORAGE_PATH: /app/data/obd_logs
       STF_V3_MANUAL_STORAGE_PATH: /app/data/manuals
+      STF_V3_BACKUP_STATUS_PATH: /app/data/backup_state/status.json
       # Agent runtime (PROD-08): the single model source.  Defaults to the
       # host's vLLM (docker-compose.vllm.yml, PROD-09); to fall back to
       # Ollama set URL/MODEL/API_KEY in infra/.env (profile auto-selects).
@@ -60,6 +61,7 @@ services:
     volumes:
       - obd_logs:/app/data/obd_logs   # PROD-05: raw uploads, <vehicle_id>/<log_id>.<ext>
       - manuals:/app/data/manuals     # PROD-06: public manual library (shared with host GPU worker)
+      - backup_state:/app/data/backup_state:ro   # PROD-15A: written by the host backup service
     ports:
       - "${BIND_HOST:-127.0.0.1}:${STF_V3_API_PORT:-8002}:8002"
     healthcheck:
@@ -121,3 +123,4 @@ services:
 volumes:
   obd_logs:
   manuals:      # `stf_v3_manuals`; the host GPU worker writes into its _data dir
+  backup_state: # `stf_v3_backup_state`; stf_v3/scripts/backup.py writes status.json (PROD-15A)
