@@ -508,7 +508,7 @@ podman rm -f -v stf-v3-restore-drill                        # 用完删掉（-v 
 
 ### 7.7 公开仓库：不许有真实 VIN
 
-仓库是公开的。CI 任务 `vin-scan`（每个 PR、每次推 main，不限路径）扫描全部入库文件里的 17 位 VIN 形状，只放行 `JHMGK5830HX202404`、`1HGCM82633A123456` 两个项目假 VIN（外加 obd_agent 测试用的教科书示例 VIN）；发现就失败，并且只打印打码后的形式。本地：`python3 stf_v3/scripts/check_no_vins.py`。issue / PR 里也只写假 VIN——2026-09-28 清理过一次真实 VIN（`#135`、`#136`、`#167`），评论已删了重发；#167 正文在 GitHub 编辑历史里的原始版本自己删不掉，由负责人向 GitHub 支持申请清除。
+仓库是公开的。CI 任务 `vin-scan`（每个 PR、每次推 main，不限路径）扫描全部入库文件里的 17 位 VIN 形状，只放行 `JHMGK5830HX202404`、`1HGCM82633A123456` 两个项目假 VIN（外加 obd_agent 测试用的教科书示例 VIN）；发现就失败，并且只打印打码后的形式。本地：`python3 stf_v3/scripts/check_no_vins.py`。issue / PR 里也只写假 VIN——2026-09-28 清理过一次真实 VIN（`#135`、`#136`、`#167`），评论已删了重发；#167 正文编辑历史里的原始版本 GitHub 不允许删，按用户决定保留、不再追。
 
 ## 8. 日志（PROD-15A）
 
