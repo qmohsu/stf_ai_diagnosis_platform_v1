@@ -542,6 +542,200 @@ class TestConfigAndHygiene:
         assert first.startswith("v3: enabled base_url=https://v3.example.invalid")
 
 
+# ── #258: the V3 leg can never break V2; password off the CLI; no VINs ─
+
+
+_FAKE_VINS = ("JHMGK5830HX202404", "1HGCM82633A123456")
+
+
+class TestV3LegIsolation:
+    """#258 bug 1: a local V3 failure is a V3 config_error, V2 still runs."""
+
+    def _assert_v2_kept(self, rec: _Recorder, rc: int, out: str) -> None:
+        assert rc == 2                                   # V2 ok, V3 misconfigured
+        assert out.strip() == "s-ok"                     # session id still printed
+        assert rec.calls[:2] == ["/auth/login", "/v2/obd/analyze"]
+        assert "/v3/ingest/device" not in rec.calls
+
+    def test_unreadable_env_file_keeps_v2(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str], caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """The trip hook runs as another user: reading the 600 env file
+        raises PermissionError → V2 uploads, V3 reported unusable, rc 2."""
+        env = _write_env(tmp_path)
+        real_read = Path.read_text
+
+        def deny(self: Path, *args, **kwargs):  # type: ignore[no-untyped-def]
+            if self == env:
+                raise PermissionError(13, "Permission denied", str(self))
+            return real_read(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "read_text", deny)
+        rec = _Recorder(_v2_ok, _v3_ok)
+        _patch_client(monkeypatch, rec)
+        with caplog.at_level(logging.INFO):
+            rc = _main(env, _trip(tmp_path))
+        self._assert_v2_kept(rec, rc, capsys.readouterr().out)
+        assert "v3: enabled but unusable" in caplog.text
+        assert "v3_result: config_error" in caplog.text
+
+    def test_non_utf8_env_file_keeps_v2(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """An env file saved in another encoding is a config error, not a crash."""
+        env = tmp_path / "v3.env"
+        env.write_bytes(b"STF_V3_BASE_URL=https://x\n\xff\xfe\xfa garbage\n")
+        rec = _Recorder(_v2_ok, _v3_ok)
+        _patch_client(monkeypatch, rec)
+        self._assert_v2_kept(rec, _main(env, _trip(tmp_path)), capsys.readouterr().out)
+
+    def test_spool_dir_that_cannot_be_created_keeps_v2(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str], caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Spool path under a regular file (mkdir fails) → V3 off, V2 on."""
+        blocker = tmp_path / "not_a_dir"
+        blocker.write_text("x")
+        env = _write_env(tmp_path, STF_V3_SPOOL_DIR=str(blocker / "spool"))
+        rec = _Recorder(_v2_ok, _v3_ok)
+        _patch_client(monkeypatch, rec)
+        with caplog.at_level(logging.INFO):
+            rc = _main(env, _trip(tmp_path))
+        self._assert_v2_kept(rec, rc, capsys.readouterr().out)
+        assert "spool dir unusable" in caplog.text
+
+    def test_crash_inside_the_v3_leg_after_v2_keeps_the_result(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str], caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Any exception in the V3 leg (e.g. disk full while spooling) is
+        reported as config_error; V2's session id is still printed, rc 2."""
+        rec = _Recorder(_v2_ok, _v3_ok)
+        _patch_client(monkeypatch, rec)
+
+        def boom(*args, **kwargs):  # type: ignore[no-untyped-def]
+            raise OSError(28, "No space left on device")
+
+        monkeypatch.setattr(ju, "v3_push_trip", boom)
+        with caplog.at_level(logging.INFO):
+            rc = _main(_write_env(tmp_path), _trip(tmp_path))
+        assert rc == 2 and capsys.readouterr().out.strip() == "s-ok"
+        assert "v3 leg failed locally: OSError" in caplog.text
+
+    def test_drain_and_self_check_report_instead_of_crashing(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """--drain returns 2 and --self-check prints FAIL for the same faults."""
+        blocker = tmp_path / "not_a_dir"
+        blocker.write_text("x")
+        env = _write_env(tmp_path, STF_V3_SPOOL_DIR=str(blocker / "spool"))
+        assert main(["--drain", "--v3-env-file", str(env)]) == 2
+        bad = tmp_path / "bad.env"
+        bad.write_bytes(b"\xff\xfe\xfa")
+        assert main(["--self-check", "--v3-env-file", str(bad)]) == 1
+        assert "FAIL  v3 env file unusable" in capsys.readouterr().out
+
+
+class TestV2PasswordSources:
+    """#258 bug 2: the V2 password need not be on the command line."""
+
+    def _run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+             *extra: str) -> tuple:
+        seen: Dict[str, str] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/auth/login":
+                seen["body"] = request.content.decode()
+                return httpx.Response(200, json={"access_token": "tok"})
+            return _v2_ok(request)
+
+        _patch_client(monkeypatch, handler)
+        rc = main(["--base-url", "https://example.invalid", "--username", "perry",
+                   "--manufacturer", "Toyota", "--model", "Hiace",
+                   "--log-file", str(_trip(tmp_path)),
+                   "--v3-env-file", str(tmp_path / "absent.env"), *extra])
+        return rc, seen.get("body", "")
+
+    def test_password_file_is_read(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """First line of --password-file is the password; never logged."""
+        pw = tmp_path / "v2_password"
+        pw.write_text("s3cret-from-file\n")
+        os.chmod(pw, 0o600)
+        with caplog.at_level(logging.DEBUG):
+            rc, body = self._run(tmp_path, monkeypatch, "--password-file", str(pw))
+        assert rc == 0 and "password=s3cret-from-file" in body
+        assert "s3cret-from-file" not in caplog.text
+
+    def test_env_var_is_the_fallback(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """$STF_V2_PASSWORD is used when neither flag is given."""
+        monkeypatch.setenv("STF_V2_PASSWORD", "s3cret-from-env")
+        rc, body = self._run(tmp_path, monkeypatch)
+        assert rc == 0 and "password=s3cret-from-env" in body
+
+    def test_cli_password_still_wins(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """--password keeps today's behaviour and precedence (V2 unchanged)."""
+        monkeypatch.setenv("STF_V2_PASSWORD", "s3cret-from-env")
+        rc, body = self._run(tmp_path, monkeypatch, "--password", "cli")
+        assert rc == 0 and "password=cli" in body
+
+    def test_unreadable_password_file_and_no_password_fail_locally(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Missing file → rc 1 with a clear line, nothing sent; no source
+        at all → rc 1 (today's missing-argument error)."""
+        monkeypatch.delenv("STF_V2_PASSWORD", raising=False)
+        with caplog.at_level(logging.INFO):
+            rc, body = self._run(tmp_path, monkeypatch,
+                                 "--password-file", str(tmp_path / "missing"))
+            assert rc == 1 and body == "" and "password_file_unreadable" in caplog.text
+            assert main(["--base-url", "https://example.invalid", "--username", "perry",
+                         "--manufacturer", "Toyota", "--model", "Hiace",
+                         "--log-file", str(_trip(tmp_path))]) == 1
+        assert "missing_arguments: --password" in caplog.text
+
+
+class TestVinMasking:
+    """#258 bug 3: rejection reasons never carry a VIN out of the script."""
+
+    def test_mask_vins_only_touches_vin_shaped_tokens(self) -> None:
+        """VINs become <VIN>; UUIDs, words and short codes stay."""
+        text = (f"Log VIN {_FAKE_VINS[0]} does not match vehicle VIN "
+                f"{_FAKE_VINS[1]}; vehicle {_VEHICLE} code vin_mismatch")
+        masked = ju.mask_vins(text)
+        assert all(v not in masked for v in _FAKE_VINS)
+        assert masked.count("<VIN>") == 2 and _VEHICLE in masked
+        assert "vin_mismatch" in masked
+
+    def test_vin_mismatch_line_log_and_error_file_are_masked(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """The v3_result line, uploader.log and rejected/*.error.txt hide both VINs."""
+        detail = (f"Log VIN {_FAKE_VINS[0]} does not match vehicle VIN "
+                  f"{_FAKE_VINS[1]}; check the env file")
+        rec = _Recorder(_v2_ok, lambda r: httpx.Response(
+            422, json={"code": "vin_mismatch", "detail": detail}))
+        _patch_client(monkeypatch, rec)
+        with caplog.at_level(logging.INFO):
+            assert _main(_write_env(tmp_path), _trip(tmp_path)) == 2
+        spool = tmp_path / "spool"
+        texts = [caplog.text, (spool / "uploader.log").read_text(),
+                 (spool / "rejected" / "trip.tsv.error.txt").read_text()]
+        for text in texts:
+            assert all(v not in text for v in _FAKE_VINS), text
+        assert "vin_mismatch" in texts[0] and "<VIN>" in texts[0]
+
+
 # ── T-8: zero new dependencies, Python 3.8 syntax ────────────────────
 
 
@@ -554,7 +748,7 @@ def test_uploader_only_imports_stdlib_and_httpx() -> None:
         # py3.8 CI leg has no sys.stdlib_module_names: the modules the
         # script is allowed to use, spelled out.
         "argparse", "dataclasses", "fcntl", "json", "logging", "os", "pathlib",
-        "shutil", "stat", "sys", "time", "typing", "uuid",
+        "re", "shutil", "stat", "sys", "time", "typing", "uuid",
     })
     third_party = set()
     for node in ast.walk(tree):

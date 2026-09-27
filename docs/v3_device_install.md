@@ -5,7 +5,7 @@
 > 旧系统那条路一行不改；V3 那条路只靠一个配置文件开关。
 >
 > 对应 ticket：PROD-07（`docs/v3_dev_plan.md`）。脚本：`obd_agent/jetson_uploader.py`。
-> 作者：Xiangzhu Yan · 2026-09-17
+> 作者：Xiangzhu Yan · 2026-09-17 · 更新 2026-09-27（#258：旧系统密码可放文件 / 环境变量；V3 在设备上出错不再影响旧系统；拒收原因里的 VIN 打码）
 
 ---
 
@@ -94,12 +94,15 @@ python3 -m obd_agent.jetson_uploader --self-check
 
 ## 5. 验证：发一份旧日志
 
-拿一份**这台车**以前的行程日志（Hiace 请用带 VIN 的那种），像今天一样跑一次：
+拿一份**这台车**以前的行程日志（Hiace 请用带 VIN 的那种），像今天一样跑一次。
+
+旧系统密码不要写在命令行里（会留在 shell 历史和 `ps` 里）：用编辑器把密码写进 `~/.config/stf/v2_password` 的第一行并 `chmod 600`，
+命令里用 `--password-file` 指向它；也可以设环境变量 `STF_V2_PASSWORD`。`--password` 仍然可用，今天的写法不用改。
 
 ```bash
 python3 -m obd_agent.jetson_uploader \
     --base-url https://stf-diagnosis.dev \
-    --username <你的旧系统账号> --password '<旧系统密码>' \
+    --username <你的旧系统账号> --password-file ~/.config/stf/v2_password \
     --manufacturer Toyota --model Hiace \
     --log-file /path/to/an/old/trip.tsv
 ```
@@ -115,6 +118,7 @@ python3 -m obd_agent.jetson_uploader \
 然后在 V3 里（用你的技师账号）打开这台车的车档：日志列表里应出现这份文件，来源 `device`。
 
 发错车（比如把 Hiace 的日志用 Corolla 的配置发）会得到 `v3_result: rejected status=422 ... vin_mismatch`，退出码 2，文件副本在 `spool/rejected/`——这是预期的拦截，不是故障。
+原因里的 VIN 显示为 `<VIN>`（脚本不打印 VIN）；要核对，直接看日志文件开头的 VIN 和 V3 车档里的 VIN。
 
 ---
 
@@ -151,7 +155,7 @@ tail -3 ~/.config/stf/cron.log           # 最近一次 --drain 的输出
 |---|---|---|
 | `0` | 旧系统成功；V3 已入库 / 已存在 / 已进待传目录 / 未启用 | 不用管（待传的会自动补） |
 | `1` | **旧系统失败**（登录、上传或网络） | 和今天一样处理；V3 那条路的结果在日志里另有一行 |
-| `2` | 旧系统成功，但 V3 **拒收**（文件问题）、**token 无效 / 被吊销**、**车档不符**或**待传目录已满** | 看 `spool/uploader.log` 最后几行；token 问题联系我们 |
+| `2` | 旧系统成功，但 V3 **拒收**（文件问题）、**token 无效 / 被吊销**、**车档不符**、**待传目录已满**，或 V3 在设备上**本地出错**（配置文件读不了、待传目录建不了、磁盘满） | 看 `spool/uploader.log` 最后几行；token 问题联系我们 |
 
 `--drain` 模式：`0` = 正常（包括"网络不通、下次再试"），`2` = token 无效（联系我们）。
 
@@ -195,13 +199,13 @@ tail -50 ~/.config/stf/spool/uploader.log
 ls -la ~/.config/stf/spool/pending ~/.config/stf/spool/rejected
 ```
 
-把输出发给我们即可。里面**没有 token**（脚本从不打印它）；VIN 可能出现在拒收原因里，只在设备上，不要贴到公开的地方。
+把输出发给我们即可。里面**没有 token**（脚本从不打印它），拒收原因里的 VIN 也已打码为 `<VIN>`；日志里其他内容仍只在设备上，不要贴到公开的地方。
 
 ---
 
 ## 12. 旧系统退役时（FM-24）
 
-旧系统下线那天：从命令 / 包装脚本里删掉 `--base-url/--username/--password`（旧系统凭证），并从设备上删掉旧系统的账号密码。V3 那条路和配置文件不变。
+旧系统下线那天：从命令 / 包装脚本里删掉 `--base-url/--username/--password`（或 `--password-file`，旧系统凭证），并从设备上删掉旧系统的账号密码（包括 `~/.config/stf/v2_password`）。V3 那条路和配置文件不变。
 
 ---
 
@@ -211,6 +215,10 @@ ls -la ~/.config/stf/spool/pending ~/.config/stf/spool/rejected
 |---|---|---|
 | `v3: disabled (env file not found ...)` | 配置文件不在默认路径 | 第 3 节；或加 `--v3-env-file` |
 | `v3: enabled but unusable: ... required` | 配置文件缺 `STF_V3_BASE_URL` 或 token | 用收到的文件覆盖 |
+| `v3: enabled but unusable: ... cannot read (PermissionError ...)` | 运行上传的系统用户读不了配置文件（例如行程钩子用 root 或另一个用户在跑） | 把配置文件放进**那个用户**的 `~/.config/stf/`，或用 `--v3-env-file` 指向它能读的位置；旧系统照常上传 |
+| `v3: enabled but unusable: spool dir unusable ...` | 待传目录建不了 / 写不了（属主是另一个用户） | 同上检查属主，或在配置文件里设 `STF_V3_SPOOL_DIR` |
+| `v3_result: config_error ... v3 leg failed locally` | V3 那条路在设备上出错（如磁盘满） | 按错误说明处理；旧系统不受影响 |
+| `password_file_unreadable` | `--password-file` 指的文件不存在或读不了 | 检查路径和权限（旧系统这次没传） |
 | `v3_result: config_error status=401` | token 无效或已吊销 | 文件留在待传目录；联系我们重发 token |
 | `v3_result: rejected status=422 ... vin_mismatch` | 用了另一台车的配置 | 检查配置文件是哪台车的 |
 | `v3_result: rejected status=422 ... unsupported_format` | 文件不是 Jetson 原生 TSV / "OBD Maximum Data Log" CSV / Yamaha CSV（第一行不是 `# OBD Maximum Data Log` 之类的 banner） | 把文件发给我们看 |
