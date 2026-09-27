@@ -468,17 +468,32 @@ def dump_roles(cfg: Config, host: Host, out: Path) -> Dict[str, Any]:
 # ── file volumes ───────────────────────────────────────────────────────
 
 
+# Runtime state that is rewritten every minute and rebuilt on its own: the
+# host GPU worker's heartbeat (atomic rename in the manual volume's top
+# directory).  Archiving "." made tar fail with "file changed as we read it"
+# whenever a heartbeat landed mid-run (2026-09-28), so the top-level entries
+# are archived one by one and these are left out.  Any OTHER change still
+# fails the run.
+VOLATILE_PREFIXES = (".gpu_worker_status",)
+
+
 def archive_volume(host: Host, volume: str, out: Path) -> Dict[str, Any]:
     """Tars one volume inside the user namespace (files keep their owners)."""
     mp = host.run(["podman", "volume", "inspect", volume, "--format", "{{.Mountpoint}}"], 30)
     if mp.rc != 0 or not mp.out.strip():
         raise BackupError(f"volume {volume} not found (was it removed? FM-8)")
     mount = mp.out.strip()
-    counted = host.run(["podman", "unshare", "find", mount, "-type", "f", "-printf", "."], 600)
+    top = host.run(["podman", "unshare", "find", mount, "-mindepth", "1", "-maxdepth", "1", "-printf", "%f\\n"], 120)
+    if top.rc != 0:
+        raise BackupError(f"cannot list volume {volume}: {top.err.strip()[:200]}")
+    entries = sorted(n for n in top.out.split("\n") if n and not n.startswith(VOLATILE_PREFIXES))
+    counted = host.run(["podman", "unshare", "find", mount, "-type", "f", "!", "-name",
+                        VOLATILE_PREFIXES[0] + "*", "-printf", "."], 600)
     if counted.rc != 0:
         raise BackupError(f"cannot list volume {volume}: {counted.err.strip()[:200]}")
     before = len(counted.out)
-    res = host.run(["podman", "unshare", "tar", "-C", mount, "-czf", "-", "."], 3600, stdout_path=out)
+    names = ["--", *entries] if entries else ["-T", "/dev/null"]
+    res = host.run(["podman", "unshare", "tar", "-C", mount, "-czf", "-", *names], 3600, stdout_path=out)
     if res.rc != 0:
         raise BackupError(f"tar of {volume} failed rc={res.rc}: {res.err.strip()[:200]}")
     listed = host.run(["tar", "-tzf", str(out)], 600)

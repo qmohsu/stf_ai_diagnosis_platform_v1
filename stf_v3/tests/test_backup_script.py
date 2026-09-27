@@ -69,6 +69,7 @@ class FakeHost:
         self.calls: List[List[str]] = []
         self.sessions: List[str] = []
         self.inner: Dict[str, bytes] = {}          # files inside containers
+        self.tar_args: List[List[str]] = []
         self.state_dir = tmp / "state_volume"
         self.state_dir.mkdir()
 
@@ -133,9 +134,13 @@ class FakeHost:
             else:
                 self.inner[dst.split(":", 1)[1]] = pathlib.Path(src).read_bytes()
             return R(0)
+        if a[:3] == ["podman", "unshare", "find"] and "-maxdepth" in a:
+            return R(0, "Corolla E11 Haynes\nuploads\n.gpu_worker_status.json\n")
         if a[:3] == ["podman", "unshare", "find"]:
+            assert ".gpu_worker_status*" in a                # the heartbeat is not counted
             return R(0, "...")                               # 3 files in each volume
         if a[:3] == ["podman", "unshare", "tar"]:
+            self.tar_args.append(a)
             stdout_path.write_bytes(b"tgz:" + a[3].encode())
             return R(0 if self.fail != "tar" else 2, "", "tar: ./x: Cannot open: Permission denied")
         if a[:2] == ["tar", "-tzf"]:
@@ -428,3 +433,16 @@ def test_the_escrowed_recovery_key_file_is_used_as_is(tmp_path: pathlib.Path) ->
     key.write_text("k3y\n\nnotes for humans\n")
     assert bk.read_passphrase(cfg, False, tmp_path, str(key)) == key
     assert bk.read_passphrase(cfg, False, tmp_path) == cfg.passphrase_file
+
+
+def test_the_gpu_worker_heartbeat_is_left_out_of_volume_archives(tmp_path: pathlib.Path) -> None:
+    """2026-09-28 server finding: the host GPU worker rewrites its heartbeat
+    in the manual volume every minute, so tar of "." failed with "file changed
+    as we read it".  Top-level entries are archived by name, heartbeat
+    excluded; names with spaces stay single arguments."""
+    cfg, host = _cfg(tmp_path), FakeHost(tmp_path)
+    assert bk.run_backup(cfg, host) == 0
+    for a in host.tar_args:
+        names = a[a.index("--") + 1:]
+        assert names == ["Corolla E11 Haynes", "uploads"]
+        assert "." not in a[a.index("-czf"):]
