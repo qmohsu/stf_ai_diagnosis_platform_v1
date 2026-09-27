@@ -30,6 +30,10 @@ exit 2
 """
 
 
+def _warnings(out: str) -> list:
+    return [ln for ln in out.splitlines() if ln.startswith("WARN")]
+
+
 def _run(tmp: pathlib.Path) -> str:
     env = dict(os.environ, PATH=f"{tmp / 'bin'}:{os.environ['PATH']}", FAKE=str(tmp),
                HOME=str(tmp / "home"), STF_V3_VOLUME_STATE=str(tmp / "seen.tsv"))
@@ -47,6 +51,7 @@ def fake(tmp_path: pathlib.Path) -> pathlib.Path:
     podman.chmod(0o755)
     for d in ("home/stf_v3_logs", "home/stf_v3_backups/archive"):
         (tmp_path / d).mkdir(parents=True, mode=0o700)
+    for d in ("home/stf_v3_logs", "home/stf_v3_backups", "home/stf_v3_backups/archive"):
         os.chmod(tmp_path / d, 0o700)
     return tmp_path
 
@@ -56,8 +61,8 @@ def test_sizes_are_reported_and_a_clean_state_warns_nothing(fake: pathlib.Path) 
     out = _run(fake)
     for v in ("stf_v3_obd_logs", "stf_v3_manuals", "stf_v3_logs", "stf_v3_backup_state"):
         assert f"volume {v}  12M" in out
-    assert "stf_v3_backups/archive" in out and "WARN" not in out
-    assert _run(fake).count("WARN") == 0                      # second run: same volumes, still quiet
+    assert "stf_v3_backups/archive" in out and _warnings(out) == []
+    assert _warnings(_run(fake)) == []                        # second run: same volumes, still quiet
 
 
 def test_a_recreated_volume_and_loose_modes_warn(fake: pathlib.Path) -> None:

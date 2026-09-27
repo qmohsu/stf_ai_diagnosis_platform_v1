@@ -8,6 +8,8 @@ import pathlib
 import sys
 from typing import Any
 
+import pytest
+
 _SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "check_no_vins.py"
 _spec = importlib.util.spec_from_file_location("check_no_vins", _SCRIPT)
 assert _spec and _spec.loader
@@ -43,6 +45,10 @@ def test_binary_files_are_skipped(tmp_path: pathlib.Path) -> None:
 
 
 def test_the_repository_holds_no_real_vin() -> None:
-    """Every git-tracked file of this checkout passes (also a CI job of its own)."""
+    """Every git-tracked file of this checkout passes (also a CI job of its own,
+    ``vin-scan``; skipped where the package was copied out of Git, e.g. the
+    portability check)."""
     root = _SCRIPT.parents[2]
+    if not (root / ".git").exists():
+        pytest.skip("not a git checkout")
     assert cv.scan_files(cv.tracked_files(root), root) == []

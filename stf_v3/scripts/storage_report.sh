@@ -9,7 +9,7 @@
 #   bash stf_v3/scripts/storage_report.sh [backup root]
 set -uo pipefail
 bk_root="${1:-${STF_V3_BACKUP_ROOT:-$HOME/stf_v3_backups}}"
-echo "INFO  storage (not a check; WARN lines only):"
+echo "INFO  storage report (not a check; problems print as warnings)"
 vol_seen="${STF_V3_VOLUME_STATE:-$HOME/.config/stf/volume_created.tsv}"
 mkdir -p "$(dirname "$vol_seen")" && touch "$vol_seen" && chmod 600 "$vol_seen"
 for v in stf_v3_obd_logs stf_v3_manuals stf_v3_logs stf_v3_backup_state; do
