@@ -207,6 +207,20 @@ def test_idle_stop_only_when_everything_agrees(state: ms.StateView, o: ms.Observ
 # ── T-16 who holds the GPUs ────────────────────────────────────────────
 
 GPUS = [(0, "GPU-a", 0), (1, "GPU-b", 0)]
+# #255: owners are told apart by account + cgroup / container, never by command line.
+VLLM_ID, OLLAMA_ID, WORKER_ID, SANDBOX_ID = "a" * 64, "b" * 64, "c" * 64, "d" * 64
+CONTAINERS = {VLLM_ID: "stf-vllm", OLLAMA_ID: "stf-ollama", WORKER_ID: "stf-v3-worker",
+              SANDBOX_ID: "sleepy_sandbox"}
+WORKER_SVC = "0::/user.slice/user-1006.slice/user@1006.service/app.slice/stf-v3-gpu-worker.service\n"
+SSH = "0::/user.slice/user-1006.slice/session-479435.scope\n"
+
+
+def pod(cid: str) -> str:
+    return f"0::/user.slice/user-1006.slice/user@1006.service/user.slice/libpod-{cid}.scope\n"
+
+
+def own(user: str, cgroup: str = "") -> ms.ProcOwner:
+    return ms.ProcOwner(user=user, cgroup=cgroup)
 
 
 def _gpus(used0: int, used1: int) -> List[Tuple[int, str, int]]:
@@ -215,14 +229,13 @@ def _gpus(used0: int, used1: int) -> List[Tuple[int, str, int]]:
 
 @pytest.mark.parametrize("apps, procs, converting, free, reason", [
     ([], {}, False, True, None),
-    ([("GPU-a", 11, 21000)], {11: ("max", "python train.py")}, False, False, "other_tenant"),
-    ([("GPU-b", 12, 30000)], {12: ("talon", "mineru -p x.pdf")}, True, False, "manual_converting"),
+    ([("GPU-a", 11, 21000)], {11: own("max")}, False, False, "other_tenant"),
+    ([("GPU-b", 12, 30000)], {12: own("talon", WORKER_SVC)}, True, False, "manual_converting"),
     ([("GPU-a", 13, 36000), ("GPU-b", 14, 36000)],
-     {13: ("talon", "python -m vllm.entrypoints.openai.api_server"),
-      14: ("talon", "python -m vllm.entrypoints.openai.api_server")}, False, True, None),
-    ([("GPU-a", 15, 57000)], {15: ("talon", "/bin/ollama runner")}, False, False, "ollama_loaded"),
+     {13: own("talon", pod(VLLM_ID)), 14: own("talon", pod(VLLM_ID))}, False, True, None),
+    ([("GPU-a", 15, 57000)], {15: own("talon", pod(OLLAMA_ID))}, False, False, "ollama_loaded"),
     ([("GPU-a", 16, 21000)], {16: None}, False, False, "other_tenant"),              # owner unknown
-    ([("GPU-a", 17, 500)], {17: ("max", "python small.py")}, False, True, None),      # below the line
+    ([("GPU-a", 17, 500)], {17: own("max")}, False, True, None),                      # below the line
 ])
 def test_gpu_verdict_tells_ours_from_others(apps: Any, procs: Any, converting: bool, free: bool,
                                             reason: Optional[str]) -> None:
@@ -230,7 +243,7 @@ def test_gpu_verdict_tells_ours_from_others(apps: Any, procs: Any, converting: b
     vLLM are told apart; an unknown owner is never grabbed."""
     used = {"GPU-a": sum(u for g, _, u in apps if g == "GPU-a"), "GPU-b": sum(u for g, _, u in apps if g == "GPU-b")}
     v = ms.classify_gpus(_gpus(used["GPU-a"], used["GPU-b"]), apps, procs, our_user="talon",
-                         free_mib=2000, manual_converting=converting)
+                         free_mib=2000, manual_converting=converting, containers=CONTAINERS)
     assert v.free is free and v.reason == reason
 
 
@@ -241,11 +254,11 @@ def test_many_small_processes_of_another_team_make_a_busy_card() -> None:
     card now; one small process and the driver's idle memory stay free."""
     a = [("GPU-a", p, m) for p, m in ((1, 662), (2, 676), (3, 912), (4, 912), (5, 912), (6, 912))]
     b = [("GPU-b", p, m) for p, m in ((7, 676), (8, 912), (9, 912))]
-    procs = {i: ("martin", "python train.py") for i in range(1, 10)}
+    procs = {i: own("martin") for i in range(1, 10)}
     v = ms.classify_gpus(_gpus(4986 + 150, 2500 + 20), a + b, procs, our_user="talon",
                          free_mib=2000, manual_converting=False)
     assert not v.free and v.reason == "other_tenant"
-    one = ms.classify_gpus(_gpus(900 + 150, 20), [("GPU-a", 1, 900)], {1: ("martin", "python x.py")},
+    one = ms.classify_gpus(_gpus(900 + 150, 20), [("GPU-a", 1, 900)], {1: own("martin")},
                            our_user="talon", free_mib=2000, manual_converting=False)
     assert one.free
     idle = ms.classify_gpus(_gpus(158, 18), [], {}, our_user="talon", free_mib=2000, manual_converting=False)
@@ -261,7 +274,7 @@ def test_the_default_line_is_6_gb_of_someone_else_per_card() -> None:
 
     line = Settings().llm_gpu_free_mib
     assert line == 6000
-    other = {1: ("martin", "python train.py")}
+    other = {1: own("martin")}
     under = ms.classify_gpus(_gpus(5871, 609), [("GPU-a", 1, 5712)], other, our_user="talon",
                              free_mib=line, manual_converting=False)
     over = ms.classify_gpus(_gpus(6300, 609), [("GPU-a", 1, 6150)], other, our_user="talon",
@@ -324,6 +337,9 @@ class FakeIO(ms.HostIO):
     async def proc_info(self, pid: int) -> Any:
         return self.procs.get(pid)
 
+    async def container_ids(self) -> Any:
+        return CONTAINERS
+
     def our_user(self) -> str:
         return "talon"
 
@@ -373,7 +389,7 @@ async def test_reconcile_writes_state_before_the_command_and_records_failures(cl
     async with SessionLocal() as session:
         await session.execute(ms.text("UPDATE model_service_state SET state = 'stopped', cooldown_until = NULL"))
         await session.commit()
-    io3 = FakeIO(settings, apps=[("GPU-a", 9, 21000)], procs={9: ("max", "python train.py")})
+    io3 = FakeIO(settings, apps=[("GPU-a", 9, 21000)], procs={9: own("max")})
     d3 = await ms.reconcile(SessionLocal, settings, io3)
     assert d3.action is None and io3.commands == []
     async with SessionLocal() as session:

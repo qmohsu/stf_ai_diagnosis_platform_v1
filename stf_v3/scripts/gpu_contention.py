@@ -4,17 +4,18 @@
 Started by ``run_golden_eval.sh`` as its own transient user service, it
 follows the eval container: every ``--interval`` seconds it samples each
 GPU (memory, utilisation, per-process memory and compute) and sorts the
-processes into four groups — our vLLM, our Ollama, other processes of the
-V3 services (MinerU under the host GPU worker, …), and other workloads:
-other users, AND this account's processes outside the V3 containers /
-services (2026-09-27: the Gemma competition's own vLLM ran on the same
-account and would otherwise have passed for ours).  When the container is gone it
+processes into four groups by ownership (never the command line) — our
+vLLM (the ``stf-vllm`` container), our Ollama, other V3 processes (the
+``stf-v3-*`` containers, MinerU under the host GPU worker), and other
+workloads: other users, AND this account's processes outside those — an
+SSH session or another project's container (2026-09-27: the Gemma
+competition's own vLLM and its sandbox container ran on the same account).  When the container is gone it
 writes ``<scorecard base>.contention.json`` into the run directory (or
 ``contention.json`` when no scorecard was written), with the vLLM
 preemption count before / after.
 
-Privacy (FM-18 / FM-19): user names, process ids and command lines are
-used in memory to classify a process and never written; the record holds
+Privacy (FM-18 / FM-19): only a process's account id and cgroup are read
+(never its command line) and neither is written; the record holds
 numbers, the run name, the scorecard name and UTC times only.
 
 Robustness (FM-2 / FM-10 / FM-11): every external call has a timeout; a
@@ -35,6 +36,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import re
 import signal
 import statistics
 import subprocess
@@ -80,14 +82,6 @@ def proc_owner_uid(pid: int) -> Optional[int]:
     return None
 
 
-def proc_cmdline(pid: int) -> str:
-    try:
-        with open(f"/proc/{pid}/cmdline", "rb") as fh:
-            return fh.read().replace(b"\0", b" ").decode("utf-8", "replace").lower()
-    except OSError:
-        return ""
-
-
 def proc_cgroup(pid: int) -> str:
     try:
         with open(f"/proc/{pid}/cgroup", encoding="utf-8") as fh:
@@ -96,29 +90,51 @@ def proc_cgroup(pid: int) -> str:
         return ""
 
 
-V3_CGROUP_MARKERS = ("libpod-", "stf-v3-gpu-worker.service")
-"""A process of this account belongs to V3 only inside a Podman container
-(stf-vllm, stf-ollama, stf-v3-*) or the host GPU worker service (MinerU)."""
+VLLM_CONTAINER = "stf-vllm"
+OLLAMA_CONTAINER = "stf-ollama"
+V3_CONTAINER_PREFIX = "stf-v3-"
+GPU_WORKER_SERVICE = "stf-v3-gpu-worker.service"
+_LIBPOD_RE = re.compile(r"libpod-([0-9a-f]{64})")
+
+
+def container_names(run: Runner) -> Optional[Dict[str, str]]:
+    """Full container id → name on this account (None when the listing failed)."""
+    out = run(["podman", "ps", "--no-trunc", "--format", "{{.ID}} {{.Names}}"], CALL_TIMEOUT_S)
+    if out is None:
+        return None
+    pairs = (line.strip().partition(" ") for line in out.splitlines() if line.strip())
+    return {cid: name.strip() for cid, _, name in pairs}
 
 
 def classify(pid: int, my_uid: int, owner: Callable[[int], Optional[int]] = proc_owner_uid,
-             cmdline: Callable[[int], str] = proc_cmdline, cgroup: Callable[[int], str] = proc_cgroup) -> str:
-    """``vllm`` / ``ollama`` / ``project_other`` / ``others``.
+             cgroup: Callable[[int], str] = proc_cgroup,
+             containers: Optional[Dict[str, str]] = None) -> str:
+    """``vllm`` / ``ollama`` / ``project_other`` / ``others`` — by ownership, never the command line.
 
-    Unknown owner, another user, or this account outside the V3 containers
-    and services → ``others`` (FM-4).
+    Another user or an unknown owner → ``others``.  On this account: inside
+    the ``stf-vllm`` container → ``vllm``; ``stf-ollama`` → ``ollama``;
+    another ``stf-v3-*`` container or the host GPU worker service (MinerU)
+    → ``project_other``; anything else — an SSH session, another project's
+    container (the Gemma competition's vLLM and sandbox ran on this account
+    on 2026-09-27, #255 FM-30), or an unknown container id → ``others``.
     """
     uid = owner(pid)
     if uid is None or uid != my_uid:
         return "others"
-    if not any(m in cgroup(pid) for m in V3_CGROUP_MARKERS):
+    cg = cgroup(pid)
+    m = _LIBPOD_RE.search(cg)
+    if m:
+        name = (containers or {}).get(m.group(1))
+        if name == VLLM_CONTAINER:
+            return "vllm"
+        if name == OLLAMA_CONTAINER:
+            return "ollama"
+        if name is not None and name.startswith(V3_CONTAINER_PREFIX):
+            return "project_other"
         return "others"
-    cmd = cmdline(pid)
-    if "vllm" in cmd:
-        return "vllm"
-    if "ollama" in cmd:
-        return "ollama"
-    return "project_other"
+    if GPU_WORKER_SERVICE in cg:
+        return "project_other"
+    return "others"
 
 
 def take_sample(run: Runner, my_uid: int, classify_fn: Callable[[int], str]) -> Optional[List[Dict[str, float]]]:
@@ -254,7 +270,8 @@ def sample_run(container: str, run_dir: Path, *, interval: float, concurrency: O
                metrics: Callable[[str], Optional[float]] = preemptions) -> Path:
     """Follow ``container`` until it ends (or ``max_s``) and write the record."""
     uid = os.getuid() if my_uid is None and hasattr(os, "getuid") else (my_uid or 0)
-    cls = classify_fn or (lambda pid: classify(pid, uid))
+    names: Dict[str, Optional[Dict[str, str]]] = {"map": None}
+    cls = classify_fn or (lambda pid: classify(pid, uid, containers=names["map"]))
     started = clock()
     before = metrics(metrics_url)
     samples: List[List[Dict[str, float]]] = []
@@ -270,6 +287,7 @@ def sample_run(container: str, run_dir: Path, *, interval: float, concurrency: O
         pass                                          # not the main thread (tests)
     try:
         while not stop["now"] and clock() - started < max_s:
+            names["map"] = container_names(run)       # re-read every sample (ids change)
             s = take_sample(run, uid, cls)
             if s is None:
                 errors += 1

@@ -16,6 +16,7 @@ from sqlalchemy import text
 
 from stf_v3.auth.router import router as auth_router
 from stf_v3.db import engine
+from stf_v3.diagnosis.model_service import blocked_by
 from stf_v3.diagnosis.router import router as diagnosis_router
 from stf_v3.errors import install_error_handlers
 from stf_v3.ingest.router import router as ingest_router
@@ -120,7 +121,7 @@ async def health() -> Dict[str, Any]:
         llm = (await conn.execute(text(
             "SELECT state, blocked_reason, started_by_us, "
             "EXTRACT(EPOCH FROM now() - controller_seen_at), "
-            "EXTRACT(EPOCH FROM now() - GREATEST(last_used_at, ready_at)) "
+            "EXTRACT(EPOCH FROM now() - GREATEST(last_used_at, ready_at)), gpu_snapshot "
             "FROM model_service_state WHERE id = 1"))).first()
     backlog = {q: n for q, n in rows}
     free_gb = round(shutil.disk_usage(Path(settings.manual_storage_path).resolve()).free / 1e9, 1)
@@ -143,5 +144,8 @@ async def health() -> Dict[str, Any]:
             "state": llm[0], "blocked_reason": llm[1], "started_by_us": llm[2],
             "controller_seen_s": int(llm[3]) if llm[3] is not None else None,
             "idle_s": int(llm[4]) if (llm[0] == "ready" and llm[4] is not None) else None,
+            # #255 FM-21: every kind holding memory when blocked (the reason
+            # above is the highest-priority one).
+            "blocked_by": blocked_by(llm[5]) if llm[0] == "blocked" else [],
         },
     }

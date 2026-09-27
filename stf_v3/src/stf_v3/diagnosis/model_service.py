@@ -16,7 +16,9 @@ vLLM is started on demand and never kept resident (user decision
   the task takes no arguments (FM-40).
 
 Start only when both GPUs are free of anyone else's memory (other
-tenants, our own MinerU or Ollama, FM-50 / FM-45); never start twice
+tenants, this account's other projects, our own MinerU or Ollama, FM-50 /
+FM-45 / #255 — owners are told apart by account + container / service,
+never by command line); never start twice
 while loading (FM-20); a failed or timed-out start sets a cooldown
 (FM-24); stop only a vLLM we started ourselves, idle for
 ``llm_idle_stop_s`` with no unfinished diagnosis, no eval lock and no
@@ -49,6 +51,9 @@ log = structlog.get_logger(__name__)
 CONTROLLER_STALE_S = 180          # no controller heartbeat for 3 min → "unresponsive"
 STOPPED_EXTERNALLY = "stopped externally (not by the controller)"
 VLLM_CONTAINER = "stf-vllm"
+OLLAMA_CONTAINER = "stf-ollama"             # V1/V2 (and the V3 Ollama fallback)
+V3_CONTAINER_PREFIX = "stf-v3-"
+GPU_WORKER_SERVICE = "stf-v3-gpu-worker.service"
 COLD_START_S = 720                # typical cold start (10–12 min) for the ETA
 
 
@@ -90,6 +95,15 @@ async def touch_last_used(session_factory: async_sessionmaker) -> None:
             ))
 
 
+_WAIT_FOR_BLOCK = {
+    "other_tenant": "gpu_busy",
+    "same_account": "gpu_busy_internal",      # #255: another project of this account
+    "manual_converting": "manual_converting",
+    "ollama_loaded": "gpu_old_model",
+    "ours_busy": "gpu_project_task",
+}
+
+
 def wait_reason(
     state: Optional[ModelServiceState], now: dt.datetime
 ) -> Tuple[str, Dict[str, Any]]:
@@ -104,9 +118,7 @@ def wait_reason(
             (now - state.controller_seen_at).total_seconds() > CONTROLLER_STALE_S:
         return "controller_unresponsive", {}
     if state.state == "blocked":
-        if state.blocked_reason == "manual_converting":
-            return "manual_converting", {}
-        return "gpu_busy", {}
+        return _WAIT_FOR_BLOCK.get(state.blocked_reason or "", "gpu_busy"), {}
     if state.state == "failed" and state.cooldown_until is not None and now < state.cooldown_until:
         return "model_cooldown", {}
     eta = COLD_START_S
@@ -175,33 +187,82 @@ class Decision:
 _DRIVER_NOISE_MIB = 512
 
 
+@dataclass(frozen=True)
+class ProcOwner:
+    """Who runs a GPU process: its Unix account and its cgroup (never the command line)."""
+
+    user: str
+    cgroup: str
+
+
+_LIBPOD_RE = re.compile(r"libpod-([0-9a-f]{64})")
+BLOCK_PRIORITY = ("other_tenant", "same_account", "manual_converting", "ollama_loaded", "ours_busy")
+"""#255 FM-21: which blocked reason is shown when several hold the cards —
+first the ones we cannot control ourselves."""
+
+
+def process_kind(owner: Optional[ProcOwner], our_user: str,
+                 containers: Optional[Dict[str, str]]) -> Tuple[str, str]:
+    """``(kind, where)`` of one GPU process (#255).
+
+    Ownership, never the command line: another account (or an unknown
+    owner) → ``other_tenant``; on our account, a process inside the
+    ``stf-vllm`` container is V3's vLLM, inside ``stf-ollama`` our Ollama,
+    inside another ``stf-v3-*`` container or the host GPU worker service
+    (MinerU) ours; anything else of this account — an SSH session, another
+    project's container (2026-09-27: the Gemma competition's own vLLM and
+    its sandbox container ran on the same account) — is ``same_account``
+    and blocks like another team.  Unknown container ids (the listing
+    failed) also count as ``same_account``: never grab a card we cannot
+    account for.  ``where`` is a label for the log — a container / service
+    name, never a user name or a command line.
+    """
+    if owner is None:
+        return "other_tenant", "unknown owner"
+    if owner.user != our_user:
+        return "other_tenant", "another user"
+    m = _LIBPOD_RE.search(owner.cgroup)
+    if m:
+        name = (containers or {}).get(m.group(1))
+        if name == VLLM_CONTAINER:
+            return "vllm", name
+        if name == OLLAMA_CONTAINER:
+            return "ollama", name
+        if name is not None and name.startswith(V3_CONTAINER_PREFIX):
+            return "ours", name
+        return "same_account", "another container" if name is None else "container " + name
+    if GPU_WORKER_SERVICE in owner.cgroup:
+        return "ours", GPU_WORKER_SERVICE
+    return "same_account", "outside the V3 services"
+
+
 def classify_gpus(
     gpus: Sequence[Tuple[int, str, int]],
     apps: Sequence[Tuple[str, int, int]],
-    procs: Dict[int, Optional[Tuple[str, str]]],
+    procs: Dict[int, Optional[ProcOwner]],
     *,
     our_user: str,
     free_mib: int,
     manual_converting: bool,
+    containers: Optional[Dict[str, str]] = None,
 ) -> GpuVerdict:
-    """Who holds GPU memory, and may we start vLLM (FM-50 / FM-45)?
+    """Who holds GPU memory, and may we start vLLM (FM-50 / FM-45 / #255)?
 
     Args:
         gpus: ``(index, uuid, used MiB)`` per card.
         apps: ``(gpu uuid, pid, used MiB)`` per compute process.
-        procs: pid → ``(user, command line)``; None when unknown.
+        procs: pid → its owner (account + cgroup); None when unknown.
         our_user: The account the controller runs as.
         free_mib: A card whose memory held by anything but our vLLM adds
             up to less than this counts as free.
         manual_converting: A manual conversion is running (our MinerU).
+        containers: full container id → name on this account (None when
+            the listing failed).
 
-    A process of another user — or one whose owner cannot be read — is
-    ``other_tenant`` (never grab a card we cannot account for); our own
-    vLLM does not block; our Ollama or other processes do.  Memory on a
-    card that no listed process accounts for counts as another tenant's.
-    The line is per CARD, not per process: nine 0.7–0.9 GB processes of
-    another user are a busy card (PROD-11 server finding — the per-process
-    rule started vLLM on top of them).
+    Each process is sorted by ``process_kind``; only V3's own vLLM does not
+    block.  Memory on a card that no listed process accounts for counts as
+    another tenant's.  The line is per CARD, not per process: nine 0.7–0.9
+    GB processes of another user are a busy card (PROD-11 server finding).
     """
     index_of = {u: i for i, u, _ in gpus}
     snapshot: List[Dict[str, Any]] = []
@@ -209,22 +270,9 @@ def classify_gpus(
     listed: Dict[str, int] = {}
     load: Dict[str, Dict[str, int]] = {}      # card → kind → MiB (all but our vLLM)
     for gpu_uuid, pid, used in apps:
-        info = procs.get(pid)
-        if info is None:
-            kind = "other_tenant"
-        else:
-            user, args = info
-            low = args.lower()
-            if user != our_user:
-                kind = "other_tenant"
-            elif "vllm" in low:
-                kind = "vllm"
-            elif "ollama" in low:
-                kind = "ollama"
-            else:
-                kind = "ours"
+        kind, where = process_kind(procs.get(pid), our_user, containers)
         listed[gpu_uuid] = listed.get(gpu_uuid, 0) + used
-        snapshot.append({"gpu": index_of.get(gpu_uuid), "pid": pid, "mib": used, "kind": kind})
+        snapshot.append({"gpu": index_of.get(gpu_uuid), "pid": pid, "mib": used, "kind": kind, "where": where})
         if kind != "vllm":
             per = load.setdefault(gpu_uuid, {})
             per[kind] = per.get(kind, 0) + used
@@ -233,21 +281,39 @@ def classify_gpus(
         if extra >= _DRIVER_NOISE_MIB:
             per = load.setdefault(gpu_uuid, {})
             per["other_tenant"] = per.get("other_tenant", 0) + extra
-            snapshot.append({"gpu": idx, "pid": None, "mib": extra, "kind": "unaccounted"})
+            snapshot.append({"gpu": idx, "pid": None, "mib": extra, "kind": "unaccounted", "where": "no process"})
     for per in load.values():
         if sum(per.values()) >= free_mib:
             blockers.extend(kind for kind, mib in per.items() if mib > 0)
     if not blockers:
         return GpuVerdict(free=True, snapshot=snapshot)
-    if "other_tenant" in blockers:
-        reason = "other_tenant"
-    elif "ours" in blockers and manual_converting:
-        reason = "manual_converting"
-    elif "ollama" in blockers:
-        reason = "ollama_loaded"
-    else:
-        reason = "ours_busy"
+    reasons = {
+        "other_tenant" if k == "other_tenant" else
+        "same_account" if k == "same_account" else
+        "ollama_loaded" if k == "ollama" else
+        ("manual_converting" if manual_converting else "ours_busy")
+        for k in blockers
+    }
+    reason = next(r for r in BLOCK_PRIORITY if r in reasons)
     return GpuVerdict(free=False, reason=reason, snapshot=snapshot)
+
+
+def _holders(snapshot: Any) -> List[Dict[str, Any]]:
+    """Per card and owner: kind, MiB, container / service label (no user, no command line)."""
+    agg: Dict[Tuple[Any, str, str], int] = {}
+    for row in snapshot or []:
+        key = (row.get("gpu"), str(row.get("kind")), str(row.get("where", "")))
+        agg[key] = agg.get(key, 0) + int(row.get("mib") or 0)
+    return [{"gpu": g, "kind": k, "where": w, "mib": m} for (g, k, w), m in sorted(agg.items(), key=str)]
+
+
+def blocked_by(snapshot: Any) -> List[str]:
+    """Every kind holding memory in a snapshot, for ``/v3/health`` (#255 FM-21)."""
+    kinds = set()
+    for row in snapshot or []:
+        if isinstance(row, dict) and row.get("kind") not in (None, "vllm") and (row.get("mib") or 0) > 0:
+            kinds.add("other_tenant" if row["kind"] == "unaccounted" else str(row["kind"]))
+    return sorted(kinds)
 
 
 def decide(obs: Observation, st: StateView, settings: Any, now: dt.datetime) -> Decision:
@@ -379,13 +445,25 @@ class HostIO:
                     continue
         return rows
 
-    async def proc_info(self, pid: int) -> Optional[Tuple[str, str]]:
-        rc, out, _ = await self._run(["ps", "-o", "user=,args=", "-p", str(pid)], 10)
-        line = out.strip()
-        if rc != 0 or not line:
+    async def proc_info(self, pid: int) -> Optional[ProcOwner]:
+        """Account + cgroup of a GPU process (None when it is gone / unreadable, #255)."""
+        rc, out, _ = await self._run(["ps", "-o", "user=", "-p", str(pid)], 10)
+        user = out.strip()
+        if rc != 0 or not user:
             return None
-        user, _, args = line.partition(" ")
-        return user.strip(), args.strip()
+        try:
+            cgroup = Path(f"/proc/{pid}/cgroup").read_text(encoding="utf-8")
+        except OSError:
+            cgroup = ""
+        return ProcOwner(user=user, cgroup=cgroup)
+
+    async def container_ids(self) -> Optional[Dict[str, str]]:
+        """Full container id → name for this account, re-read every pass (#255 FM-5)."""
+        rc, out, _ = await self._run(["podman", "ps", "--no-trunc", "--format", "{{.ID}} {{.Names}}"], 10)
+        if rc != 0:
+            return None
+        pairs = (line.strip().partition(" ") for line in out.splitlines() if line.strip())
+        return {cid: name.strip() for cid, _, name in pairs}
 
     def our_user(self) -> str:
         return getpass.getuser()
@@ -444,8 +522,10 @@ async def observe(io: HostIO, settings: Any, *, demand: int, manual_converting: 
     gpus = await io.gpu_rows()
     apps = await io.app_rows()
     procs = {pid: await io.proc_info(pid) for _, pid, _ in apps}
+    containers = await io.container_ids() if apps else {}
     verdict = classify_gpus(gpus, apps, procs, our_user=io.our_user(),
-                            free_mib=settings.llm_gpu_free_mib, manual_converting=manual_converting)
+                            free_mib=settings.llm_gpu_free_mib, manual_converting=manual_converting,
+                            containers=containers)
     return Observation(
         container_running=running, ready=ready,
         running_requests=await io.running_requests() if ready else 0,
@@ -490,6 +570,7 @@ async def reconcile(session_factory: async_sessionmaker, settings: Any, io: Host
             obs = await observe(io, settings, demand=demand, manual_converting=converting,
                                 last_finished_at=last_finished)
             view = StateView.from_row(row)
+            prev = (row.state if row is not None else None, row.blocked_reason if row is not None else None)
             if not settings.llm_autostart or select_profile(settings) != PROFILE_QWEN_VLLM:
                 decision = Decision(None, {"controller_seen_at": now,
                                            "state": "ready" if obs.ready else "stopped"},
@@ -499,6 +580,9 @@ async def reconcile(session_factory: async_sessionmaker, settings: Any, io: Host
             for key, value in decision.fields.items():
                 setattr(row, key, value)
             row.updated_at = now
+    if decision.fields.get("state") == "blocked" and             prev != ("blocked", decision.fields.get("blocked_reason")):
+        log.info("llm.blocked", reason=decision.fields.get("blocked_reason"),
+                 holders=_holders(obs.gpu.snapshot))            # #255 FM-20: who, never how
     if decision.action:
         if decision.action == "start":
             log.info("llm.start", demand=demand, gpu_snapshot=decision.fields.get("gpu_snapshot"))

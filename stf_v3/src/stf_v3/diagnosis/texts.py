@@ -26,6 +26,23 @@ WAIT_REASONS: Dict[str, Dict[str, str]] = {
         "zh-CN": "显卡正被其他团队使用，排队等待中",
         "en": "The GPUs are in use by another team; waiting",
     },
+    # #255: blocked by something other than another team (never say "this
+    # account" to a workshop user — it reads as their workshop account).
+    "gpu_busy_internal": {
+        "zh-TW": "伺服器上的另一項內部任務正在使用顯示卡，排隊等待中",
+        "zh-CN": "服务器上的另一项内部任务正在使用显卡，排队等待中",
+        "en": "Another internal task on the server is using the GPUs; waiting",
+    },
+    "gpu_old_model": {
+        "zh-TW": "顯示卡正被舊版本的模型佔用，排隊等待中",
+        "zh-CN": "显卡正被旧版本的模型占用，排队等待中",
+        "en": "An older version's model is holding the GPUs; waiting",
+    },
+    "gpu_project_task": {
+        "zh-TW": "顯示卡正被本系統的其他任務使用，排隊等待中",
+        "zh-CN": "显卡正被本系统的其他任务使用，排队等待中",
+        "en": "Another task of this system is using the GPUs; waiting",
+    },
     "manual_converting": {
         "zh-TW": "顯示卡正在轉換手冊，排隊等待中",
         "zh-CN": "显卡正在转换手册，排队等待中",
@@ -122,11 +139,14 @@ def _pick(table: Dict[str, str], locale: str) -> str:
     return table.get(locale) or table.get("zh-TW" if locale.startswith("zh") else "en") or table["en"]
 
 
+WAIT_FALLBACK: Dict[str, str] = {"zh-TW": "排隊等待中", "zh-CN": "排队等待中", "en": "Waiting"}
+
+
 def wait_text(reason: str, locale: str, **fmt: object) -> str:
-    """Sentence for a ``waiting`` reason (unknown reasons fall back to the code)."""
+    """Sentence for a ``waiting`` reason (unknown reasons → a generic sentence, #255 FM-10)."""
     table = WAIT_REASONS.get(reason)
     if table is None:
-        return reason
+        return _pick(WAIT_FALLBACK, locale)
     try:
         return _pick(table, locale).format(**fmt)
     except (KeyError, IndexError):
