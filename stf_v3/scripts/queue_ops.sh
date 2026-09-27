@@ -8,7 +8,8 @@
 #   bash stf_v3/scripts/queue_ops.sh drill             # restart-recovery drill (default queue)
 #
 # Runs on the PolyU server host.  SQL goes through the Postgres container
-# with the V3 owner role URL from infra/.env (never printed).
+# with the V3 owner role from infra/.env (password via the environment,
+# never printed and never on a command line — PROD-15A).
 set -euo pipefail
 
 CMD="${1:-status}"
@@ -16,10 +17,9 @@ REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 set -a; . "$REPO_DIR/infra/.env"; set +a
 PG_CONTAINER="${PG_CONTAINER:-stf-postgres}"
 DB_URL="${STF_V3_DATABASE_URL:?set STF_V3_DATABASE_URL}"
-# strip the SQLAlchemy driver suffix for psql
-PSQL_URL="${DB_URL/postgresql+psycopg:/postgresql:}"
+. "$REPO_DIR/stf_v3/scripts/pg_env.sh"
 
-sql() { podman exec -i "$PG_CONTAINER" psql "$PSQL_URL" -X -q "$@"; }
+sql() { podman exec -e PGPASSWORD -i "$PG_CONTAINER" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -X -q "$@"; }
 
 case "$CMD" in
   status)

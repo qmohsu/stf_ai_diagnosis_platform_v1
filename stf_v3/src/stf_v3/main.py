@@ -5,6 +5,7 @@ Author: Xiangzhu Yan
 
 import datetime as dt
 import json
+import os
 import shutil
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -97,11 +98,47 @@ def gpu_worker_status() -> Dict[str, Any]:
         return {"alive": False, "age_s": None, "commit": None}
 
 
+# PROD-15A: the host backup service writes its status into a read-only volume
+# of this container.  Read from the environment here, not from Settings:
+# settings.py is a golden-gate managed path and this is not an agent change.
+BACKUP_STATUS_PATH = os.environ.get("STF_V3_BACKUP_STATUS_PATH", "./data/backup_state/status.json")
+BACKUP_STALE_HOURS = float(os.environ.get("STF_V3_BACKUP_STALE_HOURS", "36"))
+
+
+def backup_status() -> Dict[str, Any]:
+    """Reads the host backup service's status file (PROD-15A, FM-40).
+
+    Judged by the time of the last SUCCESSFUL backup, never by the absence
+    of failures: ``state`` is ``ok`` (younger than ``backup_stale_hours``),
+    ``stale`` or ``unknown`` (no status file yet).  Threshold: 36 h.  The offsite copy on the
+    network share is reported the same way.
+    """
+    def judge(ts: Any) -> Dict[str, Any]:
+        try:
+            when = dt.datetime.fromisoformat(str(ts))
+        except ValueError:
+            return {"state": "unknown", "last_success_at": None, "age_h": None}
+        age_h = round((dt.datetime.now(dt.timezone.utc) - when).total_seconds() / 3600, 1)
+        return {"state": "ok" if age_h < BACKUP_STALE_HOURS else "stale",
+                "last_success_at": when.isoformat(), "age_h": age_h}
+
+    try:
+        raw = json.loads(Path(BACKUP_STATUS_PATH).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"state": "unknown", "last_success_at": None, "age_h": None, "last_result": None,
+                "offsite": {"state": "unknown", "last_success_at": None, "age_h": None}}
+    out = judge(raw.get("last_success_at"))
+    out["last_result"] = raw.get("last_result")
+    out["offsite"] = judge((raw.get("offsite") or {}).get("last_success_at"))
+    return out
+
+
 @app.get("/health", tags=["system"])
 @app.get("/v3/health", tags=["system"])
 async def health() -> Dict[str, Any]:
     """Liveness + DB + queue backlog + host GPU worker + disk + commit,
-    plus (PROD-11) unfinished diagnoses and the on-demand model service.
+    plus (PROD-11) unfinished diagnoses and the on-demand model service,
+    plus (PROD-15A) the time of the last successful backup.
 
     Served at both ``/health`` (container healthcheck) and ``/v3/health``
     (through nginx, where bare ``/health`` belongs to V1).
@@ -148,4 +185,6 @@ async def health() -> Dict[str, Any]:
             # above is the highest-priority one).
             "blocked_by": blocked_by(llm[5]) if llm[0] == "blocked" else [],
         },
+        # PROD-15A FM-40: last SUCCESSFUL backup (stale after 36 h).
+        "backup": backup_status(),
     }

@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-25 -75 1505 1257.5" font-family="Segoe UI, Microsoft YaHei, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-25 -75 1505 1317.5" font-family="Segoe UI, Microsoft YaHei, sans-serif">
 <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ced4da"/></marker></defs>
-<rect x="-25" y="-75" width="1505" height="1257.5" fill="#121212"/>
+<rect x="-25" y="-75" width="1505" height="1317.5" fill="#121212"/>
 <rect x="60" y="0" width="220" height="40" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2"/>
 <rect x="300" y="0" width="240" height="40" rx="8" fill="#3d3106" stroke="#fcc419" stroke-width="2"/>
 <rect x="560" y="0" width="200" height="40" rx="8" fill="#0f3620" stroke="#51cf66" stroke-width="2"/>
@@ -22,14 +22,15 @@
 <rect x="740" y="510" width="300" height="100" rx="8" fill="#3d3106" stroke="#fcc419" stroke-width="2"/>
 <rect x="1070" y="510" width="270" height="100" rx="8" fill="#102a43" stroke="#4dabf7" stroke-width="2" stroke-dasharray="8 6"/>
 <rect x="420" y="620" width="290" height="50" rx="8" fill="#33260a" stroke="#ff922b" stroke-width="2" stroke-dasharray="8 6"/>
-<rect x="60" y="730" width="1320" height="200" rx="8" fill="transparent" stroke="#51cf66" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="60" y="730" width="1320" height="260" rx="8" fill="transparent" stroke="#51cf66" stroke-width="2" stroke-dasharray="8 6"/>
 <rect x="90" y="790" width="340" height="110" rx="8" fill="#0f3620" stroke="#51cf66" stroke-width="2"/>
 <rect x="460" y="790" width="270" height="110" rx="8" fill="#3d3106" stroke="#fcc419" stroke-width="2"/>
 <rect x="760" y="790" width="250" height="110" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2"/>
 <rect x="1040" y="790" width="300" height="110" rx="8" fill="#33260a" stroke="#ff922b" stroke-width="2" stroke-dasharray="8 6"/>
-<rect x="90" y="970" width="320" height="90" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2"/>
-<rect x="450" y="970" width="280" height="90" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2" stroke-dasharray="8 6"/>
-<rect x="770" y="970" width="380" height="90" rx="8" fill="#3d3106" stroke="#fcc419" stroke-width="2"/>
+<rect x="90" y="915" width="1250" height="50" rx="8" fill="#0f3620" stroke="#51cf66" stroke-width="2"/>
+<rect x="90" y="1030" width="320" height="90" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2"/>
+<rect x="450" y="1030" width="280" height="90" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="770" y="1030" width="380" height="90" rx="8" fill="#3d3106" stroke="#fcc419" stroke-width="2"/>
 <polyline points="310,145 360,145" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
 <polyline points="530,190 530,320" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
 <polyline points="1200,190 600,320" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
@@ -37,8 +38,8 @@
 <polyline points="390,560 420,560" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
 <polyline points="240,610 240,790" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
 <polyline points="890,610 880,790" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
-<polyline points="90,580 35,580 35,1015 90,1015" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
-<text x="60" y="-21.60" font-size="24" fill="#f8f9fa">STF V3 产品化架构 — Final（设计文档 v1.15 · 2026-09-25 · 开发计划 v1.14 · PROD-11 诊断任务）</text>
+<polyline points="90,580 35,580 35,1075 90,1075" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
+<text x="60" y="-21.60" font-size="24" fill="#f8f9fa">STF V3 产品化架构 — Final（设计文档 v1.19 · 2026-09-27 · 开发计划 v1.20 · PROD-15A 备份）</text>
 <text x="170.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">开源 / 第三方采用</text>
 <text x="420.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">沿用 V1/V2 资产</text>
 <text x="660.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">V3 新做</text>
@@ -103,15 +104,17 @@
 <text x="1190.0" y="841.70" text-anchor="middle" font-size="12" fill="#f1f3f5">case_vectors (第二批)</text>
 <text x="1190.0" y="856.70" text-anchor="middle" font-size="12" fill="#f1f3f5">细粒度权限表 · vehicle_events (S4)</text>
 <text x="1190.0" y="871.70" text-anchor="middle" font-size="12" fill="#f1f3f5">(回头条件见开发计划 §4)</text>
+<text x="715.0" y="936.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">每日加密备份（PROD-15A）：宿主机定时服务 03:30 · 只读备份账号取快照 → 两个库 + 原始日志 + 手册库 + 配置</text>
+<text x="715.0" y="951.70" text-anchor="middle" font-size="12" fill="#f1f3f5">整包加密 → 本机一份 + 实验室共享盘一份 · /v3/health 与部署检查看「最近一次成功备份」· 恢复演练在一次性容器里</text>
 <text x="250" y="710.73" font-size="11" fill="#ced4da">会话/审计回写 + 业务读写</text>
 <text x="895" y="710.73" font-size="11" fill="#ced4da">读原始字节 / Manual MD</text>
-<text x="250.0" y="1011.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">本地 vLLM + Qwen3.6-27B</text>
-<text x="250.0" y="1026.70" text-anchor="middle" font-size="12" fill="#f1f3f5">唯一模型来源 · 按需拉起 · 空闲自停</text>
-<text x="590.0" y="1011.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">云端接口 (保留)</text>
-<text x="590.0" y="1026.70" text-anchor="middle" font-size="12" fill="#f1f3f5">仅供对比测试用</text>
-<text x="960.0" y="1011.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">Golden 评测 Gate (沿用)</text>
-<text x="960.0" y="1026.70" text-anchor="middle" font-size="12" fill="#f1f3f5">手册 0.878 · OBD 0.885 基线 · 受管改动必过</text>
-<text x="95" y="951.70" font-size="12" fill="#ced4da">LLM 调用（quirks 收敛在 Runtime 模型适配层）</text>
-<text x="60" y="1102.67" font-size="13" fill="#adb5bd">交互四阶段 S1 一键报告 → S2 报告内追问 → S3 车辆级对话 → S4 主动触发（详见 v3_design_doc.md §1.2）。</text>
-<text x="60" y="1118.92" font-size="13" fill="#adb5bd">V1/V2 并行运行直至废弃；不做清单见设计文档 A3 / 开发计划 §4；每笔原始数据必须绑定车档（不允许 V-UNKNOWN）。</text>
+<text x="250.0" y="1071.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">本地 vLLM + Qwen3.6-27B</text>
+<text x="250.0" y="1086.70" text-anchor="middle" font-size="12" fill="#f1f3f5">唯一模型来源 · 按需拉起 · 空闲自停</text>
+<text x="590.0" y="1071.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">云端接口 (保留)</text>
+<text x="590.0" y="1086.70" text-anchor="middle" font-size="12" fill="#f1f3f5">仅供对比测试用</text>
+<text x="960.0" y="1071.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">Golden 评测 Gate (沿用)</text>
+<text x="960.0" y="1086.70" text-anchor="middle" font-size="12" fill="#f1f3f5">手册 0.878 · OBD 0.885 基线 · 受管改动必过</text>
+<text x="95" y="1011.70" font-size="12" fill="#ced4da">LLM 调用（quirks 收敛在 Runtime 模型适配层）</text>
+<text x="60" y="1162.67" font-size="13" fill="#adb5bd">交互四阶段 S1 一键报告 → S2 报告内追问 → S3 车辆级对话 → S4 主动触发（详见 v3_design_doc.md §1.2）。</text>
+<text x="60" y="1178.92" font-size="13" fill="#adb5bd">V1/V2 并行运行直至废弃；不做清单见设计文档 A3 / 开发计划 §4；每笔原始数据必须绑定车档（不允许 V-UNKNOWN）。</text>
 </svg>

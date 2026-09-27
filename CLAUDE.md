@@ -389,6 +389,24 @@ after every deploy** (`systemctl --user restart stf-v3-gpu-worker`) or
 `journalctl --user -u stf-v3-gpu-worker -n 50`. Never restart it while a
 manual is converting (`/v3/manuals` shows `converting`) — the job would be
 re-queued and rerun. Queue ops: `bash stf_v3/scripts/queue_ops.sh status|failed|retry|cancel|drill`.
+**Shared Postgres access (2026-09-27, PROD-15A step 0)**: local TCP to the
+shared `stf-postgres` needs a password (pg_hba 127.0.0.1/::1 = scram) and it
+listens on localhost only; ops go through the container socket (`podman exec
+stf-postgres psql -U <superuser>`, still trust).  Never put a password-bearing
+URL on a command line (`ps` is world-readable here): source
+`stf_v3/scripts/pg_env.sh` and use `podman exec -e PGPASSWORD …`.
+**Backups (PROD-15A)**: host user timer `stf-v3-backup.timer` (03:30 HKT,
+Persistent) runs `stf_v3/scripts/backup.py run` as the password-less read-only
+role `stf_v3_backup`: both DBs (snapshot + in-snapshot row counts), roles,
+the raw-log / manual volumes and `infra/.env` → one gpg-encrypted bundle in
+`~/stf_v3_backups/daily` + a verified copy on `/localnvme/stf_v3_backups`;
+14 daily + 8 weekly successes kept.  Install / check with `bash
+stf_v3/ops/install_backup.sh [--check]`; status `python3 stf_v3/scripts/backup.py
+status`; restore drill `backup.py drill [--offsite --ask-passphrase]` (throwaway
+no-network container, never the live instance); runbook §7.  `/v3/health`
+`backup` and `deploy_check.sh` check 10 fail when the last SUCCESSFUL backup is
+older than 36 h.  Never `podman volume prune` / `system prune --volumes` /
+`down -v`.
 
 **Branch verification (every V3 PR)** — run on the server:
 ```
@@ -400,7 +418,7 @@ cd infra && GIT_COMMIT=$(git rev-parse HEAD) ~/.local/bin/podman-compose -p stf_
 cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down &&   ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker && cd ..
 podman exec stf-nginx nginx -t && podman exec stf-nginx nginx -s reload   # only if nginx.conf changed
 systemctl --user restart stf-v3-gpu-worker && bash stf_v3/gpu_worker/install.sh --check   # host worker on the new code (PROD-06)
-bash stf_v3/scripts/deploy_check.sh                                    # 9 checks (9 = model service), exit 1 on any failure
+bash stf_v3/scripts/deploy_check.sh                                    # 10 checks (9 = model service, 10 = last backup < 36 h), exit 1 on any failure
 # E2E smoke on a throwaway DB + port 8003 (keeps the real stf_v3 DB clean):
 #   create_database.sh stf_v3_test → alembic upgrade → podman run -d --name stf-v3-api-test --network host #   -e STF_V3_DATABASE_URL=<app url to stf_v3_test> -e STF_V3_JWT_SECRET=<random> stf-v3:local #   uvicorn stf_v3.main:app --host 127.0.0.1 --port 8003 → create_workshop.py → smoke_e2e.py --base-url http://127.0.0.1:8003
 #   → rm container, DROP DATABASE stf_v3_test

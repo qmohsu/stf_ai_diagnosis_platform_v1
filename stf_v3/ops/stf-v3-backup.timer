@@ -1,0 +1,12 @@
+# Daily at 03:30 Hong Kong time; a run missed while the machine was off
+# happens at the next boot (FM-31).  Times always carry their zone (FM-30).
+[Unit]
+Description=Daily STF V3 backup at 03:30 Asia/Hong_Kong
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Asia/Hong_Kong
+Persistent=true
+RandomizedDelaySec=0
+
+[Install]
+WantedBy=timers.target

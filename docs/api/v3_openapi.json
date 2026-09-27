@@ -1930,7 +1930,7 @@
   "paths": {
     "/health": {
       "get": {
-        "description": "Liveness + DB + queue backlog + host GPU worker + disk + commit,\nplus (PROD-11) unfinished diagnoses and the on-demand model service.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
+        "description": "Liveness + DB + queue backlog + host GPU worker + disk + commit,\nplus (PROD-11) unfinished diagnoses and the on-demand model service,\nplus (PROD-15A) the time of the last successful backup.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
         "operationId": "health_health_get",
         "responses": {
           "200": {
@@ -2442,7 +2442,7 @@
     },
     "/v3/health": {
       "get": {
-        "description": "Liveness + DB + queue backlog + host GPU worker + disk + commit,\nplus (PROD-11) unfinished diagnoses and the on-demand model service.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
+        "description": "Liveness + DB + queue backlog + host GPU worker + disk + commit,\nplus (PROD-11) unfinished diagnoses and the on-demand model service,\nplus (PROD-15A) the time of the last successful backup.\n\nServed at both ``/health`` (container healthcheck) and ``/v3/health``\n(through nginx, where bare ``/health`` belongs to V1).",
         "operationId": "health_v3_health_get",
         "responses": {
           "200": {

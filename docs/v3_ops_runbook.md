@@ -2,12 +2,12 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.11（PROD-15 拆为 15A / 15B：备份与恢复、常见故障归 PROD-15A；v0.10 为 #255 控制器按容器 / 服务认进程） |
+| 版本 | v0.12（PROD-15A PR ①：§7 数据库访问规则、备份与恢复；v0.11 为 PROD-15 拆分） |
 | 日期 | 2026-09-27 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
 
-后续章节按里程碑追加：部署 / 回滚（PROD-04 已在 CLAUDE.md "V3 Deployment"）、备份与恢复（PROD-15A）、常见故障（PROD-15A）。
+后续章节按里程碑追加：部署 / 回滚（PROD-04 已在 CLAUDE.md "V3 Deployment"）、备份与恢复（§7，PROD-15A）、常见故障（PROD-15A）。
 
 ## 1. 队列（procrastinate）
 
@@ -365,3 +365,87 @@ podman exec stf-v3-api python scripts/create_workshop.py --name "测试车队（
 ```
 
 学生注册后核对他只看得到测试车队（VIN 只显示后 4 位）：`podman exec stf-v3-api python scripts/visible_vehicles.py --username <学生的用户名>`。测试车用假 VIN（如 `1HGCM82633A123456`），日志用仓库里的 Yamaha 路试日志 `stf_v3/evals/fixtures/yamaha_road_test.csv`。
+
+## 7. 数据库访问与备份恢复（PROD-15A）
+
+### 7.1 共用数据库的访问规则（2026-09-27 起）
+
+V1/V2 和 V3 在同一个 Postgres 容器 `stf-postgres` 里（不同库、不同账号）。2026-09-27 起：
+
+- **本机 TCP 连接一律要密码**（`127.0.0.1` / `::1` 由 `trust` 改为 `scram-sha-256`）；原规则备份在容器数据目录 `pg_hba.conf.bak-20260927`。所有应用本来就带密码连接，未受影响。
+- **只在本机监听**（`ALTER SYSTEM SET listen_addresses = 'localhost'`，写在数据目录的 `postgresql.auto.conf`），校园网连不到 5432。
+- 运维与脚本走**容器内部通道**：`podman exec stf-postgres psql -U <超级用户>`（容器内 unix socket 仍免密，只有本账号能 `podman exec`）。带密码的连接一律经环境变量（`podman exec -e PGPASSWORD …`），**不写在命令参数里**（`ps` 对服务器上所有人可见）——`predeploy_check.sh`、`queue_ops.sh` 已按此改。
+- 回退（只在确有程序因此连不上时）：`podman exec -u postgres stf-postgres sh -c 'cp -p "$PGDATA/pg_hba.conf.bak-20260927" "$PGDATA/pg_hba.conf"'` 然后 `SELECT pg_reload_conf();`；监听改回 `ALTER SYSTEM RESET listen_addresses;` + `podman restart stf-postgres`。
+
+### 7.2 每天自动备份
+
+宿主机定时服务 `stf-v3-backup.timer`（每天 03:30 香港时间，错过的开机补跑；失败 30 分钟后自动重试一次），不经过 V3 任务队列。每次：
+
+1. 等数据库就绪；本地剩余空间低于 50 GB 就不写、记失败；
+2. 用只读备份账号 `stf_v3_backup`（无密码，只能经 `podman exec` 使用）对 `stf_v3` 和 `stf_diagnosis` 各开**一个**快照：在快照里记下每张表的行数和 10 行抽样摘要，再导出同一快照；
+3. 导出账号定义（不含口令）；**然后**打包存储卷（V3 原始日志、V3 手册库、V1/V2 原始日志、V1/V2 手册库、V1 录音）和 `infra/.env`；
+4. 整包用 gpg AES256 加密（口令文件 `~/.config/stf/backup_passphrase`，600），解密核对与原包一致才算成功；
+5. 本机 `~/stf_v3_backups/daily/`（700）一份；实验室共享盘 `/localnvme/stf_v3_backups/`（先确认是网络盘）一份，校验后再改名；缺的日子下次补传；
+6. 保留：最近 14 份成功的 + 再往前每周一份共 8 周；最新一份成功备份永不删除；
+7. 状态写到 `~/stf_v3_backups/status.json`，并写一份到 `stf_v3_backup_state` 卷给 `/v3/health` 的 `backup` 读。
+
+```
+bash stf_v3/ops/install_backup.sh              # 首次安装 / 单元文件改动后：账号 + 目录 + 口令文件 + 定时器
+bash stf_v3/ops/install_backup.sh --check      # 只检查
+python3 stf_v3/scripts/backup.py status        # 最近一次结果（不含任何口令）
+systemctl --user start stf-v3-backup.service   # 立刻跑一次（部署前检查会拒绝在它运行时部署）
+journalctl --user -u stf-v3-backup -n 30       # 这次跑的输出
+```
+
+**离线口令（必须做一次）**：`install_backup.sh` 生成口令文件后，**你本人**在自己的终端里 `cat ~/.config/stf/backup_passphrase` 抄进密码管理器；它从不在任何输出里出现。服务器系统盘坏了时，只有「共享盘加密副本 + 这份离线口令」能恢复。
+
+部署检查第 10 项：最近一次**成功**备份超过 36 小时判失败（看成功时间，不看有没有失败记录）；本地备份超过 50 GB、目录权限不是 700、异地副本过期只警告。
+
+**本账号存储卷清单**（哪些备份）：
+
+| 卷 / 文件 | 处理 |
+|---|---|
+| 两个数据库（`stf_v3`、`stf_diagnosis`）+ 账号定义 | 备份（按库导出，`infra_postgres_data` 卷本身不直接拷） |
+| `stf_v3_obd_logs`、`infra_diagnostic_api_obd_logs` | 备份（原始日志，丢了找不回） |
+| `stf_v3_manuals`、`infra_diagnostic_api_manuals` | 备份（每天完整一份） |
+| `infra_diagnostic_api_audio` | 备份（V1 录音反馈） |
+| `infra/.env` | 备份（只在加密包里） |
+| `vllm_hf_cache`、`infra_ollama_data`、`ollama_data` | 不备份：可重新下载 |
+| `infra_diagnostic_api_logs`、`diagnostic_api_logs`、`stf_v3_backup_state` | 不备份：日志 / 状态 |
+| 匿名卷（其中一个约 3.1 GB，未被任何容器使用） | 不是 V3 的，不动 |
+
+**禁止**：`podman volume prune`、`podman system prune --volumes`、`podman-compose down -v`——部署 `down` 期间所有卷都「没在用」，会被一起删掉（FM-8）。
+
+### 7.3 恢复演练与整库恢复
+
+演练在一个**一次性、无网络**的数据库容器 `stf-v3-restore-drill`（与 `stf-postgres` 同一镜像）里做，从不碰生产实例：
+
+```
+python3 stf_v3/scripts/backup.py drill                      # 用最新的本机备份
+python3 stf_v3/scripts/backup.py drill --offsite --ask-passphrase   # 用共享盘副本 + 手输离线口令（验收 T-9）
+```
+
+它会：解密 → 恢复账号定义与两个库 → 逐表比对行数和抽样摘要（与备份时同一快照里记下的清单比，不与此刻的真库比）→ 执行恢复收尾（`stf_v3/scripts/sql/restore_finalize.sql`：排队中的任务取消、进行中的任务标失败、模型控制器状态复位）→ 在演练库副本上演示「只找回一辆车的诊断」→ 删掉容器和所有明文。输出一段 JSON，`ok: true` 才算通过；结果也记进 `status.json` 的 `last_drill`。每季度完整演练一次。
+
+**整库恢复（真出事时）**：
+
+1. 按备份清单（`manifest.json` 里的 `git_commit`、各库的 `alembic`）检出对应代码；
+2. 停 V3：`podman-compose -p stf_v3 … down`、`systemctl --user stop stf-v3-gpu-worker`；V1/V2 同理；
+3. 解密：`gpg --homedir ~/stf_v3_backups/.gnupg --batch --pinentry-mode loopback --passphrase-file <口令文件> -o bundle.tar -d <备份文件>`，`tar -xf bundle.tar`；
+4. 需要时重建账号：`bash stf_v3/scripts/create_database.sh`（口令取自恢复出的 `infra.env`）+ `bash stf_v3/scripts/db_roles.sh`；
+5. 按库恢复：`podman exec -i stf-postgres pg_restore -U <超级用户> -d <库> --clean --if-exists --exit-on-error < db_<库>.dump`；
+6. **启动任何 V3 进程之前**执行收尾：`podman exec -i stf-postgres psql -U <超级用户> -d stf_v3 < stf_v3/scripts/sql/restore_finalize.sql`（首次启动后清扫任务会把被打断的诊断以 `diagnosis_interrupted` 关掉）；
+7. 存储卷：`podman unshare tar -C <卷目录> -xzf vol_<卷>.tar.gz`；
+8. 按部署流程启动，跑 `deploy_check.sh` 与 `isolation_check.sh compare`。
+
+### 7.4 只找回一辆车 / 一次诊断
+
+只恢复**诊断内容**（原始日志记录、会话、消息、报告、过程事件），**从不写回归属**（车队、成员、账号、车辆、设备凭证）；目标库里已有的行跳过；整个写入是一个事务。
+
+```
+python3 stf_v3/scripts/backup.py drill --keep               # 先把备份恢复进演练容器并保留它
+python3 stf_v3/scripts/backup.py restore-vehicle --vehicle-id <车辆编号> [--conversation-id <会话编号>] --i-am-restoring-live
+podman rm -f stf-v3-restore-drill                           # 用完删掉
+```
+
+车辆必须还在真库里（软删除的也算）。原始日志文件另外从备份包取回，不覆盖已有文件：解密解包后 `podman unshare tar -C <stf_v3_obd_logs 卷目录> -xzf vol_stf_v3_obd_logs.tar.gz --skip-old-files ./<车辆编号>/`。文档和命令示例只用假 VIN。
