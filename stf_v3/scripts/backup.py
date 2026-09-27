@@ -745,7 +745,8 @@ def content_filters(vehicle_id: str, conversation_id: Optional[str]) -> Dict[str
 
 
 def copy_content(host: Host, src: Tuple[str, str, str], dst: Tuple[str, str, str],
-                 vehicle_id: str, conversation_id: Optional[str] = None) -> Dict[str, int]:
+                 vehicle_id: str, conversation_id: Optional[str] = None,
+                 workdir: Optional[Path] = None) -> Dict[str, int]:
     """Copies one vehicle's (or one conversation's) diagnosis content.
 
     ``src`` / ``dst`` are ``(container, superuser, db)``.  Rows already in
@@ -770,8 +771,19 @@ def copy_content(host: Host, src: Tuple[str, str, str], dst: Tuple[str, str, str
         script.append(rows.rstrip("\n") + ("\n\\." if rows else "\\."))
         script.append(f"INSERT INTO {table} OVERRIDING SYSTEM VALUE SELECT * FROM s_{table} ON CONFLICT DO NOTHING;")
     script.append("COMMIT;")
-    res = host.run(["podman", "exec", "-i", dst[0], "psql", "-U", dst[1], "-d", dst[2], "-X", "-q"], 600,
-                   input_text="\n".join(script) + "\n")
+    # The script (COPY data inline) goes to psql from a private FILE: a large
+    # stdin pipe through `podman exec -i` arrived truncated mid-row on the
+    # server (2026-09-28); files (as for pg_restore) are read intact.
+    work = workdir or Path(os.environ.get("TMPDIR", "/tmp"))
+    script_file = work / f"copy-{uuid.uuid4().hex[:8]}.sql"
+    fd = os.open(script_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w") as fh:
+        fh.write("\n".join(script) + "\n")
+    try:
+        res = host.run(["podman", "exec", "-i", dst[0], "psql", "-U", dst[1], "-d", dst[2], "-X", "-q"], 600,
+                       stdin_path=script_file)
+    finally:
+        script_file.unlink()
     if res.rc != 0:
         raise BackupError(f"write into target failed (nothing written): {res.err.strip()[:300]}")
     return copied
@@ -835,7 +847,7 @@ def run_drill(cfg: Config, host: Host, *, offsite: bool, ask: bool, keep: bool,
         start_drill_container(cfg, host)
         report["restore"] = restore_into_drill(host, stage, manifest)
         report["finalize"] = finalize_restored(host)
-        report["partial"] = partial_drill(host, stage, manifest)
+        report["partial"] = partial_drill(host, stage, manifest, tmp)
         bad = [db for db, r in report["restore"].items() if r["mismatches"]]
         report["ok"] = (not bad and report["finalize"] == {"unfinished_jobs": 0, "model_not_reset": 0}
                         and report["partial"].get("ok", False))
@@ -854,7 +866,7 @@ def run_drill(cfg: Config, host: Host, *, offsite: bool, ask: bool, keep: bool,
     return 0 if report["ok"] else 1
 
 
-def partial_drill(host: Host, stage: Path, manifest: Dict[str, Any]) -> Dict[str, Any]:
+def partial_drill(host: Host, stage: Path, manifest: Dict[str, Any], workdir: Path) -> Dict[str, Any]:
     """Drill for "bring back one vehicle's diagnoses" on a copy (FM-17)."""
     pick = drill_psql(host, "stf_v3", "SELECT vehicle_id FROM diagnosis_conversations "
                                       "GROUP BY vehicle_id ORDER BY count(*) DESC, vehicle_id LIMIT 1")
@@ -869,7 +881,7 @@ def partial_drill(host: Host, stage: Path, manifest: Dict[str, Any]) -> Dict[str
     drill_psql(host, "stf_v3_partial_target",
                f"DELETE FROM diagnosis_conversations WHERE vehicle_id = '{vid}'")
     copied = copy_content(host, (DRILL_CONTAINER, "postgres", "stf_v3"),
-                          (DRILL_CONTAINER, "postgres", "stf_v3_partial_target"), vid)
+                          (DRILL_CONTAINER, "postgres", "stf_v3_partial_target"), vid, workdir=workdir)
     got = {t: int(drill_psql(host, "stf_v3_partial_target", f"SELECT count(*) FROM {t} WHERE {w}")[0])
            for t, w in content_filters(vid, None).items()}
     after_own = drill_psql(host, "stf_v3_partial_target", own_sql)
@@ -887,8 +899,10 @@ def run_restore_vehicle(cfg: Config, host: Host, vehicle_id: str, conversation_i
         return 2
     su = host.run(["podman", "exec", cfg.pg_container, "printenv", "POSTGRES_USER"], 30).out.strip()
     try:
+        ensure_private_dir(cfg.tmp)
         copied = copy_content(host, (DRILL_CONTAINER, "postgres", "stf_v3"),
-                              (cfg.pg_container, su, "stf_v3"), vehicle_id, conversation_id)
+                              (cfg.pg_container, su, "stf_v3"), vehicle_id, conversation_id,
+                              workdir=cfg.tmp)
     except BackupError as exc:
         print(f"restore-vehicle FAILED (nothing written): {exc}", file=sys.stderr)
         return 1

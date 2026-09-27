@@ -25,8 +25,10 @@ q() { podman exec -e PGPASSWORD -i "$PG_CONTAINER" psql -h "$PGHOST" -p "$PGPORT
 
 DIAG="$(q "SELECT count(*) FROM diagnosis_conversations WHERE status IN ('queued','running')")"
 CONV="$(q "SELECT count(*) FROM manuals WHERE status = 'converting'")"
+# A oneshot service is "activating" (never "active") while it runs, so
+# `is-active` cannot see it; read the state itself.
 BACKUP=0
-systemctl --user is-active --quiet stf-v3-backup.service 2>/dev/null && BACKUP=1
+[ "$(systemctl --user show stf-v3-backup.service -p ActiveState --value 2>/dev/null)" = "activating" ] && BACKUP=1
 echo "unfinished diagnoses: $DIAG · manuals converting: $CONV · backup running: $BACKUP"
 if [ "$DIAG" != "0" ] || [ "$CONV" != "0" ] || [ "$BACKUP" != "0" ]; then
   if [ "${ALLOW_INTERRUPT:-0}" = "1" ]; then
