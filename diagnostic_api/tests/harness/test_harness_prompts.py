@@ -21,9 +21,9 @@ class TestFormatVehicle:
         out = _format_vehicle({
             "manufacturer": "Toyota",
             "vehicle_model": "Hiace",
-            "vehicle_id": "JTFHT02P500072677",
+            "vehicle_id": "JHMGK5830HX202404",
         })
-        assert out == "Toyota Hiace (VIN JTFHT02P500072677)"
+        assert out == "Toyota Hiace (VIN JHMGK5830HX202404)"
 
     def test_make_model_without_usable_vin(self):
         """A V-UNKNOWN / blank VIN is omitted, not shown."""
@@ -62,12 +62,12 @@ class TestBuildUserMessage:
             {
                 "manufacturer": "Toyota",
                 "vehicle_model": "Hiace",
-                "vehicle_id": "JTFHT02P500072677",
+                "vehicle_id": "JHMGK5830HX202404",
                 "dtc_codes": "P00AF",
                 "time_range": "15s",
             },
         )
-        assert "Vehicle: Toyota Hiace (VIN JTFHT02P500072677)" in msg
+        assert "Vehicle: Toyota Hiace (VIN JHMGK5830HX202404)" in msg
         assert "P00AF" in msg
 
     def test_message_falls_back_for_legacy_session(self):

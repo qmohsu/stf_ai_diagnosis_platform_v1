@@ -13,7 +13,7 @@ P00AF Hiace data:
 
 - The OBDWiz road-test CSVLog is a pure sensor time-series — 0 mentions of
   VIN / model / "Hiace"; none of its 78 columns is a VIN or model field.
-- The VIN (`JTFHT02P500072677`) appears only in the *separate* OBDWiz report
+- The VIN (`[VIN redacted]`) appears only in the *separate* OBDWiz report
   files (Mode 09), never in the sensor log.
 - Even when a VIN is present, the pipeline stores it verbatim as `vehicle_id`
   and does not decode it to make/model — and the friendly model name is not

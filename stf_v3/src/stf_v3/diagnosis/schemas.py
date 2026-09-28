@@ -56,6 +56,13 @@ class ConversationOut(BaseModel):
     finished_at: Optional[dt.datetime] = None
     has_report: bool = False
     report_partial: Optional[bool] = None
+    events_archived: bool = Field(
+        default=False,
+        description="True once the process events (the replay / live stream) were moved to "
+                    "the archive — finished diagnoses older than 180 days.  The replay then "
+                    "answers 410 `events_archived`; the report and messages stay.")
+    events_archived_at: Optional[dt.datetime] = Field(
+        default=None, description="When the process events were archived.")
 
 
 class MessageOut(BaseModel):

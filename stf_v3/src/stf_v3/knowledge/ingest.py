@@ -63,7 +63,9 @@ class IngestCancelled(PermanentIngestError):
 def _db() -> Engine:
     global _engine
     if _engine is None:
-        _engine = create_engine(settings.database_url, pool_size=1, pool_pre_ping=True)
+        # max_overflow=0: one connection, counted in the runtime role's limit (PROD-15A).
+        _engine = create_engine(settings.database_url, pool_size=1, max_overflow=0,
+                                pool_pre_ping=True)
     return _engine
 
 
@@ -327,3 +329,93 @@ def _install(manual_id: uuid.uuid4, out_dir: Path, dest: Path) -> None:  # type:
         shutil.rmtree(old, ignore_errors=True)
     else:
         os.rename(staging, dest)
+
+
+# ── orphaned work directories (PROD-15A T-18) ────────────────────────
+#
+# A permanent failure keeps its work dir so a retry resumes (FM-12); these
+# pile up.  The daily clean-up task holds the same lock as ingest (never
+# runs during a conversion) and re-reads every manual right before it
+# decides (FM-29).  Only a UUID-named real directory directly under a sane
+# work root is ever removed (FM-7).
+
+WORK_DIR_KEEP_DAYS = 7
+
+
+def work_root() -> Optional[Path]:
+    """The work root, or None when it is unset or unsafe to clean (FM-7)."""
+    raw = (settings.manual_work_dir or "").strip()
+    if not raw:
+        return None
+    root = Path(raw).resolve()
+    manuals = Path(settings.manual_storage_path).resolve()
+    if (len(root.parts) < 3 or root == Path.home().resolve() or root == manuals
+            or root in manuals.parents or manuals in root.parents or not root.is_dir()):
+        return None
+    return root
+
+
+def _is_uuid(name: str) -> bool:
+    try:
+        return str(uuid.UUID(name)) == name
+    except ValueError:
+        return False
+
+
+def work_dir_status(manual_id: str) -> Optional[Dict[str, Any]]:
+    """The manual's status right now, and whether an ingest job is pending."""
+    with _db().connect() as conn:
+        r = conn.execute(text(
+            "SELECT status, pages_phase, updated_at, EXISTS ("
+            "  SELECT 1 FROM procrastinate_jobs WHERE task_name = 'knowledge.ingest_manual'"
+            "  AND args->>'manual_id' = :id AND status IN ('todo', 'doing')) AS job_pending "
+            "FROM manuals WHERE id = CAST(:id AS uuid)"), {"id": manual_id}).mappings().first()
+    return dict(r) if r else None
+
+
+def work_dir_verdict(entry: Path, root: Path, read_status: Any, now: dt.datetime,
+                     keep_days: int = WORK_DIR_KEEP_DAYS) -> str:
+    """``delete``, or ``keep: <reason>``, for one entry of the work root."""
+    if entry.is_symlink():
+        return "keep: link"
+    if not entry.is_dir():
+        return "keep: not a directory"
+    if not _is_uuid(entry.name):
+        return "keep: unexpected name"
+    if entry.resolve().parent != root:
+        return "keep: outside the work root"
+    old = now - dt.timedelta(days=keep_days)
+    row = read_status(entry.name)
+    if row is None:                                  # the manual was deleted
+        mtime = dt.datetime.fromtimestamp(entry.stat().st_mtime, dt.timezone.utc)
+        return "delete" if mtime < old else "keep: manual gone recently"
+    if row.get("job_pending"):
+        return "keep: ingest job pending"
+    if row["status"] in ("uploading", "queued", "converting"):
+        return "keep: active"
+    if row["status"] == "failed" and row.get("pages_phase") == "retrying":
+        return "keep: retry pending"
+    if row["updated_at"] >= old:
+        return f"keep: {row['status']} recently"
+    return "delete"                                  # failed for good / ingested, 7+ days
+
+
+def clean_work_dirs(now: Optional[dt.datetime] = None, read_status: Any = None) -> Dict[str, int]:
+    """Removes work dirs of manuals failed (or gone) for 7+ days."""
+    root = work_root()
+    if root is None:
+        log.warning("workdir.clean_refused", reason="work root unset or unsafe")
+        return {"deleted": 0, "kept": 0, "refused": 1}
+    now = now or dt.datetime.now(dt.timezone.utc)
+    read_status = read_status or work_dir_status
+    deleted = kept = 0
+    for entry in sorted(root.iterdir()):
+        verdict = work_dir_verdict(entry, root, read_status, now)
+        if verdict == "delete":
+            shutil.rmtree(entry)
+            deleted += 1
+            log.info("workdir.deleted", manual_id=entry.name)
+        else:
+            kept += 1
+    log.info("workdir.clean", deleted=deleted, kept=kept)
+    return {"deleted": deleted, "kept": kept, "refused": 0}

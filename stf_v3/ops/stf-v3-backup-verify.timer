@@ -1,0 +1,12 @@
+# Sundays 05:00 Hong Kong time, well after the 03:30 backup; missed runs
+# happen at the next boot (FM-31).  Times always carry their zone (FM-30).
+[Unit]
+Description=Weekly STF V3 backup check, Sundays 05:00 Asia/Hong_Kong
+
+[Timer]
+OnCalendar=Sun *-*-* 05:00:00 Asia/Hong_Kong
+Persistent=true
+RandomizedDelaySec=0
+
+[Install]
+WantedBy=timers.target

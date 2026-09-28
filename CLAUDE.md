@@ -408,6 +408,28 @@ no-network container, never the live instance); runbook §7.  `/v3/health`
 `backup` and `deploy_check.sh` check 10 fail when the last SUCCESSFUL backup is
 older than 36 h.  Never `podman volume prune` / `system prune --volumes` /
 `down -v`.
+**Maintenance, logs, roles (PROD-15A ②)**: after each SUCCESSFUL backup the same
+service, as the DB OWNER, archives process events (`audit_events`) of diagnoses
+finished > 180 days to `~/stf_v3_backups/archive/` (re-read + checked, deleted in one
+transaction, conversation marked `events_archived_at`; the API shows
+`events_archived` and replay answers 410) and deletes succeeded / cancelled queue
+jobs > 30 days — COUNT-ONLY until `~/stf_v3_backups/maintenance.apply` exists
+(`backup.py maintain [--apply]`; runbook §7.5).  The runtime role stays append-only
+on `audit_events`.  Weekly `stf-v3-backup-verify.timer` (Sun 05:00 HKT) decrypts the
+newest share copy and checks every manifest checksum (`backup.py verify`).  The GPU
+worker deletes manual work dirs failed / orphaned 7+ days (daily, ingest lock).
+Logs: every long-running process writes the same JSON line to stdout and its own
+file (`stf_v3_logs` volume: `api.log`, `worker.log`; host `~/stf_v3_logs/gpu-worker.log`),
+daily gzip, 30 days — workers start via `python -m stf_v3.jobs.worker_main <procrastinate
+args>` (re-run `gpu_worker/install.sh` after the unit change).  Roles (`bash
+stf_v3/scripts/db_roles.sh`, idempotent): `stf_v3_app` CONNECTION LIMIT 50 (pool maxima
+43 + 7; `/v3/health` `db_connections`; drill `scripts/conn_limit_drill.sh [--live]`),
+`stf_v3_eval` reads ONLY `manuals`, read-only — the golden eval container gets only
+`STF_V3_EVAL_DATABASE_URL` and refuses to start under any other identity (first time:
+`db_roles.sh --init-eval-password`).  `deploy_check.sh` ends with a storage report
+(sizes, re-created volumes, dir modes — WARN only).  CI job `vin-scan` (no path
+filter) fails on any VIN-shaped string except the two fakes (+ one textbook example);
+the repo is public, never paste a real VIN anywhere (runbook §7.7).
 
 **Branch verification (every V3 PR)** — run on the server:
 ```

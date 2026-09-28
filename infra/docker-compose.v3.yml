@@ -37,6 +37,9 @@ services:
       STF_V3_OBD_LOG_STORAGE_PATH: /app/data/obd_logs
       STF_V3_MANUAL_STORAGE_PATH: /app/data/manuals
       STF_V3_BACKUP_STATUS_PATH: /app/data/backup_state/status.json
+      # PROD-15A: JSON logs also go to <dir>/<process>.log (daily, gzip, 30 days)
+      STF_V3_PROCESS: api
+      STF_V3_LOG_DIR: /app/data/logs
       # Agent runtime (PROD-08): the single model source.  Defaults to the
       # host's vLLM (docker-compose.vllm.yml, PROD-09); to fall back to
       # Ollama set URL/MODEL/API_KEY in infra/.env (profile auto-selects).
@@ -62,6 +65,7 @@ services:
       - obd_logs:/app/data/obd_logs   # PROD-05: raw uploads, <vehicle_id>/<log_id>.<ext>
       - manuals:/app/data/manuals     # PROD-06: public manual library (shared with host GPU worker)
       - backup_state:/app/data/backup_state:ro   # PROD-15A: written by the host backup service
+      - logs:/app/data/logs           # PROD-15A: api.log / worker.log survive rebuilds
     ports:
       - "${BIND_HOST:-127.0.0.1}:${STF_V3_API_PORT:-8002}:8002"
     healthcheck:
@@ -77,11 +81,15 @@ services:
     # PROD-11: + the diagnosis queue.  Diagnosis jobs share one lock, so
     # this worker runs ONE diagnosis at a time while the second slot keeps
     # serving heartbeat / sweep / stalled-job recovery.
-    command: ["procrastinate", "--app", "stf_v3.jobs.app.app", "worker",
-              "-q", "default,diagnosis", "--concurrency", "2"]
+    # PROD-15A: worker_main = logging to stdout + worker.log, then the
+    # unchanged procrastinate CLI with these arguments.
+    command: ["python", "-m", "stf_v3.jobs.worker_main", "--app", "stf_v3.jobs.app.app",
+              "worker", "-q", "default,diagnosis", "--concurrency", "2"]
     environment:
       STF_V3_DATABASE_URL: ${STF_V3_APP_DATABASE_URL:?set STF_V3_APP_DATABASE_URL}
       STF_V3_LOG_LEVEL: ${STF_V3_LOG_LEVEL:-INFO}
+      STF_V3_PROCESS: worker
+      STF_V3_LOG_DIR: /app/data/logs
       STF_V3_OBD_LOG_STORAGE_PATH: /app/data/obd_logs
       STF_V3_MANUAL_STORAGE_PATH: /app/data/manuals
       # Agent runtime (PROD-08): the single model source.  Defaults to the
@@ -108,6 +116,7 @@ services:
     volumes:
       - obd_logs:/app/data/obd_logs   # diagnosis jobs read raw logs here (PROD-08)
       - manuals:/app/data/manuals     # diagnosis jobs read manuals here (PROD-08)
+      - logs:/app/data/logs           # PROD-15A: worker.log
     restart: unless-stopped
 
   stf-v3-migrate:
@@ -124,3 +133,4 @@ volumes:
   obd_logs:
   manuals:      # `stf_v3_manuals`; the host GPU worker writes into its _data dir
   backup_state: # `stf_v3_backup_state`; stf_v3/scripts/backup.py writes status.json (PROD-15A)
+  logs:         # `stf_v3_logs`; api.log + worker.log, 30 days, not backed up (PROD-15A)

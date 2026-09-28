@@ -27,7 +27,7 @@
 <rect x="460" y="790" width="270" height="110" rx="8" fill="#3d3106" stroke="#fcc419" stroke-width="2"/>
 <rect x="760" y="790" width="250" height="110" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2"/>
 <rect x="1040" y="790" width="300" height="110" rx="8" fill="#33260a" stroke="#ff922b" stroke-width="2" stroke-dasharray="8 6"/>
-<rect x="90" y="915" width="1250" height="50" rx="8" fill="#0f3620" stroke="#51cf66" stroke-width="2"/>
+<rect x="90" y="915" width="1250" height="70" rx="8" fill="#0f3620" stroke="#51cf66" stroke-width="2"/>
 <rect x="90" y="1030" width="320" height="90" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2"/>
 <rect x="450" y="1030" width="280" height="90" rx="8" fill="#2b3035" stroke="#adb5bd" stroke-width="2" stroke-dasharray="8 6"/>
 <rect x="770" y="1030" width="380" height="90" rx="8" fill="#3d3106" stroke="#fcc419" stroke-width="2"/>
@@ -39,7 +39,7 @@
 <polyline points="240,610 240,790" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
 <polyline points="890,610 880,790" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
 <polyline points="90,580 35,580 35,1075 90,1075" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
-<text x="60" y="-21.60" font-size="24" fill="#f8f9fa">STF V3 产品化架构 — Final（设计文档 v1.19 · 2026-09-27 · 开发计划 v1.20 · PROD-15A 备份）</text>
+<text x="60" y="-21.60" font-size="24" fill="#f8f9fa">STF V3 产品化架构 — Final（设计文档 v1.20 · 2026-09-28 · 开发计划 v1.22 · PROD-15A 运维底线）</text>
 <text x="170.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">开源 / 第三方采用</text>
 <text x="420.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">沿用 V1/V2 资产</text>
 <text x="660.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">V3 新做</text>
@@ -98,14 +98,16 @@
 <text x="595.0" y="834.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">manuals (元数据) + Markdown 文件</text>
 <text x="595.0" y="849.20" text-anchor="middle" font-size="12" fill="#f1f3f5">无向量库 · 公共知识库</text>
 <text x="595.0" y="864.20" text-anchor="middle" font-size="12" fill="#f1f3f5">手册转换走 jobs gpu 队列</text>
-<text x="885.0" y="841.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">文件存储</text>
-<text x="885.0" y="856.70" text-anchor="middle" font-size="12" fill="#f1f3f5">原始日志 · Manual MD/图</text>
+<text x="885.0" y="834.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">文件存储</text>
+<text x="885.0" y="849.20" text-anchor="middle" font-size="12" fill="#f1f3f5">原始日志 · Manual MD/图</text>
+<text x="885.0" y="864.20" text-anchor="middle" font-size="12" fill="#f1f3f5">运行日志（每进程一份，30 天）</text>
 <text x="1190.0" y="826.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">预留不建</text>
 <text x="1190.0" y="841.70" text-anchor="middle" font-size="12" fill="#f1f3f5">case_vectors (第二批)</text>
 <text x="1190.0" y="856.70" text-anchor="middle" font-size="12" fill="#f1f3f5">细粒度权限表 · vehicle_events (S4)</text>
 <text x="1190.0" y="871.70" text-anchor="middle" font-size="12" fill="#f1f3f5">(回头条件见开发计划 §4)</text>
-<text x="715.0" y="936.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">每日加密备份（PROD-15A）：宿主机定时服务 03:30 · 只读备份账号取快照 → 两个库 + 原始日志 + 手册库 + 配置</text>
-<text x="715.0" y="951.70" text-anchor="middle" font-size="12" fill="#f1f3f5">整包加密 → 本机一份 + 实验室共享盘一份 · /v3/health 与部署检查看「最近一次成功备份」· 恢复演练在一次性容器里</text>
+<text x="715.0" y="939.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">每日加密备份（PROD-15A）：宿主机定时服务 03:30 · 只读备份账号取快照 → 两个库 + 原始日志 + 手册库 + 配置 + 过程存档</text>
+<text x="715.0" y="954.20" text-anchor="middle" font-size="12" fill="#f1f3f5">整包加密 → 本机一份 + 实验室共享盘一份 · /v3/health 与部署检查看「最近一次成功备份」· 恢复演练在一次性容器里 · 每周日核对共享盘副本</text>
+<text x="715.0" y="969.20" text-anchor="middle" font-size="12" fill="#f1f3f5">备份成功后维护（属主账号）：过程记录 180 天后存档并标「已归档」· 队列流水 30 天 · 运行账号最多 50 条连接 · 评测账号只读手册目录</text>
 <text x="250" y="710.73" font-size="11" fill="#ced4da">会话/审计回写 + 业务读写</text>
 <text x="895" y="710.73" font-size="11" fill="#ced4da">读原始字节 / Manual MD</text>
 <text x="250.0" y="1071.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">本地 vLLM + Qwen3.6-27B</text>

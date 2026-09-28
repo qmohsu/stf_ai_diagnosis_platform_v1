@@ -169,7 +169,7 @@ def _format_vehicle(parsed_summary: Dict[str, Any]) -> str:
         parsed_summary: The session's parsed-summary dict.
 
     Returns:
-        e.g. ``"Toyota Hiace (VIN JTFHT02P500072677)"`` or, with no
+        e.g. ``"Toyota Hiace (VIN JHMGK5830HX202404)"`` or, with no
         make/model, the ``vehicle_id`` value (or ``"unknown"``).
     """
     manufacturer = (parsed_summary.get("manufacturer") or "").strip()

@@ -22,13 +22,22 @@ V3 still gets backed up.  One run:
    only, FM-22), verified by checksum before the rename (FM-21);
 7. prunes by the number of SUCCESSFUL bundles, never the newest (FM-2);
 8. writes a status file (local + the ``stf_v3_backup_state`` volume that
-   ``/v3/health`` reads, FM-40).
+   ``/v3/health`` reads, FM-40);
+9. THEN the maintenance (PROD-15A ②, only after that success — FM-5 / FM-62):
+   finished diagnoses older than 180 days get their process events
+   (``audit_events``) exported to ``<root>/archive`` (re-read and checked),
+   deleted by the database owner in one transaction and marked
+   ``events_archived_at``; queue history (succeeded / cancelled jobs) older
+   than 30 days is deleted.  Until ``<root>/maintenance.apply`` exists it
+   only COUNTS (FM-38).  Archive files ride in the next day's bundle (FM-6).
 
 Subcommands::
 
     backup.py init                   # dirs + passphrase file (prints no secret)
     backup.py run                    # the daily backup (systemd)
     backup.py status                 # print the status file
+    backup.py maintain [--apply]     # archive + queue cleanup by hand (needs today's backup)
+    backup.py verify [--local]       # weekly light check of the newest bundle (systemd timer)
     backup.py drill [--offsite] [--ask-passphrase | --passphrase-file KEYFILE] [--keep]
     backup.py restore-vehicle --vehicle-id UUID [--conversation-id UUID] --i-am-restoring-live
 
@@ -40,6 +49,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import getpass
+import gzip
 import hashlib
 import json
 import os
@@ -82,6 +92,7 @@ NOT_BACKED_UP = {
     "infra_diagnostic_api_logs": "skip: logs",
     "diagnostic_api_logs": "skip: logs",
     STATE_VOLUME: "skip: backup status only",
+    "stf_v3_logs": "skip: logs (30 days, PROD-15A)",
 }
 
 
@@ -117,6 +128,11 @@ class Config:
     db_ready_tries: int = 10
     db_ready_sleep_s: float = 30.0
     offsite_timeout_s: int = 1800
+    owner_role: str = "stf_v3"          # maintenance deletes as the V3 owner (FM-62)
+    v3_db: str = "stf_v3"
+    archive_days: int = 180             # D5: process events stay 180 days
+    archive_batch: int = 500            # conversations per run
+    queue_keep_days: int = 30           # finished queue jobs kept 30 days
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -146,6 +162,15 @@ class Config:
     @property
     def status_file(self) -> Path:
         return self.root / "status.json"
+
+    @property
+    def archive(self) -> Path:
+        return self.root / "archive"
+
+    @property
+    def maintenance_apply(self) -> bool:
+        """Deletes only once a person created this flag file (FM-38)."""
+        return (self.root / "maintenance.apply").is_file()
 
 
 # ── host access (replaced by a fake in tests) ──────────────────────────
@@ -339,6 +364,8 @@ def save_status(cfg: Config, host: Host, status: Dict[str, Any]) -> None:
         public = {k: status.get(k) for k in (
             "schema", "updated_at", "last_attempt_at", "last_result", "last_success_at",
             "last_success_size", "offsite")}
+        verify = status.get("last_verify") or {}
+        public["last_verify"] = {k: verify.get(k) for k in ("at", "ok")} if verify else None
         public["last_error"] = (status.get("last_error") or "")[:200] or None
         try:
             write_json_atomic(vol / "status.json", public)
@@ -627,6 +654,12 @@ def build_bundle(cfg: Config, host: Host, work: Path, started: dt.datetime) -> D
     shutil.copyfile(env, work / "infra.env")
     os.chmod(work / "infra.env", 0o600)
     manifest["env_sha256"] = sha256_file(work / "infra.env")
+    archived = sorted(p for p in cfg.archive.glob("audit_events_*")) if cfg.archive.is_dir() else []
+    if archived:                                               # FM-6: archives are backed up too
+        with tarfile.open(work / "archive.tar", "w") as tar:
+            for p in archived:
+                tar.add(p, arcname=p.name)
+        manifest["archive"] = {"files": len(archived), "sha256": sha256_file(work / "archive.tar")}
     manifest["finished_at"] = host.now().isoformat()
     write_json_atomic(work / "manifest.json", manifest)
     return manifest
@@ -717,7 +750,190 @@ def run_backup(cfg: Config, host: Host) -> int:
     save_status(cfg, host, status)
     print(f"backup ok: {name} ({status['last_success_size'] / 1e6:.0f} MB); offsite: "
           f"{'ok' if not off['error'] else 'FAILED - ' + off['error']}")
+    run_maintenance(cfg, host)            # never turns a good backup into a failure
     return 0
+
+
+# ── maintenance after a successful backup (PROD-15A ②) ─────────────────
+#
+# Runs as the V3 OWNER through the database container's socket: the runtime
+# role may only append to audit_events (black box, FM-62), and it stays so.
+# Every step counts first; nothing is deleted unless ``maintenance.apply``
+# exists (FM-38) AND today's backup succeeded (FM-5), and the archive is
+# written, re-read and checked before the delete, which must remove exactly
+# the exported rows or roll back (FM-4).
+
+
+def owner_psql(cfg: Config, host: Host, sql: str, timeout: float = 600) -> List[str]:
+    """One statement as the V3 owner; small output only (never data)."""
+    res = host.run(["podman", "exec", cfg.pg_container, "psql", "-U", cfg.owner_role, "-d", cfg.v3_db,
+                    "-X", "-A", "-t", "-q", "-v", "ON_ERROR_STOP=1", "-c", sql], timeout)
+    if res.rc != 0:
+        raise BackupError(f"maintenance SQL failed: {res.err.strip()[:300]}")
+    return [ln for ln in res.out.splitlines() if ln.strip()]
+
+
+def uuid_array(ids: Sequence[str]) -> str:
+    """``ARRAY['…']::uuid[]`` of validated UUIDs (nothing else can get in)."""
+    return "ARRAY[" + ",".join(f"'{uuid.UUID(i)}'" for i in ids) + "]::uuid[]"
+
+
+def archive_candidates_sql(cutoff: dt.datetime, limit: int) -> str:
+    """Finished conversations older than the cutoff whose events are still here."""
+    return ("SELECT id FROM diagnosis_conversations "
+            "WHERE status IN ('done', 'error', 'cancelled') AND events_archived_at IS NULL "
+            f"AND COALESCE(finished_at, updated_at) < '{cutoff.isoformat()}'::timestamptz "
+            f"ORDER BY COALESCE(finished_at, updated_at), id LIMIT {int(limit)}")
+
+
+def archive_count_sql(ids: Sequence[str]) -> str:
+    return f"SELECT count(*) FROM audit_events WHERE conversation_id = ANY({uuid_array(ids)})"
+
+
+def archive_export_sql(ids: Sequence[str], inner: str) -> str:
+    """psql ``\\copy`` into a file INSIDE the database container (never a stream)."""
+    return (f"\\copy (SELECT * FROM audit_events WHERE conversation_id = ANY({uuid_array(ids)}) "
+            f"ORDER BY conversation_id, seq) TO '{inner}'")
+
+
+def archive_delete_sql(ids: Sequence[str], expected: int) -> str:
+    """Deletes exactly the exported rows and marks the conversations — or nothing."""
+    arr = uuid_array(ids)
+    return ("DO $$ DECLARE n bigint; BEGIN "
+            f"DELETE FROM audit_events WHERE conversation_id = ANY({arr}); "
+            "GET DIAGNOSTICS n = ROW_COUNT; "
+            f"IF n <> {int(expected)} THEN RAISE EXCEPTION 'archive: % rows to delete, % exported', "
+            f"n, {int(expected)}; END IF; "
+            f"UPDATE diagnosis_conversations SET events_archived_at = now() WHERE id = ANY({arr}); "
+            "END $$")
+
+
+AUDIT_COLUMNS_SQL = ("SELECT string_agg(column_name, ',' ORDER BY ordinal_position) "
+                     "FROM information_schema.columns WHERE table_schema = 'public' "
+                     "AND table_name = 'audit_events'")
+
+
+def queue_old_jobs_sql(cutoff: dt.datetime) -> str:
+    """procrastinate's own ``delete_old_jobs`` selection (succeeded / cancelled,
+    last event before the cutoff), minus jobs a periodic-defer row still
+    points at (FM-39).  Failed jobs are kept for diagnosis."""
+    return ("SELECT job.id FROM (SELECT DISTINCT ON (j.id) j.id, j.status, e.at AS latest_at "
+            "FROM procrastinate_jobs j JOIN procrastinate_events e ON e.job_id = j.id "
+            "ORDER BY j.id, e.at DESC) AS job "
+            "WHERE job.status IN ('succeeded', 'cancelled') "
+            f"AND job.latest_at < '{cutoff.isoformat()}'::timestamptz "
+            "AND NOT EXISTS (SELECT 1 FROM procrastinate_periodic_defers d WHERE d.job_id = job.id)")
+
+
+def queue_count_sql(cutoff: dt.datetime) -> str:
+    return f"SELECT count(*) FROM ({queue_old_jobs_sql(cutoff)}) AS old"
+
+
+def queue_delete_sql(cutoff: dt.datetime) -> str:
+    return (f"WITH gone AS (DELETE FROM procrastinate_jobs WHERE id IN ({queue_old_jobs_sql(cutoff)}) "
+            "RETURNING 1) SELECT count(*) FROM gone")
+
+
+def _create_private(path: Path) -> Any:
+    """Opens a NEW 0600 file for binary writing; refuses to overwrite (FM-27)."""
+    return os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb")
+
+
+def archive_events(cfg: Config, host: Host, now: dt.datetime, apply: bool) -> Dict[str, Any]:
+    """Counts (and with ``apply`` moves) old process events to the archive."""
+    cutoff = now - dt.timedelta(days=cfg.archive_days)
+    ids = [str(uuid.UUID(x.strip())) for x in owner_psql(cfg, host, archive_candidates_sql(cutoff, cfg.archive_batch))]
+    rows = int(owner_psql(cfg, host, archive_count_sql(ids))[0]) if ids else 0
+    out: Dict[str, Any] = {"cutoff": cutoff.isoformat(), "candidates": len(ids), "rows": rows,
+                           "exported": 0, "deleted": 0}
+    if not ids or not apply:
+        return out
+    run_id = uuid.uuid4().hex[:8]
+    stem = f"audit_events_{utc_stamp(now)}_{run_id}"          # run id: never the same name (FM-27)
+    inner = f"/tmp/stf_archive_{run_id}.tsv"
+    ensure_private_dir(cfg.archive)
+    ensure_private_dir(cfg.tmp)
+    tsv = cfg.tmp / f"{stem}.tsv"
+    try:
+        columns = owner_psql(cfg, host, AUDIT_COLUMNS_SQL)[0]
+        owner_psql(cfg, host, archive_export_sql(ids, inner), 1800)
+        copy_out(host, cfg.pg_container, inner, tsv)
+        with open(tsv, "rb") as fh:                          # FM-4: re-read before any delete
+            got = sum(1 for _ in fh)
+        if got != rows:
+            raise BackupError(f"archive export has {got} rows, expected {rows}")
+        sha = sha256_file(tsv)
+        gz_path = cfg.archive / f"{stem}.tsv.gz"
+        with open(tsv, "rb") as src, _create_private(gz_path) as raw, \
+                gzip.GzipFile(fileobj=raw, mode="wb") as gz:
+            shutil.copyfileobj(src, gz)
+        check = hashlib.sha256()
+        with gzip.open(gz_path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                check.update(chunk)
+        if check.hexdigest() != sha:
+            raise BackupError("archive file does not read back to the exported bytes")
+        meta = {"schema": SCHEMA, "run_id": run_id, "created_at": now.isoformat(),
+                "cutoff": cutoff.isoformat(), "table": "audit_events", "columns": columns.split(","),
+                "rows": rows, "sha256_tsv": sha, "conversations": ids}
+        with _create_private(cfg.archive / f"{stem}.json") as fh:
+            fh.write(json.dumps(meta, indent=1).encode())
+        out["exported"], out["file"] = rows, gz_path.name
+        try:
+            owner_psql(cfg, host, archive_delete_sql(ids, rows), 1800)
+        except BackupError:
+            # Rolled back: the rows are still in the database, so this run's
+            # files would only become a duplicate archive next time.
+            for p in (gz_path, cfg.archive / f"{stem}.json"):
+                p.unlink(missing_ok=True)
+            raise
+        out["deleted"] = rows
+    finally:
+        remove_inner(host, cfg.pg_container, inner)
+        try:
+            tsv.unlink()
+        except FileNotFoundError:
+            pass
+    return out
+
+
+def cleanup_queue(cfg: Config, host: Host, now: dt.datetime, apply: bool) -> Dict[str, Any]:
+    """Counts (and with ``apply`` deletes) finished queue jobs older than 30 days."""
+    cutoff = now - dt.timedelta(days=cfg.queue_keep_days)
+    n = int(owner_psql(cfg, host, queue_count_sql(cutoff))[0])
+    deleted = int(owner_psql(cfg, host, queue_delete_sql(cutoff))[0]) if (apply and n) else 0
+    return {"cutoff": cutoff.isoformat(), "candidates": n, "deleted": deleted}
+
+
+def run_maintenance(cfg: Config, host: Host, apply: Optional[bool] = None) -> int:
+    """Archive + queue cleanup; records ``maintenance`` in the status.  0 = ok / skipped."""
+    apply = cfg.maintenance_apply if apply is None else apply
+    status = load_status(cfg)
+    now = host.now()
+    report: Dict[str, Any] = {"at": now.isoformat(), "mode": "apply" if apply else "count-only",
+                              "error": None}
+    rc = 0
+    try:
+        last = dt.datetime.fromisoformat(str(status.get("last_success_at")))
+        fresh = status.get("last_result") == "ok" and now - last < dt.timedelta(hours=24)
+    except ValueError:
+        fresh = False
+    if not fresh:
+        report["skipped"] = "no successful backup in the last 24 h (FM-5)"
+        print(f"maintenance skipped: {report['skipped']}", file=sys.stderr)
+    else:
+        try:
+            report["archive"] = archive_events(cfg, host, now, apply)
+            report["queue"] = cleanup_queue(cfg, host, now, apply)
+        except (BackupError, OSError, ValueError, IndexError) as exc:
+            report["error"] = str(exc)[:300]
+            rc = 1
+            print(f"maintenance FAILED: {exc}", file=sys.stderr)
+    status = load_status(cfg)
+    status["maintenance"] = report
+    save_status(cfg, host, status)
+    print("maintenance: " + json.dumps(report, ensure_ascii=False))
+    return rc
 
 
 # ── restore drill + partial restore ────────────────────────────────────
@@ -1015,6 +1231,59 @@ def run_restore_vehicle(cfg: Config, host: Host, vehicle_id: str, conversation_i
 # ── init / CLI ─────────────────────────────────────────────────────────
 
 
+def run_verify(cfg: Config, host: Host, offsite: bool = True) -> int:
+    """Weekly light check (FM-47): decrypt the newest bundle (on the share by
+    default), and check every file the manifest names is there with the same
+    checksum.  Nothing is restored; the plaintext is deleted afterwards."""
+    ensure_private_dir(cfg.tmp)
+    tmp = cfg.tmp / f"verify-{uuid.uuid4().hex[:8]}"
+    ensure_private_dir(tmp)
+    report: Dict[str, Any] = {"at": host.now().isoformat(), "ok": False,
+                              "source": "offsite" if offsite else "local", "bundle": None,
+                              "files_checked": 0, "error": None}
+    try:
+        src = pick_bundle(cfg, host, offsite, None)
+        report["bundle"] = src.name
+        plain = tmp / "bundle.tar"
+        decrypt(cfg, host, src, plain, cfg.passphrase_file)
+        with tarfile.open(plain) as tar:
+            members = {m.name: m for m in tar.getmembers() if m.isfile()}
+            fh = tar.extractfile(members["manifest.json"])
+            manifest = json.loads(fh.read()) if fh else {}
+            want = {info["file"]: info["sha256"] for info in manifest["databases"].values()}
+            want.update({info["file"]: info["sha256"] for info in manifest["volumes"].values()})
+            want[manifest["roles"]["file"]] = manifest["roles"]["sha256"]
+            want["infra.env"] = manifest["env_sha256"]
+            if manifest.get("archive"):
+                want["archive.tar"] = manifest["archive"]["sha256"]
+            problems = []
+            for name, sha in sorted(want.items()):
+                member = members.get(name)
+                if member is None:
+                    problems.append(f"{name} missing")
+                    continue
+                digest = hashlib.sha256()
+                data = tar.extractfile(member)
+                for chunk in iter(lambda: data.read(1 << 20), b""):   # type: ignore[union-attr]
+                    digest.update(chunk)
+                if digest.hexdigest() != sha:
+                    problems.append(f"{name} checksum differs")
+            report["files_checked"] = len(want)
+            report["manifest_started_at"] = manifest.get("started_at")
+            if problems:
+                raise BackupError("; ".join(problems)[:300])
+        report["ok"] = True
+    except (BackupError, OSError, ValueError, KeyError, tarfile.TarError) as exc:
+        report["error"] = str(exc)[:300]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    status = load_status(cfg)
+    status["last_verify"] = report
+    save_status(cfg, host, status)
+    print("verify: " + json.dumps(report, ensure_ascii=False))
+    return 0 if report["ok"] else 1
+
+
 def run_init(cfg: Config) -> int:
     """Private dirs + a random passphrase file (never printed)."""
     for d in (cfg.root, cfg.daily, cfg.tmp, cfg.gnupg):
@@ -1041,6 +1310,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     sub.add_parser("init")
     sub.add_parser("run")
     sub.add_parser("status")
+    v = sub.add_parser("verify")
+    v.add_argument("--local", action="store_true", help="check the newest LOCAL bundle instead of the share's")
+    m = sub.add_parser("maintain")
+    m.add_argument("--apply", action="store_true",
+                   help="delete for real this once (default: as the maintenance.apply flag says)")
     d = sub.add_parser("drill")
     d.add_argument("--offsite", action="store_true", help="use the newest bundle on the network share")
     d.add_argument("--ask-passphrase", action="store_true", help="type the offline passphrase (FM-51)")
@@ -1062,6 +1336,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.cmd == "status":
         print(json.dumps(load_status(cfg), indent=1, ensure_ascii=False))
         return 0
+    if args.cmd == "verify":
+        return run_verify(cfg, host, offsite=not args.local)
+    if args.cmd == "maintain":
+        with open(cfg.root / ".lock", "w") as lock_fh:
+            if not acquire_lock(lock_fh):
+                print("a backup is running; maintenance runs after it")
+                return 0
+            return run_maintenance(cfg, host, True if args.apply else None)
     if args.cmd == "drill":
         return run_drill(cfg, host, offsite=args.offsite, ask=args.ask_passphrase, keep=args.keep,
                          bundle=args.bundle, key_file=args.passphrase_file)
