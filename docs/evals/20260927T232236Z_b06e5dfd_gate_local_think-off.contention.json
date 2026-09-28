@@ -1,0 +1,44 @@
+{
+ "schema": 1,
+ "kind": "gpu_contention",
+ "run": "stf-v3-eval-20260927T232213Z",
+ "scorecard": "20260927T232236Z_b06e5dfd_gate_local_think-off",
+ "started_at": "2026-09-27T23:22:23Z",
+ "ended_at": "2026-09-27T23:39:59Z",
+ "interval_s": 30.0,
+ "samples": 35,
+ "sample_errors": 0,
+ "concurrency": 6,
+ "preemptions_before": 0.0,
+ "preemptions_after": 0.0,
+ "preemption_delta": 0.0,
+ "vllm_restarted": false,
+ "gpus": [
+  {
+   "index": 0,
+   "total_mib": 46068.0,
+   "others_mib_max": 1782.0,
+   "others_mib_mean": 1782.0,
+   "others_sm_pct_max": 33.0,
+   "others_sm_pct_mean": 4.1,
+   "vllm_mib_max": 36594.0,
+   "project_other_mib_max": 0.0,
+   "ollama_mib_max": 0.0,
+   "util_pct_max": 100.0,
+   "util_pct_mean": 92.0
+  },
+  {
+   "index": 1,
+   "total_mib": 46068.0,
+   "others_mib_max": 1898.0,
+   "others_mib_mean": 1898.0,
+   "others_sm_pct_max": 24.0,
+   "others_sm_pct_mean": 4.3,
+   "vllm_mib_max": 36594.0,
+   "project_other_mib_max": 0.0,
+   "ollama_mib_max": 0.0,
+   "util_pct_max": 100.0,
+   "util_pct_mean": 91.5
+  }
+ ]
+}
