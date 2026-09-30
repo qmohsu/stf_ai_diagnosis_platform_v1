@@ -320,13 +320,13 @@ def test_unknown_schema_is_reported_not_read() -> None:
 
 
 @pytest.mark.parametrize("path", [
-    "stf_v3/src/stf_v3/evals/gate.py", "stf_v3/scripts/check_eval_gate.py", "stf_v3/scripts/gpu_contention.py"])
+    "src/stf_v3/evals/gate.py", "scripts/check_eval_gate.py", "scripts/gpu_contention.py"])
 def test_gate_code_imports_only_stdlib_and_yaml(path: str) -> None:
     """The CI gate job installs nothing but PyYAML; the sampler runs on the
     host's python3 with nothing installed."""
     import sys
 
-    src = (REPO / path).read_text(encoding="utf-8")
+    src = (pathlib.Path(__file__).resolve().parents[1] / path).read_text(encoding="utf-8")
     allowed = set(getattr(sys, "stdlib_module_names", set())) | {"yaml", "stf_v3", "__future__"}
     for node in ast.walk(ast.parse(src)):
         names: List[str] = []

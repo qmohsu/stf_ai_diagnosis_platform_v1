@@ -225,6 +225,8 @@ def test_the_weekly_check_catches_a_changed_file(tmp_path: pathlib.Path) -> None
 def test_the_weekly_check_runs_sundays_with_zone_and_catch_up() -> None:
     """FM-30 / FM-31: explicit zone, missed runs caught up; it only verifies."""
     ops = pathlib.Path(bk.__file__).resolve().parents[1] / "ops"
+    if not ops.is_dir():
+        pytest.skip("ops/ not present (image / unbound copy)")
     timer = (ops / "stf-v3-backup-verify.timer").read_text()
     unit = (ops / "stf-v3-backup-verify.service").read_text()
     assert "OnCalendar=Sun *-*-* 05:00:00 Asia/Hong_Kong" in timer and "Persistent=true" in timer

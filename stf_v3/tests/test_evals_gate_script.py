@@ -13,6 +13,7 @@ import importlib.util
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 from typing import Any, Dict, List, Optional
 
@@ -21,6 +22,10 @@ import yaml
 
 from stf_v3.evals import gate
 from tests.evals_helpers import card, uniform
+
+# These tests build throwaway git repositories; the V3 image (nightly unbound
+# check, D3 2) has no git, so they run in CI's checkout jobs only.
+pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed (image)")
 
 _SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "check_eval_gate.py"
 _spec = importlib.util.spec_from_file_location("check_eval_gate", _SCRIPT)

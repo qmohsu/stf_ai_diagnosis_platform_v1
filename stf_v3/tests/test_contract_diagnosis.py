@@ -90,8 +90,9 @@ def test_worker_commands_consume_the_right_queues() -> None:
         compose = compose_path.read_text(encoding="utf-8")
         assert '"-q", "default,diagnosis", "--concurrency", "2"' in compose
     unit_path = pathlib.Path(__file__).resolve().parents[1] / "gpu_worker" / "stf-v3-gpu-worker.service"
-    unit = unit_path.read_text(encoding="utf-8")
-    assert "worker -q gpu,llm --concurrency 2" in unit
+    if unit_path.is_file():                         # absent in the image (unbound check, D3 2)
+        unit = unit_path.read_text(encoding="utf-8")
+        assert "worker -q gpu,llm --concurrency 2" in unit
     assert run_diagnosis_job.lock == DIAGNOSIS_LOCK and ingest_manual.lock == INGEST_LOCK
     from stf_v3.diagnosis.tasks import RECONCILE_LOCK, RECONCILE_QUEUEING_LOCK, llm_reconcile
 
