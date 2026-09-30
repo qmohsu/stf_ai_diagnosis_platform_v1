@@ -416,6 +416,8 @@ def test_the_manifest_records_versions_counts_and_order(tmp_path: pathlib.Path) 
 def test_the_units_carry_zone_catch_up_timeout_and_one_retry() -> None:
     """T-13 / FM-30 / FM-31 / FM-32 / FM-28 / FM-49."""
     ops = _SCRIPT.parents[1] / "ops"
+    if not ops.is_dir():
+        pytest.skip("ops/ not present (image / unbound copy)")
     timer = (ops / "stf-v3-backup.timer").read_text()
     service = (ops / "stf-v3-backup.service").read_text()
     assert "OnCalendar=*-*-* 03:30:00 Asia/Hong_Kong" in timer and "Persistent=true" in timer

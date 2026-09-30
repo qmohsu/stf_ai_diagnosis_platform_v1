@@ -76,7 +76,7 @@ def test_the_gemma_vllm_blocks_and_v3s_own_does_not() -> None:
 
 def test_no_command_line_test_is_left_in_the_controller() -> None:
     """FM-9: one classifier; nothing decides by 'vllm' / 'ollama' in a command line."""
-    src = (REPO / "stf_v3/src/stf_v3/diagnosis/model_service.py").read_text(encoding="utf-8")
+    src = pathlib.Path(ms.__file__).read_text(encoding="utf-8")
     assert not re.search(r"""["']vllm["']\s+in\s+""", src)
     assert not re.search(r"""["']ollama["']\s+in\s+""", src)
     assert src.count("def process_kind(") == 1 and "process_kind(procs.get(pid)" in src
