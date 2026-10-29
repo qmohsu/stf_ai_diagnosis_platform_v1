@@ -11,6 +11,10 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict
 
+from stf_v3.windows_runtime import configure_windows_event_loop
+
+configure_windows_event_loop()
+
 import structlog
 from fastapi import FastAPI
 from sqlalchemy import text

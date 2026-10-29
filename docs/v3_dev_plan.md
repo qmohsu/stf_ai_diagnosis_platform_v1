@@ -4,13 +4,13 @@
 
 | 字段 | 值 |
 |---|---|
-| **架构文档** | `docs/v3_design_doc.md`（v1.2） |
+| **架构文档** | `docs/v3_design_doc.md`（v1.23） |
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.23（PROD-15A 完成；v1.22 为 PROD-15A PR ②） |
+| **版本** | v1.26（PR #269 夜间 V3 镜像测试修复） |
 | **作者** | Xiangzhu Yan |
-| **最后更新** | 2026-09-27 |
+| **最后更新** | 2026-10-29 |
 
 ## 0. 本计划的定位
 
@@ -30,7 +30,7 @@ V3 是最终产品形态，V1/V2 是学习版并将废弃。本计划要交付�
 | D3 | 代码放哪 | **同仓新目录** `stf_v3/` + `obd-ui-v3/`，硬约束 A 可迁出 / B 不绑死（见 §2.3） |
 | D4 | 登录注册 | **fastapi-users** + 邀请码 |
 | D5 | 任务队列 | **procrastinate**（Postgres 上的任务队列，零新组件），模块 `jobs` |
-| D6 | 前端开工时机 | **暂缓（外部阻塞）**：PM 已分配给学生；M5 不排期；后端从 M1 起交付 OpenAPI 契约 |
+| D6 | 前端开工时机 | **已出现部分实现、仍未完成**：PR #269 在 `frontend/` 实现门户/BFF；M5 仍须按 PROD-12～14 的缺口验收，目录与原 D3 冲突待维护者决定 |
 | D7 | 本地模型来源 | **唯一一个 vLLM**，V1/V2/V3 共用；换模型统一换、两套 golden 各跑一遍 |
 | D8 | Jetson 数据归属 | **要求级**：每笔上传 100% 绑定唯一车档；转存不丢归属；诊断时品牌型号找手册、VIN 找历史。实现细节由 PROD-01 定 |
 | D9 | 不做清单 | **接受**，且每项须留档"回头条件"（§4） |
@@ -56,7 +56,9 @@ V3 是最终产品形态，V1/V2 是学习版并将废弃。本计划要交付�
 
 ### 1.2 Out of Scope
 
-见设计文档 §1.11 非目标清单（A3）。每项的回头条件在本计划 §4。前端实现（`obd-ui-v3`）归属未定，其 ticket（PROD-12 ~ 14）保留但不排期。
+见设计文档 §1.11 非目标清单（A3）。每项的回头条件在本计划 §4。PR #269
+已在实际目录 `frontend/` 提交部分门户能力，但 PROD-12～14 均未完成；原
+D3 的 `obd-ui-v3/` 目录决定仍保留，冲突交维护者处理。
 
 ## 2. 里程碑与关键路径
 
@@ -69,7 +71,7 @@ V3 是最终产品形态，V1/V2 是学习版并将废弃。本计划要交付�
 | **M2 数据入口** | 数据能进来、知识库能用、队列上线 | PROD-05 ~ 07 | 3–4 天 | |
 | **M3 Agent 核心** | 诊断脑子在新运行时里不掉分 | PROD-08 ~ 10 | 6–8 天 | |
 | **M4 S1 诊断闭环** | 一键报告在后端跑通，Swagger 可走完全流程 | PROD-11 | 3–4 天 | |
-| **M5 前端 Stage 1** | 用户能在手机上用 | PROD-12 ~ 14 | 6–8 天 | **待定 · 外部依赖（D6）** |
+| **M5 前端 Stage 1** | 用户能在手机上用 | PROD-12 ~ 14 | 6–8 天 | **PR #269 部分实现 · 评审中 · 未完成** |
 | **M6 Pilot 上线** | 真实用户开始用 | PROD-15A 运维底线 · PROD-15B Pilot 上线 | 15A 2–3 天 · 15B 1–2 天 | 15A 不依赖前端，可立即开工；15B 依赖 M5 + 15A |
 
 粗估为 AI 主力开发 + 用户评审的工作日，不含等待评审与服务器排队。
@@ -125,7 +127,7 @@ M6 PROD-15B (Pilot 上线：第一批真实用户)
 - `docs/v3_design_doc.md` + 本计划 + 架构图在**同一提交**内同步（预览 SVG 用 `render_excalidraw.py` 重新生成）
 - 隐私边界保持：工具只返回文本摘要，不返回原始传感器数组
 - **数据归属不变量（D8）**：任何一笔入库的原始数据都能查到所属车档；不允许 `V-UNKNOWN`
-- **可迁出 / 不绑死（D3）**：`stf_v3/`、`obd-ui-v3/` 不 import 老代码；两条自动化检查（拷到空目录测试全绿；删掉 `diagnostic_api/ obd_agent/ obd-ui/` 后 V3 照常构建）通过
+- **可迁出 / 不绑死（D3）**：`stf_v3/`、`obd-ui-v3/` 不 import 老代码；两条自动化检查（拷到空目录测试全绿；删掉 `diagnostic_api/ obd_agent/ obd-ui/` 后 V3 照常构建）通过。PR #269 实际使用 `frontend/`，在维护者处理目录冲突并完成相同验收前，不得据此宣称 D3 已满足
 - OpenAPI 契约与代码一致（CI 生成并 diff）
 - 走 CLAUDE.md 验证闭环：PR → 分支部署 PolyU → 线上 E2E（后端 ticket 用 Swagger / curl，前端 ticket 用浏览器）→ 用户拍板合并
 - **测试补齐（§2.4）**：新功能同时扩展 `scripts/smoke_e2e.py`；接口级集成测试覆盖新端点；部署前后跑 `scripts/isolation_check.sh snapshot / compare`
@@ -223,12 +225,13 @@ Status: **✅ DONE**（2026-09-11，分支 `prod-03-backend-skeleton`；服务�
 
 Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lavish/prod04_plan_review.html` D1 = 对外可达、D2 = GitHub Actions）
 **做了**：`stf-v3-api` + `stf-v3-worker` 常驻（独立 Compose 项目 `-p stf_v3`，镜像带 git commit 标签；worker 跑空的 procrastinate 应用 + 每分钟心跳）；nginx 新增 `upstream api_v3` + `/v3/auth/`（复用 auth 限流）+ `/v3/`（SSE 参数），V1/V2 块未动；`/v3/health` 别名（含 commit）；`.github/workflows/v3.yml` 四个 job（unit+contract、integration 临时 Postgres 15、portable、unbound 每晚）；`scripts/deploy_check.sh`（5 项）、`check_portable.sh`、`check_unbound.sh`；冒烟改走 `/v3/health` 并在 8003 + 一次性库上跑；CLAUDE.md 新增 V3 部署段；服务器 `infra/.env` 补三项密钥（不入库）。
+**PR #269 评审回归（2026-10-29）**：`test_setup_local_windows.py` 的前端启动器检查改为上下文感知——只含 `stf_v3/`、没有 `.git` 与 `frontend/` 的镜像或便携副本明确跳过；完整 Git 检出缺少启动器仍以 `FileNotFoundError` 失败。两种上下文都有回归测试。
 **服务器结果**：deploy_check 5/5 PASS；失败演练：commit 不匹配 FAIL（推脚本未重建时自然出现）、worker 停止 FAIL（心跳 + 容器状态）；`/v3/health`、`/v3/docs` 服务器内与公网（stf-diagnosis.dev）均 200，V1 `/health` 与旧前端 200；API 重启 3 s 恢复；冒烟 23/23 PASS（8003 + stf_v3_test），正式库 smoke 残留 0；只读探测 openapi 200 / 错密码 400 / 无 token 401；日志无密钥；隔离回归 PASS。
 **抓到的问题（已修）**：① podman-compose 默认项目名 = 目录名 `infra`，V3 被放进 V1/V2 同一个 pod，`down` 试图拆共享 pod → 一律 `-p stf_v3`；② nginx.conf 是单文件 bind 挂载，`git pull` 换 inode 后容器内仍是旧文件，`nginx -s reload` 无效 → 改配置必须重建 nginx 容器；③ deploy_check 容器年龄计算丢时区 → 修。
 
 **目标**：V3 后端在 PolyU 服务器上与 V1/V2 并存运行；每个 PR 自动跑测试和两条迁移性检查。
 **方法**：`infra/docker-compose.v3.yml`（`stf-v3-api`、`stf-v3-worker`，独立端口）+ nginx 路由前缀；共用 Postgres 实例与 vLLM（配置连接）；GitHub Actions：pytest（离线）+ OpenAPI diff + 可迁出检查（拷贝两目录到空目录跑测试）+ 不绑死检查（临时检出删除老目录后构建）；部署步骤追加到 CLAUDE.md。
-**验收**：服务器上 V1/V2/V3 健康检查同时通过；Cloudflare 隧道能访问 V3 `/health`；CI 四项在 PR 上绿灯。
+**验收**：服务器上 V1/V2/V3 健康检查同时通过；Cloudflare 隧道能访问 V3 `/health`；CI 四项在 PR 上绿灯；V3 镜像 pytest 不因未打包 `frontend/` 失败，完整 Git 检出仍验证启动器存在及安全环境加载。
 
 ### 3.3 M2 — 数据入口
 
@@ -381,18 +384,35 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 **服务器核验发现（2026-09-26，均已在本分支修复并回归测试）**：① 队列 worker 只导入自己任务的模块，收尾事务找不到用户 / 车间表（NoReferencedTableError），会话卡在"进行中" 6 小时——worker 启动时导入全部表，另加全新进程回归测试；② vLLM 的 conmon 落在 GPU worker 服务的 cgroup 里，部署后重启 worker 会连带杀掉 vLLM——拉起改走 `systemd-run --user --scope`；③ 有人约每小时从 talon 账号 `podman stop stf-vllm`（来源不明，用户也不知道），控制器每次又拉起——自己拉起的 vLLM 被外部停掉时标失败 + 冷却 15 分钟，等待中的诊断以新错误码 `model_stopped` 结束；④ 控制器按单个进程判断占用，别人 9 个 0.6–0.9 GB 的小进程被当成"空闲"，15:24 把 vLLM 压在别人的任务上——改为每张卡合计；⑤ 一键诊断真实路试日志三次里两次撞 100 万总 token 上限，"部分报告"只剩一句没说完的话（同款 Qwen 经 OpenRouter 复现，用户批准 C 方案）——用户选 A：闸门后加一轮不带工具的收尾报告、vLLM 档总 token 上限调到 200 万、局限一栏写成报告语言的句子（放宽上限的一次实测：11 分钟自行完成，87 万 token，报告 4317 字、19 处引用）；⑥ PROD-10 评测留下的锁文件（评测脚本按设计不删）让控制器以为评测一直在跑，vLLM 空闲 37 分钟仍不停——改为锁里写的评测容器仍在运行才算锁住（与评测脚本同一规则）。
 **验收**：设计文档数据模型"图 3 走查"每一步落表正确；SSE 事件名与 audit_events.event_type 完全一致；中途断开后按 seq 回放得到完整过程；API 进程重启后进行中的诊断由 worker 继续或标记 error，不出现永远 running 的会话；**一名未读代码的评审者仅凭 Swagger + OpenAPI 注释完成注册 → 建车 → 上传 → 诊断 → 读报告**。
 
-### 3.6 M5 — 前端 Stage 1（待定 · 外部依赖）
+### 3.6 M5 — 前端 Stage 1（PR #269 部分实现 · 评审中 · 未完成）
 
-前端归属等下次会议确定。以下 ticket 保留作为需求描述，供无论谁来做前端时使用；不排期。
+以下状态以 PR #269 的完整 diff（`569a381…bc2641a`）为准。已有 UI 或测试
+不等于 ticket DONE；只有目标和验收全部满足后才能关闭。
 
 #### PROD-12 — 前端骨架、登录与车辆页
-**目标**：用户在浏览器里完成注册、登录、建车档。**验收**：线上浏览器 E2E：注册 → 登录 → 建车 → 车辆页；移动与桌面布局均可用。
+
+- **已完成**：`frontend/` Next.js 骨架；BFF 经 V3 login/logout/users/me
+  管理登录会话；从 `vehicle_data_twin` 只读取得车辆目录；按车牌、VIN、
+  制造商、型号四字段核验后进入车辆页；已有移动/桌面布局测试；公开前端
+  fixture、单元/BFF 与 E2E 只使用两个项目固定假 VIN，仓库级 `vin-scan`
+  通过，真实 VIN 不进入公开 Git 历史。
+- **未完成**：邀请注册、在 V3 建车档，以及“注册 → 登录 → 建车 →
+  车辆页”的完整线上浏览器 E2E。因此 PROD-12 仍为部分实现。
 
 #### PROD-13 — 上传、流式一键报告与报告视图
-**目标**：车辆页上传日志、点一键诊断、看流式过程与最终报告（双视图）。**验收**：线上 E2E 一次完整诊断在手机上完成；刷新后过程视图从回放接口恢复；报告引用可点击到手册出处。
+
+- **已完成**：无可计入本 ticket 验收的产品链路；页面中的延后状态不代表
+  后端接入。
+- **未完成**：日志上传、流式一键诊断、断线/刷新回放、最终报告双视图及
+  引用跳转均未实现。PROD-13 未开始验收。
 
 #### PROD-14 — PWA 与移动打磨
-**目标**：可安装到手机主屏，弱网可用。**验收**：Android Chrome / iOS Safari 可安装；Lighthouse PWA 项通过；弱网下上传有进度与失败提示。
+
+- **已完成**：manifest、Service Worker 静态离线壳、响应式页面及对应的
+  移动/桌面测试；认证与门户业务 API 明确不进入 Service Worker 缓存。
+- **未完成**：Android Chrome / iOS Safari 实机安装验收、Lighthouse PWA
+  门槛，以及弱网下上传进度/失败体验（上传本身尚未实现）。PROD-14 仍为
+  部分实现。
 
 ### 3.7 M6 — Pilot 上线
 
@@ -443,7 +463,7 @@ PROD-15 于 2026-09-27 按用户决定拆为两张：**15A 运维底线**（纯�
 | 事项 | 触发条件（什么时候回头） | 预期动作 | 是否动地基 | 状态 |
 |---|---|---|---|---|
 | S2 报告内追问 | Stage 1 pilot 跑通、用户提出追问需求 | `messages` 追加、前端追问框 | 否 | 暂缓 |
-| 车队历史模块（vehicle_data_twin） | 与学生对齐 API 形态 + PII 脱敏规则定稿 | `history` 模块、按 VIN/车牌对应、脱敏视图、`get_vehicle_history` 工具 | 否 | 暂缓 |
+| 车队历史模块（vehicle_data_twin） | PR #269 已触发门户只读直连；V3 后端需要统一历史能力时回头 | `frontend/` BFF 当前只读 GET 保持独立；另建 V3 `history` 模块、按 VIN/车牌对应、脱敏视图与 `get_vehicle_history` Agent 工具 | 否 | **门户只读接入已实现；V3 后端/Agent 暂缓** |
 | 车队 Dashboard | 第一个 workshop 有 ≥ 10 台车在用 | `dashboard` 模块只读聚合，按 workshop 汇总 | 否 | 暂缓 |
 | S3 车辆级自由对话 | S2 稳定后 | 输入护栏 + 会话复用 | 否 | 暂缓 |
 | S4 系统主动触发 | 上传频率稳定、有明确触发规则 | `vehicle_events` 表 + `jobs` 事件类型（上传完成 → 规则 → 诊断） | 否 | 暂缓 |
@@ -489,19 +509,26 @@ PROD-15 于 2026-09-27 按用户决定拆为两张：**15A 运维底线**（纯�
 | 服务器升级到 4 × RTX PRO 6000（2026-09-24 获悉，约两个月内） | 升级排期确定时 | ① 与管理员谈卡的分配；硬件升级是"vLLM 常驻"决策的回头条件之一，届时重新评估常驻；② 升级前确认软件栈支持 Blackwell：驱动与 CUDA 12.8 以上、vLLM 镜像、宿主机 MinerU 的 PyTorch、V1/V2 的 Ollama、Podman 的 GPU 插件，预留 V3 停机窗口；③ 同一模型先在新卡上跑一轮 golden（vLLM 部署文件在门槛管理路径里，改它的 PR 会被强制评测），27B 可改为一卡一份以提高并发；④ 换更大的模型走基线重置 PR，先逐个候选跑 golden，再按新模型重校子代理预算 | 否 | 暂缓 |
 | 测试车队刷诊断挤占真用户（PROD-11 FM-42） | 测试车队的诊断量影响到真车排队，或 vLLM 因联调长时间不停 | 先在联调说明里约定用法；真出现时加一个全局排队上限（例如测试车队同时最多 1 个排队），或给测试车队单独的空闲停机时间 | 否 | 暂缓 |
 | V3 拖累共享 Postgres 连接数（PROD-11 FM-43） | V1/V2 容器重新启用，或出现数据库连接数告警 | 给 V3 的运行时账号设连接上限（`ALTER ROLE stf_v3_app CONNECTION LIMIT …`）并压测：直播每次轮询已是借连接即还（FM-36） | 否 | 已完成（PROD-15A PR ②，2026-09-28） |
-| 前端语言 / 样式 | 前端归属确定后 | 由前端需求文档定 | 否 | 等待外部 |
+| twin 自由文本 PII 边界 | 正式对外、接入包含个人信息的真实 twin 数据，或 V3 后端 history 模块开工（以先发生者为准） | 盘点 `description/note/remarks/reason/message` 等自由文本，定下删除、脱敏或允许透传的字段级规则并加测试 | 否 | 暂缓；PR #269 当前原样透传 |
+| 前端目录与归属（D3 冲突） | PR #269 合并前的维护者评审 | 在 `frontend/` 与既定 `obd-ui-v3/` 之间作出保留/迁移决定，并同步可迁出检查；本补救提交不替维护者选择 | 否 | 待决策 |
+| 前端语言 / 样式 | PROD-12～14 继续实现或维护者确认产品要求时 | 以实际前端需求和验收结果更新，不因已有页面预判完成 | 否 | 部分实现，待验收 |
 
 ## 5. 待决策
 
 全部 9 项已拍板（2026-09-08），结果见 §0.1；存档 `.lavish/v3_dev_plan_decisions.html`。
 
-新增开放项：**前端实现归属**（学生 vs 我们）→ 下次会议；在此之前 M5 不排期。
+新增开放项：**前端目录与实现归属**。PR #269 已在 `frontend/` 提交部分实现，
+但与 D3 的 `obd-ui-v3/` 冲突；由维护者决定目录/归属，M5 在 PROD-12～14
+全部验收前保持未完成。
 
 ## 6. 变更记录
 
 | 版本 | 日期 | 变更 |
 |---|---|---|
 | v0.1 | 2026-09-07 | 初稿：7 个里程碑、15 张 PROD ticket（PROD-01 到验收级，其余到目标/方法/验收层）、非目标清单草案、9 项待决策 |
+| v1.26 | 2026-10-29 | PR #269 评审项“2. 夜间镜像测试会失败”：按 V3 镜像布局复现 `frontend/scripts/start-obd-expert.ps1` 的 `FileNotFoundError`；启动器源码检查仅在非 Git 镜像/便携副本缺少 `frontend/` 时跳过，完整 Git 检出缺文件仍失败；新增双上下文回归测试。PROD-04 的 nightly unbound 验收口径同步，范围与架构未变化，**图无需改动** |
+| v1.25 | 2026-10-29 | PR #269 评审修复：PROD-12 的前端 fixture、单元/BFF 测试、E2E 路由与 10 张受影响基准截图统一改用两个项目固定假 VIN；保留无 VIN 的 `pending_source` 场景，未引入真实车辆 VIN；`vin-scan` 与前端测试重新通过。范围、暂缓事项和架构均未变化，**图无需改动** |
+| v1.24 | 2026-10-29 | 按 PR #269 完整 diff 补记 M5：PROD-12 已有门户骨架、V3 BFF 登录、twin 只读车目录/四字段核验/车辆页与移动桌面测试，但缺注册、建车及完整 E2E；PROD-13 的上传/流式诊断/回放/报告/引用均未实现；PROD-14 已有 manifest、静态离线壳与响应式页面，但缺移动端安装、Lighthouse 与弱网上传验收。§4 记录门户直连 twin 后 V3 history/Agent 仍暂缓、自由文本 PII 回头条件和 `frontend/` vs `obd-ui-v3/` 冲突。同步设计文档 v1.21 与架构图，**图已同步** |
 | v1.23 | 2026-09-28 | **PROD-15A 完成**（PR #261 备份与恢复、#262 演练数据卷、#263 其余；main 已部署，部署检查全过、隔离 PASS）。#263 的门槛评测手册 lane 未过，同窗口 main 对照证明为共享显卡下的波动、非该 PR 引起，用户决定 `eval-exempt`；跟进 #264。之后的例行事项：首批非零计数出现时核对后再打开 `maintenance.apply`（队列约 10 月 12 日、归档约 2027 年 3 月），完整恢复演练每季度一次。仅文档，架构不变，**图无需改动** |
 | v1.22 | 2026-09-28 | **PROD-15A PR ②**：归档与清理（180 天过程记录 → 存档 + `events_archived` 接口字段、30 天队列流水、7 天手册工作目录；先只记数）、日志落盘（每进程文件、30 天）、连接上限 50 + 演练、评测只读账号、存储巡检、每周核对、VIN 扫描（发现并清理公开仓库与 issue 里的真实 VIN）。§4 三行（FM-13 / FM-16 / FM-43）改为已完成。运维手册 v0.14、设计文档 v1.20、CLAUDE.md 同步；新增日志卷与每周核对，**图已同步** |
 | v1.21 | 2026-09-28 | **PROD-15A PR ① 后续（小 bug 直接修）**：恢复演练每次留下一个装着两个库明文副本的匿名数据卷（删容器没带 `-v`，共 7 个，已从服务器删除）；演练开始前与结束后都连同数据卷一起删，补回归测试。运维手册 v0.13 同步；无架构变化，图不变 |

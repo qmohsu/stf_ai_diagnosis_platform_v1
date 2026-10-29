@@ -1,0 +1,11 @@
+node_modules/
+.next/
+coverage/
+playwright-report/
+test-results/
+lighthouse-report.json
+next-env.d.ts
+*.tsbuildinfo
+.env
+.env.local
+*.log
