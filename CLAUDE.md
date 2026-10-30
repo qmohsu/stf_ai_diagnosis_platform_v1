@@ -430,6 +430,18 @@ stf_v3/scripts/db_roles.sh`, idempotent): `stf_v3_app` CONNECTION LIMIT 50 (pool
 (sizes, re-created volumes, dir modes — WARN only).  CI job `vin-scan` (no path
 filter) fails on any VIN-shaped string except the two fakes (+ one textbook example);
 the repo is public, never paste a real VIN anywhere (runbook §7.7).
+**Collaborator access + deploy watch (#272, 2026-10-30)**: the frontend
+collaborator's server account reads our home dir through ONE ACL entry
+(`setfacl -m u:<account>:r-x ~`): read-only, no writes; changes to backend
+code / deploys / APIs need the user's approval.  Our umask is 0002, so anything
+secret (keys, real VINs, logs, exports) must be chmod 600 / 700 when created.
+Host timer `stf-v3-deploy-watch.timer` (every 5 min, runs the installed copy in
+`~/.local/share/stf_deploy_watch/`) logs every change to the checkout, `stf-*`
+containers, host workers, live OpenAPI and alembic heads into `~/stf_v3_status/`.
+Run `python3 ~/.local/share/stf_deploy_watch/deploy_watch.py report` at the start
+of server work (a change we did not make = someone else touched the backend) and
+`… ack --note "<what we did>"` after every deploy / branch verification.  Install
+/ check: `bash stf_v3/ops/install_deploy_watch.sh [--check]` (runbook §10).
 
 **Branch verification (every V3 PR)** — run on the server:
 ```
@@ -447,6 +459,7 @@ bash stf_v3/scripts/deploy_check.sh                                    # 10 chec
 #   → rm container, DROP DATABASE stf_v3_test
 bash stf_v3/scripts/isolation_check.sh compare                        # must print PASS
 git checkout main && git pull origin main                              # restore; containers stay on the branch build until main is deployed
+python3 ~/.local/share/stf_deploy_watch/deploy_watch.py ack --note "branch <branch> verified"   # #272: mark our own changes as seen
 ```
 **Always pass `-p stf_v3`**: without a project name podman-compose uses the
 directory name (`infra`) and puts V3 into the SAME pod as V1/V2, so `down`
@@ -458,7 +471,8 @@ image whose commit label differs from `git rev-parse HEAD`.
 
 **Main deployment** — same as above minus the smoke DB, after merging:
 pull main → `predeploy_check.sh` → build with `GIT_COMMIT` → `--profile migrate … run --rm stf-v3-migrate alembic upgrade head`
-→ `down` + `up -d stf-v3-api stf-v3-worker` → `deploy_check.sh` → `isolation_check.sh compare`.
+→ `down` + `up -d stf-v3-api stf-v3-worker` → `deploy_check.sh` → `isolation_check.sh compare`
+→ `deploy_watch.py ack --note "main <sha> deployed"`.
 
 **CI** (`.github/workflows/v3.yml`, V3 paths only): unit + contract
 (pytest offline, import-linter, OpenAPI `--check`), integration (throwaway

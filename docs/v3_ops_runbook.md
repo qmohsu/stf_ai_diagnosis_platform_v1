@@ -2,8 +2,8 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.14（PROD-15A PR ②：§1.5 连接上限、§5.2 评测只读账号、§7.2 备份后维护、§7.5 归档与清理、§7.6 每周核对、§7.7 VIN 扫描、§8 日志落盘、§9 常见故障速查；v0.13 为演练数据卷） |
-| 日期 | 2026-09-28 |
+| 版本 | v0.15（#272：§10 协作者只读访问与部署变动监控，§9 加一行；v0.14 为 PROD-15A PR ②） |
+| 日期 | 2026-10-30 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
 
@@ -540,3 +540,45 @@ podman rm -f -v stf-v3-restore-drill                        # 用完删掉（-v 
 | 新请求报连接失败 | `/v3/health` 的 `db_connections`；必要时临时回退上限 | §1.5 |
 | 存储巡检警告「卷被重建」 | 卷里旧数据已丢，从最近一份备份恢复该卷 | §7.2、§7.3 |
 | 要回滚到旧版本 | 部署前检查 + 回滚步骤 | §6.5 |
+| 后端好像被改过 / 不确定谁部署的 | `deploy_watch.py report` | §10.2 |
+
+## 10. 协作者只读访问与部署变动监控（#272）
+
+### 10.1 协作者能看什么
+
+2026-10-30 起（用户决定），前端协作者的服务器账号可以**只读**访问部署所在的家目录。规矩：只读不改；要改后端代码、部署或接口，先在 issue 里提出，用户同意后由我们改、我们部署。
+
+```
+setfacl -m u:<协作者账号>:r-x ~      # 授权（家目录上一条 ACL，不用管理员）
+setfacl -x u:<协作者账号> ~          # 收回
+getfacl -p ~                         # 查看当前授权
+```
+
+- 效果：他能进家目录，读所有「其他人可读」的东西（仓库检出、`~/stf_v3_status`）；**写不了任何东西**；权限 600 / 700 的读不到（`infra/.env`、`.ssh`、`.config`、`.cloudflared`、备份、设备 token、日志）。容器与容器日志他看不到（rootless Podman 按账号隔离）。
+- 开放前清过一遍（2026-10-30）：仓库里一份旧密钥备份 `infra/.env.bak.*`（原为 664）改 600；含实验车真实 VIN 的旧诊断输出 `~/prod08_runs`、`~/prod09_runs`、`~/prod09_*.log` 改为只有本账号可读。
+- **以后的规矩**：本账号的 umask 是 0002，家目录里新放的东西默认对他可读。密钥、真实 VIN、日志、数据导出，放进去时就 `chmod 600`（目录 700）。
+- 他在仓库里用 git 前需要先把仓库加进自己的 `safe.directory`（`git config --global --add safe.directory /home/<部署账号>/stf_ai_diagnosis_platform_v1`）。
+
+### 10.2 部署变动监控
+
+宿主机定时服务 `stf-v3-deploy-watch.timer` 每 5 分钟记一次「服务器上跑的是什么」，和上一次比，有变化就记一行。它不分是谁改的：我们自己的部署也会被记下，部署完确认（ack）即可。
+
+| 记录的内容 | 变化意味着 |
+|---|---|
+| 检出的分支、提交、未提交的改动与新文件（被 `.gitignore` 忽略的不算） | 代码被换了或被改了 |
+| 每个 `stf-*` 容器的镜像、提交标签、创建时间、状态（按需启停的 `stf-vllm` 不算） | 重新部署，或容器停了 / 挂了 |
+| 宿主机工人 `stf-v3-gpu-worker`、`marker-worker` 的启动时间，以及各单元文件 | 工人被重启或重装 |
+| V3 与 V1/V2 正在服务的接口文档（OpenAPI）摘要 | 接口变了 |
+| 两个库的迁移版本 | 数据库结构变了 |
+
+```
+python3 ~/.local/share/stf_deploy_watch/deploy_watch.py report              # 还没确认的变化（--all 看全部）
+python3 ~/.local/share/stf_deploy_watch/deploy_watch.py ack --note "PR #xxx 部署"   # 每次我们部署 / 分支验证完
+bash stf_v3/ops/install_deploy_watch.sh [--check]                           # 安装 / 自检
+```
+
+- report 里出现**对不上我们操作的变化**，就是别人动过后端：先查清楚，再决定回滚还是追认。
+- 状态在 `~/stf_v3_status/`（`current.json` 当前部署、`changes.jsonl` 变化、`acks.jsonl` 确认）：协作者可读、只有本账号可写；只放版本号和时间，不放配置、日志、数据。
+- 定时器跑的是装在 `~/.local/share/stf_deploy_watch/`（700）的**副本**，不是检出里的脚本：检出是被监控的对象，分支验证时还会被切走。改了脚本要重跑安装，`--check` 会发现副本过期。
+- 某一项一时读不到（例如 podman 没响应）只记一条 `error.*`，不会被当成「容器全没了」。
+- 2026-10-30 装好时实测：往检出里放入、再删掉一个文件，两次都被记下。
