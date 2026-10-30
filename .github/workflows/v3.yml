@@ -103,15 +103,19 @@ jobs:
     # PROD-07: the device-side script (V2 + V3 dual push).  Runs on the
     # oldest interpreter the script must support AND the dev version, with
     # only the dependency the device already has (httpx).
+    # Interpreters come from the official python images, not setup-python:
+    # the runner images drop old Pythons (ubuntu-26.04 has no 3.8, so the
+    # 3.8 leg broke on 2026-10-25), while python:3.8 stays on Docker Hub.
+    # bookworm, not alpine: the actions' node needs glibc.
     name: jetson uploader (py${{ matrix.python }})
     runs-on: ubuntu-latest
+    container: python:${{ matrix.python }}-slim-bookworm
     strategy:
+      fail-fast: false   # a broken leg must not cancel the other one
       matrix:
         python: ["3.8", "3.11"]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "${{ matrix.python }}" }
       - run: pip install "httpx==0.26.0" "pytest==7.4.4"
       - name: uploader tests (offline) + install-guide contract
         run: |
