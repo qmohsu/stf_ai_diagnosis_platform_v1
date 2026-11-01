@@ -13,6 +13,7 @@ $v3EnvironmentRoot = Join-Path `
   "OBD Expert"
 $v3Environment = Join-Path $v3EnvironmentRoot "stf_v3.env"
 $portalUrl = "http://127.0.0.1:3001/login"
+$portalHealthUrl = "http://127.0.0.1:3001/api/health"
 $portalPort = 3001
 $apiHealthUrl = "http://127.0.0.1:8002/health"
 $apiOpenApiUrl = "http://127.0.0.1:8002/v3/openapi.json"
@@ -64,16 +65,20 @@ function Get-PortalProbe {
   param([int]$TimeoutSeconds = 3)
 
   try {
+    $health = Invoke-RestMethod `
+      -Uri $portalHealthUrl `
+      -TimeoutSec $TimeoutSeconds `
+      -Headers @{ "Cache-Control" = "no-cache" }
     $response = Invoke-WebRequest `
       -Uri $portalUrl `
       -UseBasicParsing `
       -TimeoutSec $TimeoutSeconds `
       -Headers @{ "Cache-Control" = "no-cache" }
 
-    $hasBrand = $response.Content -match "Towngas"
-    $hasLogin = $response.Content -match "(?:login-card|login-form)"
-
-    if ($response.StatusCode -eq 200 -and $hasBrand -and $hasLogin) {
+    if ($response.StatusCode -eq 200 `
+      -and $response.Content -match "STF V3" `
+      -and $health.status -eq "ok" `
+      -and $health.v3Api -eq "ok") {
       return "Portal"
     }
 

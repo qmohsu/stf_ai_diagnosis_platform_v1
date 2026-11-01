@@ -12,15 +12,40 @@
 #   podman-compose --profile migrate -p stf_v3 \
 #     -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml \
 #     run --rm stf-v3-migrate alembic upgrade head
-# Run (runtime role):
+# Run (runtime role, including the V3 frontend):
 #   podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml \
-#     up -d stf-v3-api stf-v3-worker
+#     up -d stf-v3-api stf-v3-worker stf-v3-frontend
 # Always pass -p stf_v3: without it V3 lands in the V1/V2 pod.
 #
 # Variables come from infra/.env on the server (never committed):
-#   STF_V3_DATABASE_URL, STF_V3_APP_DATABASE_URL, STF_V3_JWT_SECRET
+#   STF_V3_DATABASE_URL, STF_V3_APP_DATABASE_URL, STF_V3_JWT_SECRET,
+#   STF_V3_FRONTEND_ORIGIN
 
 services:
+  stf-v3-frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    image: stf-v3-frontend:local
+    container_name: stf-v3-frontend
+    environment:
+      NODE_ENV: production
+      PORT: "3002"
+      HOSTNAME: 0.0.0.0
+      STF_V3_API_BASE_URL: http://stf-v3-api:8002
+      PORTAL_PUBLIC_ORIGIN: ${STF_V3_FRONTEND_ORIGIN:?set STF_V3_FRONTEND_ORIGIN}
+    ports:
+      - "${BIND_HOST:-127.0.0.1}:3002:3002"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3002/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
   stf-v3-api:
     build:
       context: ../stf_v3

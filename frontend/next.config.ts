@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   devIndicators: false,
+  async redirects() {
+    return [
+      { source: "/vehicles/plate/:identity", destination: "/verify-vehicle", permanent: false },
+      { source: "/vehicles/vin/:identity", destination: "/verify-vehicle", permanent: false },
+      { source: "/vehicles/plate/:identity/components/:componentCode", destination: "/verify-vehicle", permanent: false },
+      { source: "/vehicles/vin/:identity/components/:componentCode", destination: "/verify-vehicle", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

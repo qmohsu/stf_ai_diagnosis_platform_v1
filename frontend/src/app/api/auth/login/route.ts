@@ -3,7 +3,6 @@ import { PortalError } from "@/server/errors";
 import { portalError, portalJson } from "@/server/http";
 import { authRateLimit } from "@/server/rate-limit";
 import { requireSameOrigin } from "@/server/request-security";
-import { clearVehicleContext } from "@/server/vehicle-session";
 
 export async function POST(request: Request) {
   const limited = authRateLimit(request); if (limited) return limited;
@@ -16,7 +15,7 @@ export async function POST(request: Request) {
     const result = await loginWithV3(body.username, body.password);
     const response = portalJson({ user: result.user });
     setPortalSession(response, result.token, result.expiresAt);
-    clearVehicleContext(response);
+    response.cookies.set("portal_vehicle_context", "", { path: "/", maxAge: 0 });
     return response;
   } catch (error) { return portalError(error); }
 }

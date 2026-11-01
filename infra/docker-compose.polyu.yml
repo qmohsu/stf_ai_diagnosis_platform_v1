@@ -14,7 +14,7 @@
 #     communicate via 127.0.0.1 on the host network stack.
 #   - Ollama: direct /dev/nvidia* device passthrough (Podman 3.x has no CDI).
 #   - Nginx: reverse proxy as sole external gateway on port 8080.
-#   - obd-ui: NEXT_PUBLIC_API_URL set to empty (same-origin via Nginx).
+#   - obd-ui: legacy webpage is disabled by default on PolyU; V3 serves root.
 #   - Port mappings removed (host network exposes container ports directly).
 # ============================================================================
 
@@ -93,9 +93,10 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
 
   # --------------------------------------------------------------------------
-  # obd-ui - Override API URL for Nginx same-origin proxying
+  # obd-ui - Keep available for rollback, but do not start by default.
   # --------------------------------------------------------------------------
   obd-ui:
+    profiles: ["legacy-ui"]
     network_mode: host
     networks: !reset []
     ports: !reset []
@@ -121,7 +122,6 @@ services:
       - ./nginx/manuals:/srv/manuals:ro
       - diagnostic_api_manuals:/app/data/manuals:ro
     depends_on:
-      - obd-ui
       - diagnostic-api
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider",

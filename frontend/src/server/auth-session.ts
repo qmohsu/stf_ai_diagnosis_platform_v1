@@ -21,6 +21,11 @@ export interface PortalUser {
   memberships: PortalMembership[];
 }
 
+type V3UserOut = Omit<PortalUser, "email" | "display_name"> & {
+  email?: string | null;
+  display_name?: string | null;
+};
+
 export interface PortalSession {
   token: string;
   user: PortalUser;
@@ -73,11 +78,15 @@ export async function currentPortalUserSafely(): Promise<PortalUser | null> {
 }
 
 export async function requirePortalUser(request: Request): Promise<PortalUser> {
+  return (await requirePortalSession(request)).user;
+}
+
+export async function requirePortalSession(request: Request): Promise<PortalSession> {
   const token = accessTokenFromRequest(request);
   if (!token) throw new PortalError(401, "AUTH_REQUIRED", "Sign in is required");
   const session = await validatedSession(token);
   if (!session) throw new PortalError(401, "AUTH_REQUIRED", "Sign in is required");
-  return session.user;
+  return session;
 }
 
 export function accessTokenFromRequest(request: Request): string | null {
@@ -141,7 +150,15 @@ async function userForToken(token: string): Promise<PortalUser | null> {
   try { value = await response.json(); }
   catch { throw invalidAuthResponse(); }
   if (!isPortalUser(value)) throw invalidAuthResponse();
-  return value;
+  return {
+    id: value.id,
+    username: value.username,
+    email: value.email ?? null,
+    display_name: value.display_name ?? null,
+    memberships: value.memberships.map(({ workshop_id, workshop_name, role }) => ({
+      workshop_id, workshop_name, role,
+    })),
+  };
 }
 
 async function v3Fetch(path: string, init: RequestInit): Promise<Response> {
@@ -185,13 +202,13 @@ function isBearerResponse(value: unknown): value is { access_token: string; toke
   return typeof item.access_token === "string" && item.access_token.length > 0 && item.token_type === "bearer";
 }
 
-function isPortalUser(value: unknown): value is PortalUser {
+function isPortalUser(value: unknown): value is V3UserOut {
   if (typeof value !== "object" || value === null) return false;
   const item = value as Record<string, unknown>;
   return typeof item.id === "string"
     && typeof item.username === "string"
-    && (item.email === null || typeof item.email === "string")
-    && (item.display_name === null || typeof item.display_name === "string")
+    && (item.email === undefined || item.email === null || typeof item.email === "string")
+    && (item.display_name === undefined || item.display_name === null || typeof item.display_name === "string")
     && Array.isArray(item.memberships)
     && item.memberships.every((membership) => {
       if (typeof membership !== "object" || membership === null) return false;

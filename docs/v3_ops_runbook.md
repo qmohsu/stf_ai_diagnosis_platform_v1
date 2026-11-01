@@ -2,10 +2,10 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.14（PROD-15A PR ②：§1.5 连接上限、§5.2 评测只读账号、§7.2 备份后维护、§7.5 归档与清理、§7.6 每周核对、§7.7 VIN 扫描、§8 日志落盘、§9 常见故障速查；v0.13 为演练数据卷） |
-| 日期 | 2026-09-28 |
+| 版本 | v0.16（issue #270：前端诊断链路与 V3 手册读取接口的分支验收/回滚；此前 PROD-15A 内容仍适用） |
+| 日期 | 2026-10-31 |
 | 作者 | Xiangzhu Yan |
-| 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
+| 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`；新增前端服务配置 `stf-v3-frontend`（公网切换待验收）；宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
 
 后续章节按里程碑追加：部署 / 回滚（PROD-04 已在 CLAUDE.md "V3 Deployment"）、备份与恢复（§7，PROD-15A）、常见故障（PROD-15A）。
 
@@ -194,7 +194,7 @@ bash infra/vllm_ctl.sh logs 200
 bash infra/vllm_ctl.sh install-unit   # 开机自启单元 stf-llm.service —— 按需策略下【不安装】；只有决定常驻时才用
 ```
 
-**服务器重启后的启动顺序**（FM-21；按需策略）：① `systemctl --user restart stf-v3-gpu-worker`；② V3 容器 `podman-compose -p stf_v3 … up -d stf-v3-api stf-v3-worker`；③ `LLM_CHECK=skip LLM_CHECK_REASON="vLLM 按需" bash stf_v3/scripts/deploy_check.sh`。vLLM **不随重启自起**：有诊断在等模型时由按需控制器自动拉起（§6.2），评测 / 验证时按上面的步骤手动拉起。V3 容器在 vLLM 停着时照常运行，诊断会在过程里显示"等待模型"。
+**服务器重启后的启动顺序**（FM-21；按需策略）：先确认服务器 `infra/.env` 含 `STF_V3_FRONTEND_ORIGIN=https://stf-diagnosis.dev`；① `systemctl --user restart stf-v3-gpu-worker`；② V3 容器 `podman-compose -p stf_v3 … up -d stf-v3-api stf-v3-worker stf-v3-frontend`；③ `LLM_CHECK=skip LLM_CHECK_REASON="vLLM 按需" bash stf_v3/scripts/deploy_check.sh`，并检查 `curl -fsS http://127.0.0.1:3002/api/health`。vLLM **不随重启自起**：有诊断在等模型时由按需控制器自动拉起（§6.2），评测 / 验证时按上面的步骤手动拉起。V3 容器在 vLLM 停着时照常运行，诊断会在过程里显示"等待模型"。
 
 **vLLM 不参与 V3 部署核验的"30 分钟内新建"检查**（FM-39）：V3 每次部署不需要重启 vLLM；核验第 9 项只看它在线、服务的是配置里的模型、能真的生成一句。
 
@@ -224,11 +224,12 @@ bash infra/vllm_ctl.sh install-unit   # 开机自启单元 stf-llm.service —�
 ```
 bash infra/vllm_ctl.sh stop                         # 先释放显存：两者不能同时驻留（qwen3.5 常驻 57 GB）
 # infra/.env 加三行：STF_V3_LLM_BASE_URL=http://127.0.0.1:11434/v1  STF_V3_LLM_MODEL=qwen3.5:27b-q8_0  STF_V3_LLM_API_KEY=ollama
-cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker && cd ..
+# 同时确认 infra/.env 已设 STF_V3_FRONTEND_ORIGIN=https://stf-diagnosis.dev
+cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker stf-v3-frontend && cd ..
 bash stf_v3/scripts/deploy_check.sh --max-age-min 5  # 第 9 项会对 Ollama 做同样的三步检查；档自动变为 qwen-ollama（预算回到 20 分钟）
 ```
 
-**切回 vLLM**：`podman exec stf-ollama ollama stop qwen3.5:27b-q8_0`（卸载常驻模型；`ollama ps` 应为空）→ 删掉 `.env` 里那三行 → `vllm_ctl.sh start && vllm_ctl.sh wait` → V3 容器 `down` + `up` → `deploy_check.sh`。
+**切回 vLLM**：`podman exec stf-ollama ollama stop qwen3.5:27b-q8_0`（卸载常驻模型；`ollama ps` 应为空）→ 删掉 `.env` 里那三行，保留 `STF_V3_FRONTEND_ORIGIN` → `vllm_ctl.sh start && vllm_ctl.sh wait` → 按上方命令让 V3 的 API、worker、frontend 一起 `down` + `up` → `deploy_check.sh` 并检查前端健康。
 
 ### 4.5 云端对照（D3）
 
@@ -380,6 +381,46 @@ git checkout <旧提交>
 ```
 
 前滚 = 正常部署（迁移 `upgrade head` 会把降掉的补回来）。回滚期间备份定时器照常运行，用的是检出的那份 `backup.py`。
+
+**前端诊断链路与手册接口的分支验收/根路径切换（issue #270；上线操作由用户与服务器管理者执行）**：
+分支验证前先记录服务器 Git remote、原分支与 commit；本次分支在
+`SpaceDX666` fork，须从
+`https://github.com/SpaceDX666/stf_ai_diagnosis_platform_v1.git`
+显式 fetch `codex/issue-270-v3-frontend-server`，再
+`git switch --detach FETCH_HEAD`，不能假定服务器 `origin` 指向该 fork。
+`frontend/` 是独立 V3 Compose 服务，PolyU 只监听
+`127.0.0.1:3002`，同机访问 V3 API `127.0.0.1:8002`；生产环境须设
+`STF_V3_FRONTEND_ORIGIN=https://stf-diagnosis.dev`。本轮亦新增 V3 手册章节/
+图片 API，因此分支验证须先按 `CLAUDE.md` 跑部署前检查，确认没有未结束
+诊断或正在转换的手册，再构建并重建同一修订的 V3 API、worker 和前端镜像；
+宿主机 GPU worker 由管理者按 V3 流程在安全窗口重启。先保留旧
+`obd-ui` :3001，在 :3002 启动新服务，核对 `/api/health`、登录页、V3
+后端健康、手册新路由与 `nginx -t`。随后按
+`CLAUDE.md` 的分支部署流程切换 Nginx 根路径到 :3002，在公网用现有测试
+账号验证手机/电脑登录、工作坊、车档、既有日志与诊断历史；在与管理者约定的
+共享 GPU 测试窗口，用测试日志点一键诊断，检查直播、刷新回放、报告及引用
+打开转换后的手册 Markdown 章节/图片，并确认浏览器业务请求保持同源。
+`/v1/`、`/v2/`、`/v3/` 接口仍分别验证。Nginx 配置是单文件 bind mount：切分支后只执行
+`nginx -s reload` 可能仍读取旧 inode。前端就绪后，在仓库 `infra/`
+目录仅重建网关容器；API/worker 已在本步骤之前按分支修订重建，数据库无需重启：
+
+```bash
+podman rm -f stf-nginx
+~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d nginx
+podman exec stf-nginx grep 'server 127.0.0.1:3002' /etc/nginx/nginx.conf
+podman exec stf-nginx nginx -t
+```
+
+通过后停止旧网页，PolyU 配置里的
+`legacy-ui` profile 防止它被默认拉起。浏览器认证测试须经公开 HTTPS
+Origin；仅通过 SSH 隧道打开 localhost 登录页会被生产同源检查拒绝。
+若新网页或网关异常，先切回记录的原提交并启动旧 `obd-ui`，再按上面相同命令
+只重建 `stf-nginx`，改核对容器内
+`server 127.0.0.1:3001`、`nginx -t` 与公网响应；新 :3002 服务可独立停止，V3 API /
+worker 也须以原提交重建镜像并重建容器，宿主机 GPU worker 恢复原修订；
+两套数据库无需回退，本次无数据库迁移。分支验收后按
+`CLAUDE.md` 恢复服务器原分支与原 commit（通常为 `main`）；
+只有用户合并后才执行正式根路径切换。
 
 **特例：回滚到 PROD-11 之前的版本**前：① `predeploy_check.sh` 确认没有未结束诊断（或让它们结束）；② 清掉诊断队列里没开始的任务：`bash stf_v3/scripts/queue_ops.sh cancel <job_id>`（逐个）；③ 老代码不认识 `diagnosis` / `llm` 队列与新表，降级迁移 `alembic downgrade b2c3d4e5f6a7` 会**删除消息表的所有行**（新旧形状不兼容，按设计有损）；④ 宿主机 worker 按旧单元重装（`install.sh`）。
 

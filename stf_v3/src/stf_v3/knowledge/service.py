@@ -33,7 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from stf_v3.errors import ApiError, forbidden, not_found
 from stf_v3.knowledge import manual_fs, manual_index
 from stf_v3.knowledge.models import Manual
-from stf_v3.knowledge.schemas import ManualOut, SearchHit
+from stf_v3.knowledge.schemas import ManualOut, ManualSectionOut, SearchHit
 from stf_v3.settings import settings
 from stf_v3.workshops.models import Membership
 
@@ -41,6 +41,14 @@ log = structlog.get_logger("stf_v3.knowledge")
 
 STAGES = ("converting", "building", "indexing", "summarizing", "gates", "installing")
 _HIT_PREVIEW_CHARS = 160
+_IMAGE_MIME_TYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+}
+_MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
 
 # ── paths ────────────────────────────────────────────────────────────
@@ -138,6 +146,106 @@ def _legacy_text(row: Manual) -> Optional[str]:
     return manual_fs._clean_md(  # noqa: SLF001 - same package family
         manual_fs.promote_unheaded_titles(path.read_text(encoding="utf-8"))
     )
+
+
+def _readable_md_path(row: Manual) -> Path:
+    """Resolve this row's Markdown without trusting a stored relative path."""
+    if row.status != "ingested" or not row.md_file_path:
+        raise ApiError(409, "manual_not_readable", "Manual has no readable content yet")
+    root = storage_root()
+    path = (root / row.md_file_path).resolve()
+    try:
+        path.relative_to(root)
+    except ValueError as exc:
+        raise ApiError(409, "manual_not_readable", "Manual content path is invalid") from exc
+    if not path.is_file():
+        raise ApiError(409, "manual_not_readable", "Manual content is missing")
+    if path.suffix.lower() != ".md" or path.stem.lower() != str(row.id):
+        raise ApiError(409, "manual_not_readable", "Manual content does not match its record")
+    return path
+
+
+def _unique_legacy_section(text: str, query: str) -> manual_fs.HeadingNode:
+    """Resolve a citation's raw section input without guessing on ambiguity."""
+    nodes = manual_fs._flatten_tree(manual_fs.parse_heading_tree(text))  # noqa: SLF001
+    query_slug = manual_fs.slugify(query)
+    for matches in (
+        [n for n in nodes if n.slug == query],
+        [n for n in nodes if n.title == query],
+        [n for n in nodes if query_slug and n.slug == query_slug],
+        [n for n in nodes if query_slug and manual_fs.slugify(n.title) == query_slug],
+        [n for n in nodes if query_slug and query_slug in n.slug],
+    ):
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            raise ApiError(409, "section_ambiguous", "Section does not resolve uniquely")
+    raise not_found("section_not_found", "Manual section not found")
+
+
+def read_section(row: Manual, section: str) -> ManualSectionOut:
+    """Return the complete Markdown section that a report reference names.
+
+    The index sidecar and the Markdown must both belong to this DB row.
+    Report references can contain a node id, slug or raw heading title.
+    """
+    md_path = _readable_md_path(row)
+    rt = manual_index.load_runtime_index(str(row.id))
+    sidecar = md_path.parent / f"{row.id}.index.yaml"
+    if manual_index.track_enabled() and sidecar.is_file() and rt is None:
+        raise ApiError(409, "manual_not_readable", "Manual index is unreadable")
+    if rt is not None:
+        if (rt.manual_id != str(row.id) or rt.dir.resolve() != md_path.parent or
+                rt.content_path != md_path):
+            raise ApiError(409, "manual_not_readable", "Manual index does not match its content")
+        node, candidates = rt.resolve(section)
+        if node is None:
+            if len(candidates) > 1:
+                raise ApiError(409, "section_ambiguous", "Section does not resolve uniquely")
+            raise not_found("section_not_found", "Manual section not found")
+        content = rt.section_text(node)
+        if content is None:
+            raise ApiError(409, "manual_not_readable", "Manual section has no content anchor")
+        return ManualSectionOut(
+            manual_id=row.id, section_id=node.node_id, title=node.title,
+            content_md=content, index_track=True,
+            page_range=node.page_range if node.page_range != (0, 0) else None,
+        )
+    text = _legacy_text(row)
+    if text is None:
+        raise ApiError(409, "manual_not_readable", "Manual has no readable content yet")
+    node = _unique_legacy_section(text, section)
+    content = manual_fs.extract_section(text, node.slug)
+    if content is None:
+        raise ApiError(409, "manual_not_readable", "Manual section has no readable content")
+    return ManualSectionOut(
+        manual_id=row.id, section_id=node.slug, title=node.title,
+        content_md=content, index_track=False,
+    )
+
+
+def image_asset(row: Manual, asset_path: str) -> Tuple[Path, str]:
+    """Allowlisted image path relative to the row's Markdown directory."""
+    md_dir = _readable_md_path(row).parent
+    parts = asset_path.split("/")
+    if (len(parts) < 2 or parts[0] != "images" or
+            any(p in ("", ".", "..") for p in parts) or "\\" in asset_path or "\x00" in asset_path):
+        raise not_found("asset_not_found", "Manual image not found")
+    mime = _IMAGE_MIME_TYPES.get(Path(parts[-1]).suffix.lower())
+    if mime is None:
+        raise not_found("asset_not_found", "Manual image not found")
+    image_root = (md_dir / "images").resolve()
+    target = (md_dir.joinpath(*parts)).resolve()
+    try:
+        image_root.relative_to(md_dir)
+        target.relative_to(image_root)
+    except ValueError as exc:
+        raise not_found("asset_not_found", "Manual image not found") from exc
+    if not target.is_file():
+        raise not_found("asset_not_found", "Manual image not found")
+    if target.stat().st_size > _MAX_IMAGE_BYTES:
+        raise ApiError(413, "asset_too_large", "Manual image is too large")
+    return target, mime
 
 
 def toc_text(row: Manual, max_depth: int = 3) -> Tuple[str, bool]:

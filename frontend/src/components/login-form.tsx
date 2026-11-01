@@ -3,13 +3,21 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AlertTriangle, Eye, EyeOff, LoaderCircle, LockKeyhole, UserRound } from "lucide-react";
-import { useLocale } from "@/components/locale-provider";
 import { clearPortalCaches } from "@/lib/client-session";
 
 type LoginResponse = { user?: { username: string }; error?: { code?: string } };
 
+const messages = { login: {
+  title: "登入 STF V3", username: "用戶名稱", usernamePlaceholder: "請輸入用戶名稱",
+  password: "密碼", passwordPlaceholder: "請輸入密碼", show: "顯示", hide: "隱藏",
+  showPassword: "顯示密碼", hidePassword: "隱藏密碼", submit: "登入", submitting: "登入中…",
+  invalid: "用戶名稱或密碼不正確", unavailable: "服務暫時無法使用，請稍後再試",
+  rateLimited: "嘗試次數過多，請稍後再試", failed: "暫時無法登入，請重試",
+  expired: "登入狀態已失效，請重新登入", duration: "登入狀態最長有效 12 小時",
+  authorizedOnly: "僅供獲授權的工作坊成員使用",
+} };
+
 export function LoginForm() {
-  const { messages } = useLocale();
   const searchParams = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");

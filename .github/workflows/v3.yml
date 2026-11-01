@@ -9,8 +9,11 @@ on:
     # baseline-reset labels (PROD-10).
     types: [opened, synchronize, reopened, labeled, unlabeled]
     paths:
+      - "frontend/**"
       - "stf_v3/**"
+      - "infra/docker-compose.polyu.yml"
       - "infra/docker-compose.v3*"
+      - "infra/nginx/**"
       - "infra/docker-compose.vllm.yml"
       - "infra/vllm_ctl.sh"
       - "docs/v3_ops_runbook.md"
@@ -25,8 +28,11 @@ on:
   push:
     branches: [main]
     paths:
+      - "frontend/**"
       - "stf_v3/**"
+      - "infra/docker-compose.polyu.yml"
       - "infra/docker-compose.v3*"
+      - "infra/nginx/**"
       - "infra/docker-compose.vllm.yml"
       - "infra/vllm_ctl.sh"
       - "docs/v3_ops_runbook.md"
@@ -43,6 +49,42 @@ on:
   workflow_dispatch:
 
 jobs:
+  frontend:
+    name: V3 frontend (Node 24)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: install locked frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: typecheck, lint, unit tests, and production build
+        working-directory: frontend
+        run: npm run verify
+      - name: install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: browser tests (mock V3 API)
+        working-directory: frontend
+        run: npm run test:e2e
+      - name: validate V3 Compose and Nginx configuration
+        env:
+          STF_V3_DATABASE_URL: postgresql+psycopg://owner:ci@127.0.0.1:5432/stf_v3
+          STF_V3_APP_DATABASE_URL: postgresql+psycopg://app:ci@127.0.0.1:5432/stf_v3
+          STF_V3_JWT_SECRET: ci-placeholder
+          STF_V3_FRONTEND_ORIGIN: https://stf-diagnosis.dev
+        run: |
+          docker compose -f infra/docker-compose.v3.yml -f infra/docker-compose.v3.polyu.yml config --quiet
+          docker run --rm \
+            -v "$PWD/infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro" \
+            -v "$PWD/infra/nginx/proxy_params_api.conf:/etc/nginx/proxy_params_api.conf:ro" \
+            nginx:1.27-alpine nginx -t
+
   unit-contract:
     name: unit + contract (offline)
     runs-on: ubuntu-latest

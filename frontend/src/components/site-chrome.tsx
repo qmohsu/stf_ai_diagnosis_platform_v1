@@ -1,71 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CarFront, LogOut, RefreshCw, UserRound } from "lucide-react";
-import { Brand } from "@/components/brand";
-import { LanguageSwitch } from "@/components/language-switch";
-import { useLocale } from "@/components/locale-provider";
+import { LogOut } from "lucide-react";
 import { clearPortalCaches } from "@/lib/client-session";
-import type { VehicleVerificationContext } from "@/lib/domain";
 import type { PortalUser } from "@/server/auth-session";
 
-export function SiteChrome({ children, user, vehicleContext }: { children: React.ReactNode; user: PortalUser | null; vehicleContext: VehicleVerificationContext | null }) {
-  const { messages } = useLocale();
-  const pathname = usePathname();
-  const onVehiclePage = pathname.startsWith("/vehicles/");
-  const loginPage = pathname === "/login";
-  const entryPage = loginPage || pathname === "/" || pathname === "/verify-vehicle";
-  return <>
-    <header className="topbar portal-topbar">
-      <Link href="/" className="brand-link" aria-label={`Towngas ${messages.nav.home}`}><Brand compact /></Link>
-      <div className="topbar-title"><strong>{messages.brand}</strong><span>{loginPage ? messages.login.title : onVehiclePage ? messages.dashboard.tagline : messages.verification.title}</span></div>
-      {onVehiclePage && vehicleContext && <VehicleContextControl context={vehicleContext} />}
-      {user && <AccountControl user={user} />}
-      <LanguageSwitch />
-    </header>
-    {children}
-    {!entryPage && <footer className="footer"><span>© Towngas</span><span>{messages.publicPortal} · robots: noindex, nofollow</span></footer>}
-  </>;
-}
-
-function AccountControl({ user }: { user: PortalUser }) {
-  const { messages } = useLocale();
+export function SiteChrome({ children, user }: { children: React.ReactNode; user: PortalUser | null }) {
+  const [hydrated, setHydrated] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const logout = async () => {
+  const [logoutError, setLogoutError] = useState(false);
+  useEffect(() => setHydrated(true), []);
+  async function logout() {
     if (loggingOut) return;
     setLoggingOut(true);
+    setLogoutError(false);
     try {
-      await fetch("/api/auth/logout", { method: "POST", headers: { Accept: "application/json" }, credentials: "same-origin", cache: "no-store" });
-    } finally {
+      const response = await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin", cache: "no-store" });
+      if (!response.ok) throw new Error("Logout failed");
       await clearPortalCaches();
       window.location.assign("/login");
+    } catch {
+      setLogoutError(true);
+      setLoggingOut(false);
     }
-  };
-  return <div className="account-control">
-    <span className="account-name"><UserRound aria-hidden="true" /><span><small>{messages.login.signedInAs}</small><strong>{user.display_name || user.username}</strong></span></span>
-    <button type="button" onClick={() => void logout()} disabled={loggingOut} aria-label={messages.login.logout}><LogOut aria-hidden="true" /><span>{loggingOut ? messages.login.loggingOut : messages.login.logout}</span></button>
-  </div>;
-}
-
-function VehicleContextControl({ context }: { context: VehicleVerificationContext }) {
-  const { messages } = useLocale();
-  const [mounted, setMounted] = useState(false);
-  const [clearing, setClearing] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  const clear = async () => {
-    setClearing(true);
-    try {
-      await clearPortalCaches();
-      const response = await fetch("/api/portal/verification", { method: "DELETE", headers: { Accept: "application/json" }, credentials: "same-origin", cache: "no-store" });
-      window.location.assign(response.ok ? "/" : "/verify-vehicle");
-    } catch { window.location.assign("/verify-vehicle"); }
-  };
-
-  return <div className="vehicle-context-control">
-    <div className="vehicle-context-readout"><CarFront aria-hidden="true" /><span><small>{messages.verification.currentVehicle}</small><strong>{context.manufacturer} {context.model} · {context.vin}</strong></span></div>
-    <button type="button" className="vehicle-switch-button" onClick={() => void clear()} disabled={!mounted || clearing}><RefreshCw className={clearing ? "spin" : ""} aria-hidden="true" /><span>{messages.dashboard.switchVehicle}</span></button>
-  </div>;
+  }
+  return <>
+    <header className="topbar"><Link className="brand-link" href="/" aria-label="STF V3 首頁"><span className="brand-mark">S3</span><span><strong>STF V3</strong><small>車輛診斷平台</small></span></Link>
+      {user && <div className="account-control"><span className="account-name">{user.display_name || user.username}</span>{logoutError && <span className="logout-error" role="alert">登出失敗，請重試</span>}<button type="button" onClick={() => void logout()} disabled={!hydrated || loggingOut}><LogOut size={17} aria-hidden="true" />{loggingOut ? "登出中…" : "登出"}</button></div>}
+    </header>
+    {children}
+    <footer className="footer">STF V3 · 僅供獲授權的工作坊成員使用</footer>
+  </>;
 }

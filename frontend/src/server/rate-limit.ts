@@ -9,8 +9,11 @@ const AUTH_CAPACITY = 10;
 const AUTH_REFILL_PER_MS = 5 / 1_000;
 
 function clientIp(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return forwarded || request.headers.get("x-real-ip") || "unknown";
+  // PolyU Nginx overwrites X-Real-IP after trusting only the local tunnel.
+  // Never use the client-controlled first X-Forwarded-For hop as a bucket key.
+  return request.headers.get("x-real-ip")?.trim()
+    || (process.env.NODE_ENV === "production" ? "unknown" : request.headers.get("x-forwarded-for")?.split(",")[0]?.trim())
+    || "unknown";
 }
 
 export function rateLimit(request: Request): NextResponse | null {

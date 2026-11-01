@@ -6,16 +6,24 @@ Author: Xiangzhu Yan
 import uuid
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from stf_v3.auth.manager import current_user
 from stf_v3.auth.models import User
 from stf_v3.db import get_session
 from stf_v3.knowledge import service
-from stf_v3.knowledge.schemas import ManualOut, ManualSearchOut, ManualTocOut
+from stf_v3.knowledge.schemas import ManualOut, ManualSearchOut, ManualSectionOut, ManualTocOut
 
 router = APIRouter(prefix="/v3", tags=["knowledge"])
+
+_SOURCE_ERRORS = {
+    401: {"description": "Missing or expired user token."},
+    403: {"description": "The user is not a workshop member."},
+    404: {"description": "Manual or section not found."},
+    409: {"description": "The manual is unreadable or the section name is ambiguous."},
+}
 
 
 @router.get("/manuals", response_model=List[ManualOut])
@@ -69,6 +77,64 @@ async def get_manual_toc(
     row = await service.get_manual(session, manual_id)
     toc, index_track = service.toc_text(row, max_depth)
     return ManualTocOut(manual_id=row.id, index_track=index_track, max_depth=max_depth, toc=toc)
+
+
+@router.get(
+    "/manuals/{manual_id}/sections", response_model=ManualSectionOut,
+    responses=_SOURCE_ERRORS,
+)
+async def get_manual_section(
+    manual_id: uuid.UUID,
+    response: Response,
+    section: str = Query(min_length=1, max_length=500),
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> ManualSectionOut:
+    """The ingested Markdown source section named by a report citation.
+
+    ``section`` accepts an index node id, a legacy slug or a heading title.
+    A report's ``manual_id#section`` reference can pass the part after ``#``
+    unchanged.  Ambiguous names never silently select another section.
+    """
+    await service.require_member(session, user.id)
+    row = await service.get_manual(session, manual_id)
+    result = service.read_section(row, section)
+    response.headers["Cache-Control"] = "private, no-store"
+    return result
+
+
+@router.get(
+    "/manuals/{manual_id}/assets/{asset_path:path}", response_class=FileResponse,
+    responses={
+        200: {"description": "One source image from this manual.", "content": {
+            mime: {"schema": {"type": "string", "format": "binary"}}
+            for mime in ("image/png", "image/jpeg", "image/gif", "image/webp")
+        }},
+        401: _SOURCE_ERRORS[401],
+        403: _SOURCE_ERRORS[403],
+        404: {"description": "Manual or image not found."},
+        409: {"description": "Manual is not yet readable."},
+        413: {"description": "Image exceeds the size limit."},
+    },
+)
+async def get_manual_asset(
+    manual_id: uuid.UUID,
+    asset_path: str,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> FileResponse:
+    """An image referenced relative to an ingested manual's Markdown file.
+
+    Only files under that manual's ``images/`` directory and common raster
+    image formats are served; other manual artefacts are never exposed.
+    """
+    await service.require_member(session, user.id)
+    row = await service.get_manual(session, manual_id)
+    path, mime = service.image_asset(row, asset_path)
+    return FileResponse(
+        path, media_type=mime,
+        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+    )
 
 
 @router.post("/manuals", response_model=ManualOut, status_code=status.HTTP_201_CREATED)

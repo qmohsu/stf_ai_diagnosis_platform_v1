@@ -1,8 +1,5 @@
-"use client";
 import Link from "next/link";
-import { useLocale } from "@/components/locale-provider";
 
 export default function NotFound() {
-  const { messages } = useLocale();
-  return <main className="not-found"><h1>404</h1><p>{messages.notFound.title}</p><Link className="button" href="/">{messages.notFound.back}</Link></main>;
+  return <main className="not-found"><h1>404</h1><p>找不到頁面</p><Link className="button" href="/">返回首頁</Link></main>;
 }

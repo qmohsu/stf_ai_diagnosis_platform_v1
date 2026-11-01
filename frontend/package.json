@@ -1,5 +1,5 @@
 {
-  "name": "towngas-vehicle-health-portal",
+  "name": "stf-v3-frontend",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -18,7 +18,7 @@
     "test:contract": "vitest run tests/contract",
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
-    "test:pwa": "playwright test tests/e2e/pwa.spec.ts",
+    "test:pwa": "playwright test tests/e2e/v3-portal.spec.ts --grep \"private responses are not cached\"",
     "lighthouse:portal": "lighthouse http://127.0.0.1:3001 --quiet --chrome-flags=\"--headless --no-sandbox\" --only-categories=accessibility,best-practices,seo --output=json --output-path=lighthouse-report.json",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build"
   },
@@ -30,6 +30,8 @@
     "next": "15.5.28",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
     "tailwind-merge": "3.3.1"
   },
   "overrides": {
