@@ -150,6 +150,53 @@ test("an already-running diagnosis of another log is explained before navigation
   await expect(page.getByRole("link", { name: "繼續查看既有診斷" })).toBeVisible();
 });
 
+test("invite registration, vehicle creation, upload and manager device setup stay on the V3 portal", async ({ page }) => {
+  const requests: string[] = [];
+  page.on("request", (request) => requests.push(request.url()));
+  await page.goto("/register");
+  await page.getByLabel("用戶名稱").fill("new.technician");
+  await page.getByLabel("密碼（至少 10 字元）").fill("strong-password");
+  await page.getByLabel("邀請碼").fill("TEST-INVITE");
+  await page.getByRole("button", { name: "註冊", exact: true }).click();
+  await expect(page.getByText("註冊成功。")).toBeVisible();
+  await page.getByRole("link", { name: "前往登入" }).click();
+  await page.getByLabel("用戶名稱").fill("manager");
+  await page.getByLabel("密碼", { exact: true }).fill("valid-password");
+  await page.getByRole("button", { name: "登入", exact: true }).click();
+  await page.getByRole("link", { name: /測試工作坊/ }).click();
+  await page.getByRole("button", { name: "建立車檔" }).click();
+  await page.getByLabel("VIN（17 碼）").fill("JHMGK5830HX202404");
+  await page.getByLabel("品牌").fill("Honda");
+  await page.getByLabel("型號").fill("Civic");
+  await page.getByRole("button", { name: "儲存車檔" }).click();
+  await expect(page).toHaveURL(/\/vehicles\/00000000-0000-4000-8000-000000000001$/);
+  await page.getByLabel("選擇行車日誌").setInputFiles({ name: "trip.tsv", mimeType: "text/tab-separated-values", buffer: Buffer.from("time\trpm\n0\t1000\n") });
+  await page.getByRole("button", { name: "上傳日誌" }).click();
+  await expect(page.getByText("日誌已保存。現在可從列表選擇並診斷。")).toBeVisible();
+  const slowUpload = async (route: import("@playwright/test").Route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try { await route.fulfill({ status: 503, contentType: "application/json", body: '{"error":{"code":"V3_UNAVAILABLE"}}' }); }
+    catch { /* The browser cancelled this request. */ }
+  };
+  await page.route("**/api/portal/vehicles/*/logs", slowUpload);
+  await page.getByLabel("選擇行車日誌").setInputFiles({ name: "retry.tsv", mimeType: "text/tab-separated-values", buffer: Buffer.from("time\trpm\n0\t900\n") });
+  await page.getByRole("button", { name: "上傳日誌" }).click();
+  await page.getByRole("button", { name: "取消上傳" }).click();
+  await expect(page.getByText("上傳已取消。")).toBeVisible();
+  await page.unroute("**/api/portal/vehicles/*/logs", slowUpload);
+  await page.getByRole("button", { name: "上傳日誌" }).click();
+  await expect(page.getByText("日誌已保存。現在可從列表選擇並診斷。")).toBeVisible();
+  await page.getByLabel("設備名稱").fill("新設備");
+  await page.getByRole("button", { name: "發放憑證" }).click();
+  await expect(page.getByText("FAKE-ONE-TIME-TOKEN")).toBeVisible();
+  await page.getByRole("button", { name: "已保存，隱藏憑證" }).click();
+  await expect(page.getByText("FAKE-ONE-TIME-TOKEN")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText("FAKE-ONE-TIME-TOKEN")).toHaveCount(0);
+  expect(requests.filter((url) => new URL(url).origin !== new URL(page.url()).origin || new URL(url).pathname.startsWith("/v3/"))).toEqual([]);
+});
+
 test("an archived process still opens its partial report", async ({ page }) => {
   await login(page);
   await page.goto("/vehicles/00000000-0000-4000-8000-000000000001/conversations/88888888-8888-4888-8888-888888888888");

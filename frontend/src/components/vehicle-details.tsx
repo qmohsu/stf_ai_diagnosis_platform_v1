@@ -5,8 +5,9 @@ import { useQuery } from "@tanstack/react-query";
 import { PortalApiError, portalFetch } from "@/lib/api-client";
 import type { VehicleRecord } from "@/lib/v3-domain";
 import { VehicleDiagnosisSections } from "@/components/vehicle-diagnosis-sections";
+import { DeviceCredentials } from "@/components/device-credentials";
 
-export function VehicleDetails({ vehicleId }: { vehicleId: string }) {
+export function VehicleDetails({ vehicleId, managerWorkshopIds }: { vehicleId: string; managerWorkshopIds: string[] }) {
   const query = useQuery({ queryKey: ["vehicle", vehicleId], queryFn: () => portalFetch<{ vehicle: VehicleRecord }>(`/api/portal/vehicles/${vehicleId}`) });
   const vehicle = query.data?.vehicle;
   const error = query.error instanceof PortalApiError ? query.error : null;
@@ -17,6 +18,6 @@ export function VehicleDetails({ vehicleId }: { vehicleId: string }) {
     <div className="page-heading"><span className="eyebrow">車輛檔案</span><h1>{vehicle.nickname || `${vehicle.manufacturer} ${vehicle.model}`}</h1><p>這是 V3 後端保存的車輛基本資料。</p></div>
     <section className="panel" aria-label="車輛基本資料"><dl className="details-grid"><div><dt>VIN</dt><dd>{vehicle.vin}</dd></div><div><dt>車牌</dt><dd>{vehicle.plate || "未填"}</dd></div><div><dt>品牌</dt><dd>{vehicle.manufacturer}</dd></div><div><dt>型號</dt><dd>{vehicle.model}</dd></div><div><dt>暱稱</dt><dd>{vehicle.nickname || "未填"}</dd></div></dl></section>
     <VehicleDiagnosisSections vehicleId={vehicleId} />
-    <p className="scope-note">目前可使用已上傳的日誌進行診斷；頁面手動上傳與建車功能尚未接入。</p>
+    {managerWorkshopIds.includes(vehicle.workshop_id) && <DeviceCredentials vehicleId={vehicleId} />}
   </main>;
 }

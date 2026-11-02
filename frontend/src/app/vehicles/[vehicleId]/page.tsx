@@ -10,5 +10,5 @@ export default async function VehiclePage({ params }: { params: Promise<{ vehicl
   try { session = await currentPortalSession(); }
   catch { return <main className="page-shell"><div className="state-card" role="alert"><h1>服務暫時無法使用</h1><p>請稍後重新整理頁面。</p></div></main>; }
   if (!session) redirect("/login");
-  return <VehicleDetails vehicleId={vehicleId} />;
+  return <VehicleDetails vehicleId={vehicleId} managerWorkshopIds={session.user.memberships.filter((item) => item.role === "manager").map((item) => item.workshop_id)} />;
 }

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { PortalApiError, portalFetch, portalPost } from "@/lib/api-client";
 import type { DiagnoseResult, DiagnosisConversation, ObdLogRecord } from "@/lib/v3-domain";
+import { LogUpload } from "@/components/log-upload";
 
 type LogPage = { logs: ObdLogRecord[]; nextOffset: number | null };
 type ConversationPage = { conversations: DiagnosisConversation[]; nextOffset: number | null };
@@ -13,6 +14,7 @@ const PAGE_SIZE = 20;
 
 export function VehicleDiagnosisSections({ vehicleId }: { vehicleId: string }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [logOffset, setLogOffset] = useState(0);
   const [historyOffset, setHistoryOffset] = useState(0);
   const [existingNotice, setExistingNotice] = useState<{ requestedLogId: string; result: DiagnoseResult } | null>(null);
@@ -36,6 +38,7 @@ export function VehicleDiagnosisSections({ vehicleId }: { vehicleId: string }) {
   return <div className="vehicle-sections">
     <section className="panel" aria-labelledby="logs-heading">
       <div className="section-heading"><div><h2 id="logs-heading">行車日誌</h2><p>每次行程後，車載設備上傳的日誌會列在這裡。</p></div></div>
+      <LogUpload vehicleId={vehicleId} onStored={() => { setLogOffset(0); void queryClient.invalidateQueries({ queryKey: ["vehicle-logs", vehicleId] }); }} />
       {logsQuery.isPending && <p className="inline-state" role="status">正在載入日誌…</p>}
       {logsQuery.isError && <QueryFailure error={logsQuery.error} retry={() => void logsQuery.refetch()} label="日誌" />}
       {logsQuery.isSuccess && logsQuery.data.logs.length === 0 && <p className="inline-state">{logOffset > 0 ? "這一頁沒有日誌，請返回上一頁。" : "目前沒有已上傳的日誌。車載設備上傳後即可在這裡發起診斷。"}</p>}

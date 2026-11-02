@@ -42,7 +42,7 @@
 <polyline points="240,610 240,790" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
 <polyline points="890,610 880,790" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
 <polyline points="90,580 35,580 35,1075 90,1075" fill="none" stroke="#ced4da" stroke-width="2" marker-end="url(#ah)"/>
-<text x="60" y="-21.60" font-size="24" fill="#f8f9fa">STF V3 产品化架构 — Final（设计 v1.25 · 2026-10-31 · 计划 v1.28 · #270 本地诊断链路）</text>
+<text x="60" y="-21.60" font-size="24" fill="#f8f9fa">STF V3 产品化架构 — Final（设计 v1.26 · 2026-11-02 · 计划 v1.29 · #270 本地注册及上传）</text>
 <text x="170.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">开源 / 第三方采用</text>
 <text x="420.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">沿用 V1/V2 资产</text>
 <text x="660.0" y="24.55" text-anchor="middle" font-size="13" fill="#f1f3f5" font-weight="600">V3 新做</text>
@@ -54,7 +54,7 @@
 <text x="200.0" y="164.20" text-anchor="middle" font-size="12" fill="#f1f3f5">手机 · 电脑浏览器</text>
 <text x="530.0" y="126.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">frontend/ V3 网页 + Next.js BFF</text>
 <text x="530.0" y="141.70" text-anchor="middle" font-size="12" fill="#f1f3f5">PolyU :3002 · Nginx 根路径（待上线）</text>
-<text x="530.0" y="156.70" text-anchor="middle" font-size="12" fill="#f1f3f5">手机/电脑 · 车档/日志/诊断历史</text>
+<text x="530.0" y="156.70" text-anchor="middle" font-size="12" fill="#f1f3f5">手机/电脑 · 注册/建车/上传/设备凭证</text>
 <text x="530.0" y="171.70" text-anchor="middle" font-size="12" fill="#f1f3f5">诊断直播/回放 · 报告/手册引用</text>
 <text x="885.0" y="134.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">V3 后端 :8002</text>
 <text x="885.0" y="149.20" text-anchor="middle" font-size="12" fill="#f1f3f5">登录/车档/日志/诊断/报告 API</text>
@@ -64,8 +64,8 @@
 <text x="1200.0" y="164.20" text-anchor="middle" font-size="12" fill="#f1f3f5">每笔上传绑定唯一车档</text>
 <text x="270" y="241.70" font-size="12" fill="#ced4da">V3 认证（已接入）</text>
 <text x="270" y="256.70" font-size="12" fill="#ced4da">POST login/logout · GET users/me</text>
-<text x="705" y="241.70" font-size="12" fill="#ced4da">诊断 / SSE / 报告 / 手册</text>
-<text x="705" y="256.70" font-size="12" fill="#ced4da">本地已接入 · 网页上传待续</text>
+<text x="705" y="241.70" font-size="12" fill="#ced4da">诊断 / SSE / 报告 / 手册 / 网页上传</text>
+<text x="705" y="256.70" font-size="12" fill="#ced4da">本地已接入 · 实际装机待续</text>
 <text x="900" y="241.70" font-size="12" fill="#ced4da">行程日志上传</text>
 <text x="80" y="282.62" font-size="15" fill="#ffa94d" font-weight="600">后端服务（FastAPI）</text>
 <text x="230.0" y="354.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">Auth: fastapi-users</text>

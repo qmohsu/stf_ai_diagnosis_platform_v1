@@ -119,14 +119,20 @@ async function upstreamError(response: Response): Promise<PortalError> {
     return new PortalError(404, "NOT_FOUND", "找不到所需資料");
   }
   if (response.status === 409) {
+    if (code === "vin_exists") return new PortalError(409, "VIN_EXISTS", "這個工作坊已有相同 VIN 的車輛");
     if (code === "section_ambiguous") return new PortalError(409, "SECTION_AMBIGUOUS", "引用未能唯一定位手冊章節");
     if (code === "manual_not_readable") return new PortalError(409, "MANUAL_NOT_READABLE", "手冊原文暫時無法閱讀");
     return new PortalError(409, "V3_CONFLICT", "目前無法完成此操作");
   }
+  if (response.status === 413) return new PortalError(413, "FILE_TOO_LARGE", "檔案超過 50 MB 上限");
   if (response.status === 410 && code === "events_archived") {
     return new PortalError(410, "EVENTS_ARCHIVED", "診斷過程已歸檔，報告仍可查看");
   }
-  if (response.status === 422) return new PortalError(400, "INVALID_REQUEST", "提交資料不正確");
+  if (response.status === 422) {
+    if (code === "vin_mismatch") return new PortalError(422, "VIN_MISMATCH", "日誌 VIN 與車輛檔案不符");
+    if (code === "unsupported_format") return new PortalError(422, "UNSUPPORTED_FORMAT", "不支援此日誌格式");
+    return new PortalError(422, "INVALID_REQUEST", "提交資料不正確");
+  }
   if (response.status === 503 && code === "queue_unavailable") {
     return new PortalError(503, "QUEUE_UNAVAILABLE", "診斷佇列暫時無法使用");
   }

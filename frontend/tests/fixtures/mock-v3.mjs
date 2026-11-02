@@ -106,6 +106,12 @@ function send(res, status, data) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://127.0.0.1:4010");
   if (url.pathname === "/health" || url.pathname === "/v3/health") return send(res, 200, { status: "ok" });
+  if (url.pathname === "/v3/auth/register" && req.method === "POST") {
+    let raw = ""; for await (const chunk of req) raw += chunk;
+    const body = JSON.parse(raw);
+    if (body.invite_code !== "TEST-INVITE") return send(res, 422, { code: "invite_code_invalid" });
+    return send(res, 201, { id: "22222222-2222-4222-8222-222222222222", username: body.username, memberships: [{ workshop_id: workshopId, workshop_name: "測試工作坊", role: "technician" }] });
+  }
   if (url.pathname === "/v3/auth/login" && req.method === "POST") {
     let body = ""; for await (const chunk of req) body += chunk;
     const fields = new URLSearchParams(body);
@@ -117,6 +123,10 @@ const server = http.createServer(async (req, res) => {
   if (req.headers.authorization !== `Bearer ${jwt}`) return send(res, 401, { detail: "Unauthorized" });
   if (url.pathname === "/v3/users/me") return send(res, 200, { id: "22222222-2222-4222-8222-222222222222", username: "manager", email: null, display_name: "測試管理員", memberships: [{ workshop_id: workshopId, workshop_name: "測試工作坊", role: "manager" }] });
   if (url.pathname === `/v3/workshops/${workshopId}/vehicles`) {
+    if (req.method === "POST") {
+      for await (const chunk of req) { void chunk; }
+      return send(res, 201, vehicles[0]);
+    }
     const q = (url.searchParams.get("q") || "").toLowerCase();
     const offset = Number(url.searchParams.get("offset") || 0);
     const limit = Number(url.searchParams.get("limit") || 50);
@@ -127,6 +137,18 @@ const server = http.createServer(async (req, res) => {
     const limit = Number(url.searchParams.get("limit") || 50);
     return send(res, 200, logs.slice(offset, offset + limit));
   }
+  if (url.pathname === `/v3/vehicles/${vehicleId}/logs` && req.method === "POST") {
+    for await (const chunk of req) { void chunk; }
+    return send(res, 201, { ...logs[0], duplicate: false });
+  }
+  if (url.pathname === `/v3/vehicles/${vehicleId}/devices`) {
+    if (req.method === "GET") return send(res, 200, [{ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", vehicle_id: vehicleId, label: "測試 Jetson", created_at: "2026-10-01T00:00:00Z", last_seen_at: null, revoked_at: null }]);
+    if (req.method === "POST") {
+      for await (const chunk of req) { void chunk; }
+      return send(res, 201, { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", vehicle_id: vehicleId, label: "新設備", created_at: "2026-10-01T00:00:00Z", last_seen_at: null, revoked_at: null, token: "FAKE-ONE-TIME-TOKEN" });
+    }
+  }
+  if (url.pathname === "/v3/devices/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" && req.method === "DELETE") { res.writeHead(204); return res.end(); }
   if (url.pathname === `/v3/vehicles/${vehicleId}/diagnose` && req.method === "POST") {
     let raw = ""; for await (const chunk of req) raw += chunk;
     let body; try { body = JSON.parse(raw); } catch { return send(res, 422, { code: "invalid_request" }); }

@@ -5,7 +5,12 @@
 > 旧系统那条路一行不改；V3 那条路只靠一个配置文件开关。
 >
 > 对应 ticket：PROD-07（`docs/v3_dev_plan.md`）。脚本：`obd_agent/jetson_uploader.py`。
-> 作者：Xiangzhu Yan · 2026-09-17 · 更新 2026-09-27（#258：旧系统密码可放文件 / 环境变量；V3 在设备上出错不再影响旧系统；拒收原因里的 VIN 打码）
+> 作者：Xiangzhu Yan · 2026-09-17 · 更新 2026-11-02（issue #270：本地 V3 网页已有建车和 manager 设备凭证入口，尚未上线）
+
+> **交接优先级**：真实 Jetson 接入以 [issue #257](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/257) 为准；
+> 本手册第 0、2、9 节若与该 issue 冲突，以 issue 为准。以下网页入口目前只在
+> fork 的本地代码中，PolyU 生产前端尚未部署。真实邀请码、VIN、token 和密码由
+> 人员在私下渠道处理，不给 AI agent，也不进入公开仓库、截图或 issue。
 
 ---
 
@@ -35,9 +40,10 @@ curl -sS https://stf-diagnosis.dev/v3/health
 
 ## 2. 在 V3 建车档、发 token（manager 做，不是装机的人）
 
-第一个车队、manager 账号、两台车（Hiace、Corolla）的车档和 token 由我们用
-`stf_v3/scripts/onboard_first_workshop.py` 在服务器上建好（VIN 只进数据库，不进任何文件）。
-你会收到：
+按 issue #257，先由人确认实际车辆、既有车档和设备归属。manager 使用 V3
+网页的工作坊「建立车档」与车辆页「设备凭证」入口（上线前仍可用已有 V3 API）
+给每台车建档并发放独立 token。令牌仅显示一次，由人当场写入设备配置文件；
+不要把令牌复制到公开文档或交给 AI agent。装机人员会收到：
 
 - **一个技师邀请码**：用它在 V3 注册你自己的账号（注册后能看车、看日志）。
 - **每台车一个配置文件**：`v3_uploader_toyota_hiace.env`、`v3_uploader_toyota_corolla.env`。

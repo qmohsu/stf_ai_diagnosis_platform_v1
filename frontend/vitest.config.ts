@@ -19,7 +19,7 @@ export default defineConfig({
     pool: "threads",
     maxWorkers: 1,
     fileParallelism: false,
-    isolate: false,
+    isolate: true,
     exclude: ["tests/e2e/**", "node_modules/**", ".next/**"],
     coverage: {
       provider: "v8",

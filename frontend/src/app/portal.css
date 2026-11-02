@@ -159,3 +159,12 @@ body { min-height:100vh; color:var(--ink); background:linear-gradient(165deg,#ea
   .citation-list li { flex-direction:row; align-items:center; justify-content:space-between; }
 }
 @media (min-width:1024px) { .diagnosis-layout { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } }
+.portal-form { display:grid; gap:14px; margin:15px 0 20px; }
+.portal-form label { display:grid; gap:7px; color:var(--blue); font-weight:700; }
+.portal-form input,.form-input { width:100%; min-height:45px; padding:8px 12px; border:1px solid #a9bfce; border-radius:9px; color:var(--ink); background:#fff; }
+.portal-form progress { display:block; width:100%; height:16px; accent-color:var(--accent); }
+.form-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.device-panel { margin-top:24px; }
+.token-once { display:grid; gap:12px; margin:16px 0; padding:15px; border:2px solid #b36a21; border-radius:10px; background:#fff4e7; }
+.token-once code { display:block; padding:10px; overflow-wrap:anywhere; user-select:text; background:#fff; }
+.token-once .button { justify-self:start; }

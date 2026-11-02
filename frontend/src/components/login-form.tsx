@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AlertTriangle, Eye, EyeOff, LoaderCircle, LockKeyhole, UserRound } from "lucide-react";
 import { clearPortalCaches } from "@/lib/client-session";
@@ -113,6 +114,7 @@ export function LoginForm() {
           {submitting ? messages.login.submitting : messages.login.submit}
         </button>
         <p className="login-duration">{messages.login.duration}</p>
+        <p><Link href="/register">有邀請碼？建立帳號</Link></p>
       </form>
       <p className="login-authorized">{messages.login.authorizedOnly}</p>
     </main>
