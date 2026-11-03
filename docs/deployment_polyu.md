@@ -233,19 +233,21 @@ The setup script will:
 ## Updating Deployments
 
 The commands below describe the historical V1/V2 stack. For the issue #270
-V3 frontend cutover, use the V3 Compose project and branch-test/restore
-procedure in the repository root `CLAUDE.md`. Before the branch test, record
-the server's Git remotes, original branch and commit. For this PR, fetch
-`codex/issue-270-v3-frontend-server` explicitly from
-`https://github.com/SpaceDX666/stf_ai_diagnosis_platform_v1.git` and run
-`git switch --detach FETCH_HEAD`; the server's `origin` may point elsewhere.
-The frontend's public origin is `https://stf-diagnosis.dev`; health and login can be checked
-through a local SSH tunnel, while an authenticated browser flow requires
-the public root switch. The configuration is committed separately from
-any public-server validation.
+V3 frontend cutover, use the V3 Compose project and exact-revision test/restore
+procedure in the repository root `CLAUDE.md`. First record the server's Git
+remotes, original branch and full commit, running image revisions, and Nginx
+configuration. Fetch fork `main` explicitly from
+`https://github.com/SpaceDX666/stf_ai_diagnosis_platform_v1.git`, verify
+`FETCH_HEAD` equals the previously approved full commit SHA, and only then
+switch to that SHA; the server's `origin` may point elsewhere. If fork `main`
+has moved, stop and review its new commit before testing. The frontend's public
+origin is `https://stf-diagnosis.dev`. Health and the login page can be checked
+through a local SSH tunnel, but the authenticated browser flow requires the
+public HTTPS root because of the production Origin check. Repository
+configuration alone is not public-server validation.
 
-Nginx uses a single-file bind mount for `nginx.conf`. After checking out
-the branch, wait until the V3 frontend is healthy, then recreate **only**
+Nginx uses a single-file bind mount for `nginx.conf`. After selecting
+the reviewed revision, wait until the V3 frontend is healthy, then recreate **only**
 the Nginx container so it reads the checked-out file's new inode:
 
 ```bash
@@ -256,13 +258,17 @@ podman exec stf-nginx grep 'server 127.0.0.1:3002' /etc/nginx/nginx.conf
 podman exec stf-nginx nginx -t
 ```
 
-For rollback, restore the recorded original server branch and commit
-(usually `main`) and the old `obd-ui` service. Recreate only `stf-nginx`
+For rollback, restore the recorded original server branch and exact commit
+(usually `main`) and the old `obd-ui` service. Recreate `stf-nginx`
 with the same two commands, then verify
 `server 127.0.0.1:3001` inside the container and test the public root.
-A reload alone may keep the old bind-mounted file. The V3 API, worker,
-database, and V1/V2 backends do not need to restart for this frontend
-cutover.
+A reload alone may keep the old bind-mounted file. This issue #270 revision
+also adds V3 manual section and image API routes: rebuild and recreate the
+original V3 API/worker image and restore the host GPU worker's original code
+revision, then verify image labels and V3 health. No V3 database migration is
+part of this revision; V1/V2 backends and their database need no restart.
+For a future root-only change that does not alter V3 code, the V3 API/worker
+can remain running.
 
 ### Automated
 

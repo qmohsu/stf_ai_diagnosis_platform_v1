@@ -75,7 +75,7 @@ function conversation(id) {
 function report(id) {
   return { conversation_id: id,
     content_md: "# 診斷結論\n\n已查閱維修手冊，請檢查電裝系統。\n\n| 項目 | 結果 |\n| --- | --- |\n| 電路 | 待檢查 |",
-    citations: [{ kind: "manual", ref: `${manualId}#電裝`, source: "trace", tool: "read_manual_section" }, { kind: "dtc", ref: "P00AF", source: "NO_SOURCE" }],
+    citations: [{ kind: "manual", ref: `${manualId}#電裝`, source: "trace", tool: "read_manual_section" }, { kind: "manual", ref: `${manualId}#未核實章節`, source: "NO_SOURCE" }, { kind: "dtc", ref: "P00AF", source: "NO_SOURCE" }],
     partial: id === archivedConversationId, stopped_reason: id === archivedConversationId ? "budget" : "complete",
     limitations: id === archivedConversationId ? ["診斷提早結束"] : [],
     model: "mock-v3", created_at: "2026-10-30T00:00:00Z", secret_internal: "must-not-leak" };

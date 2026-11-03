@@ -114,7 +114,10 @@ test("one-click diagnosis resumes after refresh and a report citation opens the 
   await expect(page.getByRole("tab", { name: "技術細節" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText("已查閱維修手冊，請檢查電裝系統。")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("heading", { name: "引用與證據" })).toBeVisible();
-  await expect(page.getByText("未經診斷過程核實")).toBeVisible();
+  // Issue #270: an unverified manual reference must not lead to a guessed source.
+  const unverifiedManual = page.locator(".citation-list li").filter({ hasText: "未核實章節" });
+  await expect(unverifiedManual).toContainText("未經診斷過程核實");
+  await expect(unverifiedManual.getByRole("link", { name: /查看手冊原文/ })).toHaveCount(0);
   await page.getByRole("link", { name: /查看手冊原文/ }).click();
   await expect(page).toHaveURL(/\/manuals\/33333333-3333-4333-8333-333333333333\?section=/);
   await expect(page.locator(".page-heading").getByRole("heading", { level: 1, name: "電裝系統" })).toBeVisible();

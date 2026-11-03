@@ -305,21 +305,26 @@ V3 runs beside V1/V2 as three long-running containers (`stf-v3-api` reachable
 at 127.0.0.1:8002, `stf-v3-worker`, and `stf-v3-frontend` bound to 127.0.0.1:3002).
 Nginx proxies `/v3/` to the API and `/` to the frontend.
 
-### V3 frontend branch test and root cutover (issue #270)
+### V3 frontend revision test and root cutover (issue #270)
 
 1. Record the server's current branch/commit, `git remote -v`, the running image
-   IDs, and the current nginx configuration. If the server tracks upstream
-   `qmohsu` while the PR head is on the `SpaceDX666` fork, fetch that branch
-   explicitly from the fork URL; do not assume `origin/<branch>` exists. Verify
-   `/v3/health` before changing anything.
-   For this PR, after recording the original checkout, fetch and select the
-   branch without changing the server's configured remotes:
+   IDs and revision labels, and the current nginx configuration. For issue #270,
+   select an approved, immutable commit from the `SpaceDX666` fork; do not
+   assume the server's `origin` points to that fork. Verify `/v3/health` before
+   changing anything. After recording the original checkout, fetch the fork's
+   `main` and compare its tip to the approved full SHA before selecting it,
+   without changing the server's configured remotes:
    ```bash
    cd ~/stf_ai_diagnosis_platform_v1
-   git fetch https://github.com/SpaceDX666/stf_ai_diagnosis_platform_v1.git codex/issue-270-v3-frontend-server
-   git switch --detach FETCH_HEAD
-   git rev-parse HEAD
+   APPROVED_SHA='PASTE_REVIEWED_40_CHAR_SHA'
+   [[ "$APPROVED_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+   git fetch --no-tags https://github.com/SpaceDX666/stf_ai_diagnosis_platform_v1.git main
+   test "$(git rev-parse FETCH_HEAD)" = "$APPROVED_SHA" || exit 1
+   git switch --detach "$APPROVED_SHA"
+   test "$(git rev-parse HEAD)" = "$APPROVED_SHA" || exit 1
    ```
+   If fork `main` has advanced, stop and obtain a newly reviewed SHA; never
+   silently deploy its new tip.
    If Cloudflare or the V3 API already returns 502, record that baseline and
    fix ingress first; do not call the frontend browser test complete.
 2. The issue #270 diagnosis follow-up also adds V3 manual section/image API
@@ -373,18 +378,19 @@ Nginx proxies `/v3/` to the API and `/` to the frontend.
    places it behind the `legacy-ui` profile so routine startup does not
    resurrect it. Do not delete the legacy container or image before the
    rollback window closes.
-5. After branch verification, restore the recorded server branch/commit as
+5. After revision verification, restore the recorded server branch/commit as
    required above; do not assume the server's `main` equals the fork's `main`.
    Restart or recreate `stf-obd-ui` on 3001 and verify it. Recreate only
    `stf-nginx` with the legacy Compose command from step 3, confirm its mounted
    configuration contains `server 127.0.0.1:3001`, then run `nginx -t` and
    verify the public root.
-   Stop the branch frontend, rebuild the recorded original V3 API/worker image
+   Stop the test frontend, rebuild the recorded original V3 API/worker image
    from the restored checkout and recreate both containers; restore the host
    GPU worker's original revision under the administrator's procedure. This
-   branch has no V3 database migration. After the user merges the PR, deploy the
-   merged `main` and repeat steps 1–4 for the lasting cutover. Never leave a
-   branch build serving the public root without the user's explicit direction.
+   revision has no V3 database migration. After maintainer review and merge into
+   the canonical `main`, deploy that reviewed commit and repeat steps 1–4 for
+   the lasting cutover. Never leave a test build serving the public root without
+   the user's explicit direction.
 
 This frontend and V3 knowledge API change has no database migration. The API
 and worker image must match the selected revision; the LLM is started only by

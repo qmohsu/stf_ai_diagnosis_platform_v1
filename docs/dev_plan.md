@@ -1,4 +1,4 @@
-# Development Plan (v5.19 — V3 Frontend Ingress)
+# Development Plan (v5.20 — V3 Frontend Directory Alignment)
 
 ## 1. Scope Boundary
 Scope boundary for this plan (so engineers don’t drift)
@@ -409,9 +409,9 @@ Setup script validates prerequisites and automates first-time deployment ✓
 Deploy script pulls latest code and rebuilds with health checks ✓
 Deployment guide covers setup, update, backup, monitoring, troubleshooting ✓
 
-**2026-10-30 shared gateway update (issue #270, configuration only):**
+**2026-10-30 shared gateway update (issue #270; directory aligned 2026-11-03):**
 The PolyU Nginx root route is configured to serve the independent V3
-`frontend/` on loopback port 3002. The V1/V2 backend routes remain, but
+`obd-ui-v3/` on loopback port 3002. The V1/V2 backend routes remain, but
 the old `obd-ui` webpage is opt-in through the PolyU `legacy-ui` profile
 and is stopped at public cutover. Local V1/V2 development still has
 `obd-ui`. This changes deployment ownership, not the APP-19 UI code or
@@ -2217,6 +2217,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-11-03 | v5.20 | Issue #270: updated the current shared gateway note after the V3 frontend directory moved from `frontend/` to `obd-ui-v3/`. Nginx routing, V1/V2 APIs and public-server validation status are unchanged. |
 | 2026-10-30 | v5.19 | Issue #270 shared PolyU gateway update: Nginx root configured for separate V3 frontend :3002; old V1/V2 `obd-ui` service becomes opt-in in the PolyU override and stops at cutover. V1/V2 backend routes remain. DO-07 note updated; public-server validation pending. |
 | 2026-07-12 | v5.18 | APP-64 (GitHub issue #188, follow-up to APP-63/#157) — **vehicle-scoped RAG retrieval on the PREMIUM OBD diagnose path**. `obd_premium.py`'s single `retrieve_context(rag_query, top_k=3)` call (the `/diagnose/premium` pre-stream retrieval) had the same cross-manual contamination APP-63 fixed on the standard path — a Yamaha session could pull Toyota Corolla chunks into the premium LLM context. **Fix** mirrors APP-63 exactly: the call now passes `vehicle_model=session_data.vehicle_model` (the `SessionData` field APP-63 introduced; `_get_session_data` is already shared), `None` (historical sessions) falls back unfiltered, and an empty *filtered* result logs `premium_diagnosis_rag_retrieval_empty` (session_id + vehicle_model) and degrades like the existing no-context path (empty context string, generation proceeds). Safe because APP-62's exact-scan fallback is live. **Tests**: `TestPremiumRetrievalVehicleFilter` in `test_obd_premium.py` (vehicle forwarded; `None` fallback; empty-filtered result still streams to `done`) — premium suite 20 pass, broader sweep 117 pass. |
 | 2026-07-12 | v5.17 | APP-63 (GitHub issue #157, HARNESS-23 eval follow-up T13) — **vehicle-scoped RAG retrieval on OBD diagnose**. Production `POST /v2/obd/{id}/diagnose` and the `/feedback/rag` retrieved-text snapshot called `retrieve_context(rag_query, top_k=…)` with **no `vehicle_model` filter**, so the LLM context mixed in the wrong vehicle's manual — proven cross-manual contamination: a Yamaha brake query returned Toyota Corolla content ("Rear brake pads renewal", "VVT-i models"). The session has known its vehicle since APP-60 (`obd_analysis_sessions.vehicle_model`). **Fix** (`obd_analysis.py`): `SessionData` gains a `vehicle_model` field (populated by `_get_session_data` from the session row); both retrieval call sites now pass `vehicle_model=session.vehicle_model`. `None` (historical pre-APP-60 sessions) falls back to unfiltered retrieval — a session without a known vehicle keeps working unchanged. If the *filtered* query returns 0 chunks, a structured warning (`diagnosis_rag_retrieval_empty` / `rag_feedback_retrieval_empty`, with session_id + vehicle_model) is logged and the flow degrades exactly like the pre-existing no-context path (empty context string; generation proceeds). **Depends on #156** (filtered-HNSW recall starvation): on the unfixed HNSW path this filter starves retrieval to 0 rows with today's 2-manual corpus — merge after #156's fix. **Tests**: 5 offline unit tests in `test_obd_analysis.py` (session `vehicle_model` forwarded on diagnose + rag-feedback retrieval, `None` fallback on both, graceful empty-filtered-retrieval degradation with empty LLM context). Offline-verified only (no live DB/LLM in the worktree); the end-to-end check (a Yamaha session retrieves only Yamaha chunks) rides on the #156 deploy loop. `design_doc.md` §8.3.6 `/diagnose` description updated (v5.16). |

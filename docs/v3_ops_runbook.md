@@ -2,8 +2,8 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.16（issue #270：前端诊断链路与 V3 手册读取接口的分支验收/回滚；此前 PROD-15A 内容仍适用） |
-| 日期 | 2026-10-31 |
+| 版本 | v0.18（issue #270：指定提交验收、手册引用核对与回滚说明） |
+| 日期 | 2026-11-03 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`；新增前端服务配置 `stf-v3-frontend`（公网切换待验收）；宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
 
@@ -382,27 +382,30 @@ git checkout <旧提交>
 
 前滚 = 正常部署（迁移 `upgrade head` 会把降掉的补回来）。回滚期间备份定时器照常运行，用的是检出的那份 `backup.py`。
 
-**前端诊断链路与手册接口的分支验收/根路径切换（issue #270；上线操作由用户与服务器管理者执行）**：
-分支验证前先记录服务器 Git remote、原分支与 commit；本次分支在
-`SpaceDX666` fork，须从
-`https://github.com/SpaceDX666/stf_ai_diagnosis_platform_v1.git`
-显式 fetch `codex/issue-270-v3-frontend-server`，再
-`git switch --detach FETCH_HEAD`，不能假定服务器 `origin` 指向该 fork。
-`frontend/` 是独立 V3 Compose 服务，PolyU 只监听
+**前端诊断链路与手册接口的指定修订验收/根路径切换（issue #270；上线操作由用户与服务器管理者执行）**：
+验证前先记录服务器 Git remote、原分支、完整 commit、运行镜像 revision 与 Nginx 配置；
+按 `CLAUDE.md` 从 `SpaceDX666` fork 的 `main` 显式 fetch，只有 `FETCH_HEAD`
+与事先审核的完整提交哈希一致时才检出该提交，不能假定服务器 `origin` 指向该 fork，
+也不能把 fork `main` 后续移动的版本当成已审核版本。
+`obd-ui-v3/` 是独立 V3 Compose 服务，PolyU 只监听
 `127.0.0.1:3002`，同机访问 V3 API `127.0.0.1:8002`；生产环境须设
 `STF_V3_FRONTEND_ORIGIN=https://stf-diagnosis.dev`。本轮亦新增 V3 手册章节/
-图片 API，因此分支验证须先按 `CLAUDE.md` 跑部署前检查，确认没有未结束
+图片 API，因此修订验证须先按 `CLAUDE.md` 跑部署前检查，确认没有未结束
 诊断或正在转换的手册，再构建并重建同一修订的 V3 API、worker 和前端镜像；
 宿主机 GPU worker 由管理者按 V3 流程在安全窗口重启。先保留旧
 `obd-ui` :3001，在 :3002 启动新服务，核对 `/api/health`、登录页、V3
-后端健康、手册新路由与 `nginx -t`。随后按
-`CLAUDE.md` 的分支部署流程切换 Nginx 根路径到 :3002，在公网用现有测试
+后端健康、手册新路由、各镜像 revision 标签与 `nginx -t`。随后按
+`CLAUDE.md` 的修订部署流程切换 Nginx 根路径到 :3002，在公网用现有测试
 账号验证手机/电脑登录、工作坊、车档、既有日志与诊断历史；在与管理者约定的
 共享 GPU 测试窗口，用测试日志点一键诊断，检查直播、刷新回放、报告及引用
 打开转换后的手册 Markdown 章节/图片，并确认浏览器业务请求保持同源。
-`/v1/`、`/v2/`、`/v3/` 接口仍分别验证。Nginx 配置是单文件 bind mount：切分支后只执行
+对真实手册卷逐项记录脱敏证据：`trace` 引用对应的手册编号、章节原串、
+报告结论与原文段落是否一致，图片能否加载；`NO_SOURCE` 是否明确标为未核实且
+不能点击；同名章节或无法唯一定位的引用是否明确失败而非跳到猜测章节。
+这里只核对入库后的转换版 Markdown，不声称跳转原始 PDF 页。
+`/v1/`、`/v2/`、`/v3/` 接口仍分别验证。Nginx 配置是单文件 bind mount：切修订后只执行
 `nginx -s reload` 可能仍读取旧 inode。前端就绪后，在仓库 `infra/`
-目录仅重建网关容器；API/worker 已在本步骤之前按分支修订重建，数据库无需重启：
+目录仅重建网关容器；API/worker 已在本步骤之前按指定修订重建，数据库无需重启：
 
 ```bash
 podman rm -f stf-nginx
@@ -414,13 +417,14 @@ podman exec stf-nginx nginx -t
 通过后停止旧网页，PolyU 配置里的
 `legacy-ui` profile 防止它被默认拉起。浏览器认证测试须经公开 HTTPS
 Origin；仅通过 SSH 隧道打开 localhost 登录页会被生产同源检查拒绝。
-若新网页或网关异常，先切回记录的原提交并启动旧 `obd-ui`，再按上面相同命令
+若新网页或网关异常，先切回记录的原分支及精确提交并启动旧 `obd-ui`，再按上面相同命令
 只重建 `stf-nginx`，改核对容器内
 `server 127.0.0.1:3001`、`nginx -t` 与公网响应；新 :3002 服务可独立停止，V3 API /
 worker 也须以原提交重建镜像并重建容器，宿主机 GPU worker 恢复原修订；
-两套数据库无需回退，本次无数据库迁移。分支验收后按
-`CLAUDE.md` 恢复服务器原分支与原 commit（通常为 `main`）；
-只有用户合并后才执行正式根路径切换。
+两套数据库无需回退，本次无数据库迁移。修订验收后按
+`CLAUDE.md` 恢复服务器原分支与原 commit（通常为 `main`），
+并核对恢复后的镜像 revision、V3 健康、Nginx 根路径和公开响应；
+只有经维护者审核并合入 canonical `main` 后才执行正式根路径切换。
 
 **特例：回滚到 PROD-11 之前的版本**前：① `predeploy_check.sh` 确认没有未结束诊断（或让它们结束）；② 清掉诊断队列里没开始的任务：`bash stf_v3/scripts/queue_ops.sh cancel <job_id>`（逐个）；③ 老代码不认识 `diagnosis` / `llm` 队列与新表，降级迁移 `alembic downgrade b2c3d4e5f6a7` 会**删除消息表的所有行**（新旧形状不兼容，按设计有损）；④ 宿主机 worker 按旧单元重装（`install.sh`）。
 

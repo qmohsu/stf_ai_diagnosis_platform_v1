@@ -4,11 +4,11 @@
 
 | 字段 | 值 |
 |---|---|
-| **架构文档** | `docs/v3_design_doc.md`（v1.27） |
+| **架构文档** | `docs/v3_design_doc.md`（v1.29） |
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.30（issue #270 登录体验与服务器 V3 认证联调） |
+| **版本** | v1.32（issue #270 指定提交验收与手册引用核实规则） |
 | **作者** | Xiangzhu Yan |
 | **最后更新** | 2026-11-03 |
 
@@ -27,10 +27,10 @@ V3 是最终产品形态，V1/V2 是学习版并将废弃。本计划要交付�
 |---|---|---|
 | D1 | 一台车归谁管 | **挂 workshop**：`workshops` + `memberships`，成员看本 workshop 全部车；车主不建模 |
 | D2 | 怎么认出一台车 | **VIN = 身份**（必填、workshop 内唯一）；**车牌 = 可选标签**（只显示、可改、无约束）；品牌型号必填 |
-| D3 | 代码放哪 | **同仓独立目录** `stf_v3/` + `frontend/`；原定 `obd-ui-v3/`，2026-10-29 用户明确选择保留现有 `frontend/`。硬约束 A 可迁出 / B 不绑死仍适用（见 §2.3） |
+| D3 | 代码放哪 | **同仓独立目录** `stf_v3/` + `obd-ui-v3/`；2026-10-29 曾选 `frontend/`，2026-11-03 用户改选回原定目录。硬约束 A 可迁出 / B 不绑死仍适用（见 §2.3） |
 | D4 | 登录注册 | **fastapi-users** + 邀请码 |
 | D5 | 任务队列 | **procrastinate**（Postgres 上的任务队列，零新组件），模块 `jobs` |
-| D6 | 前端开工时机 | **部分实现、仍未完成**：issue #270 将 `frontend/` 转为服务器 V3 前端，在本地接入注册、建车、网页上传、设备凭证和诊断/报告；M5 仍须按 PROD-12～14 的真实链路验收 |
+| D6 | 前端开工时机 | **部分实现、仍未完成**：issue #270 将现位于 `obd-ui-v3/` 的代码转为服务器 V3 前端，在本地接入注册、建车、网页上传、设备凭证和诊断/报告；M5 仍须按 PROD-12～14 的真实链路验收 |
 | D7 | 本地模型来源 | **唯一一个 vLLM**，V1/V2/V3 共用；换模型统一换、两套 golden 各跑一遍 |
 | D8 | Jetson 数据归属 | **要求级**：每笔上传 100% 绑定唯一车档；转存不丢归属；诊断时品牌型号找手册、VIN 找历史。实现细节由 PROD-01 定 |
 | D9 | 不做清单 | **接受**，且每项须留档"回头条件"（§4） |
@@ -57,7 +57,7 @@ V3 是最终产品形态，V1/V2 是学习版并将废弃。本计划要交付�
 ### 1.2 Out of Scope
 
 见设计文档 §1.11 非目标清单（A3）。每项的回头条件在本计划 §4。issue
-#270 已把实际目录 `frontend/` 接到同机 V3 后端并配置服务器入口；随后在
+#270 已把现位于 `obd-ui-v3/` 的代码接到同机 V3 后端并配置服务器入口；随后在
 本地补齐注册、建车、网页上传、设备凭证、日志诊断、实时过程与报告引用。真实设备、
 PolyU 线上验收等完整 Stage 1 流程仍未完成，PROD-12～14 不提前结案。
 
@@ -128,7 +128,7 @@ M6 PROD-15B (Pilot 上线：第一批真实用户)
 - `docs/v3_design_doc.md` + 本计划 + 架构图在**同一提交**内同步（预览 SVG 用 `render_excalidraw.py` 重新生成）
 - 隐私边界保持：工具只返回文本摘要，不返回原始传感器数组
 - **数据归属不变量（D8）**：任何一笔入库的原始数据都能查到所属车档；不允许 `V-UNKNOWN`
-- **可迁出 / 不绑死（D3）**：`stf_v3/`、`frontend/` 不 import 老代码；两条自动化检查（拷到空目录测试全绿；删掉 `diagnostic_api/ obd_agent/ obd-ui/` 后 V3 照常构建）通过。目录由用户在 issue #270 首阶段明确为 `frontend/`，但可迁出验收仍须实际通过
+- **可迁出 / 不绑死（D3）**：`stf_v3/`、`obd-ui-v3/` 不 import 老代码；两条自动化检查（拷到空目录测试全绿；删掉 `diagnostic_api/ obd_agent/ obd-ui/` 后 V3 照常构建）通过。目录经用户于 2026-11-03 改选为 `obd-ui-v3/`，但可迁出验收仍须实际通过
 - OpenAPI 契约与代码一致（CI 生成并 diff）
 - 走 CLAUDE.md 验证闭环：PR → 分支部署 PolyU → 线上 E2E（后端 ticket 用 Swagger / curl，前端 ticket 用浏览器）→ 用户拍板合并
 - **测试补齐（§2.4）**：新增后端接口扩展 `scripts/smoke_e2e.py` 并做接口级集成测试；前端专属改动以 BFF/契约测试和浏览器 E2E 验收；部署前后仍跑 `scripts/isolation_check.sh snapshot / compare`
@@ -145,7 +145,7 @@ M6 PROD-15B (Pilot 上线：第一批真实用户)
 | 集成 | 和真实 Postgres / 队列一起对不对 | CI 临时 Postgres（PROD-04）或服务器一次性库 | `tests/test_migrations.py`、`tests/test_api_*.py`（ASGI 客户端 + 真库） |
 | 契约 | 接口形状、表结构、模块边界有没有悄悄变 | CI，秒级 | `scripts/export_openapi.py --check`、`alembic check`、import-linter |
 | Golden 评测 | 换提示词 / 模型后诊断质量有没有掉 | 服务器 GPU，只在动 Agent 时 | PROD-10 移植 |
-| 端到端冒烟 | 真实用户流程在线上能否走完 | 分支部署后 | 后端接口扩展 `scripts/smoke_e2e.py`；前端流程用 `frontend/tests/e2e/` 的浏览器用例 |
+| 端到端冒烟 | 真实用户流程在线上能否走完 | 分支部署后 | 后端接口扩展 `scripts/smoke_e2e.py`；前端流程用 `obd-ui-v3/tests/e2e/` 的浏览器用例 |
 | 部署核验 | 部署完的东西是不是预期的那份 | 每次部署后 | `scripts/check_schema.py`；PROD-04 补 `deploy_check.sh`（容器新鲜度、head、worker、health） |
 | 隔离回归 | V1/V2 有没有被 V3 碰坏 | 每次部署前后 | `scripts/isolation_check.sh snapshot` / `compare` |
 | 运维演练 | 备份能恢复吗、队列卡了能救吗 | 每个里程碑一次，人工按手册 | PROD-06、PROD-15A |
@@ -183,7 +183,7 @@ Status: **✅ DONE**（决策 2026-09-08；蓝图 v1.0 经 Lavish 评审通过 2
 **实现方法**：
 
 1. 产出代码设计文档 `docs/plans/2026-09-XX-v3-code-design.md`：
-   - 目录布局（当时蓝图原定）：`stf_v3/`（`app/{auth,workshops,vehicles,ingest,diagnosis,knowledge,jobs}`、`alembic/`、`tests/`、`evals/`、`Dockerfile`、`pyproject.toml`）与 `obd-ui-v3/`；`infra/docker-compose.v3.yml`。前端目录已按 2026-10-29 用户决定改为 `frontend/`（D3）
+   - 目录布局（当时蓝图原定）：`stf_v3/`（`app/{auth,workshops,vehicles,ingest,diagnosis,knowledge,jobs}`、`alembic/`、`tests/`、`evals/`、`Dockerfile`、`pyproject.toml`）与 `obd-ui-v3/`；`infra/docker-compose.v3.yml`。2026-10-29 曾改为 `frontend/`，2026-11-03 用户改选回 `obd-ui-v3/`（D3）
    - 模块图：各模块的表、路由前缀、服务接口签名、允许的依赖方向（`diagnosis → knowledge / vehicles / ingest / jobs`，反向禁止）
    - API 契约 v1（OpenAPI 草案）：Stage 1 全部端点 + SSE 事件类型清单（与 audit_events.event_type 同名）
    - DDL：初始迁移全部表与约束（含 D1/D2 修订：workshops、memberships、vehicles.vin/plate）
@@ -232,7 +232,7 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 
 **目标**：V3 后端在 PolyU 服务器上与 V1/V2 并存运行；每个 PR 自动跑测试和两条迁移性检查。
 **方法**：`infra/docker-compose.v3.yml`（`stf-v3-api`、`stf-v3-worker`，独立端口）+ nginx 路由前缀；共用 Postgres 实例与 vLLM（配置连接）；GitHub Actions：pytest（离线）+ OpenAPI diff + 可迁出检查（拷贝两目录到空目录跑测试）+ 不绑死检查（临时检出删除老目录后构建）；部署步骤追加到 CLAUDE.md。
-**验收**：服务器上 V1/V2/V3 健康检查同时通过；Cloudflare 隧道能访问 V3 `/health`；CI 四项在 PR 上绿灯；V3 镜像 pytest 不因未打包 `frontend/` 失败，完整 Git 检出仍验证启动器存在及安全环境加载。
+**验收**：服务器上 V1/V2/V3 健康检查同时通过；Cloudflare 隧道能访问 V3 `/health`；CI 四项在 PR 上绿灯；V3 镜像 pytest 不因未打包 `obd-ui-v3/` 失败，完整 Git 检出仍验证启动器存在及安全环境加载。
 
 ### 3.3 M2 — 数据入口
 
@@ -392,7 +392,7 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 
 #### PROD-12 — 前端骨架、登录与车辆页
 
-- **已完成（本地代码与部署配置）**：`frontend/` Next.js 骨架与同源 BFF；
+- **已完成（本地代码与部署配置）**：`obd-ui-v3/` Next.js 骨架与同源 BFF；
   V3 邀请码注册、login/logout/users/me 会话；当前用户工作坊列表、
   V3 车辆搜索/分页、基本车档及成员建车；不再用 twin 或四字段核验。
   PolyU 独立前端服务配置、
@@ -412,15 +412,16 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
   发起一键诊断，同车已有未结束会话时接回该会话；从 V3 audit_events 的
   JSON 回放恢复过程，随后同源 BFF 转发 SSE，以 `seq` 续传和去重。手机及
   桌面页面呈现简明进度与技术事件明细；报告显示正文、部分报告状态、局限与
-  引用。V3 只读手册章节及图片接口让已核实的手册引用打开转换后的 Markdown
-  原文章节；仅允许已入库手册、成员身份和受限图片路径。新增接口与前端均只在
+  引用。V3 只读手册章节及图片接口让 `trace` 手册引用打开转换后的 Markdown
+  原文章节；`NO_SOURCE` 明确标为未核实且不提供原文链接，同名章节不能唯一定位时
+  不跳转猜测章节。接口仅允许已入库手册、成员身份和受限图片路径。新增接口与前端均只在
   本地代码中，尚未进入 PolyU 正式服务。
 - **本地新增**：网页手动上传走同源 multipart BFF，50 MB 上限，上传进度、
   等待处理、取消、失败后手动重试；manager 可列出、发放与吊销每车设备凭证，
   明文令牌只显示一次。上传只入库，不自动诊断。模拟 V3 本地测试覆盖这些路径。
 - **未完成及待验收**：真实弱网、真实 Jetson 行程及补传尚未验收；“最终
   报告双视图”的具体产品口径未定，不以过程的简明/技术双视图代替其验收；
-  手机实机、真实 V3 账号与日志、PolyU 公网完整链路未验收。因此
+  手机实机、真实 V3 账号与日志、PolyU 公网完整链路及真实手册卷引用准确性未验收。因此
   PROD-13 为**部分实现**，不能标为完成。
 
 #### PROD-14 — PWA 与移动打磨
@@ -527,22 +528,24 @@ PROD-15 于 2026-09-27 按用户决定拆为两张：**15A 运维底线**（纯�
 | 测试车队刷诊断挤占真用户（PROD-11 FM-42） | 测试车队的诊断量影响到真车排队，或 vLLM 因联调长时间不停 | 先在联调说明里约定用法；真出现时加一个全局排队上限（例如测试车队同时最多 1 个排队），或给测试车队单独的空闲停机时间 | 否 | 暂缓 |
 | V3 拖累共享 Postgres 连接数（PROD-11 FM-43） | V1/V2 容器重新启用，或出现数据库连接数告警 | 给 V3 的运行时账号设连接上限（`ALTER ROLE stf_v3_app CONNECTION LIMIT …`）并压测：直播每次轮询已是借连接即还（FM-36） | 否 | 已完成（PROD-15A PR ②，2026-09-28） |
 | twin 自由文本 PII 边界 | 未来 V3 history 模块接入真实 twin 自由文本前 | 盘点 `description/note/remarks/reason/message` 等字段，定下删除、脱敏或允许透传规则并加测试 | 否 | 暂缓；当前前端无 twin 调用 |
-| 前端目录与归属（D3 冲突） | 2026-10-29 issue #270 首阶段 | 用户选择保留 `frontend/` 并更新 D3；可迁出验收仍须单独完成 | 否 | 目录已决策，验收未完成 |
+| 前端目录与归属（D3 冲突） | 2026-11-03 用户改选 | 代码与部署配置使用 `obd-ui-v3/`；可迁出验收仍须单独完成 | 否 | 当前目录已决策，验收未完成 |
 | 前端语言 / 样式 | PROD-12～14 继续实现时 | 使用通用 STF V3 名称与繁体中文，手机/桌面逐项验收 | 否 | 口径已决定，移动/PWA 完整验收未完成 |
-| 前端完整 Stage 1 | issue #270 本地注册、车档、日志与诊断链路完成后 | 确定报告双视图口径；将本地前端与手册接口部署 PolyU，并按 PROD-12～14 做真实 Jetson、弱网手机与公网端到端验收 | 否 | 部分实现；本地功能已接入，真实接入与完整 Stage 1 待续 |
+| 前端完整 Stage 1 | issue #270 本地注册、车档、日志与诊断链路完成后 | 确定报告双视图口径；将本地前端与手册接口按审核的精确提交部署 PolyU，并按 PROD-12～14 做真实 Jetson、弱网手机、公网端到端及真实手册引用验收 | 否 | 部分实现；本地功能已接入，真实接入与完整 Stage 1 待续 |
 
 ## 5. 待决策
 
 全部 9 项已拍板（2026-09-08），结果见 §0.1；存档 `.lavish/v3_dev_plan_decisions.html`。
 
-前端目录原定 `obd-ui-v3/`，PR #269 实际代码位于 `frontend/`；用户在
-2026-10-29 的 issue #270 首阶段决策中明确保留 `frontend/`，因此目录争议
-结案。M5 仍须在 PROD-12～14 全部验收后才可标为完成。
+前端目录原定 `obd-ui-v3/`，PR #269 实际代码位于 `frontend/`。
+用户在 2026-10-29 曾决定保留 `frontend/`；2026-11-03 改选回原定目录
+`obd-ui-v3/`，当前目录争议结案。M5 仍须在 PROD-12～14 全部验收后才可标为完成。
 
 ## 6. 变更记录
 
 | 版本 | 日期 | 变更 |
 |---|---|---|
+| v1.32 | 2026-11-03 | issue #270：PROD-13 补记 `NO_SOURCE` 手册引用不可点击、同名章节不猜测，并明确真实卷引用准确性仍待验收；§4 记录按审核的精确提交部署和公网核对条件。部署指引删除已失效的固定分支名，设计文档 v1.29；本轮调用架构未变，既有目录改名的**图已同步**。 |
+| v1.31 | 2026-11-03 | issue #270：前端目录改为 `obd-ui-v3/`，同步 D3、PROD-04、PROD-12 与 §4 当前状态；PROD-13～14 验收状态不变；功能和验收状态未变，设计文档 v1.28，架构图目录标签已同步，**图已同步** |
 | v1.30 | 2026-11-03 | issue #270：PROD-12 本地登录表单区分错误与 V3 故障、保留已有 Cookie；专用测试车队通过 SSH 隧道完成服务器 V3 注册、登录、工作坊读取与登出，并在手机/桌面浏览器视口核对同源请求。真实 pilot 用户完整建车流程、PolyU 前端部署与公网验收未完成，PROD-12 仍部分完成。设计文档 v1.27，架构未变，**图无需改动** |
 | v1.29 | 2026-11-02 | issue #270：PROD-12 本地接入邀请码注册与成员建车；PROD-13 本地接入网页上传、进度/取消/重试和 manager 设备凭证管理；PROD-14 补上传响应式流程。真实设备、弱网、手机安装、报告双视图与 PolyU 上线仍未验收，三项均保持部分完成；§4 回头条件更新。设计文档 v1.26，**图已同步** |
 | v1.28 | 2026-10-31 | issue #270 后续：PROD-13 本地接入已有日志选择、一键诊断、JSON 回放 + SSE 续传、诊断过程简明/技术视图、报告和引用手册章节；V3 新增成员可读的已入库手册章节/图片接口，无迁移。网页上传、报告双视图定义、PolyU 上线与真实手机验收仍未完成，PROD-13 仅部分实现；§4 更新完整 Stage 1 回头条件。前端 README、`CLAUDE.md` 分支验收/回滚和运维手册 v0.16 同步新 API 镜像与验收流程。设计文档 v1.25，**图已同步** |

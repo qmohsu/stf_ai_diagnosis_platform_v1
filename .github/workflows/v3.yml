@@ -9,7 +9,7 @@ on:
     # baseline-reset labels (PROD-10).
     types: [opened, synchronize, reopened, labeled, unlabeled]
     paths:
-      - "frontend/**"
+      - "obd-ui-v3/**"
       - "stf_v3/**"
       - "infra/docker-compose.polyu.yml"
       - "infra/docker-compose.v3*"
@@ -28,7 +28,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "frontend/**"
+      - "obd-ui-v3/**"
       - "stf_v3/**"
       - "infra/docker-compose.polyu.yml"
       - "infra/docker-compose.v3*"
@@ -59,18 +59,18 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: obd-ui-v3/package-lock.json
       - name: install locked frontend dependencies
-        working-directory: frontend
+        working-directory: obd-ui-v3
         run: npm ci
       - name: typecheck, lint, unit tests, and production build
-        working-directory: frontend
+        working-directory: obd-ui-v3
         run: npm run verify
       - name: install Playwright Chromium
-        working-directory: frontend
+        working-directory: obd-ui-v3
         run: npx playwright install --with-deps chromium
       - name: browser tests (mock V3 API)
-        working-directory: frontend
+        working-directory: obd-ui-v3
         run: npm run test:e2e
       - name: validate V3 Compose and Nginx configuration
         env:

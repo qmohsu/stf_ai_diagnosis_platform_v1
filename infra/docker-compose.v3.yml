@@ -24,7 +24,7 @@
 services:
   stf-v3-frontend:
     build:
-      context: ../frontend
+      context: ../obd-ui-v3
       dockerfile: Dockerfile
       args:
         GIT_COMMIT: ${GIT_COMMIT:-unknown}

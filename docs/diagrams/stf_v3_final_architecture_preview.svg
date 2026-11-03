@@ -52,7 +52,7 @@
 <text x="200.0" y="134.20" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">用户</text>
 <text x="200.0" y="149.20" text-anchor="middle" font-size="12" fill="#f1f3f5">车队管理者 / 维修技师</text>
 <text x="200.0" y="164.20" text-anchor="middle" font-size="12" fill="#f1f3f5">手机 · 电脑浏览器</text>
-<text x="530.0" y="126.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">frontend/ V3 网页 + Next.js BFF</text>
+<text x="530.0" y="126.70" text-anchor="middle" font-size="12" fill="#f1f3f5" font-weight="600">obd-ui-v3/ V3 网页 + Next.js BFF</text>
 <text x="530.0" y="141.70" text-anchor="middle" font-size="12" fill="#f1f3f5">PolyU :3002 · Nginx 根路径（待上线）</text>
 <text x="530.0" y="156.70" text-anchor="middle" font-size="12" fill="#f1f3f5">手机/电脑 · 注册/建车/上传/设备凭证</text>
 <text x="530.0" y="171.70" text-anchor="middle" font-size="12" fill="#f1f3f5">诊断直播/回放 · 报告/手册引用</text>

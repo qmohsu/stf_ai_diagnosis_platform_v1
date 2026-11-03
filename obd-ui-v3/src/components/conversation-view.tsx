@@ -75,7 +75,7 @@ function ReportBody({ report }: { report: DiagnosisReport }) {
 
 function CitationItem({ citation }: { citation: ReportCitation }) {
   const manual = citation.kind === "manual" ? parseManualRef(citation.ref) : null;
-  return <li><div><strong>{citation.kind === "manual" ? "維修手冊" : "故障碼"}</strong><span className="citation-ref">{citation.ref}</span>{citation.source === "NO_SOURCE" && <span className="citation-unverified">未經診斷過程核實</span>}</div>{manual && <Link className="citation-link" href={`/manuals/${manual.manualId}?section=${encodeURIComponent(manual.section)}`}>查看手冊原文 →</Link>}</li>;
+  return <li><div><strong>{citation.kind === "manual" ? "維修手冊" : "故障碼"}</strong><span className="citation-ref">{citation.ref}</span>{citation.source === "NO_SOURCE" && <span className="citation-unverified">未經診斷過程核實</span>}</div>{citation.source === "trace" && manual && <Link className="citation-link" href={`/manuals/${manual.manualId}?section=${encodeURIComponent(manual.section)}`}>查看手冊原文 →</Link>}</li>;
 }
 
 function parseManualRef(ref: string): { manualId: string; section: string } | null {
