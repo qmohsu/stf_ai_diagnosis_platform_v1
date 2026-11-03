@@ -13,6 +13,7 @@ const messages = { login: {
   password: "密碼", passwordPlaceholder: "請輸入密碼", show: "顯示", hide: "隱藏",
   showPassword: "顯示密碼", hidePassword: "隱藏密碼", submit: "登入", submitting: "登入中…",
   invalid: "用戶名稱或密碼不正確", unavailable: "服務暫時無法使用，請稍後再試",
+  rejectedOrigin: "登入來源不符，請從正式網站網址重新開啟頁面",
   rateLimited: "嘗試次數過多，請稍後再試", failed: "暫時無法登入，請重試",
   expired: "登入狀態已失效，請重新登入", duration: "登入狀態最長有效 12 小時",
   authorizedOnly: "僅供獲授權的工作坊成員使用",
@@ -28,7 +29,8 @@ export function LoginForm() {
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!username || !password || submitting) return;
+    const normalizedUsername = username.trim();
+    if (!normalizedUsername || !password || submitting) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -37,12 +39,13 @@ export function LoginForm() {
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         credentials: "same-origin",
         cache: "no-store",
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: normalizedUsername, password }),
       });
       let body: LoginResponse = {};
       try { body = await response.json() as LoginResponse; } catch { /* Use the status fallback below. */ }
       if (!response.ok || !body.user) {
         if (response.status === 401) setError(messages.login.invalid);
+        else if (response.status === 403) setError(messages.login.rejectedOrigin);
         else if (response.status === 503) setError(messages.login.unavailable);
         else if (response.status === 429) setError(messages.login.rateLimited);
         else setError(messages.login.failed);
@@ -109,7 +112,7 @@ export function LoginForm() {
           </div>
         </div>
         {error && <p className="login-error" role="alert"><AlertTriangle aria-hidden="true" />{error}</p>}
-        <button className="login-submit" type="submit" disabled={!username || !password || submitting}>
+        <button className="login-submit" type="submit" disabled={!username.trim() || !password || submitting}>
           {submitting && <LoaderCircle className="spin" aria-hidden="true" />}
           {submitting ? messages.login.submitting : messages.login.submit}
         </button>

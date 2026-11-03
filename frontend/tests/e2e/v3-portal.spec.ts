@@ -17,6 +17,9 @@ test("login, workshop pagination, search and vehicle detail work on this viewpor
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
   await login(page);
+  await page.goto("/login");
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { name: "我的工作坊" })).toBeVisible();
   await page.getByRole("link", { name: /測試工作坊/ }).click();
   await expect(page).toHaveURL(new RegExp(`/workshops/${workshopId}$`));
   await expect(page.locator(".vehicle-card")).toHaveCount(50);
