@@ -1,0 +1,15 @@
+node_modules/
+.next/
+coverage/
+playwright-report/
+test-results/
+lighthouse-report.json
+next-env.d.ts
+*.tsbuildinfo
+.env
+.env.local
+*.log
+
+# Keep the Next.js vehicle log API source despite the repository-wide logs/ rule.
+!src/app/api/portal/vehicles/*/logs/
+!src/app/api/portal/vehicles/*/logs/**

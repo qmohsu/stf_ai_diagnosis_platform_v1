@@ -1082,6 +1082,62 @@
         "title": "ManualSearchOut",
         "type": "object"
       },
+      "ManualSectionOut": {
+        "description": "One readable source section from the ingested manual Markdown.",
+        "properties": {
+          "content_md": {
+            "title": "Content Md",
+            "type": "string"
+          },
+          "index_track": {
+            "title": "Index Track",
+            "type": "boolean"
+          },
+          "manual_id": {
+            "format": "uuid",
+            "title": "Manual Id",
+            "type": "string"
+          },
+          "page_range": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Range"
+          },
+          "section_id": {
+            "title": "Section Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "manual_id",
+          "section_id",
+          "title",
+          "content_md",
+          "index_track"
+        ],
+        "title": "ManualSectionOut",
+        "type": "object"
+      },
       "ManualTocOut": {
         "description": "Heading tree rendered as indented text (what the agent tool sees).",
         "properties": {
@@ -2938,6 +2994,170 @@
           }
         ],
         "summary": "Get Manual",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/v3/manuals/{manual_id}/assets/{asset_path}": {
+      "get": {
+        "description": "An image referenced relative to an ingested manual's Markdown file.\n\nOnly files under that manual's ``images/`` directory and common raster\nimage formats are served; other manual artefacts are never exposed.",
+        "operationId": "get_manual_asset_v3_manuals__manual_id__assets__asset_path__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "manual_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manual Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "asset_path",
+            "required": true,
+            "schema": {
+              "title": "Asset Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/gif": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "One source image from this manual."
+          },
+          "401": {
+            "description": "Missing or expired user token."
+          },
+          "403": {
+            "description": "The user is not a workshop member."
+          },
+          "404": {
+            "description": "Manual or image not found."
+          },
+          "409": {
+            "description": "Manual is not yet readable."
+          },
+          "413": {
+            "description": "Image exceeds the size limit."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Manual Asset",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/v3/manuals/{manual_id}/sections": {
+      "get": {
+        "description": "The ingested Markdown source section named by a report citation.\n\n``section`` accepts an index node id, a legacy slug or a heading title.\nA report's ``manual_id#section`` reference can pass the part after ``#``\nunchanged.  Ambiguous names never silently select another section.",
+        "operationId": "get_manual_section_v3_manuals__manual_id__sections_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "manual_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Manual Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "section",
+            "required": true,
+            "schema": {
+              "maxLength": 500,
+              "minLength": 1,
+              "title": "Section",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualSectionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or expired user token."
+          },
+          "403": {
+            "description": "The user is not a workshop member."
+          },
+          "404": {
+            "description": "Manual or section not found."
+          },
+          "409": {
+            "description": "The manual is unreadable or the section name is ambiguous."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Manual Section",
         "tags": [
           "knowledge"
         ]

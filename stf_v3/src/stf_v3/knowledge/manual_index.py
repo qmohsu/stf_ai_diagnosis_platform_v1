@@ -73,10 +73,15 @@ class RuntimeIndex:
             sidecar_path.read_text(encoding="utf-8"),
         )
         self.manual_id: str = raw["manual_id"]
-        self.dir = sidecar_path.parent
+        self.dir = sidecar_path.parent.resolve()
         content_file = raw["source"]["content_file"]
+        content_path = (self.dir / content_file).resolve()
+        # The sidecar is an ingest artefact, but a malformed one must never
+        # make a browser-facing source endpoint read outside this manual.
+        content_path.relative_to(self.dir)
+        self.content_path = content_path
         self._content_lines = (
-            (self.dir / content_file)
+            content_path
             .read_text(encoding="utf-8")
             .split("\n")
         )
@@ -319,6 +324,10 @@ def load_runtime_index(
     for candidate in _MANUAL_DIR.rglob(
         f"{manual_id}.index.yaml",
     ):
+        try:
+            candidate.resolve().relative_to(_MANUAL_DIR.resolve())
+        except ValueError:
+            continue
         sidecar = candidate
         break
     if sidecar is None:
@@ -329,6 +338,8 @@ def load_runtime_index(
         return cached[1]
     try:
         index = RuntimeIndex(sidecar)
+        if index.manual_id != manual_id:
+            raise ValueError("Manual index id does not match the requested manual")
     except Exception as exc:
         logger.error(
             "manual_index_load_failed",

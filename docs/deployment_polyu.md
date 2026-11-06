@@ -1,6 +1,11 @@
 # PolyU Server Deployment Guide
 
-> Last updated: 2026-03-25 | GitHub Issues: #21, #24
+> Last updated: 2026-11-06 | GitHub Issues: #21, #24, #270, #275
+
+The first-time setup sections record the original V1/V2 deployment. For
+the V3 frontend root switch, follow [Updating Deployments](#updating-deployments)
+and the current procedure in the repository root `CLAUDE.md`; public
+server validation of the new frontend is still pending.
 
 ## Table of Contents
 
@@ -65,31 +70,35 @@ SSH key pair: `~/.ssh/id_ed25519`. Public key installed on both bastion and GPU 
 ## Network Architecture
 
 ```
-Internet (HTTPS)          Campus Network / VPN
-        |                        |
-        v                        v
-  +------------+           +-----------+
-  | cloudflared|---------->|   Nginx   |  :8080 (127.0.0.1)
-  +------------+           +-----------+
-  (stf-diagnosis.dev)        |       |
-                             v       v
-                       +-------+ +----------------+
-                       |obd-ui | |diagnostic-api  |  :8001 (internal)
-                       | :3001 | +----------------+
-                       +-------+        |
-                                        v
-                                +-------------+    +-----------+
-                                |  PostgreSQL  |    |  Ollama   |
-                                |  + pgvector  |    | (GPU CDI) |
-                                |    :5432     |    |  :11434   |
-                                +-------------+    +-----------+
+Internet HTTPS -> Cloudflare Tunnel -> Nginx :8080
+                                       |
+                         +-------------+--------------+
+                         |                            |
+                         | /                          | /v3/
+                         v                            v
+                  V3 frontend :3002 ------------> V3 API :8002
+                  (Next.js BFF)     server-side call    |
+                                                       v
+                                               V3 database
+
+Nginx /v1/, /v2/, /auth/, /health -> V1/V2 API :8001
+                                      |           |
+                                      v           v
+                                PostgreSQL     Ollama
+
+Old obd-ui :3001 -> PolyU legacy-ui profile only (stopped at cutover)
 ```
 
 - **Cloudflare Tunnel** provides public HTTPS access via `stf-diagnosis.dev`.
 - **Nginx** is the sole internal gateway (port 8080).
-- All other services bind to `127.0.0.1` (container-internal network).
-- Browser requests to `/v1/*`, `/v2/*`, `/auth/*`, `/health`, `/docs` are
-  proxied to the FastAPI backend; everything else goes to the Next.js frontend.
+- The V3 frontend binds only to host loopback on :3002. The V3 API uses
+  host networking on :8002; Nginx and the frontend reach it through
+  `127.0.0.1:8002`. V1/V2 services retain their existing host-network settings.
+- Browser requests to `/v1/*`, `/v2/*`, `/auth/*`, and `/health` remain
+  on the V1/V2 API; `/v3/*` goes to the V3 API. The public root goes to
+  the V3 Next.js frontend, whose BFF calls the V3 API from the server.
+- The old `obd-ui` webpage is not started by the default PolyU Compose
+  profile after the cutover; local V1/V2 development is unchanged.
 - SSE streaming (`/v2/obd/{id}/diagnose`) has `proxy_buffering off` for
   real-time token delivery.
 
@@ -191,8 +200,11 @@ The setup script will:
    podman-compose \
        -f infra/docker-compose.yml \
        -f infra/docker-compose.polyu.yml \
-       up -d --build
+        up -d --build postgres ollama diagnostic-api nginx
    ```
+
+   The explicit list keeps the retired `obd-ui` out of the default PolyU
+   startup, including with older Podman Compose versions.
 
 4. **Pull Ollama models:**
 
@@ -220,6 +232,50 @@ The setup script will:
 
 ## Updating Deployments
 
+The commands below describe the historical V1/V2 stack. For the issue #270
+V3 frontend cutover, use the V3 Compose project and exact-revision test/restore
+procedure in the repository root `CLAUDE.md`. Start with
+`python3 ~/.local/share/stf_deploy_watch/deploy_watch.py report`; investigate
+any change that is not explained by the recorded deployment. Record the
+server's Git remotes, original branch and full commit, running image revisions,
+and Nginx configuration. Fetch the approved PR branch or other reviewed ref
+from its actual repository, verify `FETCH_HEAD` equals the approved full
+commit SHA, and only then switch to that SHA; the server's `origin` may point
+elsewhere. If the ref has moved, stop and review its new commit before testing.
+The frontend's public origin is `https://stf-diagnosis.dev`. Health and the login
+page can be checked
+through a local SSH tunnel, but the authenticated browser flow requires the
+public HTTPS root because of the production Origin check. Repository
+configuration alone is not public-server validation.
+
+Nginx uses a single-file bind mount for `nginx.conf`. After selecting
+the reviewed revision, wait until the V3 frontend is healthy, then recreate **only**
+the Nginx container so it reads the checked-out file's new inode:
+
+```bash
+cd ~/stf_ai_diagnosis_platform_v1/infra
+podman rm -f stf-nginx
+~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d nginx
+podman exec stf-nginx grep 'server 127.0.0.1:3002' /etc/nginx/nginx.conf
+podman exec stf-nginx nginx -t
+```
+
+For rollback, restore the recorded original server branch and exact commit
+(usually `main`) and the old `obd-ui` service. Recreate `stf-nginx`
+with the same two commands, then verify
+`server 127.0.0.1:3001` inside the container and test the public root.
+A reload alone may keep the old bind-mounted file. This issue #270 revision
+also adds V3 manual section and image API routes: rebuild and recreate the
+original V3 API/worker image and restore the host GPU worker's original code
+revision, then verify image labels and V3 health. No V3 database migration is
+part of this revision; V1/V2 backends and their database need no restart.
+For a future root-only change that does not alter V3 code, the V3 API/worker
+can remain running.
+After branch verification and restoration, run
+`python3 ~/.local/share/stf_deploy_watch/deploy_watch.py ack --note "branch <branch> verified and checkout restored"`.
+For a lasting deployment, acknowledge the reviewed deployed commit instead;
+do not acknowledge unexplained changes.
+
 ### Automated
 
 ```bash
@@ -237,8 +293,18 @@ git pull
 podman-compose \
     -f infra/docker-compose.yml \
     -f infra/docker-compose.polyu.yml \
-    up -d --build
+    down
+podman-compose \
+    -f infra/docker-compose.yml \
+    -f infra/docker-compose.polyu.yml \
+    up -d --build postgres ollama diagnostic-api nginx
 ```
+
+Podman 3.4 does not reliably recreate a running container after `up --build`.
+The `down`/`up` sequence refreshes the V1/V2 containers (with a brief outage);
+the explicit service list leaves the retired `obd-ui` stopped. This legacy
+Compose project does not include the independent V3 frontend. For a V3
+frontend branch test or cutover, follow `CLAUDE.md` instead.
 
 ### Update workflow
 
@@ -473,7 +539,8 @@ Internet (HTTPS)
   cloudflared (systemd user service)
        |
        v
-  Nginx (:8080)  -->  obd-ui (:3001) / diagnostic-api (:8001)
+  Nginx (:8080)  -->  V3 frontend (:3002) / V3 API (:8002)
+                         + V1/V2 diagnostic-api (:8001)
 ```
 
 ### Configuration
