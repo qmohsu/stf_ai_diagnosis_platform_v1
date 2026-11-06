@@ -4,13 +4,13 @@
 
 | 字段 | 值 |
 |---|---|
-| **架构文档** | `docs/v3_design_doc.md`（v1.2） |
+| **架构文档** | `docs/v3_design_doc.md`（v1.22） |
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.24（#272 协作者只读访问与部署变动监控；v1.23 为 PROD-15A 完成） |
+| **版本** | v1.25（issue #270：手册章节与图片只读来源接口） |
 | **作者** | Xiangzhu Yan |
-| **最后更新** | 2026-10-30 |
+| **最后更新** | 2026-11-06 |
 
 ## 0. 本计划的定位
 
@@ -249,6 +249,13 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 **验收**：V3 库中 manuals 行数与 V2 一致（2），两本均以索引轨被 V3 读取器加载（目录树、章节、图片、搜索）；提交一份新手册 → job 完成 → 列表 / 目录树 / 搜索命中；损坏 PDF → 重试到上限后失败且原因可见；**运维演练四项各做一遍并写进运维手册**（`docs/v3_ops_runbook.md`）：查积压与卡点、看死信及原因、手动重试失败任务、worker 重启后进行中的任务被正确回收（`jobs.recover_stalled` 每 2 分钟回收 stalled 任务）。
 **实现**：`stf_v3/src/stf_v3/knowledge/{schemas,service,router,tasks,ingest}.py` + `knowledge/pipeline/`（从 V2 `manual_pipeline` 复制，加按手册隔离的摘要缓存）+ `knowledge/{manual_fs,manual_index}.py`（复制）；6 个端点（列表 / 详情 / 目录树 / 搜索 / 上传投任务 / 删除，公共库：成员可读、manager 可写、搬来的 seed 手册接口不可删）；任务 `knowledge.ingest_manual`（gpu 队列，永久性错误不重试，瞬时错误最多 3 次，MinerU 产物与摘要缓存持久化可续跑）、`knowledge.gpu_heartbeat`、`jobs.recover_stalled`；`stf_v3/gpu_worker/{install.sh,stf-v3-gpu-worker.service}`（uv → Python 3.11 → `venv-stf-v3` → `stf_v3[gpu]`；MinerU 为外部 CLI `STF_V3_MINERU_BIN`；11 项自检）；`scripts/copy_manuals_from_v2.py`（JSON 导出输入，逐文件 sha256 校验，V2 密码不经过 V3）；`scripts/queue_ops.sh`（status / failed / retry / cancel / drill）；具名卷 `stf_v3_manuals`；`/v3/health` 增加 gpu_worker、分队列积压、磁盘余量；`deploy_check.sh` 第 7 项（宿主机 worker 存活且提交号一致）、第 8 项（磁盘 ≥ 30 GB）；隔离快照加 V1 手册卷文件数与 V2 marker-worker 状态；**无新迁移**。
 **测试**：`test_unit_knowledge.py` 13、`test_api_manuals.py` 8；契约新增"接口层不许导入流水线"（import-linter）+ 运行时 sys.modules 检查；`smoke_e2e.py` 32 → 39 步；OpenAPI 17 → 21 路径；服务器实测见 PR #245 验证表（Corolla 277 页整条链耗时与费用、损坏 PDF 失败路径、运维四项 + kill -9 回收）。
+**issue #270 后端来源接口（本地实现，未上线）**：新增成员可读的
+`GET /v3/manuals/{manual_id}/sections` 与
+`GET /v3/manuals/{manual_id}/assets/{asset_path}`，只读取已入库手册的
+转换版 Markdown 章节及该手册目录下受限图片；索引与正文须同属该手册，
+歧义章节拒绝猜测，图片限制类型、大小和路径。对应离线单元测试和 OpenAPI
+已更新；真实手册卷、数据库权限与 PolyU 服务器链路仍待验收，原 PROD-06
+已完成的入库/队列验收状态不因此改变。
 
 #### PROD-07 — Jetson 上传器接入 — **DONE（2026-09-17，PR #246；真机补录待协作者）**
 
@@ -390,6 +397,9 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 
 #### PROD-13 — 上传、流式一键报告与报告视图
 **目标**：车辆页上传日志、点一键诊断、看流式过程与最终报告（双视图）。**验收**：线上 E2E 一次完整诊断在手机上完成；刷新后过程视图从回放接口恢复；报告引用可点击到手册出处。
+**本次后端进展**：报告引用所需的手册章节 Markdown 与图片读取接口已在
+本地实现并完成离线测试；浏览器引用跳转、真实手册卷的出处准确性和线上
+手机诊断均未在本 PR 验收，PROD-13 仍未完成。
 
 #### PROD-14 — PWA 与移动打磨
 **目标**：可安装到手机主屏，弱网可用。**验收**：Android Chrome / iOS Safari 可安装；Lighthouse PWA 项通过；弱网下上传有进度与失败提示。
@@ -504,6 +514,7 @@ PROD-15 于 2026-09-27 按用户决定拆为两张：**15A 运维底线**（纯�
 | 版本 | 日期 | 变更 |
 |---|---|---|
 | v0.1 | 2026-09-07 | 初稿：7 个里程碑、15 张 PROD ticket（PROD-01 到验收级，其余到目标/方法/验收层）、非目标清单草案、9 项待决策 |
+| v1.25 | 2026-11-06 | issue #270 后端小 PR：PROD-06 补记已入库手册章节/图片来源接口的本地实现与待验收边界；PROD-13 明确只有后端来源能力已接入，前端跳转和真实手册/公网验证仍未完成。设计文档 v1.22（§1.8）、OpenAPI 同步；未改变服务或调用架构，**图无需改动** |
 | v1.24 | 2026-10-30 | **#272（用户决定）**：前端协作者只读访问部署检出（家目录 ACL；开放前收紧旧密钥备份与含真实 VIN 的输出）；新增部署变动监控 `stf-v3-deploy-watch.timer`（每 5 分钟记录检出 / 容器 / 宿主机工人 / 接口文档 / 迁移版本的变化，部署后确认）。PROD-15A 条目补「后续」一段；运维手册 v0.15（§10）、设计文档 v1.21、CLAUDE.md 同步。运维工具，架构不变，**图无需改动** |
 | v1.23 | 2026-09-28 | **PROD-15A 完成**（PR #261 备份与恢复、#262 演练数据卷、#263 其余；main 已部署，部署检查全过、隔离 PASS）。#263 的门槛评测手册 lane 未过，同窗口 main 对照证明为共享显卡下的波动、非该 PR 引起，用户决定 `eval-exempt`；跟进 #264。之后的例行事项：首批非零计数出现时核对后再打开 `maintenance.apply`（队列约 10 月 12 日、归档约 2027 年 3 月），完整恢复演练每季度一次。仅文档，架构不变，**图无需改动** |
 | v1.22 | 2026-09-28 | **PROD-15A PR ②**：归档与清理（180 天过程记录 → 存档 + `events_archived` 接口字段、30 天队列流水、7 天手册工作目录；先只记数）、日志落盘（每进程文件、30 天）、连接上限 50 + 演练、评测只读账号、存储巡检、每周核对、VIN 扫描（发现并清理公开仓库与 issue 里的真实 VIN）。§4 三行（FM-13 / FM-16 / FM-43）改为已完成。运维手册 v0.14、设计文档 v1.20、CLAUDE.md 同步；新增日志卷与每周核对，**图已同步** |

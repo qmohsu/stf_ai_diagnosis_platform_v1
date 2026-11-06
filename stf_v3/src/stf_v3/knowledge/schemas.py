@@ -5,7 +5,7 @@ Author: Xiangzhu Yan
 
 import uuid
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 
 from pydantic import BaseModel
 
@@ -51,6 +51,17 @@ class ManualTocOut(BaseModel):
     index_track: bool
     max_depth: int
     toc: str
+
+
+class ManualSectionOut(BaseModel):
+    """One readable source section from the ingested manual Markdown."""
+
+    manual_id: uuid.UUID
+    section_id: str
+    title: str
+    content_md: str
+    index_track: bool
+    page_range: Optional[Tuple[int, int]] = None
 
 
 class SearchHit(BaseModel):
