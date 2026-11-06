@@ -1,0 +1,15 @@
+# STF deploy watch (#272): logs every change to what the server runs.
+# Rendered and installed by stf_v3/ops/install_deploy_watch.sh; started by
+# stf-v3-deploy-watch.timer.  Runs the installed copy, not the checkout.
+[Unit]
+Description=STF deploy watch (checkout, containers, units, API contracts, schemas)
+
+[Service]
+Type=oneshot
+# state files are world-readable on purpose, never group/other writable
+UMask=0022
+Environment=STF_V3_REPO=@REPO@
+Environment=STF_DEPLOY_WATCH_DIR=@STATE@
+ExecStart=/usr/bin/python3 @LIB@/deploy_watch.py check
+TimeoutStartSec=3min
+Nice=10

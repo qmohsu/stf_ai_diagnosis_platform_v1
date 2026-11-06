@@ -1,0 +1,10 @@
+# Every 5 minutes: a change that lasts longer than that is always logged.
+[Unit]
+Description=STF deploy watch every 5 minutes
+
+[Timer]
+OnCalendar=*:0/5
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

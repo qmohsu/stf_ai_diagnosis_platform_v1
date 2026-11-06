@@ -2,7 +2,7 @@
 
 import uvicorn
 
-from stf_v3.windows_runtime import configure_windows_event_loop
+from windows_runtime import configure_windows_event_loop
 
 
 def main() -> None:

@@ -50,7 +50,6 @@ function Read-V3Environment {
 
   foreach ($required in @(
     "STF_V3_DATABASE_URL",
-    "STF_V3_OWNER_DATABASE_URL",
     "STF_V3_JWT_SECRET"
   )) {
     if (-not $variables.ContainsKey($required) -or [string]::IsNullOrEmpty($variables[$required])) {
@@ -302,7 +301,7 @@ function Ensure-V3Ready {
   }
 
   Write-Host "[OBD Expert] Starting the V3 login service in a separate window..." -ForegroundColor Cyan
-  $apiCommand = '"' + $v3Python + '" -m stf_v3.windows_server'
+  $apiCommand = '"' + $v3Python + '" "' + (Join-Path $PSScriptRoot "windows_server.py") + '"'
   try {
     $v3Variables = Read-V3Environment
   }

@@ -4,7 +4,9 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$v3Root = Split-Path -Parent $PSScriptRoot
+$frontendRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent $frontendRoot
+$v3Root = Join-Path $repoRoot "stf_v3"
 $dataRoot = Join-Path $v3Root "data"
 $statusPath = Join-Path $dataRoot "setup-local-status.json"
 $environmentRoot = Join-Path `
@@ -194,7 +196,6 @@ ALTER DATABASE stf_v3 OWNER TO stf_v3;
 
   $environmentLines = @(
     "STF_V3_DATABASE_URL=${appUrl}",
-    "STF_V3_OWNER_DATABASE_URL=${ownerUrl}",
     "STF_V3_JWT_SECRET=${jwtSecret}",
     "STF_V3_ENVIRONMENT=dev",
     "STF_V3_OBD_LOG_STORAGE_PATH=./data/obd_logs",

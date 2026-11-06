@@ -48,7 +48,7 @@ flowchart LR
 | 3. 車載設備尚未實車自動上傳 | [上傳器](../obd_agent/jetson_uploader.py)和 `/v3/ingest/device` 已有代碼，網頁可向 manager 提供一次性憑證；實際設備行程、斷網補傳和重啟後補傳尚未驗收。 | 按 [issue #257](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/257)在**車上設備**配置每車憑證、上傳觸發與定時補傳，完成自檢和真實行程；在 `docs/v3_device_install.md` 記錄脫敏結果。只有發現缺陷才改 `obd_agent/` 或 `stf_v3/`；真實 VIN、令牌和邀請碼不進 Git 倉庫。 |
 | 4. 首批真實用戶閉環尚未完成 | 專用測試車隊的一次性邀請碼註冊與登入已通過；建車、上傳、診斷、報告仍只在模擬 V3 下測試。PROD-12、PROD-13、PROD-15B 仍要求真實 pilot 用戶、日誌與手機診斷。 | 在伺服器與運維流程中發放真實邀請碼、配置第二位 manager、劃定測試與真實工作坊邊界，讓 pilot 用戶在手機上完成一次真實診斷；發現問題再修 `obd-ui-v3/`、`stf_v3/` 或 `infra/`，並更新 `docs/v3_dev_plan.md` 的驗收狀態。 |
 | 5. 手機安裝與真實弱網未驗收 | 已有 [manifest](src/app/manifest.ts)、`public/` 圖標、靜態離線殼和 [上傳進度／取消／重試](src/components/log-upload.tsx)；模擬慢請求不等於真機弱網。 | 在 `obd-ui-v3/src/app/`、`obd-ui-v3/public/`、`obd-ui-v3/tests/e2e/` 修復實測兼容問題；按 PROD-14 驗證 Android Chrome、iOS Safari 安裝、Lighthouse PWA、離線私有資料不回顯及弱網上傳。 |
-| 6. 最終報告雙視圖未定、未實現 | [診斷頁](src/components/conversation-view.tsx)有**過程**的「簡明進度／技術細節」切換；報告本身仍是一個 Markdown 視圖，不能用過程雙視圖代替 PROD-13 驗收。 | 先與維護者確定報告兩種視圖的內容，再改 `obd-ui-v3/src/components/` 及測試；只有現有報告資料不足時才改 `stf_v3/diagnosis/`、`docs/api/`，並同步 V3 文檔。 |
+| 6. 診斷過程雙視圖待線上驗收 | [診斷頁](src/components/conversation-view.tsx)已有「簡明進度／技術細節」兩種過程顯示；按 [PR #269 維護者決定](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/pull/269)，最終報告維持單一視圖。 | 在 PolyU 公開 HTTPS 網站用手機與電腦驗證過程切換、刷新恢復和最終報告；發現實際問題後再修前端並同步 V3 文檔。 |
 | 7. 引用品質需要真實手冊核對 | fork 可開啟入庫後的**轉換版 Markdown 章節和圖片**，不是原始 PDF 頁；前端已限制只有 `trace` 手冊引用可點，`NO_SOURCE` 標為未核實且不提供連結。同名章節的唯一定位由本地 V3 接口驗證。模擬手冊仍不能證明真實卷的結論準確；PolyU 運行版和 canonical 尚未包含新增讀取接口。 | 合入 `stf_v3/knowledge/`、`obd-ui-v3/` 和 `docs/api/` 後，按 [V3 運維手冊](../docs/v3_ops_runbook.md)用真實手冊卷核對報告結論、章節原串、原文段落、圖片、同名章節及 `NO_SOURCE`；若結論缺證據，再修 `stf_v3/diagnosis/` 的生成與評測。 |
 
 以上是 issue #270 的 Stage 1 與部署差距。車隊病歷與 Dashboard、報告追問、自由對話、上傳後自動診斷、相似案例和車端視覺 AI 屬後續階段或研究事項，不應為了關閉本表而提前加入。
@@ -63,7 +63,7 @@ npm ci
 npm run dev
 ```
 
-開啟 `http://127.0.0.1:3001`。本地 `OBD Expert.cmd` 仍可作為開發輔助啟動 V3 API 和前端；正式使用者只訪問 PolyU 服務器網站。
+開啟 `http://127.0.0.1:3001`。Windows 本地聯調首次使用時，先安裝 Python 3.12 和 PostgreSQL 15，執行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup_local_windows.ps1`；腳本會要求輸入本機 PostgreSQL 管理員密碼，並把應用資料庫連線與 JWT 密鑰寫到用戶私有的 `%LOCALAPPDATA%\OBD Expert\stf_v3.env`。其後可用 `OBD Expert.cmd` 啟動本機 V3 API 和前端。這些啟動腳本只供開發聯調；正式使用者只訪問 PolyU 服務器網站。
 
 | 變數 | 用途 |
 | --- | --- |

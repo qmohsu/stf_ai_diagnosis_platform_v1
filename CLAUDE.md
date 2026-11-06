@@ -301,9 +301,10 @@ When the user says **"deploy to server"** or **"update the server"**, follow thi
 
 ## V3 Deployment (stf_v3 — independent service, PROD-04)
 
-V3 runs beside V1/V2 as three long-running containers (`stf-v3-api` reachable
-at 127.0.0.1:8002, `stf-v3-worker`, and `stf-v3-frontend` bound to 127.0.0.1:3002).
-Nginx proxies `/v3/` to the API and `/` to the frontend.
+The deployed V3 API and worker run beside V1/V2. This checkout also defines
+`stf-v3-frontend` on 127.0.0.1:3002 and a planned Nginx `/` cutover to it;
+public frontend deployment remains unverified. The existing `/v3/` API route
+continues to target `stf-v3-api` on 127.0.0.1:8002.
 
 ### V3 frontend revision test and root cutover (issue #270)
 
@@ -311,20 +312,22 @@ Nginx proxies `/v3/` to the API and `/` to the frontend.
    IDs and revision labels, and the current nginx configuration. For issue #270,
    select an approved, immutable commit from the `SpaceDX666` fork; do not
    assume the server's `origin` points to that fork. Verify `/v3/health` before
-   changing anything. After recording the original checkout, fetch the fork's
-   `main` and compare its tip to the approved full SHA before selecting it,
-   without changing the server's configured remotes:
+   changing anything. After recording the original checkout, fetch the
+   approved PR branch/ref from its actual remote and compare its tip to the
+   reviewed full SHA before selecting it, without changing server remotes:
    ```bash
    cd ~/stf_ai_diagnosis_platform_v1
+   APPROVED_REMOTE='https://github.com/SpaceDX666/stf_ai_diagnosis_platform_v1.git'
+   APPROVED_REF='PASTE_REVIEWED_BRANCH_OR_REF'
    APPROVED_SHA='PASTE_REVIEWED_40_CHAR_SHA'
    [[ "$APPROVED_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
-   git fetch --no-tags https://github.com/SpaceDX666/stf_ai_diagnosis_platform_v1.git main
+   git fetch --no-tags "$APPROVED_REMOTE" "$APPROVED_REF"
    test "$(git rev-parse FETCH_HEAD)" = "$APPROVED_SHA" || exit 1
    git switch --detach "$APPROVED_SHA"
    test "$(git rev-parse HEAD)" = "$APPROVED_SHA" || exit 1
    ```
-   If fork `main` has advanced, stop and obtain a newly reviewed SHA; never
-   silently deploy its new tip.
+   If the approved ref has advanced, stop and obtain a newly reviewed SHA;
+   never silently deploy its new tip.
    If Cloudflare or the V3 API already returns 502, record that baseline and
    fix ingress first; do not call the frontend browser test complete.
 2. The issue #270 diagnosis follow-up also adds V3 manual section/image API
@@ -538,6 +541,18 @@ stf_v3/scripts/db_roles.sh`, idempotent): `stf_v3_app` CONNECTION LIMIT 50 (pool
 (sizes, re-created volumes, dir modes — WARN only).  CI job `vin-scan` (no path
 filter) fails on any VIN-shaped string except the two fakes (+ one textbook example);
 the repo is public, never paste a real VIN anywhere (runbook §7.7).
+**Collaborator access + deploy watch (#272, 2026-10-30)**: the frontend
+collaborator's server account reads our home dir through ONE ACL entry
+(`setfacl -m u:<account>:r-x ~`): read-only, no writes; changes to backend
+code / deploys / APIs need the user's approval.  Our umask is 0002, so anything
+secret (keys, real VINs, logs, exports) must be chmod 600 / 700 when created.
+Host timer `stf-v3-deploy-watch.timer` (every 5 min, runs the installed copy in
+`~/.local/share/stf_deploy_watch/`) logs every change to the checkout, `stf-*`
+containers, host workers, live OpenAPI and alembic heads into `~/stf_v3_status/`.
+Run `python3 ~/.local/share/stf_deploy_watch/deploy_watch.py report` at the start
+of server work (a change we did not make = someone else touched the backend) and
+`… ack --note "<what we did>"` after every deploy / branch verification.  Install
+/ check: `bash stf_v3/ops/install_deploy_watch.sh [--check]` (runbook §10).
 
 **Branch verification (every V3 PR)** — run on the server:
 ```
@@ -560,8 +575,10 @@ bash stf_v3/scripts/deploy_check.sh                                    # 10 chec
 #   create_database.sh stf_v3_test → alembic upgrade → podman run -d --name stf-v3-api-test --network host #   -e STF_V3_DATABASE_URL=<app url to stf_v3_test> -e STF_V3_JWT_SECRET=<random> stf-v3:local #   uvicorn stf_v3.main:app --host 127.0.0.1 --port 8003 → create_workshop.py → smoke_e2e.py --base-url http://127.0.0.1:8003
 #   → rm container, DROP DATABASE stf_v3_test
 bash stf_v3/scripts/isolation_check.sh compare                        # must print PASS
-# Restore the original recorded server branch and exact commit (see the
-# branch-test rollback above); do not assume this server's origin/main is the PR fork.
+# Restore the original recorded server branch and exact commit; do not assume
+# this server's origin/main is the PR fork.
+# Inspect deploy_watch.py report and resolve unknown changes before acknowledging.
+python3 ~/.local/share/stf_deploy_watch/deploy_watch.py ack --note "branch <branch> verified"
 ```
 **Always pass `-p stf_v3`**: without a project name podman-compose uses the
 directory name (`infra`) and puts V3 into the SAME pod as V1/V2, so `down`
@@ -575,7 +592,7 @@ image whose commit label differs from `git rev-parse HEAD`.
 pull main → confirm `STF_V3_FRONTEND_ORIGIN` in `infra/.env` → `predeploy_check.sh`
 → build with `GIT_COMMIT` → `--profile migrate … run --rm stf-v3-migrate alembic upgrade head`
 → `down` + `up -d stf-v3-api stf-v3-worker stf-v3-frontend` → `deploy_check.sh`
-→ `isolation_check.sh compare`.
+→ `isolation_check.sh compare` → `deploy_watch.py ack --note "main <sha> deployed"`.
 
 **CI** (`.github/workflows/v3.yml`, V3 paths only): unit + contract
 (pytest offline, import-linter, OpenAPI `--check`), integration (throwaway

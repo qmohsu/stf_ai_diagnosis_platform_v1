@@ -1,6 +1,6 @@
 # PolyU Server Deployment Guide
 
-> Last updated: 2026-10-30 | GitHub Issues: #21, #24, #270
+> Last updated: 2026-11-06 | GitHub Issues: #21, #24, #270, #275
 
 The first-time setup sections record the original V1/V2 deployment. For
 the V3 frontend root switch, follow [Updating Deployments](#updating-deployments)
@@ -234,14 +234,16 @@ The setup script will:
 
 The commands below describe the historical V1/V2 stack. For the issue #270
 V3 frontend cutover, use the V3 Compose project and exact-revision test/restore
-procedure in the repository root `CLAUDE.md`. First record the server's Git
-remotes, original branch and full commit, running image revisions, and Nginx
-configuration. Fetch fork `main` explicitly from
-`https://github.com/SpaceDX666/stf_ai_diagnosis_platform_v1.git`, verify
-`FETCH_HEAD` equals the previously approved full commit SHA, and only then
-switch to that SHA; the server's `origin` may point elsewhere. If fork `main`
-has moved, stop and review its new commit before testing. The frontend's public
-origin is `https://stf-diagnosis.dev`. Health and the login page can be checked
+procedure in the repository root `CLAUDE.md`. Start with
+`python3 ~/.local/share/stf_deploy_watch/deploy_watch.py report`; investigate
+any change that is not explained by the recorded deployment. Record the
+server's Git remotes, original branch and full commit, running image revisions,
+and Nginx configuration. Fetch the approved PR branch or other reviewed ref
+from its actual repository, verify `FETCH_HEAD` equals the approved full
+commit SHA, and only then switch to that SHA; the server's `origin` may point
+elsewhere. If the ref has moved, stop and review its new commit before testing.
+The frontend's public origin is `https://stf-diagnosis.dev`. Health and the login
+page can be checked
 through a local SSH tunnel, but the authenticated browser flow requires the
 public HTTPS root because of the production Origin check. Repository
 configuration alone is not public-server validation.
@@ -269,6 +271,10 @@ revision, then verify image labels and V3 health. No V3 database migration is
 part of this revision; V1/V2 backends and their database need no restart.
 For a future root-only change that does not alter V3 code, the V3 API/worker
 can remain running.
+After branch verification and restoration, run
+`python3 ~/.local/share/stf_deploy_watch/deploy_watch.py ack --note "branch <branch> verified and checkout restored"`.
+For a lasting deployment, acknowledge the reviewed deployed commit instead;
+do not acknowledge unexplained changes.
 
 ### Automated
 
