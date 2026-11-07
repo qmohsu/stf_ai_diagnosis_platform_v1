@@ -252,7 +252,7 @@ def test_copy_script_verify_detects_missing_and_mismatch(tmp_path: pathlib.Path)
     assert problems == ["hash mismatch m.md"]
     (dst / "index" / "m.index.yaml").unlink()
     _, problems = cp.verify_tree(src, dst)
-    assert "missing index/m.index.yaml" in problems
+    assert f"missing {pathlib.Path('index') / 'm.index.yaml'}" in problems
 
 
 def test_copy_script_has_no_v2_database_access() -> None:
