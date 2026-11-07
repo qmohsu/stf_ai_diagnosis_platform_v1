@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Inter, "Noto Sans TC", "PingFang HK", "Microsoft JhengHei", "Microsoft YaHei", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+button, input, select { font: inherit; }
+button, a, select { min-height: 44px; }
+button { color: inherit; }
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: 3px solid #f5b700; outline-offset: 2px; }
+.sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+.brand { display: flex; align-items: center; gap: 10px; color: #004d43; }
+.brand img { object-fit: contain; }
+.brand > div { display: flex; flex-direction: column; }
+.brand-word { font-size: 22px; line-height: 1; letter-spacing: .11em; font-weight: 850; }
+.brand-sub { margin-top: 4px; font-size: 8px; letter-spacing: .02em; }
