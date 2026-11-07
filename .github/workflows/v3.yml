@@ -9,6 +9,7 @@ on:
     # baseline-reset labels (PROD-10).
     types: [opened, synchronize, reopened, labeled, unlabeled]
     paths:
+      - "obd-ui-v3/**"
       - "stf_v3/**"
       - "infra/docker-compose.v3*"
       - "infra/docker-compose.vllm.yml"
@@ -25,6 +26,7 @@ on:
   push:
     branches: [main]
     paths:
+      - "obd-ui-v3/**"
       - "stf_v3/**"
       - "infra/docker-compose.v3*"
       - "infra/docker-compose.vllm.yml"
@@ -43,6 +45,38 @@ on:
   workflow_dispatch:
 
 jobs:
+  frontend:
+    name: V3 frontend (Node 24)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: obd-ui-v3/package-lock.json
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Windows launcher contract tests (offline)
+        run: python -m unittest discover -s obd-ui-v3/tests -p test_windows_local.py
+      - name: install locked frontend dependencies
+        working-directory: obd-ui-v3
+        run: npm ci
+      - name: typecheck, lint, unit tests, and production build
+        working-directory: obd-ui-v3
+        run: npm run verify
+      - name: install Playwright Chromium
+        working-directory: obd-ui-v3
+        run: npx playwright install --with-deps chromium
+      - name: browser tests (mock V3 API)
+        working-directory: obd-ui-v3
+        run: npm run test:e2e
+      - name: build pinned Node 24 frontend image
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: docker build --pull --file obd-ui-v3/Dockerfile --build-arg GIT_COMMIT="$HEAD_SHA" --tag stf-v3-frontend:ci obd-ui-v3
+
   unit-contract:
     name: unit + contract (offline)
     runs-on: ubuntu-latest
