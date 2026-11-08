@@ -5,6 +5,8 @@
 # Date: March 2026
 # ============================================================================
 # Run this script once on the PolyU GPU server after cloning the repo.
+# It prepares legacy foundation services; V3 frontend deployment and root
+# cutover are separate maintainer operations.
 # Prerequisites: Podman, podman-compose, NVIDIA Container Toolkit (CDI).
 # ============================================================================
 set -euo pipefail
@@ -103,7 +105,19 @@ ok "Required environment variables are set"
 info "Building and starting services..."
 cd "${INFRA_DIR}"
 
-${COMPOSE_CMD} up -d --build
+# Explicit services avoid starting obd-ui when an older podman-compose ignores
+# the PolyU legacy-ui profile. Never start nginx with a V3 root before its
+# frontend is healthy on host loopback.
+${COMPOSE_CMD} up -d --build postgres ollama diagnostic-api
+NGINX_STARTED=0
+if grep -qF 'server 127.0.0.1:3002;' "${INFRA_DIR}/nginx/nginx.conf" && \
+    ! curl -fsS http://127.0.0.1:3002/api/health >/dev/null; then
+    warn "V3 frontend is not ready on 127.0.0.1:3002; this helper will not start nginx."
+    warn "Deploy the V3 frontend, verify /api/health, then start nginx per the V3 runbook."
+else
+    ${COMPOSE_CMD} up -d nginx
+    NGINX_STARTED=1
+fi
 
 info "Waiting for services to start..."
 sleep 10
@@ -152,8 +166,10 @@ podman exec stf-postgres pg_isready -U "${POSTGRES_USER:-stf_user}" \
     || warn "PostgreSQL not ready"
 
 check_service "Ollama"         "http://127.0.0.1:${OLLAMA_PORT:-11434}/api/version" || true
-check_service "Diagnostic API" "http://127.0.0.1:${DIAGNOSTIC_API_PORT:-8000}/health" || true
-check_service "Nginx"          "http://127.0.0.1:${NGINX_PORT:-80}/health" || true
+check_service "Diagnostic API" "http://127.0.0.1:8001/health" || true
+if [[ "${NGINX_STARTED}" -eq 1 ]]; then
+    check_service "Nginx" "http://127.0.0.1:8080/health" || true
+fi
 
 # ── Step 6: Verify GPU inside Ollama ─────────────────────────────────────────
 info "Verifying GPU access inside Ollama container..."
@@ -170,12 +186,20 @@ fi
 # ── Done ─────────────────────────────────────────────────────────────────────
 echo ""
 info "========================================"
-ok   "Setup complete!"
+if [[ "${NGINX_STARTED}" -eq 1 ]]; then
+    ok "Legacy foundation and nginx responded."
+else
+    warn "Legacy foundation started; V3 frontend and nginx cutover remain pending."
+fi
 info "========================================"
 echo ""
 info "Access points:"
-echo "       Web UI:  http://<server-ip>:${NGINX_PORT:-80}"
-echo "       API:     http://<server-ip>:${NGINX_PORT:-80}/docs"
+if [[ "${NGINX_STARTED}" -eq 1 ]]; then
+    echo "       Web UI:  http://<server-ip>:8080"
+else
+    echo "       Web UI:  unavailable until the V3 frontend and nginx are started"
+fi
+echo "       Legacy API:  http://127.0.0.1:8001/docs (SSH tunnel)"
 echo ""
 info "Useful commands:"
 echo "       Logs:    ${COMPOSE_CMD} logs -f"

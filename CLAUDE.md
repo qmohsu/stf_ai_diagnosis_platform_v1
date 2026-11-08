@@ -228,9 +228,20 @@ After implementing something new (a feature, endpoint, or bug fix that is observ
 
 Skip this loop only for changes with no observable runtime behaviour (pure docs, comments, or internal refactors that can't be exercised in the browser) — those still get a PR and a report, just no deploy/E2E.
 
+**Issue #270 frontend cutover handoff:** For the V3 frontend PR ③, the
+maintainer explicitly owns PolyU deployment and public root switching. The
+contributor prepares configuration, tests, PR and rollback instructions, then
+reports CI evidence and remaining live checks; do not run branch deployment or
+browser tests on the production site under this PR. The maintainer uses
+`docs/v3_ops_runbook.md` §11 after review. Do not label configuration or CI
+results as a completed live deployment.
+
 ## Server Deployment (PolyU GPU Server)
 
-When the user says **"deploy to server"** or **"update the server"**, follow this procedure:
+This procedure is for the legacy V1/V2 stack. For the independent V3 frontend,
+use `docs/v3_ops_runbook.md` §11; its cutover changes only that frontend and
+the shared Nginx gateway, with no backend rebuild or database migration.
+When the user says **"deploy to server"** or **"update the server"** for V1/V2, follow this procedure:
 
 1. **Pre-flight: git state**: Run `git status` and `git log origin/main..HEAD` locally to verify all changes are committed and pushed to `origin/main`. If there are unpushed commits or uncommitted changes, warn the user and do NOT proceed until everything is pushed.
 2. **Pre-flight: migration backlog check**: List Alembic migrations added since the last successful deploy. Catches schema drift like the HARNESS-20 backlog that silently 500'd `/goldens` on 2026-05-24:
@@ -292,11 +303,17 @@ When the user says **"deploy to server"** or **"update the server"**, follow thi
 
 ## V3 Deployment (stf_v3 — independent service, PROD-04)
 
-V3 runs beside V1/V2 as two long-running containers (`stf-v3-api` on
-127.0.0.1:8002, `stf-v3-worker`) behind the existing nginx (`/v3/`).
-It never touches the V1/V2 containers or database. Variables live only in
-the server's `infra/.env` (`STF_V3_DATABASE_URL`, `STF_V3_APP_DATABASE_URL`,
-`STF_V3_JWT_SECRET`); the compose file refuses to start without them.
+The deployed V3 API (`stf-v3-api` on 127.0.0.1:8002) and worker run beside
+V1/V2 behind Nginx (`/v3/`). PR ③ defines a separate `stf-v3-frontend` on
+127.0.0.1:3002 and planned root route to it, but the maintainer has not yet
+deployed or switched the public site. The frontend requires
+`STF_V3_FRONTEND_ORIGIN` in the server's private `infra/.env` in addition to
+the existing V3 database URLs and JWT secret. It does not change V1/V2
+containers or databases; the cutover intentionally changes shared Nginx
+routing and leaves the old webpage available for rollback. Follow the exact
+revision, UID 1001 log-volume, health, real-IP and rollback checks in
+`docs/v3_ops_runbook.md` §11. Do not rebuild API/worker or run a migration
+solely for this frontend configuration PR.
 Raw uploaded logs live in the named volume `stf_v3_obd_logs` (mounted at
 `/app/data/obd_logs` in api + worker, PROD-05) — separate from V1's
 `diagnostic_api_obd_logs`; `deploy_check.sh` check 6 proves it is writable.
@@ -443,7 +460,10 @@ of server work (a change we did not make = someone else touched the backend) and
 `… ack --note "<what we did>"` after every deploy / branch verification.  Install
 / check: `bash stf_v3/ops/install_deploy_watch.sh [--check]` (runbook §10).
 
-**Branch verification (every V3 PR)** — run on the server:
+**Backend V3 branch verification** — run on the server only when the change
+actually affects the V3 API/worker. Frontend PR ③ follows runbook §11 and
+is deployed by the maintainer after review; do not apply this full-stack
+restart to a frontend-only branch:
 ```
 cd ~/stf_ai_diagnosis_platform_v1 && git fetch origin && git checkout <branch> && git pull origin <branch>
 bash stf_v3/scripts/predeploy_check.sh                                 # PROD-11: refuses while a diagnosis is unfinished / a manual converts (ALLOW_INTERRUPT=1 to override)
@@ -469,7 +489,7 @@ Podman 3.4 gotcha applies: always `down` + `up`, never trust `up -d --build`.
 `deploy_check.sh` fails on stale containers (created > 30 min ago) and on an
 image whose commit label differs from `git rev-parse HEAD`.
 
-**Main deployment** — same as above minus the smoke DB, after merging:
+**Backend V3 main deployment** — same as above minus the smoke DB, after merging:
 pull main → `predeploy_check.sh` → build with `GIT_COMMIT` → `--profile migrate … run --rm stf-v3-migrate alembic upgrade head`
 → `down` + `up -d stf-v3-api stf-v3-worker` → `deploy_check.sh` → `isolation_check.sh compare`
 → `deploy_watch.py ack --note "main <sha> deployed"`.

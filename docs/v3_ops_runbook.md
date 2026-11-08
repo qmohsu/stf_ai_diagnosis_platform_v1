@@ -2,12 +2,12 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.15（#272：§10 协作者只读访问与部署变动监控，§9 加一行；v0.14 为 PROD-15A PR ②） |
-| 日期 | 2026-10-30 |
+| 版本 | v0.16（issue #270：§11 前端切换与回滚；v0.15 为 #272 部署变动监控） |
+| 日期 | 2026-11-09 |
 | 作者 | Xiangzhu Yan |
-| 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
+| 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`、待部署的 `stf-v3-frontend`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
 
-后续章节按里程碑追加：部署 / 回滚（PROD-04 已在 CLAUDE.md "V3 Deployment"）、备份与恢复（§7，PROD-15A）、常见故障（PROD-15A）。
+后续章节按里程碑追加：后端部署 / 回滚（PROD-04 已在 CLAUDE.md "V3 Deployment"）、备份与恢复（§7，PROD-15A）、前端根路径切换（§11，配置待维护者执行）。
 
 ## 1. 队列（procrastinate）
 
@@ -541,6 +541,7 @@ podman rm -f -v stf-v3-restore-drill                        # 用完删掉（-v 
 | 存储巡检警告「卷被重建」 | 卷里旧数据已丢，从最近一份备份恢复该卷 | §7.2、§7.3 |
 | 要回滚到旧版本 | 部署前检查 + 回滚步骤 | §6.5 |
 | 后端好像被改过 / 不确定谁部署的 | `deploy_watch.py report` | §10.2 |
+| 前端首页 502、登录共享限流或日志卷不可写 | 前端 `/api/health`、Nginx 配置与客户端 IP、`stf_v3_frontend_logs` 所有权 | §11 |
 
 ## 10. 协作者只读访问与部署变动监控（#272）
 
@@ -582,3 +583,139 @@ bash stf_v3/ops/install_deploy_watch.sh [--check]                           # �
 - 定时器跑的是装在 `~/.local/share/stf_deploy_watch/`（700）的**副本**，不是检出里的脚本：检出是被监控的对象，分支验证时还会被切走。改了脚本要重跑安装，`--check` 会发现副本过期。
 - 某一项一时读不到（例如 podman 没响应）只记一条 `error.*`，不会被当成「容器全没了」。
 - 2026-10-30 装好时实测：往检出里放入、再删掉一个文件，两次都被记下。
+
+## 11. V3 前端切换与回滚（issue #270，PR ③）
+
+本节是**交给维护者执行**的步骤。PR ③ 只准备配置，尚未在 PolyU
+部署或切换公网根路径。它不修改 V3 后端、数据库模式或宿主机 GPU 工人；
+本次切换无需重建 API/worker、跑迁移或重启模型。`obd-ui` 旧镜像保留供回滚。
+
+### 11.1 部署前记录与前端预热
+
+先和管理员约定验证窗口，记录服务器的原分支、完整提交、`git remote -v`、
+`stf-nginx` 与 `stf-obd-ui` 的镜像 ID，以及当前 Nginx 配置；运行
+`deploy_watch.py report`、`/v3/health` 和旧首页检查。只使用维护者已审查的
+PR 完整 SHA：从 PR fork 的实际 URL fetch，核对 `FETCH_HEAD` 后再切到
+该提交；不要假定服务器的 `origin` 是 PR fork，也不要直接部署浮动分支名。
+维护者在**同一服务器终端**执行以下预检并把打印出的 `ORIGINAL_SHA`
+记入部署记录；`APPROVED_SHA` 从已审查的 PR head 复制完整 40 位值：
+
+```bash
+cd ~/stf_ai_diagnosis_platform_v1
+test -z "$(git status --porcelain)" || { echo 'server checkout is not clean'; exit 1; }
+ORIGINAL_SHA="$(git rev-parse HEAD)"
+printf 'ORIGINAL_SHA=%s\n' "$ORIGINAL_SHA"
+git symbolic-ref -q --short HEAD || true
+git remote -v
+APPROVED_REMOTE='https://github.com/SpaceDX666/stf_ai_diagnosis_platform_v1.git'
+APPROVED_REF='codex/v3-deployment-cutover'
+APPROVED_SHA='PASTE_REVIEWED_40_CHAR_SHA'
+[[ "$APPROVED_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+git fetch --no-tags "$APPROVED_REMOTE" "$APPROVED_REF"
+test "$(git rev-parse FETCH_HEAD)" = "$APPROVED_SHA" || exit 1
+git switch --detach "$APPROVED_SHA"
+test "$(git rev-parse HEAD)" = "$APPROVED_SHA" || exit 1
+```
+
+保持旧网页在 3001 运行，先在服务器私有 `infra/.env` 设置
+`STF_V3_FRONTEND_ORIGIN=https://stf-diagnosis.dev`（不要提交真实 `.env`）。
+
+前端以 UID/GID 1001 运行，`stf_v3_frontend_logs` 具名卷要可写。PolyU 的
+rootless Podman 3.4 不保证新卷自动归该 UID；首次启动前由**同一部署账号**
+准备卷，且仅调整此卷的所有权：
+
+```bash
+podman volume create stf_v3_frontend_logs
+FRONTEND_LOG_MOUNT="$(podman volume inspect stf_v3_frontend_logs --format '{{.Mountpoint}}')"
+test -n "$FRONTEND_LOG_MOUNT" && test -d "$FRONTEND_LOG_MOUNT" || exit 1
+podman unshare chown -R 1001:1001 "$FRONTEND_LOG_MOUNT"
+podman unshare chmod 0700 "$FRONTEND_LOG_MOUNT"
+```
+
+用独立项目名 `-p stf_v3` 和 V3 两份 Compose 只构建、重建
+`stf-v3-frontend`；Podman 3.4 的 `up --build` 不保证旧容器被重建。
+PolyU 覆盖让它仅监听 `127.0.0.1:3002`，BFF 从本机访问
+`127.0.0.1:8002`：
+
+```bash
+cd ~/stf_ai_diagnosis_platform_v1/infra
+GIT_COMMIT="$(git -C .. rev-parse HEAD)" ~/.local/bin/podman-compose -p stf_v3 \
+  -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml build stf-v3-frontend
+podman rm -f stf-v3-frontend 2>/dev/null || true
+~/.local/bin/podman-compose -p stf_v3 \
+  -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-frontend
+```
+
+启动后检查新容器创建时间和镜像 revision 标签、
+`curl -fsS http://127.0.0.1:3002/api/health`、登录页及日志卷：
+
+```bash
+podman exec stf-v3-frontend sh -c 'test "$(id -u)" = 1001 && test -w /var/log/stf-v3-frontend'
+curl -fsS http://127.0.0.1:3002/api/health
+podman unshare ls -l "$FRONTEND_LOG_MOUNT"/access-*.jsonl
+```
+
+若卷不可写、前端不能访问 V3 或健康检查失败，**停止切换**。请求后应在
+卷里有当天的访问记录；重建前端后仍能读到同一文件。日志按 UTC 日切、
+压缩并保留 30 天；记录只含固定路由、状态及已验证的 ID，不含令牌、VIN、
+原始 URL 或查询串，Nginx 访问日志也不保存真实 IP 和原始 URL。
+
+### 11.2 网关切换与验收
+
+在前端就绪后才重建 `stf-nginx`。`nginx.conf` 是单文件 bind mount：Git
+切换可能替换 inode，单纯 `nginx -s reload` 会继续读旧文件。重建后在容器
+内执行 `nginx -t`，确认根路径 upstream 为 3002、`/v1/`、`/v2/`、
+`/v3/` 仍在，并分别检查本机前端健康、V3 健康及旧后端健康。Nginx
+只从本机 cloudflared 连接信任 `CF-Connecting-IP`，再覆盖传给 BFF 的
+`X-Real-IP`；非本机来源自报的该头不得影响限流键。
+
+```bash
+cd ~/stf_ai_diagnosis_platform_v1/infra
+podman rm -f stf-nginx
+~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d nginx
+podman exec stf-nginx nginx -t
+podman exec stf-nginx grep 'server 127.0.0.1:3002' /etc/nginx/nginx.conf
+curl -fsS http://127.0.0.1:8080/api/health
+curl -fsS http://127.0.0.1:8080/v3/health
+curl -fsS http://127.0.0.1:8080/health
+```
+
+用公网 HTTPS 的干净手机与桌面浏览器，在隔离测试车队验证邀请码注册、
+登录、建车、上传、诊断过程 SSE 与刷新回放、单一报告、已入库手册原文及
+图片引用；同时确认旧 `/v1/`、`/v2/` 和 `/v3/health`。登录等写入接口
+必须带正式公网 Origin；用 SSH 隧道打开的其他 Origin 被拒绝是预期结果。
+真实 Jetson 行程与补传、弱网和 Android/iOS 安装另列 PROD-12～14，
+不能因配置 CI 通过就记作已验收。全部通过后再停止旧 `stf-obd-ui`，保留
+旧镜像和 3001 回滚方式，并核对部署变动监控后确认本次变更。
+
+### 11.3 失败回滚
+
+若前端、登录、真实 IP、SSE 或手册引用验收失败，先恢复记录的服务器
+原提交及原 Nginx 配置，启动旧 `stf-obd-ui` 并确认 3001 健康；随后
+**重建** `stf-nginx` 让单文件挂载指向旧配置，执行 `nginx -t` 并验证
+公网根路径回到旧网页。停止测试前端，保留 `stf_v3_frontend_logs` 卷供
+排障，**不要**运行 `podman volume rm` 或 `down -v`。后端、数据库、GPU
+工人未因本次切换变动，回滚时也无需重建或迁移。把验收失败和回滚结果记入
+PR；若发现部署监控有非本次操作的变化，先调查再确认。
+
+```bash
+# 填入 §11.1 部署记录中的原提交；只在原检出无未提交改动时切换。
+ORIGINAL_SHA='PASTE_RECORDED_ORIGINAL_40_CHAR_SHA'
+[[ "$ORIGINAL_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+cd ~/stf_ai_diagnosis_platform_v1
+git switch --detach "$ORIGINAL_SHA"
+test "$(git rev-parse HEAD)" = "$ORIGINAL_SHA" || exit 1
+cd infra
+podman start stf-obd-ui || ~/.local/bin/podman-compose \
+  -f docker-compose.yml -f docker-compose.polyu.yml up -d obd-ui
+curl -fsS http://127.0.0.1:3001/ >/dev/null || exit 1
+podman rm -f stf-nginx
+~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d nginx
+podman exec stf-nginx nginx -t
+podman exec stf-nginx grep 'server 127.0.0.1:3001' /etc/nginx/nginx.conf
+curl -fsS http://127.0.0.1:8080/ >/dev/null || exit 1
+podman rm -f stf-v3-frontend
+```
+
+**修订记录**：v0.16（2026-11-09）加入 §11 上线准备、可信隧道 IP、
+日志卷、验收与回滚；配置提交不代表 PolyU 已切换。
