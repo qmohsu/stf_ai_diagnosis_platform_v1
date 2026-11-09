@@ -1,6 +1,6 @@
 # PolyU Server Deployment Guide
 
-> Last updated: 2026-03-25 | GitHub Issues: #21, #24
+> Last updated: 2026-11-09 | GitHub Issues: #21, #24, #270
 
 ## Table of Contents
 
@@ -87,9 +87,16 @@ Internet (HTTPS)          Campus Network / VPN
 
 - **Cloudflare Tunnel** provides public HTTPS access via `stf-diagnosis.dev`.
 - **Nginx** is the sole internal gateway (port 8080).
-- All other services bind to `127.0.0.1` (container-internal network).
-- Browser requests to `/v1/*`, `/v2/*`, `/auth/*`, `/health`, `/docs` are
-  proxied to the FastAPI backend; everything else goes to the Next.js frontend.
+- PolyU containers use host networking, so their listeners are host sockets.
+  The V3 API and proposed V3 frontend bind loopback ports 8002 and 3002;
+  check legacy service bindings and the host firewall separately. The
+  Cloudflare tunnel is the intended public path to Nginx.
+- Current production root still reaches the legacy `obd-ui` on port 3001.
+  PR ③ prepares a separate V3 frontend on 3002 and Nginx root cutover;
+  the maintainer has not deployed or verified that change yet.
+- `/v1/*`, `/v2/*`, `/auth/*` and `/health` remain on the V1/V2 API;
+  `/v3/*` remains on the V3 API. The proposed `/api/auth/*` and site root
+  go to the V3 frontend. Public `/docs` is not routed by Nginx.
 - SSE streaming (`/v2/obd/{id}/diagnose`) has `proxy_buffering off` for
   real-time token delivery.
 
@@ -154,13 +161,15 @@ git clone <repo-url> && cd stf_ai_diagnosis_platform_v1
 bash infra/scripts/polyu-setup.sh
 ```
 
-The setup script will:
+The legacy foundation setup script will:
 1. Verify Podman, podman-compose, and NVIDIA CDI
 2. Copy `.env.polyu.example` to `.env` (prompts you to edit)
-3. Build and start all services
+3. Build and start Postgres, Ollama and diagnostic-api; start Nginx only
+   when a V3 frontend is already healthy on loopback 3002
 4. Pull Ollama models (qwen3.5:27b-q8_0, nomic-embed-text, llava)
 5. Run health checks
-6. Print access URLs
+6. Print available local access URLs. The V3 frontend and public root
+   are separate maintainer operations in `docs/v3_ops_runbook.md` §11.
 
 ### Manual step-by-step
 
@@ -191,8 +200,12 @@ The setup script will:
    podman-compose \
        -f infra/docker-compose.yml \
        -f infra/docker-compose.polyu.yml \
-       up -d --build
+       up -d --build postgres ollama diagnostic-api
    ```
+
+   Do not start the proposed V3-root Nginx configuration until the
+   frontend has been built, its log volume is writable and
+   `127.0.0.1:3002/api/health` passes (runbook §11).
 
 4. **Pull Ollama models:**
 
@@ -211,16 +224,24 @@ The setup script will:
 6. **Check health:**
 
    ```bash
-   curl http://127.0.0.1:80/health        # Nginx -> API
-   curl http://127.0.0.1:8000/health       # API direct
+   curl http://127.0.0.1:8001/health       # legacy API direct
    podman exec stf-postgres pg_isready -U stf_user -d stf_diagnosis
    ```
+
+   Once the maintainer has completed V3 cutover, also check
+   `http://127.0.0.1:3002/api/health` and
+   `http://127.0.0.1:8080/health`.
 
 ---
 
 ## Updating Deployments
 
 ### Automated
+
+The helper below updates **legacy V1/V2 services only**. It guards against
+reloading the proposed V3-root Nginx config while the new frontend is
+unavailable. For V3 frontend build, access-log volume, gateway cutover and
+rollback, the maintainer follows `docs/v3_ops_runbook.md` §11 instead.
 
 ```bash
 ssh polyu-gpu
@@ -230,15 +251,12 @@ bash infra/scripts/polyu-deploy.sh
 
 ### Manual
 
-```bash
-ssh polyu-gpu
-cd /path/to/stf_ai_diagnosis_platform_v1
-git pull
-podman-compose \
-    -f infra/docker-compose.yml \
-    -f infra/docker-compose.polyu.yml \
-    up -d --build
-```
+Avoid an unqualified `podman-compose up -d --build` at cutover: older
+podman-compose versions may start the optional old UI, and Podman 3.4 can
+leave an existing container on its old image. Use the service-specific,
+exact-revision procedure in `docs/v3_ops_runbook.md` §11 for the V3
+frontend; for legacy updates use `infra/scripts/polyu-deploy.sh` and
+verify the running image revisions.
 
 ### Update workflow
 
@@ -249,6 +267,12 @@ git push origin main   ------>     ssh polyu-gpu
                                    cd /path/to/project
                                    bash infra/scripts/polyu-deploy.sh
 ```
+
+The diagram above is historical for legacy updates. PR ③ changes the
+shared Nginx root only after the V3 frontend passes preflight; the
+maintainer deploys that reviewed commit and checks login, SSE, manual
+citations, legacy API health and rollback per the V3 runbook. This PR
+does not itself change the live server.
 
 ---
 
@@ -473,8 +497,14 @@ Internet (HTTPS)
   cloudflared (systemd user service)
        |
        v
-  Nginx (:8080)  -->  obd-ui (:3001) / diagnostic-api (:8001)
+  Nginx (:8080)  -->  current obd-ui (:3001) / diagnostic-api (:8001)
 ```
+
+After maintainer cutover, the proposed root points to `stf-v3-frontend`
+on 127.0.0.1:3002; `/v3/` still reaches `stf-v3-api` on 8002 and
+V1/V2 API paths remain. Nginx trusts `CF-Connecting-IP` only from the
+local cloudflared connection before forwarding `X-Real-IP`, so the BFF
+login limit is per client. The legacy UI stays available for rollback.
 
 ### Configuration
 

@@ -48,6 +48,16 @@ Critical path dependency: DO‑01 → DO‑06 → (APP‑02B + APP‑03) → INT
 
 **Deployment Path:** DO‑01 → DO‑07 (PolyU GPU server deployment: Podman + CDI + Nginx).
 
+**Issue #270 shared-gateway follow-up (PR ③):** V3 uses an independent
+Compose project and frontend on port 3002. The existing PolyU Nginx
+configuration is prepared to route the public root and `/api/auth/` to V3,
+while V1/V2 API routes stay on diagnostic_api. Local cloudflared is the
+only trusted source of `CF-Connecting-IP`; Nginx passes the resulting
+address to the BFF as `X-Real-IP`. The old `obd-ui` stays available for
+rollback but is removed from routine PolyU startup. This is configuration
+only: the maintainer will perform public cutover and verification; no V1/V2
+endpoint or schema is changed.
+
 **RAG Image Parsing Path:** APP‑03 → APP‑22 (PDF image parsing: OCR + vision + page render + CJK translation + image-aware chunking).
 
 **Structured Manual Path:** APP‑40 (markdown schema spec, GitHub Issue #33) → Phase 1b converter (`md_export.py`, GitHub Issue #34) ✅ → APP‑42 (parser quality fixes, GitHub Issues #41 #42 #43 #44) ✅ → APP‑43 (static manual viewer, GitHub Issue #48) ✅ → Phase 2a navigation tools (#32) → Phase 2b A/B comparison (#32).
@@ -403,11 +413,18 @@ Deliverables:
 
 Acceptance Criteria:
 Podman compose override correctly adds CDI GPU device to Ollama container ✓
-Nginx proxies frontend and API behind a single port (80) ✓
+Nginx proxies frontend and API behind a single gateway port (PolyU: 8080) ✓
 SSE streaming works through Nginx (proxy_buffering off) ✓
 Setup script validates prerequisites and automates first-time deployment ✓
 Deploy script pulls latest code and rebuilds with health checks ✓
 Deployment guide covers setup, update, backup, monitoring, troubleshooting ✓
+
+**2026-11-09 update (issue #270 PR ③):** `polyu-setup.sh` and
+`polyu-deploy.sh` retain the legacy service helpers without restarting
+the optional old UI during a V3 root cutover. V3 frontend deployment,
+UID 1001 access-log volume preparation, health checks and rollback are
+documented in `docs/v3_ops_runbook.md` §11 and are performed by the
+maintainer after review. Existing DO‑07 acceptance above remains historical.
 
 ### 3.2 Full-Stack AI Application Engineer Tickets
 #### APP‑01 — ~~API skeleton with OpenAPI + strict request/response schemas~~ REMOVED — R&D prototype
@@ -2209,6 +2226,7 @@ If you want, I can also convert these into a ready-to-import backlog format (CSV
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-11-09 | v5.19 | Issue #270 PR ③ shared PolyU gateway follow-up: V3 frontend gets its own Compose service and root route; V1/V2 API routes remain, old UI is kept for rollback but removed from routine startup. Nginx trusts client IP only from local cloudflared, and the maintainer owns deployment/cutover. DO‑07 and §2.2 updated; no V1/V2 API or schema change. |
 | 2026-07-12 | v5.18 | APP-64 (GitHub issue #188, follow-up to APP-63/#157) — **vehicle-scoped RAG retrieval on the PREMIUM OBD diagnose path**. `obd_premium.py`'s single `retrieve_context(rag_query, top_k=3)` call (the `/diagnose/premium` pre-stream retrieval) had the same cross-manual contamination APP-63 fixed on the standard path — a Yamaha session could pull Toyota Corolla chunks into the premium LLM context. **Fix** mirrors APP-63 exactly: the call now passes `vehicle_model=session_data.vehicle_model` (the `SessionData` field APP-63 introduced; `_get_session_data` is already shared), `None` (historical sessions) falls back unfiltered, and an empty *filtered* result logs `premium_diagnosis_rag_retrieval_empty` (session_id + vehicle_model) and degrades like the existing no-context path (empty context string, generation proceeds). Safe because APP-62's exact-scan fallback is live. **Tests**: `TestPremiumRetrievalVehicleFilter` in `test_obd_premium.py` (vehicle forwarded; `None` fallback; empty-filtered result still streams to `done`) — premium suite 20 pass, broader sweep 117 pass. |
 | 2026-07-12 | v5.17 | APP-63 (GitHub issue #157, HARNESS-23 eval follow-up T13) — **vehicle-scoped RAG retrieval on OBD diagnose**. Production `POST /v2/obd/{id}/diagnose` and the `/feedback/rag` retrieved-text snapshot called `retrieve_context(rag_query, top_k=…)` with **no `vehicle_model` filter**, so the LLM context mixed in the wrong vehicle's manual — proven cross-manual contamination: a Yamaha brake query returned Toyota Corolla content ("Rear brake pads renewal", "VVT-i models"). The session has known its vehicle since APP-60 (`obd_analysis_sessions.vehicle_model`). **Fix** (`obd_analysis.py`): `SessionData` gains a `vehicle_model` field (populated by `_get_session_data` from the session row); both retrieval call sites now pass `vehicle_model=session.vehicle_model`. `None` (historical pre-APP-60 sessions) falls back to unfiltered retrieval — a session without a known vehicle keeps working unchanged. If the *filtered* query returns 0 chunks, a structured warning (`diagnosis_rag_retrieval_empty` / `rag_feedback_retrieval_empty`, with session_id + vehicle_model) is logged and the flow degrades exactly like the pre-existing no-context path (empty context string; generation proceeds). **Depends on #156** (filtered-HNSW recall starvation): on the unfixed HNSW path this filter starves retrieval to 0 rows with today's 2-manual corpus — merge after #156's fix. **Tests**: 5 offline unit tests in `test_obd_analysis.py` (session `vehicle_model` forwarded on diagnose + rag-feedback retrieval, `None` fallback on both, graceful empty-filtered-retrieval degradation with empty LLM context). Offline-verified only (no live DB/LLM in the worktree); the end-to-end check (a Yamaha session retrieves only Yamaha chunks) rides on the #156 deploy loop. `design_doc.md` §8.3.6 `/diagnose` description updated (v5.16). |
 | 2026-07-12 | v5.16 | APP-62 (HARNESS-23 follow-up T12, GitHub issue #156, blocks #157) — **exact-scan fallback for `vehicle_model`-filtered retrieval**. PRODUCTION BUG: with >=2 manuals sharing the HNSW index (Yamaha TRICITY155, 1665 chunks + Toyota Corolla E11, 3051 chunks), `retrieve_context(vehicle_model=...)` returned **0 rows** even at the pgvector 0.7.4 maximum `hnsw.ef_search=1000` — HNSW selects approximate nearest neighbours FIRST and applies the filter AFTER, so the larger manual crowds the filtered one out of the candidate pool entirely (proven during the HARNESS-23 first round; the eval sidestepped it with its own exact-scan adapter `rag_runner._sync_exact_vector_query` while production kept the bug). pgvector 0.7.4 has no `hnsw.iterative_scan`, so the fix is issue #156 option (a): new `_force_exact_scan_for_filter` in `app/rag/retrieve.py` emits `SET LOCAL enable_indexscan = off` + `enable_bitmapscan = off` (transaction-scoped — unfiltered queries on other connections keep HNSW) whenever a hard `vehicle_model` filter is set; `_sync_vector_query` **and** `_sync_hybrid_query` (its semantic CTE has the same starvation) call it and log `rag_retrieval mode=... scan_path=exact\|hnsw vehicle_model=...`. Exact scan is cheap at this corpus scale (~5k chunks, <=3051 per manual, sub-100 ms) and returns identical cosine scores in true order. No signature changes; unfiltered callers byte-identical; keyword mode untouched (GIN, unaffected). **Tests**: new `tests/rag/test_retrieve_exact_scan.py` (11) — filtered vector/hybrid emit the overrides before the SELECT, unfiltered emit none, helper path labels, scan-path logging, filtered-rows regression shape (29 RAG unit tests green; evals suite 202 passed / 61 skipped). Live proof (TRICITY155 filter returns >0 rows alongside Corolla E11) is the post-merge server verification — no live Postgres in the dev worktree. |

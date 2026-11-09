@@ -1,6 +1,6 @@
 # STF V3 前端
 
-Next.js 15 工作坊前端，提供邀請碼註冊與登入、工作坊建車、網頁上傳行車日誌、設備憑證、一鍵診斷、過程直播與回放、報告和手冊引用。手機與電腦使用同一個響應式網頁。[後端手冊來源接口 PR #276](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/pull/276) 已合入原倉庫。本前端尚未在 PolyU 部署，也未切換網站首頁；Compose、Nginx、持久日誌卷與正式回滾配置屬後續上線 PR。
+Next.js 15 工作坊前端，提供邀請碼註冊與登入、工作坊建車、網頁上傳行車日誌、設備憑證、一鍵診斷、過程直播與回放、報告和手冊引用。手機與電腦使用同一個響應式網頁。[後端手冊來源接口 PR #276](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/pull/276) 與[前端 PR #277](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/pull/277) 已合入。PR ③ 準備 Compose、Nginx、持久日誌卷與回滾配置；本前端仍未在 PolyU 部署或切換網站首頁，部署和切換由維護者執行。
 
 ## 運行邊界
 
@@ -8,18 +8,19 @@ Next.js 15 工作坊前端，提供邀請碼註冊與登入、工作坊建車、
 - `/register` 使用邀請碼註冊；`/` 顯示工作坊；工作坊頁提供車輛搜尋、分頁與建車；車輛頁提供車檔、日誌、手動上傳、診斷歷史與 manager 設備憑證。單份日誌最多 50 MB，上傳只入庫，不自動診斷。設備憑證明文僅在發放時顯示一次。
 - 使用者對已有日誌點「一鍵診斷」；會話頁先取 JSON 事件回放，再以 SSE 接續直播，按序號續傳和去重。簡明進度與技術細節是**診斷過程**的兩種顯示；最終報告只有一種視圖。報告引用只在工具軌跡核實且可解析時連到已入庫手冊的轉換版 Markdown 章節及圖片；`NO_SOURCE` 不提供原文連結。手冊頁的原始 Markdown 不是原 PDF 頁面。
 - JSON 業務資料按白名單映射；Service Worker 只快取靜態資源與離線提示，不離線回放登入、車輛、診斷或手冊私有資料。舊車牌/VIN 深鏈只回工作坊入口，不自行配對 V3 車檔。
-- 所有 BFF API 回應帶請求 ID。JSON 訪問記錄同時寫標準輸出與文件，包含 UTC 時間、請求 ID、可取得的用戶與車輛 ID、固定路由名及狀態；不記錄正文、Cookie、令牌、VIN、原始 URL 或查詢串。文件按 UTC 日切、壓縮、保留 30 天；總量超過 2 GB 時先清理舊歸檔，不截斷當日記錄。容器內日誌目錄只供運行用戶寫入；生產持久卷由上線 PR 配置。
+- 所有 BFF API 回應帶請求 ID。JSON 訪問記錄同時寫標準輸出與文件，包含 UTC 時間、請求 ID、可取得的用戶與車輛 ID、固定路由名及狀態；不記錄正文、Cookie、令牌、VIN、原始 URL 或查詢串。文件按 UTC 日切、壓縮、保留 30 天；總量超過 2 GB 時先清理舊歸檔，不截斷當日記錄。容器內日誌目錄只供運行用戶寫入；PR ③ 配置獨立 `stf_v3_frontend_logs` 持久卷，PolyU 上的 UID 1001 可寫與重建保留仍待維護者實測。
 
 ## 已有代碼與待驗收項
 
 ```mermaid
 flowchart LR
-  U["手機／電腦瀏覽器"] -->|"同源頁面及 /api/*"| F["obd-ui-v3：Next.js 頁面與 BFF<br/>尚未部署"]
+  U["手機／電腦瀏覽器"] --> C["Cloudflare Tunnel"] --> N["Nginx 根路徑<br/>切換待維護者執行"]
+  N -->|"同源頁面及 /api/*"| F["obd-ui-v3：Next.js 頁面與 BFF<br/>PolyU 尚未部署"]
   F -->|"服務端持用戶令牌"| B["V3 後端 API"]
   D["OBD／Jetson 設備"] -->|"既有 /v3/ingest/device"| B
 ```
 
-前端已在本地模擬 V3 下測試註冊、建車、上傳、設備憑證、診斷、報告與引用；2026-11-03 曾以專用測試車隊經本機前端及 SSH 隧道驗證伺服器 V3 的註冊、登入、工作坊讀取及登出。這些結果不代表前端已上線。仍需驗收真實 Jetson 行程與補傳、真實手冊卷引用、公開 HTTPS 完整診斷、Android/iOS 安裝、弱網上傳及 pilot 用戶。正式設備接入要求見 [issue #257](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/257)。前端目前使用 Tailwind v4 與 Radix 組件，既定 shadcn/ui 選型尚未在頁面中實際採用，待維護者決定。
+前端已在本地模擬 V3 下測試註冊、建車、上傳、設備憑證、診斷、報告與引用；2026-11-03 曾以專用測試車隊經本機前端及 SSH 隧道驗證伺服器 V3 的註冊、登入、工作坊讀取及登出。這些結果不代表前端已上線。仍需驗收真實 Jetson 行程與補傳、真實手冊卷引用、公開 HTTPS 完整診斷、Android/iOS 安裝、弱網上傳及 pilot 用戶。正式設備接入要求見 [issue #257](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/257)。前端目前使用 Tailwind v4 與 Radix 組件，未使用 shadcn/ui 生成組件；[PR #277 的維護者回覆](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/pull/277#issuecomment-6701729166)已接受此做法，設計文檔保留選型差異。
 
 ## 本地開發與驗證
 
@@ -36,8 +37,8 @@ npm run dev
 | 變數 | 用途 |
 | --- | --- |
 | `STF_V3_API_BASE_URL` | Next.js 服務端使用的 V3 API；本地示例 `http://127.0.0.1:8002` |
-| `PORTAL_PUBLIC_ORIGIN` | 網頁 Origin；本地示例 `http://127.0.0.1:3001`，正式值待上線 PR 配置 |
-| `PORT` | 本地預設 3001；正式監聽設定待上線 PR |
+| `PORTAL_PUBLIC_ORIGIN` | 網頁 Origin；本地示例 `http://127.0.0.1:3001`，PR ③ Compose 正式值由 `STF_V3_FRONTEND_ORIGIN` 注入 |
+| `PORT` | 本地預設 3001；PR ③ Compose 設為 3002，PolyU 只監聽本機 |
 | `PORTAL_ACCESS_LOG_DIR` | 可選；本地預設 `obd-ui-v3/.portal-logs/`，容器預設 `/var/log/stf-v3-frontend` |
 
 ```powershell
@@ -47,4 +48,4 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-E2E 使用本地模擬 V3 API，不需真實帳號。本地測試不能代替 PolyU 上的 V3 API、共用 GPU、實際設備與公開網站驗收。前端 CI 另檢查 Windows 啟動器並構建固定 Node 24 Alpine 摘要的容器映像；Compose、Nginx、網站切換及回滾由後續 PR 處理。
+E2E 使用本地模擬 V3 API，不需真實帳號。前端契約測試讀本目錄的 `v3_openapi.json`，CI 與倉庫 `docs/api/v3_openapi.json` 做逐字節核對，單獨複製此目錄仍可跑契約測試。本地測試不能代替 PolyU 上的 V3 API、共用 GPU、實際設備與公開網站驗收。前端 CI 另檢查 Windows 啟動器並構建固定 Node 24 Alpine 摘要的容器映像；PR ③ 補 Compose/Nginx 檢查，網站切換及回滾由維護者執行，步驟見 `docs/v3_ops_runbook.md` §11。

@@ -1,7 +1,7 @@
 import fs, { type Dirent } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-const spec = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), "..", "docs", "api", "v3_openapi.json"), "utf8"));
+const spec = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), "v3_openapi.json"), "utf8"));
 const requiredPaths = ["/v3/auth/login", "/v3/auth/logout", "/v3/users/me", "/v3/workshops/{workshop_id}/vehicles", "/v3/vehicles/{vehicle_id}", "/v3/vehicles/{vehicle_id}/logs", "/v3/vehicles/{vehicle_id}/diagnose", "/v3/vehicles/{vehicle_id}/conversations", "/v3/conversations/{conversation_id}", "/v3/conversations/{conversation_id}/events", "/v3/conversations/{conversation_id}/report", "/v3/manuals", "/v3/manuals/{manual_id}", "/v3/manuals/{manual_id}/toc", "/v3/manuals/{manual_id}/sections", "/v3/manuals/{manual_id}/assets/{asset_path}", "/v3/manuals/search"];
 describe("V3 contract boundary", () => {
   it("freezes current read endpoints and later Stage 1 paths", () => { for (const route of requiredPaths) expect(spec.paths, route).toHaveProperty(route); });

@@ -4,13 +4,13 @@
 
 | 字段 | 值 |
 |---|---|
-| **架构文档** | `docs/v3_design_doc.md`（v1.23） |
+| **架构文档** | `docs/v3_design_doc.md`（v1.25） |
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.26（issue #270：V3 前端与同源 BFF） |
+| **版本** | v1.28（PR #278：前端部署核验与部署顺序修订） |
 | **作者** | Xiangzhu Yan |
-| **最后更新** | 2026-11-07 |
+| **最后更新** | 2026-11-09 |
 
 ## 0. 本计划的定位
 
@@ -30,7 +30,7 @@ V3 是最终产品形态，V1/V2 是学习版并将废弃。本计划要交付�
 | D3 | 代码放哪 | **同仓新目录** `stf_v3/` + `obd-ui-v3/`；前端已按原定目录实现，本地启动脚本也在前端目录；硬约束 A 可迁出 / B 不绑死（见 §2.3） |
 | D4 | 登录注册 | **fastapi-users** + 邀请码 |
 | D5 | 任务队列 | **procrastinate**（Postgres 上的任务队列，零新组件），模块 `jobs` |
-| D6 | 前端开工时机 | issue #270 阶段前端已在本分支实现、待审；PROD-12～14 的真实设备、手机与公网验收仍未完成 |
+| D6 | 前端开工时机 | issue #270 前端已由 PR #277 合入；PR ③ 准备上线配置，PROD-12～14 的真实设备、手机与公网验收仍未完成 |
 | D7 | 本地模型来源 | **唯一一个 vLLM**，V1/V2/V3 共用；换模型统一换、两套 golden 各跑一遍 |
 | D8 | Jetson 数据归属 | **要求级**：每笔上传 100% 绑定唯一车档；转存不丢归属；诊断时品牌型号找手册、VIN 找历史。实现细节由 PROD-01 定 |
 | D9 | 不做清单 | **接受**，且每项须留档"回头条件"（§4） |
@@ -126,9 +126,9 @@ M6 PROD-15B (Pilot 上线：第一批真实用户)
 - `docs/v3_design_doc.md` + 本计划 + 架构图在**同一提交**内同步（预览 SVG 用 `render_excalidraw.py` 重新生成）
 - 隐私边界保持：工具只返回文本摘要，不返回原始传感器数组
 - **数据归属不变量（D8）**：任何一笔入库的原始数据都能查到所属车档；不允许 `V-UNKNOWN`
-- **可迁出 / 不绑死（D3）**：`stf_v3/`、`obd-ui-v3/` 不 import 老代码；两条自动化检查（拷到空目录测试全绿；删掉 `diagnostic_api/ obd_agent/ obd-ui/` 后 V3 照常构建）通过
+- **可迁出 / 不绑死（D3）**：`stf_v3/`、`obd-ui-v3/` 不 import 老代码；前端契约测试读本目录 OpenAPI 字节快照，CI 核对仓库规范文件；两条自动化检查（拷到空目录测试全绿；删掉 `diagnostic_api/ obd_agent/ obd-ui/` 后 V3 照常构建）通过
 - OpenAPI 契约与代码一致（CI 生成并 diff）
-- 走 CLAUDE.md 验证闭环：PR → 分支部署 PolyU → 线上 E2E（后端 ticket 用 Swagger / curl，前端 ticket 用浏览器）→ 用户拍板合并
+- 走 CLAUDE.md 验证闭环：PR → 维护者安排分支部署与切换 → 线上 E2E（后端 ticket 用 Swagger / curl，前端 ticket 用浏览器）→ 用户拍板合并；配置 PR 的 CI 通过不等于已上线
 - **测试补齐（§2.4）**：新功能同时扩展 `scripts/smoke_e2e.py`；接口级集成测试覆盖新端点；部署前后跑 `scripts/isolation_check.sh snapshot / compare`
 - **PR 附"挑战清单"**：3–5 条"你可以试什么、预期看到什么"，供用户在 Swagger / curl 上挑战
 - V1/V2 在服务器上继续正常运行（并存不互扰）
@@ -142,7 +142,8 @@ M6 PROD-15B (Pilot 上线：第一批真实用户)
 | 单元 | 这段逻辑本身对不对 | CI，每 PR，秒级 | `stf_v3/tests/test_unit_*.py` |
 | 集成 | 和真实 Postgres / 队列一起对不对 | CI 临时 Postgres（PROD-04）或服务器一次性库 | `tests/test_migrations.py`、`tests/test_api_*.py`（ASGI 客户端 + 真库） |
 | 前端离线与浏览器 | 同源 BFF、移动流程、Windows 启动器是否符合契约 | CI，每前端 PR；模拟 V3，不能代替公网验收 | `obd-ui-v3/` 的类型、lint、单元/契约、Playwright、启动器和镜像构建 |
-| 契约 | 接口形状、表结构、模块边界有没有悄悄变 | CI，秒级 | `scripts/export_openapi.py --check`、`alembic check`、import-linter |
+| 契约 | 接口形状、表结构、模块边界有没有悄悄变 | CI，秒级 | `scripts/export_openapi.py --check`、前端 OpenAPI 快照逐字节比对、`alembic check`、import-linter |
+| 入口配置 | V3 前端、旧站回滚及可信真实 IP 是否按设计 | CI 配置检查 + 维护者部署后实测 | Compose 展开、Nginx 语法及可信/不可信来源转发；PolyU 日志卷写入、网页和 API 健康检查 |
 | Golden 评测 | 换提示词 / 模型后诊断质量有没有掉 | 服务器 GPU，只在动 Agent 时 | PROD-10 移植 |
 | 端到端冒烟 | 真实用户流程在线上能否走完 | 分支部署后 | `scripts/smoke_e2e.py`（每张 ticket 追加步骤） |
 | 部署核验 | 部署完的东西是不是预期的那份 | 每次部署后 | `scripts/check_schema.py`；PROD-04 补 `deploy_check.sh`（容器新鲜度、head、worker、health） |
@@ -228,17 +229,33 @@ Status: **✅ DONE**（2026-09-13，分支 `prod-04-deploy-ci`；计划页 `.lav
 **服务器结果**：deploy_check 5/5 PASS；失败演练：commit 不匹配 FAIL（推脚本未重建时自然出现）、worker 停止 FAIL（心跳 + 容器状态）；`/v3/health`、`/v3/docs` 服务器内与公网（stf-diagnosis.dev）均 200，V1 `/health` 与旧前端 200；API 重启 3 s 恢复；冒烟 23/23 PASS（8003 + stf_v3_test），正式库 smoke 残留 0；只读探测 openapi 200 / 错密码 400 / 无 token 401；日志无密钥；隔离回归 PASS。
 **抓到的问题（已修）**：① podman-compose 默认项目名 = 目录名 `infra`，V3 被放进 V1/V2 同一个 pod，`down` 试图拆共享 pod → 一律 `-p stf_v3`；② nginx.conf 是单文件 bind 挂载，`git pull` 换 inode 后容器内仍是旧文件，`nginx -s reload` 无效 → 改配置必须重建 nginx 容器；③ deploy_check 容器年龄计算丢时区 → 修。
 
-**issue #270 前端 PR 补充（代码与 CI，未部署）**：Windows 本地联调的
+**issue #270 前端 PR #277 补充（代码与 CI，未部署）**：Windows 本地联调的
 setup、事件循环 selector 与启动入口放在 `obd-ui-v3/scripts/`，测试在
 前端目录；V3 后端核心入口未为本机启动而改动。V3 CI 新增 Node 24
 前端 job，检查 Windows 启动器、类型、lint、单元/契约、浏览器流程及
 容器镜像构建；上游 Python/Jetson job 保留。PolyU Compose/Nginx
-入口切换和对应配置检查属于后续上线 PR，本次不把它记为已部署。
-前端契约测试目前读取仓库根目录 `docs/api/v3_openapi.json`；前端目录
-单独迁出后的全测试尚未验收，D3 的 A 可迁出约束仍需解决契约快照落位。
+入口切换不属于该 PR，不把它记为已部署。
+
+**issue #270 上线配置 PR ③（待维护者部署）**：独立 V3 Compose 新增
+`stf-v3-frontend` 与日志具名卷；PolyU host network 下前端只在本机
+3002 服务、调用本机 8002 API。Nginx 根路径及 `/api/auth/` 指向前端，
+V1/V2 与 `/v3/` 路由不动；认证入口沿用限流，仅从本机 cloudflared
+连接信任 `CF-Connecting-IP` 并将解析后的客户端地址作为 `X-Real-IP`
+传给 BFF。旧网页保留回滚，但不在常规 PolyU 启动列表里。前端契约测试
+改读 `obd-ui-v3/` 内的 OpenAPI 字节快照，CI 与仓库级规范文件逐字节
+核对，临时独立目录测试验证该契约测试可迁出。新增 Compose/Nginx
+配置与代理行为测试；部署、服务器日志卷 UID 1001 写权限、公网链路
+和回滚演练由维护者执行，CI 不能代替这些实测。
+
+**PR #278 维护者复核后补充（未部署）**：V3 全项目 `down` 后重启 API、
+worker、frontend 三个服务；部署核验新增第 11 项，检查前端容器 30 分钟
+内创建、3002 健康接口及镜像提交标签。正式前端切换前核对线上 OpenAPI
+是否含 `/v3/manuals/{manual_id}/sections`；旧后端缺失时先按 `main` 部署
+后端，再继续前端切换。V1/V2 例行部署不再构建或启动旧网页；旧镜像仍保留
+用于回滚。以上为代码与操作说明，服务器验收仍由维护者执行。
 
 **目标**：V3 后端在 PolyU 服务器上与 V1/V2 并存运行；每个 PR 自动跑测试和两条迁移性检查。
-**方法**：`infra/docker-compose.v3.yml`（`stf-v3-api`、`stf-v3-worker`，独立端口）+ nginx 路由前缀；共用 Postgres 实例与 vLLM（配置连接）；GitHub Actions：pytest（离线）+ OpenAPI diff + 可迁出检查（拷贝两目录到空目录跑测试）+ 不绑死检查（临时检出删除老目录后构建）；部署步骤追加到 CLAUDE.md。
+**方法**：`infra/docker-compose.v3.yml`（`stf-v3-api`、`stf-v3-worker`、`stf-v3-frontend`，独立端口）+ nginx 路由前缀；共用 Postgres 实例与 vLLM（配置连接）；GitHub Actions：pytest（离线）+ OpenAPI diff + 可迁出检查（拷贝两目录到空目录跑测试）+ 不绑死检查（临时检出删除老目录后构建）；部署步骤追加到 CLAUDE.md。
 **验收**：服务器上 V1/V2/V3 健康检查同时通过；Cloudflare 隧道能访问 V3 `/health`；CI 四项在 PR 上绿灯。
 
 ### 3.3 M2 — 数据入口
@@ -402,20 +419,20 @@ setup、事件循环 selector 与启动入口放在 `obd-ui-v3/scripts/`，测�
 ### 3.6 M5 — 前端 Stage 1（代码部分实现；验收未完成）
 
 issue #270 前端在 `obd-ui-v3/` 实现，浏览器经 Next.js 同源 BFF 访问
-V3，不调用 `vehicle_data_twin`。本次前端 PR 提交代码与离线验证；
-PolyU 部署和网关入口切换归后续 PR，以下 ticket 在真实环境验收前均不
+V3，不调用 `vehicle_data_twin`。PR #277 已合入代码与离线验证；
+PR ③ 准备 PolyU 部署和网关入口切换配置，由维护者执行，以下 ticket 在真实环境验收前均不
 标为 DONE。
 
 #### PROD-12 — 前端骨架、登录与车辆页
 **目标**：用户在浏览器里完成注册、登录、建车档。**验收**：线上浏览器 E2E：注册 → 登录 → 建车 → 车辆页；移动与桌面布局均可用。
-**已实现（本次前端 PR）**：Next.js 15 响应式页面与同源 BFF，邀请码
+**已实现（前端 PR #277）**：Next.js 15 响应式页面与同源 BFF，邀请码
 注册、登录/登出、workshop 列表、车辆搜索/分页与建档、车档及日志/诊断
 历史页。会话保存在 HttpOnly Cookie；BFF 每次向 V3 复核身份、写入
 请求校验 Origin、对业务字段白名单输出且私有响应不缓存。登录表单
 仅修剪用户名，密码原样发送；凭据错误、限流、Origin 不符和上游故障
 分别处理。BFF API 访问记录写 stdout 与按 UTC 日轮转的文件，记录
 请求 ID、用户/车辆 ID 与状态，不记录令牌、密码、VIN 或正文；上线
-持久卷和服务器 30 天保留验证留待后续 PR。
+持久卷由 PR ③ 配置；服务器 30 天保留验证仍待维护者部署。
 **未验收**：PolyU 前端尚未部署，公网手机注册→登录→建车→车辆页
 尚未跑通；真实 pilot 用户不在本次范围。状态为**部分实现**。
 
@@ -423,7 +440,7 @@ PolyU 部署和网关入口切换归后续 PR，以下 ticket 在真实环境验
 **目标**：车辆页上传日志、点一键诊断，以简明/技术两种方式看诊断
 **过程**，查看单一视图的最终报告。**验收**：线上 E2E 一次完整诊断
 在手机上完成；刷新后过程视图从回放接口恢复；报告引用可点击到手册出处。
-**已实现（本次前端 PR）**：网页经同源 BFF 手动上传最多 50 MB 的
+**已实现（前端 PR #277）**：网页经同源 BFF 手动上传最多 50 MB 的
 日志，显示进度、等待、取消及失败重试；上传只入库，不自动诊断。
 manager 可列出、发放与吊销每车设备凭证，明文仅在发放时显示一次。
 车辆页按所选日志显式启动诊断，先回放持久化事件再接 SSE，以 `seq`
@@ -436,7 +453,7 @@ Markdown 章节及图片；`NO_SOURCE` 标为未核实且不可点击。手册�
 
 #### PROD-14 — PWA 与移动打磨
 **目标**：可安装到手机主屏，弱网可用。**验收**：Android Chrome / iOS Safari 可安装；Lighthouse PWA 项通过；弱网下上传有进度与失败提示。
-**已实现（本次前端 PR）**：manifest、图标、Service Worker 静态
+**已实现（前端 PR #277）**：manifest、图标、Service Worker 静态
 离线壳、响应式页面及模拟慢请求的上传进度/取消/重试。认证、车档、
 诊断、报告与手册 API 不进入离线缓存；离线不回显私有数据。
 **未验收**：Android Chrome/iOS Safari 实机安装、Lighthouse PWA
@@ -540,20 +557,22 @@ PROD-15 于 2026-09-27 按用户决定拆为两张：**15A 运维底线**（纯�
 | 测试车队刷诊断挤占真用户（PROD-11 FM-42） | 测试车队的诊断量影响到真车排队，或 vLLM 因联调长时间不停 | 先在联调说明里约定用法；真出现时加一个全局排队上限（例如测试车队同时最多 1 个排队），或给测试车队单独的空闲停机时间 | 否 | 暂缓 |
 | V3 拖累共享 Postgres 连接数（PROD-11 FM-43） | V1/V2 容器重新启用，或出现数据库连接数告警 | 给 V3 的运行时账号设连接上限（`ALTER ROLE stf_v3_app CONNECTION LIMIT …`）并压测：直播每次轮询已是借连接即还（FM-36） | 否 | 已完成（PROD-15A PR ②，2026-09-28） |
 | twin 自由文本 PII 边界 | 未来 V3 `history` 接入真实车队病历文本前 | 盘点描述、备注等自由文本并确定删除、脱敏或允许透传规则，再加测试 | 否 | 暂缓；当前前端无 twin 调用 |
-| 前端组件选型 | 本次前端 PR 评审时 | 维护者决定既定 shadcn/ui 选型与当前 Radix/Tailwind 实现是否保持差异或补组件 | 否 | 待维护者决定 |
+| 前端组件选型 | PR #277 评审时 | 维护者接受直接使用 Radix + Tailwind；设计文档保留与既定 shadcn/ui 选型的差异记录 | 否 | 已决定（2026-11-07） |
 | 前端完整 Stage 1 | 前端 PR 合入且上线切换配置经审查后 | 在真实公网、手机、手册卷、弱网及 Jetson 行程中逐项验收 PROD-12～14；最终报告保持单一视图 | 否 | 代码部分实现；实地验收未完成 |
 
 ## 5. 待决策
 
 全部 9 项已拍板（2026-09-08），结果见 §0.1；存档 `.lavish/v3_dev_plan_decisions.html`。
 
-issue #270 阶段前端已在本分支实现、待原仓库审核；PROD-12～14 仍须完成真实环境验收。
-既定 shadcn/ui 选型与本次代码只使用 Radix/Tailwind 的差异，交维护者决定。
+issue #270 前端已由 PR #277 合入；PR ③ 是部署配置和回滚准备，维护者负责实际部署与切换。PROD-12～14 仍须完成真实环境验收。
+既定 shadcn/ui 选型与代码使用 Radix/Tailwind 的差异保留记录，维护者已接受当前实现。
 
 ## 6. 变更记录
 
 | 版本 | 日期 | 变更 |
 |---|---|---|
+| v1.28 | 2026-11-09 | PR #278 维护者意见：PROD-04 补前端部署核验第 11 项和 V3 三服务重启顺序，§11.1 先核对线上手册章节接口并按需部署已合入后端；旧网页不再由 V1/V2 例行部署启动。设计文档 v1.25、运维手册 v0.17；架构未变，图仅同步版本标题；未在 PolyU 执行 |
+| v1.27 | 2026-11-09 | issue #270 上线配置 PR：PROD-04 与 PROD-12～14 补独立前端 Compose、可信隧道真实 IP、Nginx 根路径、持久日志卷和可迁出的 OpenAPI 契约快照；§4/§5 记维护者接受 Radix + Tailwind，部署、公网与实机验收仍待维护者。设计文档 v1.24、运维手册 v0.16 和网关关系**图已同步** |
 | v0.1 | 2026-09-07 | 初稿：7 个里程碑、15 张 PROD ticket（PROD-01 到验收级，其余到目标/方法/验收层）、非目标清单草案、9 项待决策 |
 | v1.26 | 2026-11-07 | issue #270 前端 PR：D3/D6、PROD-04、PROD-12～14 记录 `obd-ui-v3/` 同源 BFF、Windows 启动器、前端 CI、JSON 访问记录及模拟链路；§4/§5 明确 twin/组件选型与真实设备、手机、公网验收边界。设计文档 v1.23（§1.4.1 等）、设备手册 §2、前端→V3 调用关系**图已同步**；Compose/Nginx 上线切换未包含本次 PR |
 | v1.25 | 2026-11-06 | issue #270 后端小 PR：PROD-06 补记已入库手册章节/图片来源接口的本地实现与待验收边界；PROD-13 明确只有后端来源能力已接入，前端跳转和真实手册/公网验证仍未完成。设计文档 v1.22（§1.8）、OpenAPI 同步；未改变服务或调用架构，**图无需改动** |

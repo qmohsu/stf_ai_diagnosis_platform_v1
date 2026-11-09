@@ -11,7 +11,12 @@ on:
     paths:
       - "obd-ui-v3/**"
       - "stf_v3/**"
+      - "infra/.env*.example"
+      - "infra/docker-compose.polyu.yml"
       - "infra/docker-compose.v3*"
+      - "infra/nginx/**"
+      - "infra/scripts/polyu-*.sh"
+      - "infra/tests/**"
       - "infra/docker-compose.vllm.yml"
       - "infra/vllm_ctl.sh"
       - "docs/v3_ops_runbook.md"
@@ -28,7 +33,12 @@ on:
     paths:
       - "obd-ui-v3/**"
       - "stf_v3/**"
+      - "infra/.env*.example"
+      - "infra/docker-compose.polyu.yml"
       - "infra/docker-compose.v3*"
+      - "infra/nginx/**"
+      - "infra/scripts/polyu-*.sh"
+      - "infra/tests/**"
       - "infra/docker-compose.vllm.yml"
       - "infra/vllm_ctl.sh"
       - "docs/v3_ops_runbook.md"
@@ -60,6 +70,12 @@ jobs:
         with: { python-version: "3.11" }
       - name: Windows launcher contract tests (offline)
         run: python -m unittest discover -s obd-ui-v3/tests -p test_windows_local.py
+      - name: frontend OpenAPI snapshot matches canonical
+        run: |
+          if ! cmp -s docs/api/v3_openapi.json obd-ui-v3/v3_openapi.json; then
+            echo "Frontend OpenAPI snapshot differs from docs/api/v3_openapi.json"
+            exit 1
+          fi
       - name: install locked frontend dependencies
         working-directory: obd-ui-v3
         run: npm ci
@@ -76,6 +92,24 @@ jobs:
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: docker build --pull --file obd-ui-v3/Dockerfile --build-arg GIT_COMMIT="$HEAD_SHA" --tag stf-v3-frontend:ci obd-ui-v3
+      - name: validate PolyU Compose overlays and Nginx syntax
+        env:
+          POSTGRES_PASSWORD: ci
+          APP_DB_PASSWORD: ci
+          JWT_SECRET_KEY: ci-placeholder
+          STF_V3_DATABASE_URL: postgresql+psycopg://owner:ci@127.0.0.1:5432/stf_v3
+          STF_V3_APP_DATABASE_URL: postgresql+psycopg://app:ci@127.0.0.1:5432/stf_v3
+          STF_V3_JWT_SECRET: ci-placeholder
+          STF_V3_FRONTEND_ORIGIN: https://stf-diagnosis.dev
+        run: |
+          docker compose -f infra/docker-compose.yml -f infra/docker-compose.polyu.yml config --quiet
+          docker compose -f infra/docker-compose.v3.yml -f infra/docker-compose.v3.polyu.yml config --quiet
+          docker run --rm \
+            -v "$PWD/infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro" \
+            -v "$PWD/infra/nginx/proxy_params_api.conf:/etc/nginx/proxy_params_api.conf:ro" \
+            nginx:1.27-alpine nginx -t
+      - name: exercise trusted client IP and persistent frontend logs
+        run: python infra/tests/smoke_v3_gateway.py --frontend-image stf-v3-frontend:ci
 
   unit-contract:
     name: unit + contract (offline)

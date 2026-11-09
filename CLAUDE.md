@@ -228,9 +228,22 @@ After implementing something new (a feature, endpoint, or bug fix that is observ
 
 Skip this loop only for changes with no observable runtime behaviour (pure docs, comments, or internal refactors that can't be exercised in the browser) — those still get a PR and a report, just no deploy/E2E.
 
+**Issue #270 frontend cutover handoff:** For the V3 frontend PR ③, the
+maintainer explicitly owns PolyU deployment and public root switching. The
+contributor prepares configuration, tests, PR and rollback instructions, then
+reports CI evidence and remaining live checks; do not run branch deployment or
+browser tests on the production site under this PR. The maintainer uses
+`docs/v3_ops_runbook.md` §11 after review. Do not label configuration or CI
+results as a completed live deployment.
+
 ## Server Deployment (PolyU GPU Server)
 
-When the user says **"deploy to server"** or **"update the server"**, follow this procedure:
+This procedure is for the legacy V1/V2 stack. For the independent V3 frontend,
+use `docs/v3_ops_runbook.md` §11. First check the live V3 OpenAPI document as
+described in §11.1; an older backend must be deployed from main before the
+frontend cutover. Once the backend is current, the cutover changes only the
+frontend and shared Nginx gateway, with no further backend rebuild or migration.
+When the user says **"deploy to server"** or **"update the server"** for V1/V2, follow this procedure:
 
 1. **Pre-flight: git state**: Run `git status` and `git log origin/main..HEAD` locally to verify all changes are committed and pushed to `origin/main`. If there are unpushed commits or uncommitted changes, warn the user and do NOT proceed until everything is pushed.
 2. **Pre-flight: migration backlog check**: List Alembic migrations added since the last successful deploy. Catches schema drift like the HARNESS-20 backlog that silently 500'd `/goldens` on 2026-05-24:
@@ -244,7 +257,7 @@ When the user says **"deploy to server"** or **"update the server"**, follow thi
    ```
    Expected output: a single-element list (`['<rev_id>']`). If you see two or more heads, fix the conflicting migration files before deploying.
 3. **Pull on server**: `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1 && git pull origin main"`
-4. **Rebuild images**: `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1/infra && ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml build diagnostic-api obd-ui"`
+4. **Rebuild images**: `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1/infra && ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml build diagnostic-api"`
 5. **Force-recreate changed containers**: Podman 3.4 does NOT recreate containers when the image changes — `up -d --build` silently keeps old containers. You MUST use `down`+`up` for changed services:
    ```
    ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1/infra && \
@@ -252,7 +265,6 @@ When the user says **"deploy to server"** or **"update the server"**, follow thi
      ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d postgres && sleep 5 && \
      ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d ollama && sleep 2 && \
      ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d diagnostic-api && sleep 5 && \
-     ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d obd-ui && sleep 3 && \
      ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d nginx"
    ```
 6. **Verify containers are fresh**: Check that `CREATED AT` timestamps are recent (within the last minute) for ALL rebuilt services. Old timestamps mean the container was NOT recreated:
@@ -267,10 +279,10 @@ When the user says **"deploy to server"** or **"update the server"**, follow thi
    ssh polyu-gpu "podman restart stf-diagnostic-api && sleep 5 && podman logs --tail 10 stf-diagnostic-api 2>&1 | grep -iE 'startup|golden_sync|complete' | tail -5"
    ```
    Skip only when step 7 reported "already at head" (no migrations ran).
-9. **Health checks**: Verify all 5 services are healthy:
+9. **Health checks**: Verify these four endpoints are healthy:
    - `curl -sf http://127.0.0.1:11434/api/version` (Ollama)
    - `curl -sf http://127.0.0.1:8001/health` (Diagnostic API)
-   - `curl -sf http://127.0.0.1:3001` (OBD UI)
+   - `curl -sf http://127.0.0.1:3002/api/health` (V3 frontend)
    - `curl -sf http://127.0.0.1:8080/health` (Nginx gateway)
 10. **Warm up the local LLM** (APP-58, GitHub issue #128): The `down`+`up` in step 5 evicts the resident model, so the FIRST `/v2/obd/{id}/diagnose` triggers a multi-minute cold load. The API now auto-pre-warms in the background at startup (`LLM_PREWARM_ON_STARTUP`, default on) and every diagnose stream has a timer-based SSE keep-alive, so a real user request will survive the load — but a green step-9 health check does NOT yet mean "first generation will succeed", because `/health` returns before the model is resident. Force the load explicitly and confirm it sticks so the first expert request is instant:
     ```
@@ -292,11 +304,17 @@ When the user says **"deploy to server"** or **"update the server"**, follow thi
 
 ## V3 Deployment (stf_v3 — independent service, PROD-04)
 
-V3 runs beside V1/V2 as two long-running containers (`stf-v3-api` on
-127.0.0.1:8002, `stf-v3-worker`) behind the existing nginx (`/v3/`).
-It never touches the V1/V2 containers or database. Variables live only in
-the server's `infra/.env` (`STF_V3_DATABASE_URL`, `STF_V3_APP_DATABASE_URL`,
-`STF_V3_JWT_SECRET`); the compose file refuses to start without them.
+The deployed V3 API (`stf-v3-api` on 127.0.0.1:8002) and worker run beside
+V1/V2 behind Nginx (`/v3/`). PR ③ defines a separate `stf-v3-frontend` on
+127.0.0.1:3002 and planned root route to it, but the maintainer has not yet
+deployed or switched the public site. The frontend requires
+`STF_V3_FRONTEND_ORIGIN` in the server's private `infra/.env` in addition to
+the existing V3 database URLs and JWT secret. It does not change V1/V2
+containers or databases; the cutover intentionally changes shared Nginx
+routing and leaves the old webpage available for rollback. Follow the exact
+revision, UID 1001 log-volume, health, real-IP and rollback checks in
+`docs/v3_ops_runbook.md` §11. Do not rebuild API/worker or run a migration
+solely for this frontend configuration PR.
 Raw uploaded logs live in the named volume `stf_v3_obd_logs` (mounted at
 `/app/data/obd_logs` in api + worker, PROD-05) — separate from V1's
 `diagnostic_api_obd_logs`; `deploy_check.sh` check 6 proves it is writable.
@@ -443,17 +461,20 @@ of server work (a change we did not make = someone else touched the backend) and
 `… ack --note "<what we did>"` after every deploy / branch verification.  Install
 / check: `bash stf_v3/ops/install_deploy_watch.sh [--check]` (runbook §10).
 
-**Branch verification (every V3 PR)** — run on the server:
+**Backend V3 branch verification** — run on the server only when the change
+actually affects the V3 API/worker. Frontend PR ③ follows runbook §11 and
+is deployed by the maintainer after review; do not apply this full-stack
+restart to a frontend-only branch:
 ```
 cd ~/stf_ai_diagnosis_platform_v1 && git fetch origin && git checkout <branch> && git pull origin <branch>
 bash stf_v3/scripts/predeploy_check.sh                                 # PROD-11: refuses while a diagnosis is unfinished / a manual converts (ALLOW_INTERRUPT=1 to override)
 bash stf_v3/scripts/isolation_check.sh snapshot                       # V1/V2 baseline
 cd infra && GIT_COMMIT=$(git rev-parse HEAD) ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml build && cd ..
 ~/.local/bin/podman-compose --profile migrate -p stf_v3 -f infra/docker-compose.v3.yml -f infra/docker-compose.v3.polyu.yml run --rm stf-v3-migrate alembic upgrade head   # --profile migrate is required: without it podman-compose 1.5 only warns 'missing services' and exits 0
-cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down &&   ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker && cd ..
+cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down &&   ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker stf-v3-frontend && cd ..
 podman exec stf-nginx nginx -t && podman exec stf-nginx nginx -s reload   # only if nginx.conf changed
 systemctl --user restart stf-v3-gpu-worker && bash stf_v3/gpu_worker/install.sh --check   # host worker on the new code (PROD-06)
-bash stf_v3/scripts/deploy_check.sh                                    # 10 checks (9 = model service, 10 = last backup < 36 h), exit 1 on any failure
+bash stf_v3/scripts/deploy_check.sh                                    # 11 checks (9 = model service, 10 = last backup < 36 h, 11 = frontend), exit 1 on any failure
 # E2E smoke on a throwaway DB + port 8003 (keeps the real stf_v3 DB clean):
 #   create_database.sh stf_v3_test → alembic upgrade → podman run -d --name stf-v3-api-test --network host #   -e STF_V3_DATABASE_URL=<app url to stf_v3_test> -e STF_V3_JWT_SECRET=<random> stf-v3:local #   uvicorn stf_v3.main:app --host 127.0.0.1 --port 8003 → create_workshop.py → smoke_e2e.py --base-url http://127.0.0.1:8003
 #   → rm container, DROP DATABASE stf_v3_test
@@ -469,9 +490,9 @@ Podman 3.4 gotcha applies: always `down` + `up`, never trust `up -d --build`.
 `deploy_check.sh` fails on stale containers (created > 30 min ago) and on an
 image whose commit label differs from `git rev-parse HEAD`.
 
-**Main deployment** — same as above minus the smoke DB, after merging:
+**Backend V3 main deployment** — same as above minus the smoke DB, after merging:
 pull main → `predeploy_check.sh` → build with `GIT_COMMIT` → `--profile migrate … run --rm stf-v3-migrate alembic upgrade head`
-→ `down` + `up -d stf-v3-api stf-v3-worker` → `deploy_check.sh` → `isolation_check.sh compare`
+→ `down` + `up -d stf-v3-api stf-v3-worker stf-v3-frontend` → `deploy_check.sh` → `isolation_check.sh compare`
 → `deploy_watch.py ack --note "main <sha> deployed"`.
 
 **CI** (`.github/workflows/v3.yml`, V3 paths only): unit + contract

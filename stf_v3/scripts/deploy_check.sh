@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Post-deploy verification for V3 on the PolyU server (code design §10).
-# Answers "is what is running the thing I meant to deploy?"  Ten checks
+# Answers "is what is running the thing I meant to deploy?"  Eleven checks
 # (containers fresh, image commit, alembic head, /v3/health via nginx,
 # worker heartbeat, storage volume writable, host GPU worker alive on the
 # same commit, disk headroom, model service local + serving + generating,
-# last successful backup younger than 36 h); exits non-zero if any fails.
+# last successful backup younger than 36 h, frontend fresh + healthy + on the
+# expected commit); exits non-zero if any fails.
 # Sizes only ever WARN (PROD-15A FM-44); the network share is never walked
 # (FM-32) — only the status file the backup service writes is read.
 #
@@ -205,6 +206,38 @@ PY
 
 # Storage report (PROD-15A T-26): sizes + re-created volumes + modes, WARN only.
 bash "$REPO_DIR/stf_v3/scripts/storage_report.sh" "$bk_root"
+
+# 11. frontend running, fresh, healthy, and built from this checkout (PR #278).
+frontend_ok=1
+frontend_detail=""
+if podman inspect stf-v3-frontend >/dev/null 2>&1; then
+  frontend_state="$(podman inspect -f '{{.State.Status}}' stf-v3-frontend 2>/dev/null)"
+  frontend_created="$(podman inspect -f '{{.Created}}' stf-v3-frontend 2>/dev/null | sed -E 's/\.[0-9]+//' | awk '{print $1" "$2" "$3}')"
+  frontend_created_sec="$(date -d "$frontend_created" +%s 2>/dev/null)"
+  if [ -n "$frontend_created_sec" ]; then
+    frontend_age_sec=$(( $(date +%s) - frontend_created_sec ))
+  else
+    frontend_age_sec="unknown"
+  fi
+  if [ "$frontend_state" != "running" ] || [ "$frontend_age_sec" = "unknown" ] ||
+     [ "$frontend_age_sec" -lt 0 ] || [ "$frontend_age_sec" -gt $(( MAX_AGE_MIN * 60 )) ]; then
+    frontend_ok=0
+  fi
+  frontend_detail="state=${frontend_state:-unknown}, created ${frontend_age_sec}s ago (limit ${MAX_AGE_MIN} min)"
+  frontend_label="$(podman inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' stf-v3-frontend 2>/dev/null)"
+  [ "$frontend_label" = "$EXPECT_COMMIT" ] || frontend_ok=0
+  frontend_detail="$frontend_detail; image=${frontend_label:-<none>} expected=$EXPECT_COMMIT"
+else
+  frontend_ok=0
+  frontend_detail="container stf-v3-frontend not found"
+fi
+if curl -fsS http://127.0.0.1:3002/api/health >/dev/null 2>&1; then
+  frontend_detail="$frontend_detail; /api/health ok"
+else
+  frontend_ok=0
+  frontend_detail="$frontend_detail; /api/health unavailable"
+fi
+report "frontend fresh + healthy + commit" "$frontend_ok" "$frontend_detail"
 
 if [ "$FAILS" -eq 0 ]; then echo "DEPLOY CHECK ALL PASS"; exit 0; fi
 echo "DEPLOY CHECK FAILED ($FAILS)"; exit 1
