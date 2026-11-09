@@ -24,11 +24,12 @@ import uuid
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-import structlog
 from pypdf import PdfReader
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+import structlog
+import yaml
 
 from stf_v3.errors import ApiError, forbidden, not_found
 from stf_v3.knowledge import manual_fs, manual_index
@@ -160,7 +161,35 @@ def _readable_md_path(row: Manual) -> Path:
         raise ApiError(409, "manual_not_readable", "Manual content path is invalid") from exc
     if not path.is_file():
         raise ApiError(409, "manual_not_readable", "Manual content is missing")
-    if path.suffix.lower() != ".md" or path.stem.lower() != str(row.id):
+    if path.suffix.lower() != ".md":
+        raise ApiError(409, "manual_not_readable", "Manual content does not match its record")
+    sidecar = path.parent / f"{row.id}.index.yaml"
+    # A sidecar is authoritative only for this row's exact Markdown file.
+    # Check its digest here because the runtime index parser does not verify it.
+    if sidecar.exists() or sidecar.is_symlink():
+        try:
+            if not sidecar.is_file() or sidecar.resolve().parent != path.parent:
+                raise ValueError("Manual index is outside the content directory")
+            index = yaml.safe_load(sidecar.read_text(encoding="utf-8"))
+            source = index["source"]
+            content_file = source["content_file"]
+            stated_hash = source["content_sha256"]
+            declared = (path.parent / content_file).resolve()
+            if (index["manual_id"] != str(row.id) or
+                    declared != path or declared.parent != path.parent or
+                    not isinstance(stated_hash, str) or
+                    not re.fullmatch(r"[0-9a-fA-F]{64}", stated_hash)):
+                raise ValueError("Manual index does not match its record")
+            digest = hashlib.sha256()
+            with path.open("rb") as content:
+                for chunk in iter(lambda: content.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            if digest.hexdigest() != stated_hash.lower():
+                raise ValueError("Manual content hash does not match its index")
+        except (OSError, UnicodeError, ValueError, KeyError, TypeError,
+                yaml.YAMLError) as exc:
+            raise ApiError(409, "manual_not_readable", "Manual index is invalid") from exc
+    elif path.stem.lower() != str(row.id):
         raise ApiError(409, "manual_not_readable", "Manual content does not match its record")
     return path
 
