@@ -1,8 +1,9 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- Manual assets have no declared dimensions; the browser must use their intrinsic size. */
+
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import Image from "next/image";
 
 /** Model and converted-manual Markdown are data, never trusted HTML or links. */
 export function SafeMarkdown({ content, manualId }: { content: string; manualId?: string }) {
@@ -10,7 +11,7 @@ export function SafeMarkdown({ content, manualId }: { content: string; manualId?
     a: ({ children }) => <span className="markdown-plain-link">{children}</span>,
     img: ({ src, alt }) => {
       const safe = manualId ? manualImageUrl(manualId, typeof src === "string" ? src : undefined) : null;
-      return safe ? <span className="manual-image-wrap"><Image src={safe} alt={alt || "維修手冊圖片"} width={1200} height={900} unoptimized /></span> : <span className="manual-image-missing">[圖片未提供：{alt || "無說明"}]</span>;
+      return safe ? <span className="manual-image-wrap"><img src={safe} alt={alt || "維修手冊圖片"} style={{ width: "auto", height: "auto", maxWidth: "100%" }} /></span> : <span className="manual-image-missing">[圖片未提供：{alt || "無說明"}]</span>;
     },
   }}>{content}</Markdown></div>;
 }

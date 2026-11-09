@@ -110,9 +110,17 @@ test("one-click diagnosis resumes after refresh and a report citation opens the 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   await page.reload();
   await expect(page.locator(".event-item").first()).toBeVisible();
+  await expect(page.getByText("已查閱維修手冊，請檢查電裝系統。")).toBeVisible({ timeout: 15_000 });
+  const simpleManual = page.locator(".event-item").filter({ hasText: "維修手冊" });
+  await expect(simpleManual).toHaveCount(1);
+  await expect(simpleManual).toContainText("3 次");
+  await expect(simpleManual).toContainText("1 次失敗");
+  await expect(page.locator(".report-meta")).toContainText("模型：mock-v3");
+  await expect(page.locator(".report-meta")).not.toContainText("openai:");
   await page.getByRole("tab", { name: "技術細節" }).click();
   await expect(page.getByRole("tab", { name: "技術細節" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByText("已查閱維修手冊，請檢查電裝系統。")).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator(".event-item").filter({ hasText: "查詢資料" })).toHaveCount(3);
+  await expect(page.locator(".event-item").filter({ hasText: "取得查詢結果" })).toHaveCount(3);
   await expect(page.getByRole("heading", { name: "引用與證據" })).toBeVisible();
   // Issue #270: an unverified manual reference must not lead to a guessed source.
   const unverifiedManual = page.locator(".citation-list li").filter({ hasText: "未核實章節" });
@@ -126,6 +134,12 @@ test("one-click diagnosis resumes after refresh and a report citation opens the 
   const manualImage = page.getByRole("img", { name: "電路示意圖" });
   await expect(manualImage).toBeVisible();
   await expect.poll(() => manualImage.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  expect(await manualImage.evaluate((image: HTMLImageElement) => {
+    const style = getComputedStyle(image);
+    return image.getBoundingClientRect().width - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth);
+  })).toBeLessThanOrEqual(
+    await manualImage.evaluate((image: HTMLImageElement) => image.naturalWidth),
+  );
 
   const pageOrigin = new URL(page.url()).origin;
   expect(browserRequests.filter((url) => {
@@ -137,6 +151,27 @@ test("one-click diagnosis resumes after refresh and a report citation opens the 
   await context.setOffline(true);
   await expect(page.getByRole("heading", { name: "目前離線" })).toBeVisible();
   await expect(page.locator("body")).not.toContainText("檢查電路接頭與保險絲");
+});
+
+test("issue #279: report model hides its internal provider prefix", async ({ page }) => {
+  await login(page);
+  await page.goto("/vehicles/00000000-0000-4000-8000-000000000001/conversations/66666666-6666-4666-8666-666666666666");
+  await expect(page.locator(".report-meta")).toContainText("模型：mock-v3");
+  await expect(page.locator(".report-meta")).not.toContainText("openai:");
+});
+
+test("issue #279: manual image keeps its natural size", async ({ page }) => {
+  await login(page);
+  await page.goto("/manuals/33333333-3333-4333-8333-333333333333?section=%E9%9B%BB%E8%A3%9D");
+  const image = page.getByRole("img", { name: "電路示意圖" });
+  await expect(image).toBeVisible();
+  await expect.poll(() => image.evaluate((node: HTMLImageElement) => node.naturalWidth)).toBeGreaterThan(0);
+  const width = await image.evaluate((node: HTMLImageElement) => {
+    const style = getComputedStyle(node);
+    return node.getBoundingClientRect().width - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth);
+  });
+  const naturalWidth = await image.evaluate((node: HTMLImageElement) => node.naturalWidth);
+  expect(width).toBeLessThanOrEqual(naturalWidth);
 });
 
 test("an already-running diagnosis of another log is explained before navigation", async ({ page }) => {
