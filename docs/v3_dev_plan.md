@@ -4,11 +4,11 @@
 
 | 字段 | 值 |
 |---|---|
-| **架构文档** | `docs/v3_design_doc.md`（v1.24） |
+| **架构文档** | `docs/v3_design_doc.md`（v1.25） |
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.27（issue #270：V3 前端上线切换配置） |
+| **版本** | v1.28（PR #278：前端部署核验与部署顺序修订） |
 | **作者** | Xiangzhu Yan |
 | **最后更新** | 2026-11-09 |
 
@@ -247,8 +247,15 @@ V1/V2 与 `/v3/` 路由不动；认证入口沿用限流，仅从本机 cloudfla
 配置与代理行为测试；部署、服务器日志卷 UID 1001 写权限、公网链路
 和回滚演练由维护者执行，CI 不能代替这些实测。
 
+**PR #278 维护者复核后补充（未部署）**：V3 全项目 `down` 后重启 API、
+worker、frontend 三个服务；部署核验新增第 11 项，检查前端容器 30 分钟
+内创建、3002 健康接口及镜像提交标签。正式前端切换前核对线上 OpenAPI
+是否含 `/v3/manuals/{manual_id}/sections`；旧后端缺失时先按 `main` 部署
+后端，再继续前端切换。V1/V2 例行部署不再构建或启动旧网页；旧镜像仍保留
+用于回滚。以上为代码与操作说明，服务器验收仍由维护者执行。
+
 **目标**：V3 后端在 PolyU 服务器上与 V1/V2 并存运行；每个 PR 自动跑测试和两条迁移性检查。
-**方法**：`infra/docker-compose.v3.yml`（`stf-v3-api`、`stf-v3-worker`，独立端口）+ nginx 路由前缀；共用 Postgres 实例与 vLLM（配置连接）；GitHub Actions：pytest（离线）+ OpenAPI diff + 可迁出检查（拷贝两目录到空目录跑测试）+ 不绑死检查（临时检出删除老目录后构建）；部署步骤追加到 CLAUDE.md。
+**方法**：`infra/docker-compose.v3.yml`（`stf-v3-api`、`stf-v3-worker`、`stf-v3-frontend`，独立端口）+ nginx 路由前缀；共用 Postgres 实例与 vLLM（配置连接）；GitHub Actions：pytest（离线）+ OpenAPI diff + 可迁出检查（拷贝两目录到空目录跑测试）+ 不绑死检查（临时检出删除老目录后构建）；部署步骤追加到 CLAUDE.md。
 **验收**：服务器上 V1/V2/V3 健康检查同时通过；Cloudflare 隧道能访问 V3 `/health`；CI 四项在 PR 上绿灯。
 
 ### 3.3 M2 — 数据入口
@@ -564,6 +571,7 @@ issue #270 前端已由 PR #277 合入；PR ③ 是部署配置和回滚准备�
 
 | 版本 | 日期 | 变更 |
 |---|---|---|
+| v1.28 | 2026-11-09 | PR #278 维护者意见：PROD-04 补前端部署核验第 11 项和 V3 三服务重启顺序，§11.1 先核对线上手册章节接口并按需部署已合入后端；旧网页不再由 V1/V2 例行部署启动。设计文档 v1.25、运维手册 v0.17；架构未变，图仅同步版本标题；未在 PolyU 执行 |
 | v1.27 | 2026-11-09 | issue #270 上线配置 PR：PROD-04 与 PROD-12～14 补独立前端 Compose、可信隧道真实 IP、Nginx 根路径、持久日志卷和可迁出的 OpenAPI 契约快照；§4/§5 记维护者接受 Radix + Tailwind，部署、公网与实机验收仍待维护者。设计文档 v1.24、运维手册 v0.16 和网关关系**图已同步** |
 | v0.1 | 2026-09-07 | 初稿：7 个里程碑、15 张 PROD ticket（PROD-01 到验收级，其余到目标/方法/验收层）、非目标清单草案、9 项待决策 |
 | v1.26 | 2026-11-07 | issue #270 前端 PR：D3/D6、PROD-04、PROD-12～14 记录 `obd-ui-v3/` 同源 BFF、Windows 启动器、前端 CI、JSON 访问记录及模拟链路；§4/§5 明确 twin/组件选型与真实设备、手机、公网验收边界。设计文档 v1.23（§1.4.1 等）、设备手册 §2、前端→V3 调用关系**图已同步**；Compose/Nginx 上线切换未包含本次 PR |

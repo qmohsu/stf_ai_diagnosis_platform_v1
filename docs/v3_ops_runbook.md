@@ -2,7 +2,7 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.16（issue #270：§11 前端切换与回滚；v0.15 为 #272 部署变动监控） |
+| 版本 | v0.17（PR #278：前端部署核验与后端先决条件；v0.16 为 §11 前端切换与回滚） |
 | 日期 | 2026-11-09 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`、待部署的 `stf-v3-frontend`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
@@ -194,7 +194,7 @@ bash infra/vllm_ctl.sh logs 200
 bash infra/vllm_ctl.sh install-unit   # 开机自启单元 stf-llm.service —— 按需策略下【不安装】；只有决定常驻时才用
 ```
 
-**服务器重启后的启动顺序**（FM-21；按需策略）：① `systemctl --user restart stf-v3-gpu-worker`；② V3 容器 `podman-compose -p stf_v3 … up -d stf-v3-api stf-v3-worker`；③ `LLM_CHECK=skip LLM_CHECK_REASON="vLLM 按需" bash stf_v3/scripts/deploy_check.sh`。vLLM **不随重启自起**：有诊断在等模型时由按需控制器自动拉起（§6.2），评测 / 验证时按上面的步骤手动拉起。V3 容器在 vLLM 停着时照常运行，诊断会在过程里显示"等待模型"。
+**服务器重启后的启动顺序**（FM-21；按需策略）：① `systemctl --user restart stf-v3-gpu-worker`；② V3 容器 `podman-compose -p stf_v3 … up -d stf-v3-api stf-v3-worker stf-v3-frontend`；③ `LLM_CHECK=skip LLM_CHECK_REASON="vLLM 按需" bash stf_v3/scripts/deploy_check.sh`。vLLM **不随重启自起**：有诊断在等模型时由按需控制器自动拉起（§6.2），评测 / 验证时按上面的步骤手动拉起。V3 容器在 vLLM 停着时照常运行，诊断会在过程里显示"等待模型"。
 
 **vLLM 不参与 V3 部署核验的"30 分钟内新建"检查**（FM-39）：V3 每次部署不需要重启 vLLM；核验第 9 项只看它在线、服务的是配置里的模型、能真的生成一句。
 
@@ -224,7 +224,7 @@ bash infra/vllm_ctl.sh install-unit   # 开机自启单元 stf-llm.service —�
 ```
 bash infra/vllm_ctl.sh stop                         # 先释放显存：两者不能同时驻留（qwen3.5 常驻 57 GB）
 # infra/.env 加三行：STF_V3_LLM_BASE_URL=http://127.0.0.1:11434/v1  STF_V3_LLM_MODEL=qwen3.5:27b-q8_0  STF_V3_LLM_API_KEY=ollama
-cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker && cd ..
+cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker stf-v3-frontend && cd ..
 bash stf_v3/scripts/deploy_check.sh --max-age-min 5  # 第 9 项会对 Ollama 做同样的三步检查；档自动变为 qwen-ollama（预算回到 20 分钟）
 ```
 
@@ -587,10 +587,25 @@ bash stf_v3/ops/install_deploy_watch.sh [--check]                           # �
 ## 11. V3 前端切换与回滚（issue #270，PR ③）
 
 本节是**交给维护者执行**的步骤。PR ③ 只准备配置，尚未在 PolyU
-部署或切换公网根路径。它不修改 V3 后端、数据库模式或宿主机 GPU 工人；
-本次切换无需重建 API/worker、跑迁移或重启模型。`obd-ui` 旧镜像保留供回滚。
+部署或切换公网根路径。它不修改 V3 后端、数据库模式或宿主机 GPU 工人。
+先按 §11.1 核对线上 V3 API；若服务器还没有已合入的手册章节接口，先完成
+`CLAUDE.md` 的「Backend V3 main deployment」。接口就绪后，前端切换无需
+再次重建 API/worker、跑迁移或重启模型。`obd-ui` 旧镜像保留供回滚。
 
 ### 11.1 部署前记录与前端预热
+
+先在**当前线上 API**核对已合入的手册章节接口（退出码 0 才算存在，
+不要只搜索 `/sections` 字样）：
+
+```bash
+curl -fsS http://127.0.0.1:8002/v3/openapi.json | python3 -c 'import json,sys; paths=json.load(sys.stdin)["paths"]; sys.exit(0 if "/v3/manuals/{manual_id}/sections" in paths else 1)'
+```
+
+若请求失败或 OpenAPI 无法解析，先排查线上 API，不继续切换。若成功读取
+OpenAPI 但缺少该路径，先按 `CLAUDE.md`「Backend V3 main deployment」
+从已合入的 `main` 部署 V3 后端（包括其 Compose 重建、迁移及核验），再重复
+上述检查。只有通过后才开始以下前端切换记录和预热；后端更新与前端切换的
+部署记录分别留存。
 
 先和管理员约定验证窗口，记录服务器的原分支、完整提交、`git remote -v`、
 `stf-nginx` 与 `stf-obd-ui` 的镜像 ID，以及当前 Nginx 配置；运行
@@ -717,5 +732,9 @@ curl -fsS http://127.0.0.1:8080/ >/dev/null || exit 1
 podman rm -f stf-v3-frontend
 ```
 
-**修订记录**：v0.16（2026-11-09）加入 §11 上线准备、可信隧道 IP、
+**修订记录**：v0.17（2026-11-09，PR #278）V3 后端重建命令带上前端、
+§11.1 先核对线上手册章节接口并按需部署后端、部署核验加入前端第 11 项；
+尚未在 PolyU 执行。
+
+v0.16（2026-11-09）加入 §11 上线准备、可信隧道 IP、
 日志卷、验收与回滚；配置提交不代表 PolyU 已切换。

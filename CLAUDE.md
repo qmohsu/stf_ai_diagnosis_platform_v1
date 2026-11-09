@@ -239,8 +239,10 @@ results as a completed live deployment.
 ## Server Deployment (PolyU GPU Server)
 
 This procedure is for the legacy V1/V2 stack. For the independent V3 frontend,
-use `docs/v3_ops_runbook.md` §11; its cutover changes only that frontend and
-the shared Nginx gateway, with no backend rebuild or database migration.
+use `docs/v3_ops_runbook.md` §11. First check the live V3 OpenAPI document as
+described in §11.1; an older backend must be deployed from main before the
+frontend cutover. Once the backend is current, the cutover changes only the
+frontend and shared Nginx gateway, with no further backend rebuild or migration.
 When the user says **"deploy to server"** or **"update the server"** for V1/V2, follow this procedure:
 
 1. **Pre-flight: git state**: Run `git status` and `git log origin/main..HEAD` locally to verify all changes are committed and pushed to `origin/main`. If there are unpushed commits or uncommitted changes, warn the user and do NOT proceed until everything is pushed.
@@ -255,7 +257,7 @@ When the user says **"deploy to server"** or **"update the server"** for V1/V2, 
    ```
    Expected output: a single-element list (`['<rev_id>']`). If you see two or more heads, fix the conflicting migration files before deploying.
 3. **Pull on server**: `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1 && git pull origin main"`
-4. **Rebuild images**: `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1/infra && ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml build diagnostic-api obd-ui"`
+4. **Rebuild images**: `ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1/infra && ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml build diagnostic-api"`
 5. **Force-recreate changed containers**: Podman 3.4 does NOT recreate containers when the image changes — `up -d --build` silently keeps old containers. You MUST use `down`+`up` for changed services:
    ```
    ssh polyu-gpu "cd ~/stf_ai_diagnosis_platform_v1/infra && \
@@ -263,7 +265,6 @@ When the user says **"deploy to server"** or **"update the server"** for V1/V2, 
      ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d postgres && sleep 5 && \
      ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d ollama && sleep 2 && \
      ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d diagnostic-api && sleep 5 && \
-     ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d obd-ui && sleep 3 && \
      ~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d nginx"
    ```
 6. **Verify containers are fresh**: Check that `CREATED AT` timestamps are recent (within the last minute) for ALL rebuilt services. Old timestamps mean the container was NOT recreated:
@@ -278,10 +279,10 @@ When the user says **"deploy to server"** or **"update the server"** for V1/V2, 
    ssh polyu-gpu "podman restart stf-diagnostic-api && sleep 5 && podman logs --tail 10 stf-diagnostic-api 2>&1 | grep -iE 'startup|golden_sync|complete' | tail -5"
    ```
    Skip only when step 7 reported "already at head" (no migrations ran).
-9. **Health checks**: Verify all 5 services are healthy:
+9. **Health checks**: Verify these four endpoints are healthy:
    - `curl -sf http://127.0.0.1:11434/api/version` (Ollama)
    - `curl -sf http://127.0.0.1:8001/health` (Diagnostic API)
-   - `curl -sf http://127.0.0.1:3001` (OBD UI)
+   - `curl -sf http://127.0.0.1:3002/api/health` (V3 frontend)
    - `curl -sf http://127.0.0.1:8080/health` (Nginx gateway)
 10. **Warm up the local LLM** (APP-58, GitHub issue #128): The `down`+`up` in step 5 evicts the resident model, so the FIRST `/v2/obd/{id}/diagnose` triggers a multi-minute cold load. The API now auto-pre-warms in the background at startup (`LLM_PREWARM_ON_STARTUP`, default on) and every diagnose stream has a timer-based SSE keep-alive, so a real user request will survive the load — but a green step-9 health check does NOT yet mean "first generation will succeed", because `/health` returns before the model is resident. Force the load explicitly and confirm it sticks so the first expert request is instant:
     ```
@@ -470,10 +471,10 @@ bash stf_v3/scripts/predeploy_check.sh                                 # PROD-11
 bash stf_v3/scripts/isolation_check.sh snapshot                       # V1/V2 baseline
 cd infra && GIT_COMMIT=$(git rev-parse HEAD) ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml build && cd ..
 ~/.local/bin/podman-compose --profile migrate -p stf_v3 -f infra/docker-compose.v3.yml -f infra/docker-compose.v3.polyu.yml run --rm stf-v3-migrate alembic upgrade head   # --profile migrate is required: without it podman-compose 1.5 only warns 'missing services' and exits 0
-cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down &&   ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker && cd ..
+cd infra && ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml down &&   ~/.local/bin/podman-compose -p stf_v3 -f docker-compose.v3.yml -f docker-compose.v3.polyu.yml up -d stf-v3-api stf-v3-worker stf-v3-frontend && cd ..
 podman exec stf-nginx nginx -t && podman exec stf-nginx nginx -s reload   # only if nginx.conf changed
 systemctl --user restart stf-v3-gpu-worker && bash stf_v3/gpu_worker/install.sh --check   # host worker on the new code (PROD-06)
-bash stf_v3/scripts/deploy_check.sh                                    # 10 checks (9 = model service, 10 = last backup < 36 h), exit 1 on any failure
+bash stf_v3/scripts/deploy_check.sh                                    # 11 checks (9 = model service, 10 = last backup < 36 h, 11 = frontend), exit 1 on any failure
 # E2E smoke on a throwaway DB + port 8003 (keeps the real stf_v3 DB clean):
 #   create_database.sh stf_v3_test → alembic upgrade → podman run -d --name stf-v3-api-test --network host #   -e STF_V3_DATABASE_URL=<app url to stf_v3_test> -e STF_V3_JWT_SECRET=<random> stf-v3:local #   uvicorn stf_v3.main:app --host 127.0.0.1 --port 8003 → create_workshop.py → smoke_e2e.py --base-url http://127.0.0.1:8003
 #   → rm container, DROP DATABASE stf_v3_test
@@ -491,7 +492,7 @@ image whose commit label differs from `git rev-parse HEAD`.
 
 **Backend V3 main deployment** — same as above minus the smoke DB, after merging:
 pull main → `predeploy_check.sh` → build with `GIT_COMMIT` → `--profile migrate … run --rm stf-v3-migrate alembic upgrade head`
-→ `down` + `up -d stf-v3-api stf-v3-worker` → `deploy_check.sh` → `isolation_check.sh compare`
+→ `down` + `up -d stf-v3-api stf-v3-worker stf-v3-frontend` → `deploy_check.sh` → `isolation_check.sh compare`
 → `deploy_watch.py ack --note "main <sha> deployed"`.
 
 **CI** (`.github/workflows/v3.yml`, V3 paths only): unit + contract
