@@ -50,6 +50,8 @@ _IMAGE_MIME_TYPES = {
     ".webp": "image/webp",
 }
 _MAX_IMAGE_BYTES = 10 * 1024 * 1024
+_SourceCacheKey = Tuple[Path, int, int, Path, int, int]
+_source_validation_cache: dict[_SourceCacheKey, bool] = {}
 
 
 # ── paths ────────────────────────────────────────────────────────────
@@ -167,9 +169,26 @@ def _readable_md_path(row: Manual) -> Path:
     # A sidecar is authoritative only for this row's exact Markdown file.
     # Check its digest here because the runtime index parser does not verify it.
     if sidecar.exists() or sidecar.is_symlink():
+        cache_key: Optional[_SourceCacheKey] = None
         try:
-            if not sidecar.is_file() or sidecar.resolve().parent != path.parent:
+            if not sidecar.is_file():
                 raise ValueError("Manual index is outside the content directory")
+            index_path = sidecar.resolve()
+            if index_path.parent != path.parent:
+                raise ValueError("Manual index is outside the content directory")
+            index_stat = sidecar.stat()
+            content_stat = path.stat()
+            # Both files must keep the same identity and metadata before a
+            # previous digest decision can authorize another section or image.
+            cache_key = (
+                index_path, index_stat.st_mtime_ns, index_stat.st_size,
+                path, content_stat.st_mtime_ns, content_stat.st_size,
+            )
+            cached = _source_validation_cache.get(cache_key)
+            if cached is not None:
+                if not cached:
+                    raise ApiError(409, "manual_not_readable", "Manual index is invalid")
+                return path
             index = yaml.safe_load(sidecar.read_text(encoding="utf-8"))
             source = index["source"]
             content_file = source["content_file"]
@@ -186,8 +205,11 @@ def _readable_md_path(row: Manual) -> Path:
                     digest.update(chunk)
             if digest.hexdigest() != stated_hash.lower():
                 raise ValueError("Manual content hash does not match its index")
+            _source_validation_cache[cache_key] = True
         except (OSError, UnicodeError, ValueError, KeyError, TypeError,
                 yaml.YAMLError) as exc:
+            if cache_key is not None:
+                _source_validation_cache[cache_key] = False
             raise ApiError(409, "manual_not_readable", "Manual index is invalid") from exc
     elif path.stem.lower() != str(row.id):
         raise ApiError(409, "manual_not_readable", "Manual content does not match its record")
