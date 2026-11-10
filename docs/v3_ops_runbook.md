@@ -2,12 +2,12 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.17（PR #278：前端部署核验与后端先决条件；v0.16 为 §11 前端切换与回滚） |
-| 日期 | 2026-11-09 |
+| 版本 | v0.18（issue #279：前端上线状态与网关安全重建命令） |
+| 日期 | 2026-11-10 |
 | 作者 | Xiangzhu Yan |
-| 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker`、待部署的 `stf-v3-frontend`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
+| 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker` / `stf-v3-frontend`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
 
-后续章节按里程碑追加：后端部署 / 回滚（PROD-04 已在 CLAUDE.md "V3 Deployment"）、备份与恢复（§7，PROD-15A）、前端根路径切换（§11，配置待维护者执行）。
+后续章节按里程碑追加：后端部署 / 回滚（PROD-04 已在 CLAUDE.md "V3 Deployment"）、备份与恢复（§7，PROD-15A）、前端根路径切换与回滚（§11；2026-11-09 已由维护者执行，第一轮验收见 issue #279）。
 
 ## 1. 队列（procrastinate）
 
@@ -586,8 +586,9 @@ bash stf_v3/ops/install_deploy_watch.sh [--check]                           # �
 
 ## 11. V3 前端切换与回滚（issue #270，PR ③）
 
-本节是**交给维护者执行**的步骤。PR ③ 只准备配置，尚未在 PolyU
-部署或切换公网根路径。它不修改 V3 后端、数据库模式或宿主机 GPU 工人。
+本节保留维护者执行前端部署、网关切换与回滚的步骤。维护者已于
+2026-11-09 在 PolyU 部署并切换公网根路径，第一轮验收见 issue #279。
+原 PR ③ 不修改 V3 后端、数据库模式或宿主机 GPU 工人。
 先按 §11.1 核对线上 V3 API；若服务器还没有已合入的手册章节接口，先完成
 `CLAUDE.md` 的「Backend V3 main deployment」。接口就绪后，前端切换无需
 再次重建 API/worker、跑迁移或重启模型。`obd-ui` 旧镜像保留供回滚。
@@ -687,7 +688,7 @@ podman unshare ls -l "$FRONTEND_LOG_MOUNT"/access-*.jsonl
 ```bash
 cd ~/stf_ai_diagnosis_platform_v1/infra
 podman rm -f stf-nginx
-~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d nginx
+~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d --no-recreate --no-deps nginx
 podman exec stf-nginx nginx -t
 podman exec stf-nginx grep 'server 127.0.0.1:3002' /etc/nginx/nginx.conf
 curl -fsS http://127.0.0.1:8080/api/health
@@ -725,16 +726,20 @@ podman start stf-obd-ui || ~/.local/bin/podman-compose \
   -f docker-compose.yml -f docker-compose.polyu.yml up -d obd-ui
 curl -fsS http://127.0.0.1:3001/ >/dev/null || exit 1
 podman rm -f stf-nginx
-~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d nginx
+~/.local/bin/podman-compose -f docker-compose.yml -f docker-compose.polyu.yml up -d --no-recreate --no-deps nginx
 podman exec stf-nginx nginx -t
 podman exec stf-nginx grep 'server 127.0.0.1:3001' /etc/nginx/nginx.conf
 curl -fsS http://127.0.0.1:8080/ >/dev/null || exit 1
 podman rm -f stf-v3-frontend
 ```
 
-**修订记录**：v0.17（2026-11-09，PR #278）V3 后端重建命令带上前端、
+**修订记录**：v0.18（2026-11-10，issue #279）记录 2026-11-09 前端已由维护者
+部署上线及第一轮验收；§11.2、§11.3 的 Nginx 重建改为
+`up -d --no-recreate --no-deps nginx`，避免连带重建同组 Postgres 和 V1 API。
+
+v0.17（2026-11-09，PR #278）V3 后端重建命令带上前端、
 §11.1 先核对线上手册章节接口并按需部署后端、部署核验加入前端第 11 项；
-尚未在 PolyU 执行。
+此版为部署前准备，实际部署状态见 v0.18。
 
 v0.16（2026-11-09）加入 §11 上线准备、可信隧道 IP、
 日志卷、验收与回滚；配置提交不代表 PolyU 已切换。

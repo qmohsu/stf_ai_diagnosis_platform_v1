@@ -16,21 +16,26 @@ const messages = { login: {
   rejectedOrigin: "登入來源不符，請從正式網站網址重新開啟頁面",
   rateLimited: "嘗試次數過多，請稍後再試", failed: "暫時無法登入，請重試",
   expired: "登入狀態已失效，請重新登入", duration: "登入狀態最長有效 12 小時",
-  authorizedOnly: "僅供獲授權的工作坊成員使用",
+  authorizedOnly: "僅供獲授權的工作坊成員使用", required: "請輸入用戶名稱和密碼",
 } };
 
 export function LoginForm() {
   const searchParams = useSearchParams();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(searchParams.get("expired") === "1" ? messages.login.expired : null);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const normalizedUsername = username.trim();
-    if (!normalizedUsername || !password || submitting) return;
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    const normalizedUsername = String(values.get("username") ?? "").trim();
+    const password = String(values.get("password") ?? "");
+    if (submitting) return;
+    if (!normalizedUsername || !password) {
+      setError(messages.login.required);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -49,14 +54,16 @@ export function LoginForm() {
         else if (response.status === 503) setError(messages.login.unavailable);
         else if (response.status === 429) setError(messages.login.rateLimited);
         else setError(messages.login.failed);
-        setPassword("");
+        const passwordInput = form.elements.namedItem("password") as HTMLInputElement | null;
+        if (passwordInput) passwordInput.value = "";
         return;
       }
       await clearPortalCaches();
       window.location.assign("/");
     } catch {
       setError(messages.login.unavailable);
-      setPassword("");
+      const passwordInput = form.elements.namedItem("password") as HTMLInputElement | null;
+      if (passwordInput) passwordInput.value = "";
     } finally { setSubmitting(false); }
   };
 
@@ -77,8 +84,7 @@ export function LoginForm() {
               spellCheck={false}
               maxLength={50}
               placeholder={messages.login.usernamePlaceholder}
-              value={username}
-              onChange={(event) => { setUsername(event.target.value); setError(null); }}
+              onChange={() => setError(null)}
               required
               autoFocus
             />
@@ -95,8 +101,7 @@ export function LoginForm() {
               autoComplete="current-password"
               maxLength={256}
               placeholder={messages.login.passwordPlaceholder}
-              value={password}
-              onChange={(event) => { setPassword(event.target.value); setError(null); }}
+              onChange={() => setError(null)}
               required
             />
             <button
@@ -112,7 +117,7 @@ export function LoginForm() {
           </div>
         </div>
         {error && <p className="login-error" role="alert"><AlertTriangle aria-hidden="true" />{error}</p>}
-        <button className="login-submit" type="submit" disabled={!username.trim() || !password || submitting}>
+        <button className="login-submit" type="submit" disabled={submitting}>
           {submitting && <LoaderCircle className="spin" aria-hidden="true" />}
           {submitting ? messages.login.submitting : messages.login.submit}
         </button>

@@ -1,6 +1,6 @@
 # STF V3 前端
 
-Next.js 15 工作坊前端，提供邀請碼註冊與登入、工作坊建車、網頁上傳行車日誌、設備憑證、一鍵診斷、過程直播與回放、報告和手冊引用。手機與電腦使用同一個響應式網頁。[後端手冊來源接口 PR #276](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/pull/276) 與[前端 PR #277](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/pull/277) 已合入。PR ③ 準備 Compose、Nginx、持久日誌卷與回滾配置；本前端仍未在 PolyU 部署或切換網站首頁，部署和切換由維護者執行。
+Next.js 15 工作坊前端，提供邀請碼註冊與登入、工作坊建車、網頁上傳行車日誌、設備憑證、一鍵診斷、過程直播與回放、報告和手冊引用。手機與電腦使用同一個響應式網頁。[後端手冊來源接口 PR #276](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/pull/276) 與[前端 PR #277](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/pull/277) 已合入。維護者於 2026-11-09 將前端部署至 PolyU，正式網站首頁已切換為 V3；第一輪上線驗收與待修項見 [issue #279](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/279)。
 
 ## 運行邊界
 
@@ -14,13 +14,13 @@ Next.js 15 工作坊前端，提供邀請碼註冊與登入、工作坊建車、
 
 ```mermaid
 flowchart LR
-  U["手機／電腦瀏覽器"] --> C["Cloudflare Tunnel"] --> N["Nginx 根路徑<br/>切換待維護者執行"]
-  N -->|"同源頁面及 /api/*"| F["obd-ui-v3：Next.js 頁面與 BFF<br/>PolyU 尚未部署"]
+  U["手機／電腦瀏覽器"] --> C["Cloudflare Tunnel"] --> N["Nginx 根路徑<br/>已切換至 V3"]
+  N -->|"同源頁面及 /api/*"| F["obd-ui-v3：Next.js 頁面與 BFF<br/>PolyU 已部署"]
   F -->|"服務端持用戶令牌"| B["V3 後端 API"]
   D["OBD／Jetson 設備"] -->|"既有 /v3/ingest/device"| B
 ```
 
-前端已在本地模擬 V3 下測試註冊、建車、上傳、設備憑證、診斷、報告與引用；2026-11-03 曾以專用測試車隊經本機前端及 SSH 隧道驗證伺服器 V3 的註冊、登入、工作坊讀取及登出。這些結果不代表前端已上線。仍需驗收真實 Jetson 行程與補傳、真實手冊卷引用、公開 HTTPS 完整診斷、Android/iOS 安裝、弱網上傳及 pilot 用戶。正式設備接入要求見 [issue #257](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/257)。前端目前使用 Tailwind v4 與 Radix 組件，未使用 shadcn/ui 生成組件；[PR #277 的維護者回覆](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/pull/277#issuecomment-6701729166)已接受此做法，設計文檔保留選型差異。
+前端已在本地模擬 V3 下測試註冊、建車、上傳、設備憑證、診斷、報告與引用；維護者於 2026-11-09 完成 PolyU 部署與正式網站第一輪驗收，結果見 [issue #279](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/279)。真實 Jetson 行程與補傳、Android/iOS 安裝、弱網上傳、部分報告及 pilot 用戶等仍待後續驗收；TRICITY155 手冊引用待後端修復部署後復測。正式設備接入要求見 [issue #257](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/257)。前端目前使用 Tailwind v4 與 Radix 組件，未使用 shadcn/ui 生成組件；[PR #277 的維護者回覆](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/pull/277#issuecomment-6701729166)已接受此做法，設計文檔保留選型差異。
 
 ## 本地開發與驗證
 

@@ -60,6 +60,36 @@ describe("login experience", () => {
     });
   });
 
+  it("issue #279: submits browser-autofilled values without React change events", async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ error: { code: "AUTH_INVALID_CREDENTIALS" } }, { status: 401 }));
+    vi.stubGlobal("fetch", fetch);
+    render(<LoginForm />);
+    const username = screen.getByLabelText("用戶名稱") as HTMLInputElement;
+    const password = screen.getByLabelText("密碼") as HTMLInputElement;
+    const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    nativeSetter?.call(username, "manager");
+    nativeSetter?.call(password, "autofilled-password");
+
+    const submit = screen.getByRole("button", { name: "登入" });
+    expect(submit).toBeEnabled();
+    await userEvent.setup().click(submit);
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ username: "manager", password: "autofilled-password" });
+  });
+
+  it("issue #279: validates empty credentials at submit without a request", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    render(<LoginForm />);
+    const submit = screen.getByRole("button", { name: "登入" });
+    expect(submit).toBeEnabled();
+    await userEvent.setup().click(submit);
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("請輸入");
+  });
+
   it("issue #270: explains a rejected login Origin separately from incorrect credentials", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ error: { code: "ORIGIN_REJECTED" } }, { status: 403 })));
     render(<LoginForm />);

@@ -32,8 +32,12 @@ let activeLogId = null;
 const eventTemplates = [
   { delay: 0, event_type: "session_start", payload: { vehicle_id: vehicleId } },
   { delay: 150, event_type: "waiting", payload: { reason: "model_starting", message: "正在啟動診斷模型" } },
-  { delay: 600, event_type: "tool_call", payload: { tool: "read_manual_section", args: { manual_id: manualId, section: "電裝" }, tool_call_id: "call-1" } },
-  { delay: 1200, event_type: "tool_result", payload: { tool: "read_manual_section", duration_ms: 36, is_error: false, tool_call_id: "call-1" } },
+  { delay: 600, event_type: "tool_call", payload: { tool: "search_manual_text", args: { manual_id: manualId }, tool_call_id: "call-1" } },
+  { delay: 800, event_type: "tool_result", payload: { tool: "search_manual_text", duration_ms: 36, is_error: false, tool_call_id: "call-1" } },
+  { delay: 1000, event_type: "tool_call", payload: { tool: "get_manual_toc", args: { manual_id: manualId }, tool_call_id: "call-2" } },
+  { delay: 1200, event_type: "tool_result", payload: { tool: "get_manual_toc", duration_ms: 36, is_error: false, tool_call_id: "call-2" } },
+  { delay: 1400, event_type: "tool_call", payload: { tool: "read_manual_section", args: { manual_id: manualId, section: "電裝" }, tool_call_id: "call-3" } },
+  { delay: 1600, event_type: "tool_result", payload: { tool: "read_manual_section", duration_ms: 36, is_error: true, tool_call_id: "call-3" } },
   { delay: 2500, event_type: "diagnosis_done", payload: { report_id: "99999999-9999-4999-8999-999999999999" } },
   { delay: 2600, event_type: "done", payload: { status: "done" } },
 ];
@@ -78,7 +82,7 @@ function report(id) {
     citations: [{ kind: "manual", ref: `${manualId}#電裝`, source: "trace", tool: "read_manual_section" }, { kind: "manual", ref: `${manualId}#未核實章節`, source: "NO_SOURCE" }, { kind: "dtc", ref: "P00AF", source: "NO_SOURCE" }],
     partial: id === archivedConversationId, stopped_reason: id === archivedConversationId ? "budget" : "complete",
     limitations: id === archivedConversationId ? ["診斷提早結束"] : [],
-    model: "mock-v3", created_at: "2026-10-30T00:00:00Z", secret_internal: "must-not-leak" };
+    model: "openai:mock-v3", created_at: "2026-10-30T00:00:00Z", secret_internal: "must-not-leak" };
 }
 
 function sendSse(req, res, id, afterSeq) {

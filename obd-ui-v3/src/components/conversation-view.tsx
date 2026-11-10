@@ -32,8 +32,7 @@ export function ConversationView({ vehicleId, conversationId }: { vehicleId: str
 
   const latestWaiting = [...events].reverse().find((event) => event.event_type === "waiting");
   const waitingMessage = typeof latestWaiting?.payload.message === "string" ? latestWaiting.payload.message : null;
-  const simpleEvents = events.filter((event) => ["waiting", "session_start", "tool_call", "tool_result", "diagnosis_done", "error", "done"].includes(event.event_type));
-  const visibleEvents = mode === "simple" ? simpleEvents : events;
+  const visibleEvents = mode === "simple" ? simpleTimeline(events) : events.map((event) => ({ event, category: null, count: 1, completed: 0, failures: 0 }));
   const final = ["done", "error", "cancelled"].includes(conversation.status);
 
   return <main className="page-shell">
@@ -48,7 +47,7 @@ export function ConversationView({ vehicleId, conversationId }: { vehicleId: str
         {state === "reconnecting" && <p className="inline-state" role="status">連線中斷，正在續接診斷過程…{failure ? `（${failure}）` : ""}</p>}
         {state === "archived" && <p className="inline-state">診斷過程已歸檔；報告仍可查看。</p>}
         {state === "failed" && <div className="inline-state" role="alert"><p>{failure || "診斷過程暫時無法載入。"}</p><button type="button" className="button secondary" onClick={retry}>重試</button></div>}
-        {visibleEvents.length > 0 && <ol className="event-timeline">{visibleEvents.map((event) => <li className="event-item" key={event.seq}><span className="event-time">{formatTime(event.created_at)}</span><div><strong>{eventLabel(event)}</strong><p>{eventDescription(event)}</p>{mode === "technical" && <TechnicalDetails event={event} />}</div></li>)}</ol>}
+        {visibleEvents.length > 0 && <ol className="event-timeline">{visibleEvents.map((item) => <li className="event-item" key={item.event.seq}><span className="event-time">{formatTime(item.event.created_at)}</span><div><strong>{item.category ? `${toolCategoryLabel(item.category)}${item.count > 1 ? `（${item.count} 次）` : ""}` : eventLabel(item.event)}</strong><p>{item.category ? simpleToolDescription(item) : eventDescription(item.event)}</p>{mode === "technical" && <TechnicalDetails event={item.event} />}</div></li>)}</ol>}
         {visibleEvents.length === 0 && state !== "loading" && state !== "archived" && <p className="inline-state">尚未收到過程事件，請稍候。</p>}
       </section>
       <section className="panel diagnosis-report" aria-labelledby="report-heading">
@@ -69,7 +68,7 @@ function ReportBody({ report }: { report: DiagnosisReport }) {
     {report.limitations.length > 0 && <ul className="limitations-list">{report.limitations.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>}
     <SafeMarkdown content={report.content_md} />
     <div className="citation-block"><h3>引用與證據</h3>{report.citations.length === 0 ? <p className="inline-state">本報告沒有可列出的引用。</p> : <ol className="citation-list">{report.citations.map((citation, index) => <CitationItem citation={citation} key={`${citation.kind}-${citation.ref}-${index}`} />)}</ol>}</div>
-    <p className="report-meta">模型：{report.model} · {formatDate(report.created_at)}</p>
+    <p className="report-meta">模型：{report.model.replace(/^[^:]+:/, "")} · {formatDate(report.created_at)}</p>
   </div>;
 }
 
@@ -84,6 +83,65 @@ function parseManualRef(ref: string): { manualId: string; section: string } | nu
   const manualId = ref.slice(0, separator);
   const section = ref.slice(separator + 1);
   return UUID_RE.test(manualId) && section.length > 0 && section.length <= 500 ? { manualId, section } : null;
+}
+
+type SimpleTimelineItem = {
+  event: DiagnosisEvent;
+  category: string | null;
+  count: number;
+  completed: number;
+  failures: number;
+};
+
+function simpleTimeline(events: DiagnosisEvent[]): SimpleTimelineItem[] {
+  const items: SimpleTimelineItem[] = [];
+  const pending = new Map<string, SimpleTimelineItem>();
+  for (const event of events) {
+    if (!["waiting", "session_start", "tool_call", "tool_result", "diagnosis_done", "error", "done"].includes(event.event_type)) continue;
+    const callId = asText(event.payload.tool_call_id);
+    if (event.event_type === "tool_result" && callId && pending.has(callId)) {
+      const call = pending.get(callId)!;
+      call.completed = 1;
+      call.failures = event.payload.is_error === true ? 1 : 0;
+      pending.delete(callId);
+      continue;
+    }
+    const category = event.event_type === "tool_call" ? toolCategory(asText(event.payload.tool)) : null;
+    const item: SimpleTimelineItem = { event, category, count: 1, completed: 0, failures: 0 };
+    items.push(item);
+    if (category && callId) pending.set(callId, item);
+  }
+  const grouped: SimpleTimelineItem[] = [];
+  for (const item of items) {
+    const previous = grouped[grouped.length - 1];
+    if (item.category && previous?.category === item.category) {
+      previous.count += item.count;
+      previous.completed += item.completed;
+      previous.failures += item.failures;
+    } else {
+      grouped.push({ ...item });
+    }
+  }
+  return grouped;
+}
+
+function toolCategory(tool: string | null): string {
+  if (["read_manual_section", "get_manual_toc", "list_manuals", "search_manual_text"].includes(tool || "")) return "manual";
+  if (tool?.includes("dtc")) return "dtc";
+  return "data";
+}
+
+function toolCategoryLabel(category: string): string {
+  return { manual: "查找維修手冊", dtc: "檢查故障碼", data: "分析行車資料" }[category] || "查詢資料";
+}
+
+function simpleToolDescription(item: SimpleTimelineItem): string {
+  if (item.count === 1) {
+    if (item.failures) return "資料查詢遇到問題，AI 正在繼續判斷。";
+    return item.completed ? "已取得資料，繼續分析。" : eventDescription(item.event);
+  }
+  const state = item.completed === item.count ? "已完成" : "正在進行";
+  return `${state} ${item.completed}/${item.count} 次查詢${item.failures ? `，${item.failures} 次失敗` : ""}。`;
 }
 
 function TechnicalDetails({ event }: { event: DiagnosisEvent }) {
