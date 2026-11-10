@@ -43,7 +43,11 @@ const eventTemplates = [
 ];
 const pastEvents = [
   { seq: 1, event_type: "session_start", payload: { obd_log_id: secondLogId }, created_at: "2026-10-28T08:13:00Z" },
-  { seq: 2, event_type: "done", payload: { status: "done" }, created_at: "2026-10-28T08:14:00Z" },
+  { seq: 2, event_type: "tool_call", payload: { tool: "delegate_to_manual_agent", tool_call_id: "review-manual" }, created_at: "2026-10-28T08:13:10Z" },
+  { seq: 3, event_type: "tool_result", payload: { tool: "delegate_to_manual_agent", tool_call_id: "review-manual", is_error: true }, created_at: "2026-10-28T08:13:20Z" },
+  { seq: 4, event_type: "tool_call", payload: { tool: "submit_report", tool_call_id: "review-report" }, created_at: "2026-10-28T08:13:30Z" },
+  { seq: 5, event_type: "tool_result", payload: { tool: "submit_report", tool_call_id: "review-report", is_error: false }, created_at: "2026-10-28T08:13:40Z" },
+  { seq: 6, event_type: "done", payload: { status: "done" }, created_at: "2026-10-28T08:14:00Z" },
 ];
 
 function liveEvents() {
