@@ -83,3 +83,61 @@ def test_upgrade_check_downgrade_roundtrip() -> None:
         assert _business_tables(engine) == set(EXPECTED_TABLES)
     finally:
         engine.dispose()
+
+
+def test_logger_tz_migration_moves_stored_times_and_back() -> None:
+    """Issue #257: ``e5a9c3f1d8b4`` moves every stored recording time 8 hours
+    earlier (old UTC reading → HK reading), leaves ``uploaded_at`` and NULL
+    times alone, and its downgrade restores the old values exactly."""
+    from alembic import command
+
+    cfg = _alembic_config()
+    engine = sa.create_engine(_URL or "")
+    old_start = "2026-11-10 15:37:11+00"  # what the old code stored
+    try:
+        # Arrange: schema just before the fix, one log with times, one without.
+        command.upgrade(cfg, "head")
+        _truncate_business(engine)
+        command.downgrade(cfg, "d7f3b9a2c5e1")
+        with engine.begin() as conn:
+            wid = conn.execute(sa.text(
+                "INSERT INTO workshops (name) VALUES ('tz-mig') RETURNING id"
+            )).scalar_one()
+            vid = conn.execute(sa.text(
+                "INSERT INTO vehicles (workshop_id, vin, manufacturer, model) "
+                "VALUES (:w, '1HGCM82633A123456', 'Honda', 'Jazz') RETURNING id"
+            ), {"w": wid}).scalar_one()
+            for sha, start in (("a" * 64, old_start), ("b" * 64, None)):
+                conn.execute(sa.text(
+                    "INSERT INTO obd_logs (vehicle_id, sha256, raw_path, source,"
+                    " format, size_bytes, recorded_start, recorded_end, uploaded_at)"
+                    " VALUES (:v, :s, 'x', 'device', 'maxlog', 1, :t, :t,"
+                    " '2026-11-10 08:00:06+00')"
+                ), {"v": vid, "s": sha, "t": start})
+        q = sa.text(
+            "SELECT sha256, recorded_start, recorded_end, uploaded_at"
+            " FROM obd_logs ORDER BY sha256"
+        )
+
+        # Act
+        command.upgrade(cfg, "e5a9c3f1d8b4")
+        with engine.connect() as conn:
+            moved = conn.execute(q).all()
+        command.downgrade(cfg, "d7f3b9a2c5e1")
+        with engine.connect() as conn:
+            restored = conn.execute(q).all()
+
+        # Assert
+        with engine.connect() as conn:
+            want = conn.execute(sa.text(
+                "SELECT CAST(:t AS timestamptz) - interval '8 hours',"
+                " CAST(:t AS timestamptz), CAST(:u AS timestamptz)"
+            ), {"t": old_start, "u": "2026-11-10 08:00:06+00"}).one()
+        assert moved[0][1] == want[0] and moved[0][2] == want[0]
+        assert moved[0][3] == want[2]  # server clock untouched
+        assert moved[1][1] is None and moved[1][2] is None
+        assert restored[0][1] == want[1] and restored[0][2] == want[1]
+    finally:
+        _truncate_business(engine)
+        command.upgrade(cfg, "head")
+        engine.dispose()
