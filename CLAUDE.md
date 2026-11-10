@@ -228,21 +228,21 @@ After implementing something new (a feature, endpoint, or bug fix that is observ
 
 Skip this loop only for changes with no observable runtime behaviour (pure docs, comments, or internal refactors that can't be exercised in the browser) — those still get a PR and a report, just no deploy/E2E.
 
-**Issue #270 frontend cutover handoff:** For the V3 frontend PR ③, the
-maintainer explicitly owns PolyU deployment and public root switching. The
-contributor prepares configuration, tests, PR and rollback instructions, then
-reports CI evidence and remaining live checks; do not run branch deployment or
-browser tests on the production site under this PR. The maintainer uses
-`docs/v3_ops_runbook.md` §11 after review. Do not label configuration or CI
-results as a completed live deployment.
+**V3 frontend is live (issue #270):** the maintainer deployed
+`stf-v3-frontend` and switched the public root on 2026-11-09
+(`docs/v3_ops_runbook.md` §11); the legacy `stf-obd-ui` was stopped on
+2026-11-10, container + image kept for rollback (§11.3). Frontend changes now
+follow the loop above like any other change: the V3 branch verification below
+builds and recreates `stf-v3-frontend` together with the API and worker
+(`deploy_check.sh` check 11), then Chrome E2E on `https://stf-diagnosis.dev`.
+Contributor PRs (Deng Xiao) get our review + doc check; merge and deploy stay
+the user's call.
 
 ## Server Deployment (PolyU GPU Server)
 
-This procedure is for the legacy V1/V2 stack. For the independent V3 frontend,
-use `docs/v3_ops_runbook.md` §11. First check the live V3 OpenAPI document as
-described in §11.1; an older backend must be deployed from main before the
-frontend cutover. Once the backend is current, the cutover changes only the
-frontend and shared Nginx gateway, with no further backend rebuild or migration.
+This procedure is for the legacy V1/V2 stack. The V3 stack (API, worker,
+frontend) has its own procedure in the V3 Deployment section below;
+`docs/v3_ops_runbook.md` §11 keeps the gateway switch and rollback steps.
 When the user says **"deploy to server"** or **"update the server"** for V1/V2, follow this procedure:
 
 1. **Pre-flight: git state**: Run `git status` and `git log origin/main..HEAD` locally to verify all changes are committed and pushed to `origin/main`. If there are unpushed commits or uncommitted changes, warn the user and do NOT proceed until everything is pushed.
@@ -305,16 +305,12 @@ When the user says **"deploy to server"** or **"update the server"** for V1/V2, 
 ## V3 Deployment (stf_v3 — independent service, PROD-04)
 
 The deployed V3 API (`stf-v3-api` on 127.0.0.1:8002) and worker run beside
-V1/V2 behind Nginx (`/v3/`). PR ③ defines a separate `stf-v3-frontend` on
-127.0.0.1:3002 and planned root route to it, but the maintainer has not yet
-deployed or switched the public site. The frontend requires
-`STF_V3_FRONTEND_ORIGIN` in the server's private `infra/.env` in addition to
-the existing V3 database URLs and JWT secret. It does not change V1/V2
-containers or databases; the cutover intentionally changes shared Nginx
-routing and leaves the old webpage available for rollback. Follow the exact
-revision, UID 1001 log-volume, health, real-IP and rollback checks in
-`docs/v3_ops_runbook.md` §11. Do not rebuild API/worker or run a migration
-solely for this frontend configuration PR.
+V1/V2 behind Nginx (`/v3/`). The separate `stf-v3-frontend` (Next.js + BFF on
+127.0.0.1:3002) has served the public root since 2026-11-09 (issue #270). It
+requires `STF_V3_FRONTEND_ORIGIN` in the server's private `infra/.env` in
+addition to the existing V3 database URLs and JWT secret, and does not change
+V1/V2 containers or databases. Gateway, UID 1001 log-volume, real-IP and
+rollback checks live in `docs/v3_ops_runbook.md` §11.
 Raw uploaded logs live in the named volume `stf_v3_obd_logs` (mounted at
 `/app/data/obd_logs` in api + worker, PROD-05) — separate from V1's
 `diagnostic_api_obd_logs`; `deploy_check.sh` check 6 proves it is writable.
@@ -461,10 +457,12 @@ of server work (a change we did not make = someone else touched the backend) and
 `… ack --note "<what we did>"` after every deploy / branch verification.  Install
 / check: `bash stf_v3/ops/install_deploy_watch.sh [--check]` (runbook §10).
 
-**Backend V3 branch verification** — run on the server only when the change
-actually affects the V3 API/worker. Frontend PR ③ follows runbook §11 and
-is deployed by the maintainer after review; do not apply this full-stack
-restart to a frontend-only branch:
+**V3 branch verification** — for any change to the V3 API, worker or
+frontend (the build and `up` below include `stf-v3-frontend`; the migrate
+step is a no-op when no migration is new). Over non-interactive `ssh`,
+`systemctl --user` needs `export XDG_RUNTIME_DIR=/run/user/$(id -u)` first;
+keep that export out of the shell that runs `isolation_check.sh compare`
+(the snapshot is taken without it, so `v2_marker_worker` would differ):
 ```
 cd ~/stf_ai_diagnosis_platform_v1 && git fetch origin && git checkout <branch> && git pull origin <branch>
 bash stf_v3/scripts/predeploy_check.sh                                 # PROD-11: refuses while a diagnosis is unfinished / a manual converts (ALLOW_INTERRUPT=1 to override)
@@ -490,7 +488,7 @@ Podman 3.4 gotcha applies: always `down` + `up`, never trust `up -d --build`.
 `deploy_check.sh` fails on stale containers (created > 30 min ago) and on an
 image whose commit label differs from `git rev-parse HEAD`.
 
-**Backend V3 main deployment** — same as above minus the smoke DB, after merging:
+**V3 main deployment** — same as above minus the smoke DB, after merging:
 pull main → `predeploy_check.sh` → build with `GIT_COMMIT` → `--profile migrate … run --rm stf-v3-migrate alembic upgrade head`
 → `down` + `up -d stf-v3-api stf-v3-worker stf-v3-frontend` → `deploy_check.sh` → `isolation_check.sh compare`
 → `deploy_watch.py ack --note "main <sha> deployed"`.
