@@ -126,19 +126,30 @@ function simpleTimeline(events: DiagnosisEvent[]): SimpleTimelineItem[] {
 }
 
 function toolCategory(tool: string | null): string {
-  if (["read_manual_section", "get_manual_toc", "list_manuals", "search_manual_text"].includes(tool || "")) return "manual";
+  if (["read_manual_section", "get_manual_toc", "list_manuals", "search_manual_text", "delegate_to_manual_agent"].includes(tool || "")) return "manual";
+  if (tool === "submit_report") return "report";
   if (tool?.includes("dtc")) return "dtc";
   return "data";
 }
 
 function toolCategoryLabel(category: string): string {
-  return { manual: "查找維修手冊", dtc: "檢查故障碼", data: "分析行車資料" }[category] || "查詢資料";
+  return { manual: "查找維修手冊", report: "整理報告", dtc: "檢查故障碼", data: "分析行車資料" }[category] || "查詢資料";
 }
 
 function simpleToolDescription(item: SimpleTimelineItem): string {
+  if (item.category === "report") {
+    if (item.count === 1) {
+      if (item.failures) return "報告整理遇到問題，AI 正在繼續判斷。";
+      return item.completed ? "已整理報告。" : "正在整理診斷報告。";
+    }
+    const state = item.completed === item.count ? "已完成" : "正在進行";
+    return `${state} ${item.completed}/${item.count} 次報告整理${item.failures ? `，${item.failures} 次失敗` : ""}。`;
+  }
   if (item.count === 1) {
     if (item.failures) return "資料查詢遇到問題，AI 正在繼續判斷。";
-    return item.completed ? "已取得資料，繼續分析。" : eventDescription(item.event);
+    if (item.completed) return "已取得資料，繼續分析。";
+    if (item.category === "manual" && asText(item.event.payload.tool) === "delegate_to_manual_agent") return "正在查找對應車款的維修手冊。";
+    return eventDescription(item.event);
   }
   const state = item.completed === item.count ? "已完成" : "正在進行";
   return `${state} ${item.completed}/${item.count} 次查詢${item.failures ? `，${item.failures} 次失敗` : ""}。`;

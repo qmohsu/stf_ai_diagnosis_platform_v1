@@ -165,6 +165,9 @@ test("issue #279: manual image keeps its natural size", async ({ page }) => {
   await page.goto("/manuals/33333333-3333-4333-8333-333333333333?section=%E9%9B%BB%E8%A3%9D");
   const image = page.getByRole("img", { name: "電路示意圖" });
   await expect(image).toBeVisible();
+  await expect(image).toHaveAttribute("loading", "lazy");
+  await expect(image).toHaveAttribute("decoding", "async");
+  await image.scrollIntoViewIfNeeded();
   await expect.poll(() => image.evaluate((node: HTMLImageElement) => node.naturalWidth)).toBeGreaterThan(0);
   const width = await image.evaluate((node: HTMLImageElement) => {
     const style = getComputedStyle(node);
@@ -172,6 +175,20 @@ test("issue #279: manual image keeps its natural size", async ({ page }) => {
   });
   const naturalWidth = await image.evaluate((node: HTMLImageElement) => node.naturalWidth);
   expect(width).toBeLessThanOrEqual(naturalWidth);
+});
+
+test("PR #281 review: manual delegation and report submission have distinct simple labels", async ({ page }) => {
+  await login(page);
+  await page.goto("/vehicles/00000000-0000-4000-8000-000000000001/conversations/66666666-6666-4666-8666-666666666666");
+  const manual = page.locator(".event-item").filter({ hasText: "查找維修手冊" });
+  const report = page.locator(".event-item").filter({ hasText: "整理報告" });
+  await expect(manual).toHaveCount(1);
+  await expect(manual).toContainText("遇到問題");
+  await expect(report).toHaveCount(1);
+  await expect(report).toContainText("已整理報告");
+  await page.getByRole("tab", { name: "技術細節" }).click();
+  await expect(page.locator(".event-item").filter({ hasText: "查詢資料" })).toHaveCount(2);
+  await expect(page.locator(".event-item").filter({ hasText: "取得查詢結果" })).toHaveCount(2);
 });
 
 test("an already-running diagnosis of another log is explained before navigation", async ({ page }) => {
