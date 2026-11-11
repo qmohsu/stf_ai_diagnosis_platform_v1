@@ -245,6 +245,39 @@ test("an archived process still opens its partial report", async ({ page }) => {
   await expect(page.getByText("部分報告", { exact: true })).toBeVisible();
   await expect(page.getByText("診斷提早結束")).toBeVisible();
   await expect(page.getByText("已查閱維修手冊，請檢查電裝系統。")).toBeVisible();
+  await expect(page.locator(".diagnosis-process .status-pill")).toHaveText("已完成（部分報告）");
+});
+
+test("issue #279 second round: partial report agrees with the process status", async ({ page }) => {
+  await login(page);
+  await page.goto("/vehicles/00000000-0000-4000-8000-000000000001/conversations/dddddddd-dddd-4ddd-8ddd-dddddddddddd");
+  const process = page.locator(".diagnosis-process");
+  await expect(process.locator(".status-pill")).toHaveText("已完成（部分報告）");
+  await expect(process.locator(".process-summary")).toHaveText("診斷已結束，已產生部分報告。");
+  await expect(page.locator(".report-limitation")).toContainText("診斷時間已達上限");
+});
+
+test("issue #279 second round: unmatched queries are stopped after diagnosis ends", async ({ page }) => {
+  await login(page);
+  await page.goto("/vehicles/00000000-0000-4000-8000-000000000001/conversations/dddddddd-dddd-4ddd-8ddd-dddddddddddd");
+  const process = page.locator(".diagnosis-process");
+  const queries = process.locator(".event-item").filter({ hasText: "分析行車資料（19 次）" });
+  await expect(queries).toHaveCount(1);
+  await expect(queries).toContainText("已完成 18/19 次查詢，1 次已中止。");
+  await expect(queries).not.toContainText("正在進行");
+  await page.getByRole("tab", { name: "技術細節" }).click();
+  await expect(process.locator(".event-item").filter({ hasText: "查詢資料" })).toHaveCount(19);
+  await expect(process.locator(".event-item").filter({ hasText: "取得查詢結果" })).toHaveCount(18);
+});
+
+test("issue #279 second round: unmatched queries remain in progress while diagnosis runs", async ({ page }) => {
+  await login(page);
+  await page.goto("/vehicles/00000000-0000-4000-8000-000000000001/conversations/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee");
+  const process = page.locator(".diagnosis-process");
+  const queries = process.locator(".event-item").filter({ hasText: "分析行車資料（19 次）" });
+  await expect(process.locator(".status-pill")).toHaveText("診斷中");
+  await expect(queries).toContainText("正在進行 18/19 次查詢");
+  await expect(queries).not.toContainText("已中止");
 });
 
 test.describe("stale conversation recovery", () => {
