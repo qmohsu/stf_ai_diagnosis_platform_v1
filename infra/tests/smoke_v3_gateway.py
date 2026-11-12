@@ -16,6 +16,7 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -91,6 +92,23 @@ def wait_for(
     raise TimeoutError(f"service did not start at {url}")
 
 
+def check_auth_throttle() -> None:
+    """Verify a login burst is refused with 429, which the UI explains.
+
+    Nginx answers ``limit_req`` rejections with 503 by default, and the
+    login page shows 503 as "service unavailable".  The gateway must say
+    429 so the page shows "too many attempts" instead.
+    """
+    url = "http://127.0.0.1:8080/api/auth/login"
+    with ThreadPoolExecutor(max_workers=30) as pool:
+        statuses = list(pool.map(lambda _: request(url)[0], range(30)))
+    if 429 not in statuses:
+        raise AssertionError("login burst was not throttled")
+    unexpected = sorted(set(statuses) - {200, 429})
+    if unexpected:
+        raise AssertionError(f"login burst returned {unexpected}")
+
+
 def check_real_ip(image: str) -> None:
     """Verify trusted and untrusted Cloudflare headers through real Nginx."""
     server = ThreadingHTTPServer(("127.0.0.1", 3002), EchoHandler)
@@ -149,6 +167,8 @@ def check_real_ip(image: str) -> None:
         address = ipaddress.ip_address(actual)
         if address.is_loopback or actual in {"198.51.100.10", "203.0.113.99"}:
             raise AssertionError("untrusted client chose the forwarded IP")
+
+        check_auth_throttle()
 
         logs = docker("logs", name)
         if "method=GET" not in logs:
@@ -220,7 +240,8 @@ def main() -> None:
     check_real_ip(args.frontend_image)
     check_volume(args.frontend_image)
     print(
-        "PASS: trusted real IP, untrusted spoof, private logs, "
+        "PASS: trusted real IP, untrusted spoof, auth burst 429, "
+        "private logs, "
         "UID 1001 volume"
     )
 
