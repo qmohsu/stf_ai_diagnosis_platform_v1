@@ -95,7 +95,7 @@ def run(base_url: str, invite_code: str) -> int:
               and r.json()["memberships"][0]["role"] == "manager", r.text[:120])
 
         r = c.post(f"/v3/workshops/{workshop_id}/vehicles", headers=_auth(token_m),
-                   json={"vin": "JHMGK5830HX202404", "manufacturer": "Honda",
+                   json={"vin": "JHMGK5831HX000000", "manufacturer": "Honda",
                          "model": "Jazz", "plate": f"SM{ts % 10000}"})
         _step("create vehicle (VIN identity)", r.status_code == 201, r.text[:120])
         if r.status_code != 201:
@@ -103,7 +103,7 @@ def run(base_url: str, invite_code: str) -> int:
         vehicle_id = r.json()["id"]
 
         r = c.post(f"/v3/workshops/{workshop_id}/vehicles", headers=_auth(token_m),
-                   json={"vin": "JHMGK5830HX202404", "manufacturer": "Honda", "model": "Jazz"})
+                   json={"vin": "JHMGK5831HX000000", "manufacturer": "Honda", "model": "Jazz"})
         _step("duplicate VIN rejected (409)", r.status_code == 409, r.text[:80])
 
         r = c.post(f"/v3/workshops/{workshop_id}/vehicles", headers=_auth(token_m),
@@ -152,7 +152,7 @@ def run(base_url: str, invite_code: str) -> int:
         r = c.post(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t),
                    files={"file": ("trip.tsv", tsv_ok)})
         _step("technician uploads Jetson TSV (201, VIN read)", r.status_code == 201
-              and r.json().get("vin_from_log") == "JHMGK5830HX202404", r.text[:120])
+              and r.json().get("vin_from_log") == "JHMGK5831HX000000", r.text[:120])
         log_id = r.json().get("id") if r.status_code == 201 else None
         r = c.post(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t),
                    files={"file": ("y.csv", yamaha)})
@@ -163,7 +163,7 @@ def run(base_url: str, invite_code: str) -> int:
                    files={"file": ("trip_maxlog.csv", maxlog)})
         _step("upload OBD Maximum CSV (201, format maxlog, VIN read; PROD-07 D3)",
               r.status_code == 201 and r.json().get("format") == "maxlog"
-              and r.json().get("vin_from_log") == "JHMGK5830HX202404", r.text[:120])
+              and r.json().get("vin_from_log") == "JHMGK5831HX000000", r.text[:120])
         r = c.post(f"/v3/vehicles/{vehicle_id}/logs", headers=_auth(token_t),
                    files={"file": ("x.json", b'{"a": 1}')})
         _step("unsupported format rejected (422)", r.status_code == 422

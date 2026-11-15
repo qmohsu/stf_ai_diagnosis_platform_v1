@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from tests.conftest import register_and_login
 
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
-FAKE_VIN = "JHMGK5830HX202404"
+FAKE_VIN = "JHMGK5831HX000000"
 FAKE_VIN_B = "1HGCM82633A123456"
 
 

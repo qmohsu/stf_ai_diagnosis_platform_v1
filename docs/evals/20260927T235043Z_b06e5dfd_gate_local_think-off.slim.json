@@ -4107,7 +4107,7 @@
    "result": {
     "system_label": "manual_agent",
     "question": "On the MWS-150-A, what is the front-brake pad standard thickness and wear-limit thickness, and what brake fluid grade is specified for the system?",
-    "output_text": "Not found: No diagnostic question was provided. The user message contains only the system prompt and vehicle identification (Yamaha TRICITY155, VIN JHMGK5830HX202404) but no specific diagnostic inquiry. Please provide a specific question about the vehicle (e.g., a DTC code to diagnose, a procedure to perform, or a specification to look up).",
+    "output_text": "Not found: No diagnostic question was provided. The user message contains only the system prompt and vehicle identification (Yamaha TRICITY155, VIN JHMGK5831HX000000) but no specific diagnostic inquiry. Please provide a specific question about the vehicle (e.g., a DTC code to diagnose, a procedure to perform, or a specification to look up).",
     "claim_slugs": [],
     "read_slugs": [
      "general-spec-自我診斷功能與診斷代碼表",

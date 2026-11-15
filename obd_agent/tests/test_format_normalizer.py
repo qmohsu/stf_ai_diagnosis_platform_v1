@@ -308,7 +308,7 @@ class TestNormalizeMaxlog:
         with open(result_path, encoding="utf-8") as fh:
             content = fh.read()
         assert "# VEHICLE INFORMATION" in content
-        assert "#   VIN: JHMGK5830HX202404" in content
+        assert "#   VIN: JHMGK5831HX000000" in content
 
     def test_maxlog_nonstandard_columns_filtered(
         self, tmp_path: Path,

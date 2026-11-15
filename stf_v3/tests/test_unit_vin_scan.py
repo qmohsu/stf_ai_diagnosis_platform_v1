@@ -24,7 +24,7 @@ assert len(NOT_ALLOWED) == 17
 
 def test_the_two_project_fakes_pass_and_any_other_vin_fails() -> None:
     """Allow-listed fakes pass; another 17-char VIN shape fails, reported masked."""
-    text = "ok JHMGK5830HX202404 and 1HGCM82633A123456\nbad " + NOT_ALLOWED + " here\n"
+    text = "ok JHMGK5831HX000000 and 1HGCM82633A123456\nbad " + NOT_ALLOWED + " here\n"
     found = cv.scan_text(text)
     assert found == [(2, cv.mask(NOT_ALLOWED))]
     assert NOT_ALLOWED not in found[0][1] and found[0][1].startswith("WDB…#")

@@ -30,7 +30,7 @@ test("login, workshop pagination, search and vehicle detail work on this viewpor
   await page.getByRole("link", { name: /STF-001/ }).click();
   await expect(page).toHaveURL(/\/vehicles\/00000000-0000-4000-8000-000000000001$/);
   await expect(page.getByRole("heading", { level: 1, name: "測試車輛" })).toBeVisible();
-  await expect(page.getByText("JHMGK5830HX202404")).toBeVisible();
+  await expect(page.getByText("JHMGK5831HX000000")).toBeVisible();
   await expect(page.locator("body")).not.toContainText("secret_internal");
   const pageOrigin = new URL(page.url()).origin;
   const apiRequests = browserRequests.map((url) => new URL(url)).filter(({ pathname }) => pathname.startsWith("/api/"));
@@ -73,7 +73,7 @@ test("old vehicle links return to the workshop entry and private responses are n
   await page.goto("/vehicles/plate/STF-001");
   await expect(page).toHaveURL(/\/$/);
   expect((await context.cookies()).some((cookie) => cookie.name === "portal_vehicle_context")).toBe(false);
-  await page.goto("/vehicles/vin/JHMGK5830HX202404/components/engine");
+  await page.goto("/vehicles/vin/JHMGK5831HX000000/components/engine");
   await expect(page).toHaveURL(/\/$/);
   await page.getByRole("link", { name: /測試工作坊/ }).click();
   await expect(page.locator(".vehicle-card").first()).toBeVisible();
@@ -83,7 +83,7 @@ test("old vehicle links return to the workshop entry and private responses are n
   const offlineHtml = await page.evaluate(async () => (await (await caches.match("/offline.html"))?.text()) ?? "");
   expect(offlineHtml).toContain("目前離線");
   expect(offlineHtml).not.toContain("manager");
-  expect(offlineHtml).not.toContain("JHMGK5830HX202404");
+  expect(offlineHtml).not.toContain("JHMGK5831HX000000");
   await context.setOffline(true);
   await expect(page.getByRole("heading", { name: "目前離線" })).toBeVisible();
   await expect(page.locator("body")).not.toContainText("STF-001");
@@ -206,7 +206,7 @@ test("invite registration, vehicle creation, upload and manager device setup sta
   await page.getByRole("button", { name: "登入", exact: true }).click();
   await page.getByRole("link", { name: /測試工作坊/ }).click();
   await page.getByRole("button", { name: "建立車檔" }).click();
-  await page.getByLabel("VIN（17 碼）").fill("JHMGK5830HX202404");
+  await page.getByLabel("VIN（17 碼）").fill("JHMGK5831HX000000");
   await page.getByLabel("品牌").fill("Honda");
   await page.getByLabel("型號").fill("Civic");
   await page.getByRole("button", { name: "儲存車檔" }).click();

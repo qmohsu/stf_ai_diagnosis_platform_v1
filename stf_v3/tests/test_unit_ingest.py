@@ -37,7 +37,7 @@ def test_sniff_jetson_tsv_reads_vin_and_window() -> None:
     meta = sniff(TSV_OK)
     assert meta is not None
     assert meta.format == "tsv" and meta.extension == "tsv"
-    assert meta.vin == "JHMGK5830HX202404"
+    assert meta.vin == "JHMGK5831HX000000"
     assert meta.recorded_start == _hk("2025-07-23 14:42:16")
     assert meta.recorded_end == _hk("2025-07-23 14:42:35")
 
@@ -80,9 +80,9 @@ def test_yamaha_vehicle_id_line_used_only_when_valid_vin() -> None:
     """``# vehicle_id:`` becomes ``vin`` only if it is a valid 17-char VIN."""
     text = decode(YAMAHA)
     first, rest = text.split("\n", 1)
-    good = f"{first}\n# vehicle_id: JHMGK5830HX202404\n{rest}".encode()
+    good = f"{first}\n# vehicle_id: JHMGK5831HX000000\n{rest}".encode()
     bad = f"{first}\n# vehicle_id: JYAMA00000XX000001\n{rest}".encode()  # 18 chars
-    assert sniff(good).vin == "JHMGK5830HX202404"  # type: ignore[union-attr]
+    assert sniff(good).vin == "JHMGK5831HX000000"  # type: ignore[union-attr]
     assert sniff(bad).vin is None  # type: ignore[union-attr]
 
 
@@ -105,7 +105,7 @@ def test_sniff_maxlog_reads_vin_and_window() -> None:
     meta = sniff(MAXLOG_HIACE)
     assert meta is not None
     assert meta.format == "maxlog" and meta.extension == "csv"
-    assert meta.vin == "JHMGK5830HX202404"
+    assert meta.vin == "JHMGK5831HX000000"
     assert meta.recorded_start == _hk("2026-06-22 15:39:54")
     assert meta.recorded_end == _hk("2026-06-22 15:41:19")
 
@@ -126,9 +126,9 @@ def test_maxlog_vin_falls_back_to_mode09_line_and_rejects_garbage() -> None:
     non-VIN value in either line yields None rather than a false mismatch."""
     text = decode(MAXLOG_HIACE)
     no_vehicle_id = "\n".join(l for l in text.splitlines() if not l.startswith("# vehicle_id:"))
-    assert sniff(no_vehicle_id.encode()).vin == "JHMGK5830HX202404"  # type: ignore[union-attr]
-    garbage = text.replace("# vehicle_id: JHMGK5830HX202404", "# vehicle_id: hiace-01")
-    garbage = garbage.replace("#   VIN: JHMGK5830HX202404", "#   VIN: N/A")
+    assert sniff(no_vehicle_id.encode()).vin == "JHMGK5831HX000000"  # type: ignore[union-attr]
+    garbage = text.replace("# vehicle_id: JHMGK5831HX000000", "# vehicle_id: hiace-01")
+    garbage = garbage.replace("#   VIN: JHMGK5831HX000000", "#   VIN: N/A")
     assert sniff(garbage.encode()).vin is None  # type: ignore[union-attr]
 
 
@@ -149,8 +149,8 @@ def test_unrecognised_payloads_return_none(payload: bytes) -> None:
 
 def test_normalise_vin_rejects_garbage() -> None:
     """Empty, N/A, wrong length and I/O/Q characters all yield None."""
-    assert normalise_vin("jhmgk5830hx202404") == "JHMGK5830HX202404"
-    for bad in (None, "", "N/A", "JHMGK5830HX20240", "JHMGK5830HX2024040", "IHMGK5830HX202404"):
+    assert normalise_vin("jhmgk5831hx000000") == "JHMGK5831HX000000"
+    for bad in (None, "", "N/A", "JHMGK5831HX00000", "JHMGK5831HX0000000", "IHMGK5831HX000000"):
         assert normalise_vin(bad) is None
 
 

@@ -50,4 +50,4 @@ def test_install_guide_has_no_vin() -> None:
     """No 17-char VIN-shaped string outside the documented fake fixtures."""
     text = _GUIDE.read_text(encoding="utf-8")
     for m in re.findall(r"\b[A-HJ-NPR-Z0-9]{17}\b", text):
-        assert m in ("JHMGK5830HX202404", "1HGCM82633A123456"), m
+        assert m in ("JHMGK5831HX000000", "1HGCM82633A123456"), m

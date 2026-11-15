@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-FAKE_VIN = "JHMGK5830HX202404"   # the fixture VIN: this run has no real vehicle
+FAKE_VIN = "JHMGK5831HX000000"   # the fixture VIN: this run has no real vehicle
 
 
 def _parse_args(argv: Optional[list] = None) -> argparse.Namespace:

@@ -1,7 +1,7 @@
 import http from "node:http";
 
 const workshopId = "11111111-1111-4111-8111-111111111111";
-const vinA = "JHMGK5830HX202404";
+const vinA = "JHMGK5831HX000000";
 const vinB = "1HGCM82633A123456";
 const vehicles = Array.from({ length: 51 }, (_, index) => ({
   id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
