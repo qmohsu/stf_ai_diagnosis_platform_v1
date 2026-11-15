@@ -9,8 +9,12 @@ Author: Xiangzhu Yan
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import re
+import shutil
+import subprocess
+import sys
 from typing import Any, Dict, List
 
 import pytest
@@ -82,3 +86,53 @@ def test_control_script_pins_the_project_name_and_unit_calls_it() -> None:
         assert verb in ctl
     unit = _UNIT.read_text(encoding="utf-8")
     assert "vllm_ctl.sh start" in unit and "vllm_ctl.sh stop" in unit and "WantedBy=default.target" in unit
+
+
+_FAKE_PODMAN = """#!/bin/sh
+case "$1 $2" in
+  "container exists") exit 0 ;;
+  "inspect stf-vllm") echo "state=exited exit=1 oom=false" ;;
+  "logs --tail") echo "fake-vllm-log-line" ;;
+esac
+"""
+
+_FAKE_COMPOSE = """#!/bin/sh
+echo "$*" >> "$CALLS"
+"""
+
+
+@pytest.mark.skipif(sys.platform != "linux" or not shutil.which("bash"),
+                    reason="runs the real script with fake podman / compose")
+def test_stop_saves_the_container_log_before_down(tmp_path: pathlib.Path) -> None:
+    """Issue #285 A4: ``stop`` keeps the exit state and log (owner-only,
+    newest 20) before ``down`` deletes the container, so a crash while
+    loading can still be explained."""
+    # Arrange: fake podman / compose on PATH and 22 older saved logs.
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    for name, body in (("podman", _FAKE_PODMAN), ("compose", _FAKE_COMPOSE)):
+        (bin_dir / name).write_text(body, encoding="utf-8")
+        (bin_dir / name).chmod(0o755)
+    keep = tmp_path / "keep"
+    keep.mkdir()
+    for i in range(22):
+        old = keep / f"vllm-2026010{i // 10}T0000{i % 10:02d}Z.log"
+        old.write_text("old", encoding="utf-8")
+        os.utime(old, (1_000_000 + i, 1_000_000 + i))
+    calls = tmp_path / "calls"
+    env = dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}",
+               PODMAN_COMPOSE=str(bin_dir / "compose"),
+               STF_VLLM_LOG_DIR=str(keep), CALLS=str(calls))
+
+    # Act
+    result = subprocess.run(["bash", str(_CTL), "stop"], env=env,
+                            capture_output=True, text=True, timeout=60)
+
+    # Assert: down still ran, the new log holds state + log, 20 kept.
+    assert result.returncode == 0, result.stderr
+    assert "down" in calls.read_text(encoding="utf-8")
+    saved = sorted(keep.glob("vllm-*.log"), key=lambda p: p.stat().st_mtime)
+    assert len(saved) == 20
+    newest = saved[-1].read_text(encoding="utf-8")
+    assert "state=exited exit=1" in newest and "fake-vllm-log-line" in newest
+    assert saved[-1].stat().st_mode & 0o077 == 0
