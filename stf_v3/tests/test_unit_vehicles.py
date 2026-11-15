@@ -12,11 +12,11 @@ from stf_v3.vehicles.service import hash_token, new_device_token
 
 def test_vin_is_normalised_to_uppercase() -> None:
     """A lowercase VIN is accepted and stored uppercase."""
-    body = VehicleIn(vin="jhmgk5830hx202404", manufacturer="Honda", model="Jazz")
-    assert body.vin == "JHMGK5830HX202404"
+    body = VehicleIn(vin="jhmgk5831hx000000", manufacturer="Honda", model="Jazz")
+    assert body.vin == "JHMGK5831HX000000"
 
 
-@pytest.mark.parametrize("vin", ["JHMGK5830HX20240", "JHMGK5830HX202404I", "JHMGK5830HX20240O"])
+@pytest.mark.parametrize("vin", ["JHMGK5831HX00000", "JHMGK5831HX000000I", "JHMGK5831HX00000O"])
 def test_vin_rejects_wrong_length_and_forbidden_letters(vin: str) -> None:
     """VINs must be 17 chars and never contain I, O or Q (ISO 3779)."""
     with pytest.raises(ValidationError):

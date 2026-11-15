@@ -1,5 +1,5 @@
 ﻿# OBD Maximum Data Log
-# vehicle_id: JHMGK5830HX202404
+# vehicle_id: JHMGK5831HX000000
 # Vehicle: Toyota Hiace
 # Start Time: 2026-06-22 15:39:54
 # Platform: linux  Python: 3.10.12
@@ -13,7 +13,7 @@
 #   SLOW  ECU 000  0105 0F  [2]  COOLANT_TEMP, INTAKE_TEMP
 # ───────────────────────────────────────────────────────────────────────────
 # VEHICLE INFORMATION (Mode 09)
-#   VIN: JHMGK5830HX202404
+#   VIN: JHMGK5831HX000000
 #   Calibration_ID: 32667000A2501000I895362607000
 #   ECU_Name: ECM-EngineControl
 # ───────────────────────────────────────────────────────────────────────────

@@ -416,7 +416,7 @@ LANE_MANUAL = "manual_agent"
 LANE_OBD = "obd_agent"
 LANES = (LANE_MANUAL, LANE_OBD)
 
-FAKE_VIN = "JHMGK5830HX202404"
+FAKE_VIN = "JHMGK5831HX000000"
 """The repo's fixture VIN: evals never carry a real vehicle identity."""
 
 CORPUS_MANUFACTURER = "Yamaha"

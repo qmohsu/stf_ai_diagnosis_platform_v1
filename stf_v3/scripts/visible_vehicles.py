@@ -31,7 +31,7 @@ from stf_v3.workshops.models import Membership, Workshop  # noqa: E402
 
 
 def mask_vin(vin: str) -> str:
-    """``*************2404`` — enough to tell vehicles apart, not the VIN."""
+    """``*************0000`` — enough to tell vehicles apart, not the VIN."""
     return "*" * max(0, len(vin) - 4) + vin[-4:]
 
 

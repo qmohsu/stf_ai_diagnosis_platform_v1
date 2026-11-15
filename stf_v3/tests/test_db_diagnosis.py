@@ -34,7 +34,7 @@ async def test_bootstrap_loads_rows_and_runs_a_diagnosis(client, workshop_with_c
     workshop_id, codes = workshop_with_codes
     headers = await register_and_login(client, "tech1", codes["technician"])
     r = await client.post(f"/v3/workshops/{workshop_id}/vehicles", headers=headers, json={
-        "vin": "JHMGK5830HX202404", "manufacturer": "Toyota", "model": "Hiace", "plate": "AB 1234",
+        "vin": "JHMGK5831HX000000", "manufacturer": "Toyota", "model": "Hiace", "plate": "AB 1234",
     })
     assert r.status_code == 201, r.text
     vehicle_id = uuid.UUID(r.json()["id"])
@@ -55,7 +55,7 @@ async def test_bootstrap_loads_rows_and_runs_a_diagnosis(client, workshop_with_c
             await load_diag_deps(session, other_id, log_id, settings)
         with pytest.raises(DepsNotFound):
             await load_diag_deps(session, uuid.uuid4(), log_id, settings)
-    assert deps.vehicle.vin == "JHMGK5830HX202404" and deps.log.format == "maxlog"
+    assert deps.vehicle.vin == "JHMGK5831HX000000" and deps.log.format == "maxlog"
     from stf_v3.diagnosis.agent.deps import Budgets
 
     assert deps.locale == "en" and deps.budgets.request_limit == Budgets.from_settings(settings).request_limit

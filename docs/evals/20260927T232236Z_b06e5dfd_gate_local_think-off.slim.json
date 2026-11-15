@@ -1039,7 +1039,7 @@
    "result": {
     "system_label": "manual_agent",
     "question": "On the MWS-150-A, what is the prescribed maintenance interval for inspecting valve clearance, and what are the cold-engine intake and exhaust clearance specifications?",
-    "output_text": "Not found: No diagnostic question was provided. The vehicle Yamaha TRICITY155 (VIN: JHMGK5830HX202404) has been identified and the matching service manual (MWS150-A, 434 pages, 39 sections) is available. Please provide a specific diagnostic question such as a DTC code, maintenance procedure, component specification, or troubleshooting issue to investigate.",
+    "output_text": "Not found: No diagnostic question was provided. The vehicle Yamaha TRICITY155 (VIN: JHMGK5831HX000000) has been identified and the matching service manual (MWS150-A, 434 pages, 39 sections) is available. Please provide a specific diagnostic question such as a DTC code, maintenance procedure, component specification, or troubleshooting issue to investigate.",
     "claim_slugs": [],
     "read_slugs": [],
     "retrieved_chunk_metadata": [],

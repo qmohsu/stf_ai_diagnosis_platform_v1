@@ -24,7 +24,7 @@ from pydantic_ai.usage import RequestUsage, RunUsage
 from stf_v3.diagnosis.agent.deps import Budgets, DiagDeps, LogInfo, ManualInfo, VehicleInfo
 
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
-FAKE_VIN = "JHMGK5830HX202404"
+FAKE_VIN = "JHMGK5831HX000000"
 FAKE_VIN_B = "1HGCM82633A123456"
 
 LOG_FILES = {

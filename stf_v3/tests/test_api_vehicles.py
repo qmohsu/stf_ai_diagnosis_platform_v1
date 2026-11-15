@@ -10,7 +10,7 @@ from tests.conftest import register_and_login, requires_db
 
 pytestmark = requires_db
 
-_VEHICLE = {"vin": "JHMGK5830HX202404", "manufacturer": "Honda", "model": "Jazz"}
+_VEHICLE = {"vin": "JHMGK5831HX000000", "manufacturer": "Honda", "model": "Jazz"}
 
 
 async def _setup(client, workshop_with_codes):  # type: ignore[no-untyped-def]
@@ -32,7 +32,7 @@ async def test_create_list_get_vehicle(
     r = await client.get(f"/v3/workshops/{wid}/vehicles", headers=tech, params={"q": "JHMGK"})
     assert [v["id"] for v in r.json()] == [vid]
     r = await client.get(f"/v3/vehicles/{vid}", headers=tech)
-    assert r.status_code == 200 and r.json()["vin"] == "JHMGK5830HX202404"
+    assert r.status_code == 200 and r.json()["vin"] == "JHMGK5831HX000000"
 
 
 async def test_vin_unique_per_workshop_and_immutable(
@@ -46,7 +46,7 @@ async def test_vin_unique_per_workshop_and_immutable(
     assert r.status_code == 409 and r.json()["code"] == "vin_exists"
     r = await client.patch(f"/v3/vehicles/{vid}", headers=manager, json={"vin": "1HGCM82633A123456", "plate": "AB1234"})
     assert r.status_code == 200
-    assert r.json()["vin"] == "JHMGK5830HX202404" and r.json()["plate"] == "AB1234"
+    assert r.json()["vin"] == "JHMGK5831HX000000" and r.json()["plate"] == "AB1234"
 
 
 async def test_non_member_gets_404_not_403(

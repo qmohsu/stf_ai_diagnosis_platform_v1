@@ -25,7 +25,7 @@ from obd_agent.time_series_normalizer import (
 
 _FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 _REAL_LOG = _FIXTURES_DIR / "obd_log_20250723_144216.txt"
-_REAL_VIN = "JHMGK5830HX202404"
+_REAL_VIN = "JHMGK5831HX000000"
 
 
 # ---------------------------------------------------------------------------

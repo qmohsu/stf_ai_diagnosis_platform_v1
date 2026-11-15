@@ -16,11 +16,11 @@ Log Interval: 1.0 seconds
 --------------------------------------------------------------------------------
 Timestamp\tRPM\tSPEED\tCOOLANT_TEMP\tFUEL_TYPE\tGET_DTC\tVIN
 --------------------------------------------------------------------------------
-2025-07-23 14:42:16\t0.00\t0.00\t32.00\tGasoline\t[]\tbytearray(b'JHMGK5830HX202404')
-2025-07-23 14:42:19\t750.00\t0.00\t35.00\tGasoline\t[]\tbytearray(b'JHMGK5830HX202404')
-2025-07-23 14:42:21\t2100.00\t45.50\t45.00\tGasoline\t[('P0300', 'Random Misfire')]\tbytearray(b'JHMGK5830HX202404')
-2025-07-23 14:42:23\t2200.00\t48.00\t46.00\tGasoline\t[('P0300', 'Random Misfire')]\tbytearray(b'JHMGK5830HX202404')
-2025-07-23 14:42:25\t1800.00\t42.00\t47.00\tGasoline\t[]\tbytearray(b'JHMGK5830HX202404')
+2025-07-23 14:42:16\t0.00\t0.00\t32.00\tGasoline\t[]\tbytearray(b'JHMGK5831HX000000')
+2025-07-23 14:42:19\t750.00\t0.00\t35.00\tGasoline\t[]\tbytearray(b'JHMGK5831HX000000')
+2025-07-23 14:42:21\t2100.00\t45.50\t45.00\tGasoline\t[('P0300', 'Random Misfire')]\tbytearray(b'JHMGK5831HX000000')
+2025-07-23 14:42:23\t2200.00\t48.00\t46.00\tGasoline\t[('P0300', 'Random Misfire')]\tbytearray(b'JHMGK5831HX000000')
+2025-07-23 14:42:25\t1800.00\t42.00\t47.00\tGasoline\t[]\tbytearray(b'JHMGK5831HX000000')
 """
 
 

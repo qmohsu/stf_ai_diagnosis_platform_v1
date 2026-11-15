@@ -12,7 +12,7 @@ const origin = "https://stf-diagnosis.dev";
 const workshopId = "11111111-1111-4111-8111-111111111111";
 const vehicleId = "00000000-0000-4000-8000-000000000001";
 const deviceId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-const car = { id: vehicleId, workshop_id: workshopId, vin: "JHMGK5830HX202404", plate: null, manufacturer: "Honda", model: "Civic", nickname: null, created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", secret: "hidden" };
+const car = { id: vehicleId, workshop_id: workshopId, vin: "JHMGK5831HX000000", plate: null, manufacturer: "Honda", model: "Civic", nickname: null, created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", secret: "hidden" };
 const device = { id: deviceId, vehicle_id: vehicleId, label: "Jetson A", created_at: "2026-10-01T00:00:00Z", last_seen_at: null, revoked_at: null, secret: "hidden" };
 const session = { token: "server-token", user: { id: "user", username: "manager", email: null, display_name: null, memberships: [{ workshop_id: workshopId, workshop_name: "Test", role: "manager" }] } };
 const req = (path: string, method: string, body?: BodyInit, headers: Record<string, string> = {}) => new Request(origin + path, { method, headers: { origin, "x-real-ip": "198.51.100.81", ...headers }, body });
