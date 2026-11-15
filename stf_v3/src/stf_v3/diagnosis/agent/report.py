@@ -14,7 +14,9 @@ PROD-09 adds two residue checks before the text is packed: complete
 ``<think>…</think>`` blocks are stripped (a safety net behind the
 profile's thinking-off switches; only tagged blocks, never prose --
 FM-1 / FM-42) and unparsed tool-call markup marks the report partial
-(FM-41).
+(FM-41).  Issue #279 adds a third: the model's short chat line before
+the report's first heading ("Now I have all the information needed...") is
+dropped (``strip_lead_in``).
 
 Author: Xiangzhu Yan
 """
@@ -65,6 +67,42 @@ def strip_thinking_residue(text: str) -> Tuple[str, int, int]:
 def has_tool_call_residue(text: str) -> bool:
     """Whether unparsed tool-call markup is present in the text."""
     return bool(_TOOL_CALL_RESIDUE_RE.search(text or ""))
+
+
+# A heading line ("# ..." to "###### ...") is where the report proper starts.
+_HEADING_RE = re.compile(r"^#{1,6}[ \t]+\S", re.MULTILINE)
+# A markdown thematic break ("---", "***", "___", spaced or not).
+_RULE_RE = re.compile(r"^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$")
+# Lines that make the text before the first heading content, not chatter:
+# list, table, quote, bold / emphasis, code, markup, numbered item.
+_CONTENT_LINE_RE = re.compile(r"^[ \t]*(?:[|>*+`<-]|\d+[.)][ \t])")
+LEAD_IN_MAX_CHARS = 300
+"""Longest lead-in (prose characters) still treated as chatter."""
+
+
+def strip_lead_in(text: str) -> Tuple[str, int]:
+    """Remove the model's chat line before the report's first heading.
+
+    The local Qwen often opens its final answer with a sentence such as
+    "Now I have all the information needed. Let me compile the diagnosis."
+    -- in English even when the report is Chinese -- and a ``---`` rule,
+    and only then the report's first ``#`` heading (issue #279).  Only
+    short plain prose followed by a heading is removed; with no heading, a
+    long lead-in, or one holding a list, table, quote, bold text, code or
+    markup the text is kept as it is, so a report is never cut silently.
+
+    Returns:
+        ``(clean_text, chars_removed)``; ``(text, 0)`` when nothing matched.
+    """
+    first = _HEADING_RE.search(text)
+    if first is None or first.start() == 0:
+        return text, 0
+    head = text[:first.start()]
+    lines = [ln for ln in head.splitlines() if ln.strip() and not _RULE_RE.match(ln)]
+    prose = " ".join(ln.strip() for ln in lines)
+    if len(prose) > LEAD_IN_MAX_CHARS or any(_CONTENT_LINE_RE.match(ln) for ln in lines):
+        return text, 0
+    return text[first.start():], len(head)
 
 
 @dataclass

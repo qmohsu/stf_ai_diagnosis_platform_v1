@@ -22,6 +22,7 @@ from stf_v3.diagnosis.agent.main_agent import run_diagnosis
 from stf_v3.diagnosis.agent.report import (
     TOOL_CALL_RESIDUE_LIMITATION,
     has_tool_call_residue,
+    strip_lead_in,
     strip_thinking_residue,
 )
 from stf_v3.settings import Settings
@@ -179,6 +180,35 @@ async def test_run_strips_residue_and_counts_thinking_in_done_event() -> None:
     start = out.events[0]
     assert start.payload["model_source"] == "test" and start.payload["profile"] == "test"
     assert not any(e.event_type == ev.TOKEN and "hidden-plan" in e.payload["text"] for e in out.events)
+
+
+def test_strip_lead_in_drops_only_short_chatter_before_a_heading() -> None:
+    """Issue #279: "Now I have all the information..." plus a rule before the
+    first heading goes; heading-first text, no heading, a long lead-in, or a
+    lead-in holding a list / table / quote / bold text stays untouched."""
+    chatter = "Now I have all the information needed. Let me compile the diagnosis.\n\n---\n\n"
+    clean, removed = strip_lead_in(chatter + "## 診斷報告\n內容")
+    assert clean == "## 診斷報告\n內容" and removed == len(chatter)
+    for kept in ("# 報告\n內容",
+                 "Now I have all the information.\n沒有標題的報告",
+                 "x" * 301 + "\n# 報告",
+                 "- 已確認 P00AF\n# 報告",
+                 "| a | b |\n# 報告",
+                 "> **部分報告**\n# 報告",
+                 "**車輛：** TRICITY155\n# 報告"):
+        assert strip_lead_in(kept) == (kept, 0)
+
+
+async def test_report_starts_at_the_first_heading_also_when_partial() -> None:
+    """Issue #279: the stored report starts with the report, not the model's
+    English chat line -- on a complete run and under the partial header."""
+    text = "Now I have all the information needed.\n---\n## 診斷報告\n正常"
+    out = await run_diagnosis(make_deps(), Script(main=[response(TEXT(content=text))]).model())
+    assert out.report.content_md == "## 診斷報告\n正常" and not out.report.partial
+    residue = "Now I have it all.\n## 報告\n<function=list_dtcs>"
+    out = await run_diagnosis(make_deps(), Script(main=[response(TEXT(content=residue))]).model())
+    assert out.report.partial and "Now I have" not in out.report.content_md
+    assert out.report.content_md.startswith("> **部分報告**")
 
 
 async def test_unparsed_tool_call_markup_makes_the_report_partial() -> None:
