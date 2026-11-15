@@ -4,7 +4,7 @@
 #   bash infra/vllm_ctl.sh start          # up -d (cold start ≈ 10 min); then `wait`
 #   bash infra/vllm_ctl.sh wait [SECONDS] # poll /v1/models until the model is listed (default 1200 s)
 #   bash infra/vllm_ctl.sh status         # container / pod / health / served models / GPU summary
-#   bash infra/vllm_ctl.sh stop           # down (frees both GPUs; e.g. before an Ollama fallback)
+#   bash infra/vllm_ctl.sh stop           # save log to ~/stf_v3_logs/vllm/, then down (frees both GPUs)
 #   bash infra/vllm_ctl.sh logs [N]       # last N container log lines
 #   bash infra/vllm_ctl.sh install-unit   # auto-start unit -- NOT installed: vLLM is on demand (2026-09-24)
 #
@@ -26,6 +26,25 @@ gpu_summary() {
   nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv,noheader 2>/dev/null | sed 's/^/  proc /'
 }
 
+# `down` deletes the container and its log, so a crash while loading could
+# not be explained afterwards (issue #285 A4).  Keep the exit state and the
+# log tail first; owner-only (umask 077: home is ACL-shared, #272), newest
+# 20 kept.  Best effort: a failure here never blocks the stop.
+LOG_KEEP_DIR="${STF_VLLM_LOG_DIR:-$HOME/stf_v3_logs/vllm}"
+save_logs() (
+  umask 077
+  podman container exists stf-vllm 2>/dev/null || exit 0
+  mkdir -p "$LOG_KEEP_DIR" || exit 0
+  f="$LOG_KEEP_DIR/vllm-$(date -u +%Y%m%dT%H%M%SZ).log"
+  {
+    podman inspect stf-vllm --format 'state={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}} started={{.State.StartedAt}} finished={{.State.FinishedAt}} restarts={{.RestartCount}}'
+    gpu_summary
+    podman logs --tail 3000 stf-vllm
+  } > "$f" 2>&1
+  ls -1t "$LOG_KEEP_DIR"/vllm-*.log 2>/dev/null | tail -n +21 | xargs -r rm -f
+  echo "saved vLLM log: $f"
+)
+
 served_models() {
   curl -sf -m 10 "${BASE_URL%/}/models" 2>/dev/null \
     | python3 -c 'import json,sys; print(" ".join(m["id"] for m in json.load(sys.stdin)["data"]))' 2>/dev/null
@@ -42,6 +61,7 @@ case "${1:-}" in
     echo "stf-vllm starting (cold start ≈ 10 min). Next: bash $0 wait"
     ;;
   stop)
+    save_logs || true
     "${COMPOSE[@]}" down
     ;;
   wait)
