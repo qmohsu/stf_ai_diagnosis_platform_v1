@@ -1,9 +1,12 @@
 """Source-section and image safety checks for report citation navigation."""
 
+import hashlib
+import os
 import shutil
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 import yaml
@@ -34,6 +37,33 @@ def make_row(root: Path, *, indexed: bool = False):  # type: ignore[no-untyped-d
     return SimpleNamespace(
         id=mid, status="ingested", md_file_path=str(md.relative_to(root)),
     )
+
+
+def make_indexed_legacy_row(root: Path):  # type: ignore[no-untyped-def]
+    """Build a non-ID Markdown name with a matching source sidecar and image."""
+    row = make_row(root, indexed=True)
+    original = root / row.md_file_path
+    md = original.with_name("tricity155.md")
+    original.rename(md)
+    row.md_file_path = str(md.relative_to(root))
+    sidecar = md.parent / f"{row.id}.index.yaml"
+    write_source_index(row, md, sidecar)
+    image = md.parent / "images" / "manual_small" / "p3-1.png"
+    image.parent.mkdir(parents=True)
+    image.write_bytes(b"\x89PNG\r\n\x1a\n")
+    return row, md, sidecar, image
+
+
+def write_source_index(row, md: Path, sidecar: Path) -> None:  # type: ignore[no-untyped-def]
+    """Write a matching source declaration for the isolated validation tests."""
+    sidecar.write_text(yaml.safe_dump({
+        "manual_id": str(row.id),
+        "source": {
+            "content_file": md.name,
+            "content_sha256": hashlib.sha256(md.read_bytes()).hexdigest(),
+        },
+        "tree": [],
+    }), encoding="utf-8")
 
 
 def test_legacy_source_resolves_raw_titles_and_images(manual_root: Path) -> None:
@@ -72,7 +102,10 @@ def test_indexed_source_uses_node_id_and_page_range(manual_root: Path) -> None:
     md.write_text("# Fuel System\n\nFuel pressure 320 kPa.\n", encoding="utf-8")
     (md.parent / f"{row.id}.index.yaml").write_text(yaml.safe_dump({
         "manual_id": str(row.id),
-        "source": {"content_file": md.name},
+        "source": {
+            "content_file": md.name,
+            "content_sha256": hashlib.sha256(md.read_bytes()).hexdigest(),
+        },
         "faults": [],
         "tree": [{
             "node_id": "fuel-system", "title": "Fuel System", "aliases": ["Pump"],
@@ -95,6 +128,130 @@ def test_indexed_source_uses_node_id_and_page_range(manual_root: Path) -> None:
     with pytest.raises(ApiError) as err:
         service.read_section(row, "Fuel Systom")
     assert err.value.status_code == 404 and err.value.code == "section_not_found"
+
+
+def test_issue_279_indexed_legacy_filename_serves_section_and_image(
+    manual_root: Path,
+) -> None:
+    """A valid sidecar authorizes an older non-ID Markdown name for both routes."""
+    row = make_row(manual_root, indexed=True)
+    original = manual_root / row.md_file_path
+    renamed = original.with_name("tricity155.md")
+    original.rename(renamed)
+    row.md_file_path = str(renamed.relative_to(manual_root))
+    image = renamed.parent / "images" / "manual_small" / "p3-1.png"
+    image.parent.mkdir(parents=True)
+    image.write_bytes(b"\x89PNG\r\n\x1a\n")
+    sidecar = renamed.parent / f"{row.id}.index.yaml"
+    sidecar.write_text(yaml.safe_dump({
+        "manual_id": str(row.id),
+        "source": {
+            "content_file": renamed.name,
+            "content_sha256": hashlib.sha256(renamed.read_bytes()).hexdigest(),
+        },
+        "tree": [{
+            "node_id": "specifications", "title": "1.1 Specifications",
+            "node_type": "chapter", "subsystem": "engine",
+            "md_lines": [10, 16], "children": [],
+        }],
+    }), encoding="utf-8")
+
+    section = service.read_section(row, "specifications")
+    assert section.index_track is True
+    assert "3.5 L" in section.content_md
+    assert service.image_asset(row, "images/manual_small/p3-1.png") == (
+        image, "image/png",
+    )
+
+
+def test_pr_280_review_repeated_section_and_image_parse_source_index_once(
+    manual_root: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Repeated source reads must not synchronously parse the sidecar each time."""
+    row, _, _, image = make_indexed_legacy_row(manual_root)
+    # Isolate service.py's source check from manual_index.py's separate cache.
+    monkeypatch.setenv("MANUAL_INDEX_TRACK", "off")
+    safe_load = Mock(wraps=yaml.safe_load)
+    monkeypatch.setattr(service.yaml, "safe_load", safe_load)
+
+    for _ in range(2):
+        section = service.read_section(row, "1.1 Specifications")
+        assert section.section_id == "1-1-specifications"
+        assert service.image_asset(row, "images/manual_small/p3-1.png") == (
+            image, "image/png",
+        )
+    assert safe_load.call_count == 1
+
+
+def test_pr_280_review_content_and_index_changes_invalidate_cached_result(
+    manual_root: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Changed content must fail closed, and a repaired index must be rechecked."""
+    row, md, sidecar, image = make_indexed_legacy_row(manual_root)
+    monkeypatch.setenv("MANUAL_INDEX_TRACK", "off")
+    safe_load = Mock(wraps=yaml.safe_load)
+    monkeypatch.setattr(service.yaml, "safe_load", safe_load)
+    assert "3.5 L" in service.read_section(row, "1.1 Specifications").content_md
+
+    before_md = md.stat()
+    original = md.read_text(encoding="utf-8")
+    assert "3.5 L" in original
+    md.write_text(original.replace("3.5 L", "3.6 L"), encoding="utf-8")
+    os.utime(md, ns=(before_md.st_atime_ns, before_md.st_mtime_ns + 1_000_000_000))
+    for read in (
+        lambda: service.read_section(row, "1.1 Specifications"),
+        lambda: service.image_asset(row, "images/manual_small/p3-1.png"),
+    ):
+        with pytest.raises(ApiError) as err:
+            read()
+        assert err.value.status_code == 409
+        assert err.value.code == "manual_not_readable"
+    assert safe_load.call_count == 2
+
+    before_index = sidecar.stat()
+    write_source_index(row, md, sidecar)
+    os.utime(sidecar, ns=(before_index.st_atime_ns,
+                         before_index.st_mtime_ns + 1_000_000_000))
+    assert "3.6 L" in service.read_section(row, "1.1 Specifications").content_md
+    assert service.image_asset(row, "images/manual_small/p3-1.png") == (
+        image, "image/png",
+    )
+    assert safe_load.call_count == 3
+
+
+@pytest.mark.parametrize("fault", ["missing", "hash", "wrong_id", "wrong_path"])
+def test_issue_279_invalid_index_never_serves_legacy_filename(
+    manual_root: Path, fault: str,
+) -> None:
+    """A present but invalid sidecar fails closed with manual_not_readable."""
+    row = make_row(manual_root, indexed=True)
+    original = manual_root / row.md_file_path
+    renamed = original.with_name("tricity155.md")
+    original.rename(renamed)
+    row.md_file_path = str(renamed.relative_to(manual_root))
+    content_file = "missing.md" if fault == "missing" else renamed.name
+    if fault == "wrong_path":
+        content_file = "../tricity155.md"
+    sidecar = renamed.parent / f"{row.id}.index.yaml"
+    sidecar.write_text(yaml.safe_dump({
+        "manual_id": str(uuid.uuid4()) if fault == "wrong_id" else str(row.id),
+        "source": {
+            "content_file": content_file,
+            "content_sha256": "0" * 64 if fault == "hash" else hashlib.sha256(
+                renamed.read_bytes(),
+            ).hexdigest(),
+        },
+        "tree": [],
+    }), encoding="utf-8")
+
+    with pytest.raises(ApiError) as section_error:
+        service.read_section(row, "1.1 Specifications")
+    assert section_error.value.status_code == 409
+    assert section_error.value.code == "manual_not_readable"
+    with pytest.raises(ApiError) as image_error:
+        service.image_asset(row, "images/manual_small/p3-1.png")
+    assert image_error.value.status_code == 409
+    assert image_error.value.code == "manual_not_readable"
 
 
 def test_unreadable_manual_and_index_cannot_escape_storage(manual_root: Path) -> None:

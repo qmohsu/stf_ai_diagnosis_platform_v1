@@ -34,20 +34,22 @@ export function ConversationView({ vehicleId, conversationId }: { vehicleId: str
   const waitingMessage = typeof latestWaiting?.payload.message === "string" ? latestWaiting.payload.message : null;
   const visibleEvents = mode === "simple" ? simpleTimeline(events) : events.map((event) => ({ event, category: null, count: 1, completed: 0, failures: 0 }));
   const final = ["done", "error", "cancelled"].includes(conversation.status);
+  const processFinished = final || state === "complete";
+  const partialReport = conversation.status === "done" && (reportQuery.data?.report.partial ?? conversation.report_partial) === true;
 
   return <main className="page-shell">
     <Link className="back-link" href={`/vehicles/${vehicleId}`}>← 返回車輛檔案</Link>
     <div className="page-heading"><span className="eyebrow">AI 診斷</span><h1>診斷過程</h1><p>這次診斷依據日誌 {conversation.obd_log_id.slice(0, 8)}…。重新整理後，過程會從伺服器恢復。</p></div>
     <div className="diagnosis-layout">
       <section className="panel diagnosis-process" aria-labelledby="process-heading">
-        <div className="section-heading"><div><h2 id="process-heading">即時進度</h2><p>{formatDate(conversation.created_at)} 開始</p></div><span className={`status-pill status-${conversation.status}`}>{statusLabel(conversation.status)}</span></div>
-        <p className="process-summary" role="status" aria-live="polite">{conversation.status === "queued" && waitingMessage ? waitingMessage : conversation.status === "running" ? waitingMessage || "AI 正在分析行車資料及維修手冊…" : conversation.status === "done" ? "診斷已完成。" : conversation.error_message || (conversation.status === "cancelled" ? "診斷已取消。" : "診斷未能完成。")}</p>
+        <div className="section-heading"><div><h2 id="process-heading">即時進度</h2><p>{formatDate(conversation.created_at)} 開始</p></div><span className={`status-pill status-${conversation.status}`}>{partialReport ? "已完成（部分報告）" : statusLabel(conversation.status)}</span></div>
+        <p className="process-summary" role="status" aria-live="polite">{conversation.status === "queued" && waitingMessage ? waitingMessage : conversation.status === "running" ? waitingMessage || "AI 正在分析行車資料及維修手冊…" : conversation.status === "done" ? partialReport ? "診斷已結束，已產生部分報告。" : "診斷已完成。" : conversation.error_message || (conversation.status === "cancelled" ? "診斷已取消。" : "診斷未能完成。")}</p>
         <div className="process-tabs" role="tablist" aria-label="診斷過程檢視方式"><button type="button" role="tab" aria-selected={mode === "simple"} className={mode === "simple" ? "selected" : ""} onClick={() => setMode("simple")}>簡明進度</button><button type="button" role="tab" aria-selected={mode === "technical"} className={mode === "technical" ? "selected" : ""} onClick={() => setMode("technical")}>技術細節</button></div>
         {state === "loading" && <p className="inline-state" role="status">正在從伺服器恢復診斷過程…</p>}
         {state === "reconnecting" && <p className="inline-state" role="status">連線中斷，正在續接診斷過程…{failure ? `（${failure}）` : ""}</p>}
         {state === "archived" && <p className="inline-state">診斷過程已歸檔；報告仍可查看。</p>}
         {state === "failed" && <div className="inline-state" role="alert"><p>{failure || "診斷過程暫時無法載入。"}</p><button type="button" className="button secondary" onClick={retry}>重試</button></div>}
-        {visibleEvents.length > 0 && <ol className="event-timeline">{visibleEvents.map((item) => <li className="event-item" key={item.event.seq}><span className="event-time">{formatTime(item.event.created_at)}</span><div><strong>{item.category ? `${toolCategoryLabel(item.category)}${item.count > 1 ? `（${item.count} 次）` : ""}` : eventLabel(item.event)}</strong><p>{item.category ? simpleToolDescription(item) : eventDescription(item.event)}</p>{mode === "technical" && <TechnicalDetails event={item.event} />}</div></li>)}</ol>}
+        {visibleEvents.length > 0 && <ol className="event-timeline">{visibleEvents.map((item) => <li className="event-item" key={item.event.seq}><span className="event-time">{formatTime(item.event.created_at)}</span><div><strong>{item.category ? `${toolCategoryLabel(item.category)}${item.count > 1 ? `（${item.count} 次）` : ""}` : eventLabel(item.event)}</strong><p>{item.category ? simpleToolDescription(item, processFinished) : eventDescription(item.event)}</p>{mode === "technical" && <TechnicalDetails event={item.event} />}</div></li>)}</ol>}
         {visibleEvents.length === 0 && state !== "loading" && state !== "archived" && <p className="inline-state">尚未收到過程事件，請稍候。</p>}
       </section>
       <section className="panel diagnosis-report" aria-labelledby="report-heading">
@@ -135,10 +137,14 @@ function toolCategoryLabel(category: string): string {
   return { manual: "查找維修手冊", dtc: "檢查故障碼", data: "分析行車資料" }[category] || "查詢資料";
 }
 
-function simpleToolDescription(item: SimpleTimelineItem): string {
+function simpleToolDescription(item: SimpleTimelineItem, processFinished: boolean): string {
   if (item.count === 1) {
     if (item.failures) return "資料查詢遇到問題，AI 正在繼續判斷。";
+    if (!item.completed && processFinished) return "查詢已中止。";
     return item.completed ? "已取得資料，繼續分析。" : eventDescription(item.event);
+  }
+  if (item.completed < item.count && processFinished) {
+    return `已完成 ${item.completed}/${item.count} 次查詢，${item.count - item.completed} 次已中止${item.failures ? `，${item.failures} 次失敗` : ""}。`;
   }
   const state = item.completed === item.count ? "已完成" : "正在進行";
   return `${state} ${item.completed}/${item.count} 次查詢${item.failures ? `，${item.failures} 次失敗` : ""}。`;
