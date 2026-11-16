@@ -4,7 +4,8 @@ The model ends with plain text (five-section markdown); the runtime
 packs it with the citations it can PROVE from the tool trace:
 
 * every manual section actually read (main agent or manual sub-agent)
-  → ``manual`` citation, ``source="trace"``;
+  → ``manual`` citation, ``source="trace"``, naming the section's unique
+  id (issue #288: a call answered "ambiguous / not found" proves nothing);
 * every DTC the DTC tools surfaced → ``dtc`` citation, ``source="trace"``;
 * ``<manual_id>#<slug>`` references and DTC codes that appear in the
   text but never in the trace → ``source="NO_SOURCE"`` (FM-35; project
@@ -30,7 +31,17 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from stf_v3.diagnosis.agent.deps import ToolCallTrace
 
 _DTC_RE = re.compile(r"\b([PCBU][0-9][0-9A-F]{3})\b")
-_MANUAL_REF_RE = re.compile(r"`?([0-9a-fA-F-]{8,}|[A-Za-z0-9_.-]{2,})#([A-Za-z0-9_.-]+)`?")
+_MANUAL_ID = r"[0-9a-fA-F-]{8,}|[A-Za-z0-9_.-]{2,}"
+# Node ids / slugs keep CJK (``fuel-fault-故障代碼編號-p0117、p0118``; issue #288:
+# the old ASCII-only class cut them to ``fuel-fault-``).
+_SLUG_CHARS = r"A-Za-z0-9_.\-⺀-鿿豈-﫿"
+_MANUAL_REF_RE = re.compile(
+    # in backticks (how reports write them): the whole span on one line
+    rf"`({_MANUAL_ID})#([^`\n]+)`"
+    # bare: slug characters, stopping before "、<id>#" (a list of refs)
+    rf"|({_MANUAL_ID})#((?:(?![、，,](?:{_MANUAL_ID})#)[{_SLUG_CHARS}])+)"
+)
+_BARE_REF_TRAILING = ".,;:)。，、；：）」』】》"
 # Complete thinking blocks only (open + matching close); an unterminated tag
 # or prose that merely mentions "thinking" is left alone (FM-1).
 _THINK_BLOCK_RE = re.compile(r"<(think|thinking|reasoning)>.*?</\1>[ \t]*\n?", re.DOTALL | re.IGNORECASE)
@@ -163,9 +174,13 @@ def _dtcs_in_text(text: str) -> List[str]:
 
 def _manual_refs_in_text(text: str, known_manual_ids: Sequence[str]) -> List[str]:
     refs: List[str] = []
-    for manual_id, slug in _MANUAL_REF_RE.findall(text):
-        if manual_id in known_manual_ids:
-            refs.append(f"{manual_id}#{slug.rstrip('.,;:)')}")
+    for m in _MANUAL_REF_RE.finditer(text):
+        if m.group(1) is not None:
+            manual_id, slug = m.group(1), m.group(2).strip()
+        else:
+            manual_id, slug = m.group(3), m.group(4).rstrip(_BARE_REF_TRAILING)
+        if manual_id in known_manual_ids and slug:
+            refs.append(f"{manual_id}#{slug}")
     return refs
 
 
@@ -189,10 +204,16 @@ def extract_citations(
         if t.is_error:
             continue
         if t.name == "read_manual_section":
-            ref = f"{t.input.get('manual_id')}#{t.input.get('section')}"
-            if ref not in seen:
-                seen.add(ref)
-                out.append(ReportCitation("manual", ref, "trace", t.name))
+            # Only a call that really read a section proves it (#288): an
+            # ambiguous / unknown section is a normal return, not an error.
+            # The citation names the section actually read (unique id), so
+            # the section endpoint opens what the agent saw.
+            if not t.cite_ref:
+                continue
+            if t.cite_ref not in seen:
+                out.append(ReportCitation("manual", t.cite_ref, "trace", t.name))
+            # The text may cite the model's own wording of the same read.
+            seen.update((t.cite_ref, f"{t.input.get('manual_id')}#{t.input.get('section')}"))
         elif t.name == "lookup_dtc":
             code = str(t.input.get("code", "")).upper()
             if code and code not in seen:
