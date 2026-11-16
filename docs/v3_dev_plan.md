@@ -4,11 +4,11 @@
 
 | 字段 | 值 |
 |---|---|
-| **架构文档** | `docs/v3_design_doc.md`（v1.28） |
+| **架构文档** | `docs/v3_design_doc.md`（v1.29） |
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.37（PR #281 评审后续：简明进度与手册图片加载） |
+| **版本** | v1.38（issue #288：报告手册引用只记真读到的章节，中文章节名不再截断） |
 | **作者** | Xiangzhu Yan |
 | **最后更新** | 2026-11-16 |
 
@@ -343,6 +343,8 @@ worker、frontend 三个服务；部署核验新增第 11 项，检查前端容�
 - 设置：`STF_V3_LLM_BASE_URL / MODEL / API_KEY / ALLOW_CLOUD`、云端一组（默认关）、预算（`agent_*` / `subagent_*` / 截断 / 压缩阈值）、`default_locale`；compose 透传；import-linter"接口层不许导入流水线"契约把 diagnosis 纳入来源。**无新迁移、无新接口**（诊断接口在 PROD-11）。
 **测试**：`test_unit_loader` 7、`test_unit_tools_obd` 20、`test_unit_tools_manual` 12、`test_unit_agent_contract` 5、`test_unit_context_memory` 5、`test_unit_manual_guards` 6、`test_unit_agent_offline` 20（TestModel 三格式整轮、剧本 FunctionModel 嵌套委托 / 共享用量 / 文字+工具调用继续 / 引用 NO_SOURCE / 思考不进正文、四道闸门、模型断连、小助手超预算、取消、空回复、车档身份与假名、日志无内容无 VIN、记忆化）、`test_db_diagnosis` 1（行 → 依赖包 → 整轮）。**服务器等价验证（2026-09-17，PR #247 验证表）**：镜像内 148 passed + lint-imports 3 kept；deploy_check 8/8、隔离 PASS；真跑两次（现有 Ollama qwen3.5，zh-TW）：健康 Hiace 行程 346 s / 8 请求 / 20 工具调用 / 104k token / 52 事件 / 报告 2034 字，P00AF 行程 309 s / 6 请求 / 12 工具调用 / 86k token / 34 事件 / 报告 2962 字（P00AF 解码为主故障）；运维演练四项（端口不通 / 模型名错 / 云端未允许 / 输出目录在卷内）均预检拒绝。发现并修正：空 Mode 43/47 帧不再列为故障码。两次真跑 qwen3.5 未选择委托（委托证据 = 离线剧本 T-9）。
 
+**issue #288 补充（2026-11-16）**：线上 22 个手册引用有 5 个打不开。① 2 个标为「已核实」的引用其实没读到：AI 猜了一个不存在的章节编号，工具回「同名章节有 6 个，请选一个」（普通回复，不算出错），引用抽取却按「调用没出错」记为 `trace`。现在 `read_manual_section` 只有真读到章节时才在轨迹上记 `cite_ref`（唯一的 node id，无索引手册为 slug），报告只引用这些，章节接口按 node id 一定能打开；AI 自己的写法仍算同一次阅读，不会重复成 `NO_SOURCE`。② 3 个未核实引用的中文章节名被截断（`fuel-fault-`）：正文引用的匹配改为保留中文，反引号里整段保留，裸写时去掉句末标点、遇到「、下一个引用」即停。工具返回给模型的内容不变，诊断行为不变；改动在评测受管路径，门槛成绩单随 PR 提交。新测试 `test_unit_report_manual_refs`（同名章节的猜测编号不入 `trace`、按编号与按标题读取都以 node id 引用且章节接口能打开、无索引手册按 slug 引用一次、中文引用六例）。
+
 #### PROD-09 — 模型适配层与云端接口 — **DONE（2026-09-19，PR #248）**
 
 **目标**：唯一本地 vLLM + Qwen3.6-27B 为默认，云端只作对比。
@@ -612,6 +614,7 @@ issue #270 前端与部署配置已合入，维护者于 2026-11-09 完成部署
 
 | 版本 | 日期 | 变更 |
 |---|---|---|
+| v1.38 | 2026-11-16 | issue #288：PROD-08 记报告手册引用的两处修正——只有 `read_manual_section` 真读到章节才记为 `trace`，并以唯一 node id 引用（同名章节时 AI 猜的编号不再冒充已核实，网页章节接口一定能打开）；正文里的引用保留中文章节名，不再截成 `fuel-fault-`。工具返回内容不变；评测门槛成绩单随 PR 提交。架构文档 v1.29；架构未变，**图无需改动**。 |
 | v1.37 | 2026-11-16 | [PR #281 评审评论](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/pull/281#issuecomment-6747883085) 后续：PROD-13 记录 `delegate_to_manual_agent`、`submit_report` 简明分类和状态描述修正，以及经安全校验的手册图片恢复懒加载、异步解码；合并主线的部分报告与终态未配对查询「已中止」规则，保留原生尺寸与技术细节视图。待合并部署及线上复测。无架构变化，图无需改动。 |
 | v1.36 | 2026-11-15 | 仓库示例 VIN 统一换成新的合成值（序号 000000，校验位有效）：测试、夹具、脚本、文档与评测常量 `FAKE_VIN` 同步，CI `vin-scan` 白名单只认新值；行为不变。评测门槛成绩单随 PR 提交；架构未变，**图无需改动**。 |
 | v1.35 | 2026-11-15 | issue #279：PROD-09 记报告落文去掉第一个标题前的英文过场话（短纯文字才去，部分报告提示头在后）；评测门槛成绩单随 PR 提交。架构文档 v1.28；架构未变，**图无需改动**。 |

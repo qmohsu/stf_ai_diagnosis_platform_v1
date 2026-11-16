@@ -139,6 +139,11 @@ class ToolCallTrace:
     is_error: bool = False
     tool_call_id: Optional[str] = None
     output_chars: int = 0
+    # ``<manual_id>#<node id / slug>`` of the section this call actually
+    # read (``read_manual_section`` only).  None when it read nothing: an
+    # ambiguous or unknown section comes back as normal text, not an error,
+    # so ``is_error`` alone cannot prove a read (issue #288).
+    cite_ref: Optional[str] = None
 
 
 @dataclass

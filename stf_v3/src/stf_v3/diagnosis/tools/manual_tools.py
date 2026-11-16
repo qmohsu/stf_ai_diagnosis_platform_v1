@@ -378,8 +378,11 @@ async def read_manual_section(
     blocked = _blocked(ctx, "read_manual_section", args)
     if blocked:
         return blocked
+    resolved: Dict[str, str] = {}
     text = await execute(ctx, "read_manual_section", args,
-                         lambda: _read_manual_section_text(ctx, manual_id, section, include_subsections))
+                         lambda: _read_manual_section_text(ctx, manual_id, section, include_subsections, resolved))
+    if resolved.get("section"):
+        _mark_read(ctx, manual_id, resolved["section"])
     _after(ctx, "read_manual_section", args)
     core = core_deps(ctx.deps)
     _record_section(ctx, manual_id, section, text)
@@ -394,7 +397,23 @@ async def read_manual_section(
     return text
 
 
-async def _read_manual_section_text(ctx: RunContext[Any], manual_id: str, section_query: str, include_subs: bool) -> str:
+def _mark_read(ctx: RunContext[Any], manual_id: str, section_id: str) -> None:
+    """Tag this call's trace entry with the section it actually read (#288).
+
+    The report cites ``cite_ref`` (the unique node id / slug), so the
+    browser's section endpoint opens exactly what the tool returned.
+    """
+    for entry in reversed(core_deps(ctx.deps).trace):
+        if (entry.name == "read_manual_section" and entry.tool_call_id == ctx.tool_call_id
+                and entry.input.get("manual_id") == manual_id and entry.cite_ref is None):
+            entry.cite_ref = f"{manual_id}#{section_id}"
+            return
+
+
+async def _read_manual_section_text(ctx: RunContext[Any], manual_id: str, section_query: str, include_subs: bool,
+                                    resolved: Optional[Dict[str, str]] = None) -> str:
+    """Section text, or a miss message; ``resolved["section"]`` is set only on a real read."""
+    resolved = resolved if resolved is not None else {}
     core = core_deps(ctx.deps)
     manual = core.manual_by_id(manual_id)
     if manual is None:
@@ -412,6 +431,7 @@ async def _read_manual_section_text(ctx: RunContext[Any], manual_id: str, sectio
         section_text = rt_index.section_text(node)
         if section_text is None:
             return f"Node '{node.node_id}' has no content anchor — use search_manual_text."
+        resolved["section"] = node.node_id
         return _maybe_strip(core, section_text)
     md_text = _md_text(core, manual)
     if md_text is None:
@@ -430,6 +450,7 @@ async def _read_manual_section_text(ctx: RunContext[Any], manual_id: str, sectio
     section_text = extract_section(md_text, target, include_subs)
     if section_text is None:
         return f"Could not extract section '{target}' from manual '{manual_id}'."
+    resolved["section"] = target
     return _maybe_strip(core, section_text)
 
 
