@@ -11,7 +11,7 @@ export function SafeMarkdown({ content, manualId }: { content: string; manualId?
     a: ({ children }) => <span className="markdown-plain-link">{children}</span>,
     img: ({ src, alt }) => {
       const safe = manualId ? manualImageUrl(manualId, typeof src === "string" ? src : undefined) : null;
-      return safe ? <span className="manual-image-wrap"><img src={safe} alt={alt || "維修手冊圖片"} style={{ width: "auto", height: "auto", maxWidth: "100%" }} /></span> : <span className="manual-image-missing">[圖片未提供：{alt || "無說明"}]</span>;
+      return safe ? <span className="manual-image-wrap"><img src={safe} alt={alt || "維修手冊圖片"} loading="lazy" decoding="async" style={{ width: "auto", height: "auto", maxWidth: "100%" }} /></span> : <span className="manual-image-missing">[圖片未提供：{alt || "無說明"}]</span>;
     },
   }}>{content}</Markdown></div>;
 }

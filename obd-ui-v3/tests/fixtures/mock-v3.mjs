@@ -24,6 +24,7 @@ const liveConversationId = "77777777-7777-4777-8777-777777777777";
 const archivedConversationId = "88888888-8888-4888-8888-888888888888";
 const partialTimeoutConversationId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 const runningPendingConversationId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+const terminalToolConversationId = "ffffffff-ffff-4fff-8fff-ffffffffffff";
 const manualId = "33333333-3333-4333-8333-333333333333";
 const logs = [
   { id: logId, vehicle_id: vehicleId, format: "maxlog", size_bytes: 15360, original_filename: "first-drive.csv", source: "device", recorded_start: "2026-10-29T08:00:00Z", recorded_end: "2026-10-29T08:15:00Z", uploaded_at: "2026-10-29T08:16:00Z", sha256: "private-sha" },
@@ -45,7 +46,11 @@ const eventTemplates = [
 ];
 const pastEvents = [
   { seq: 1, event_type: "session_start", payload: { obd_log_id: secondLogId }, created_at: "2026-10-28T08:13:00Z" },
-  { seq: 2, event_type: "done", payload: { status: "done" }, created_at: "2026-10-28T08:14:00Z" },
+  { seq: 2, event_type: "tool_call", payload: { tool: "delegate_to_manual_agent", tool_call_id: "review-manual" }, created_at: "2026-10-28T08:13:10Z" },
+  { seq: 3, event_type: "tool_result", payload: { tool: "delegate_to_manual_agent", tool_call_id: "review-manual", is_error: true }, created_at: "2026-10-28T08:13:20Z" },
+  { seq: 4, event_type: "tool_call", payload: { tool: "submit_report", tool_call_id: "review-report" }, created_at: "2026-10-28T08:13:30Z" },
+  { seq: 5, event_type: "tool_result", payload: { tool: "submit_report", tool_call_id: "review-report", is_error: false }, created_at: "2026-10-28T08:13:40Z" },
+  { seq: 6, event_type: "done", payload: { status: "done" }, created_at: "2026-10-28T08:14:00Z" },
 ];
 const pendingQueryEvents = [
   { seq: 1, event_type: "session_start", payload: { obd_log_id: secondLogId }, created_at: "2026-10-28T08:13:00Z" },
@@ -57,6 +62,15 @@ const pendingQueryEvents = [
 const partialTimeoutEvents = [
   ...pendingQueryEvents,
   { seq: 39, event_type: "done", payload: { status: "done" }, created_at: "2026-10-28T08:14:00Z" },
+];
+const terminalToolEvents = [
+  { seq: 1, event_type: "session_start", payload: { obd_log_id: secondLogId }, created_at: "2026-10-28T08:13:00Z" },
+  { seq: 2, event_type: "tool_call", payload: { tool: "submit_report", tool_call_id: "stopped-report-single" }, created_at: "2026-10-28T08:13:10Z" },
+  { seq: 3, event_type: "tool_call", payload: { tool: "delegate_to_manual_agent", tool_call_id: "stopped-manual" }, created_at: "2026-10-28T08:13:20Z" },
+  { seq: 4, event_type: "tool_call", payload: { tool: "submit_report", tool_call_id: "completed-report" }, created_at: "2026-10-28T08:13:30Z" },
+  { seq: 5, event_type: "tool_result", payload: { tool: "submit_report", tool_call_id: "completed-report", is_error: false }, created_at: "2026-10-28T08:13:40Z" },
+  { seq: 6, event_type: "tool_call", payload: { tool: "submit_report", tool_call_id: "stopped-report-group" }, created_at: "2026-10-28T08:13:50Z" },
+  { seq: 7, event_type: "done", payload: { status: "done" }, created_at: "2026-10-28T08:14:00Z" },
 ];
 
 function liveEvents() {
@@ -70,14 +84,15 @@ function liveEvents() {
 }
 
 function conversation(id) {
-  if (id === partialTimeoutConversationId || id === runningPendingConversationId) {
-    const done = id === partialTimeoutConversationId;
+  if (id === partialTimeoutConversationId || id === runningPendingConversationId || id === terminalToolConversationId) {
+    const done = id !== runningPendingConversationId;
+    const hasReport = id === partialTimeoutConversationId;
     return {
       id, vehicle_id: vehicleId, obd_log_id: secondLogId, status: done ? "done" : "running", stage: done ? "complete" : "agent",
       error_code: null, error_message: null, created_at: "2026-10-28T08:13:00Z",
       started_at: "2026-10-28T08:13:00Z", finished_at: done ? "2026-10-28T08:14:00Z" : null,
-      // Simulate a stale summary so the loaded report's partial flag is authoritative.
-      has_report: done, report_partial: done ? false : null, events_archived: false,
+      // For the timeout report, simulate a stale summary so the loaded report's partial flag is authoritative.
+      has_report: hasReport, report_partial: hasReport ? false : null, events_archived: false,
     };
   }
   if (id === pastConversationId || id === archivedConversationId) return {
@@ -115,7 +130,7 @@ function sendSse(req, res, id, afterSeq) {
   let last = afterSeq;
   let heartbeat = 0;
   const interval = setInterval(() => {
-    for (const event of id === pastConversationId ? pastEvents : id === partialTimeoutConversationId ? partialTimeoutEvents : id === runningPendingConversationId ? pendingQueryEvents : liveEvents()) {
+    for (const event of id === pastConversationId ? pastEvents : id === partialTimeoutConversationId ? partialTimeoutEvents : id === runningPendingConversationId ? pendingQueryEvents : id === terminalToolConversationId ? terminalToolEvents : liveEvents()) {
       if (event.seq <= last) continue;
       res.write(`event: ${event.event_type}\nid: ${event.seq}\ndata: ${JSON.stringify(event)}\n\n`);
       last = event.seq;
@@ -203,7 +218,7 @@ const server = http.createServer(async (req, res) => {
     if (row.events_archived) return send(res, 410, { code: "events_archived" });
     const afterSeq = Number(url.searchParams.get("after_seq") || 0);
     if (req.headers.accept?.includes("text/event-stream")) return sendSse(req, res, id, afterSeq);
-    const rows = id === pastConversationId ? pastEvents : id === partialTimeoutConversationId ? partialTimeoutEvents : id === runningPendingConversationId ? pendingQueryEvents : liveEvents();
+    const rows = id === pastConversationId ? pastEvents : id === partialTimeoutConversationId ? partialTimeoutEvents : id === runningPendingConversationId ? pendingQueryEvents : id === terminalToolConversationId ? terminalToolEvents : liveEvents();
     return send(res, 200, rows.filter((event) => event.seq > afterSeq));
   }
   if (url.pathname === `/v3/manuals/${manualId}/sections`) {
