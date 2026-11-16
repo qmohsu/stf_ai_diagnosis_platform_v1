@@ -8,12 +8,13 @@ Author: Xiangzhu Yan
 
 import pathlib
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from stf_v3.ingest.parsers import decode, sniff
-from stf_v3.ingest.parsers.base import normalise_vin, parse_timestamp
+from stf_v3.ingest.models import LoggerWallClock
+from stf_v3.ingest.parsers.base import LOGGER_TZ, normalise_vin, parse_timestamp
 from stf_v3.ingest.service import sha256_hex
 from stf_v3.ingest.storage import LogStorage
 
@@ -24,9 +25,10 @@ YAMAHA = (FIXTURES / "yamaha_dual.csv").read_bytes()
 NOT_OBD = (FIXTURES / "not_obd.csv").read_bytes()
 
 
-def _utc(s: str) -> datetime:
+def _hk(s: str) -> datetime:
+    """Logger wall-clock text read as Hong Kong time (issue #257)."""
     fmt = "%Y-%m-%d %H:%M:%S.%f" if "." in s else "%Y-%m-%d %H:%M:%S"
-    return datetime.strptime(s, fmt).replace(tzinfo=timezone.utc)
+    return datetime.strptime(s, fmt).replace(tzinfo=LOGGER_TZ)
 
 
 def test_sniff_jetson_tsv_reads_vin_and_window() -> None:
@@ -35,9 +37,9 @@ def test_sniff_jetson_tsv_reads_vin_and_window() -> None:
     meta = sniff(TSV_OK)
     assert meta is not None
     assert meta.format == "tsv" and meta.extension == "tsv"
-    assert meta.vin == "JHMGK5830HX202404"
-    assert meta.recorded_start == _utc("2025-07-23 14:42:16")
-    assert meta.recorded_end == _utc("2025-07-23 14:42:35")
+    assert meta.vin == "JHMGK5831HX000000"
+    assert meta.recorded_start == _hk("2025-07-23 14:42:16")
+    assert meta.recorded_end == _hk("2025-07-23 14:42:35")
 
 
 def test_sniff_jetson_tsv_other_vin_fixture() -> None:
@@ -70,17 +72,17 @@ def test_sniff_yamaha_reads_window_and_has_no_vin() -> None:
     assert meta is not None
     assert meta.format == "yamaha" and meta.extension == "csv"
     assert meta.vin is None
-    assert meta.recorded_start == _utc("2026-05-08 11:20:39")
-    assert meta.recorded_end == _utc("2026-05-08 11:21:00.508967")
+    assert meta.recorded_start == _hk("2026-05-08 11:20:39")
+    assert meta.recorded_end == _hk("2026-05-08 11:21:00.508967")
 
 
 def test_yamaha_vehicle_id_line_used_only_when_valid_vin() -> None:
     """``# vehicle_id:`` becomes ``vin`` only if it is a valid 17-char VIN."""
     text = decode(YAMAHA)
     first, rest = text.split("\n", 1)
-    good = f"{first}\n# vehicle_id: JHMGK5830HX202404\n{rest}".encode()
+    good = f"{first}\n# vehicle_id: JHMGK5831HX000000\n{rest}".encode()
     bad = f"{first}\n# vehicle_id: JYAMA00000XX000001\n{rest}".encode()  # 18 chars
-    assert sniff(good).vin == "JHMGK5830HX202404"  # type: ignore[union-attr]
+    assert sniff(good).vin == "JHMGK5831HX000000"  # type: ignore[union-attr]
     assert sniff(bad).vin is None  # type: ignore[union-attr]
 
 
@@ -103,9 +105,9 @@ def test_sniff_maxlog_reads_vin_and_window() -> None:
     meta = sniff(MAXLOG_HIACE)
     assert meta is not None
     assert meta.format == "maxlog" and meta.extension == "csv"
-    assert meta.vin == "JHMGK5830HX202404"
-    assert meta.recorded_start == _utc("2026-06-22 15:39:54")
-    assert meta.recorded_end == _utc("2026-06-22 15:41:19")
+    assert meta.vin == "JHMGK5831HX000000"
+    assert meta.recorded_start == _hk("2026-06-22 15:39:54")
+    assert meta.recorded_end == _hk("2026-06-22 15:41:19")
 
 
 def test_sniff_maxlog_without_vin_or_trailer() -> None:
@@ -115,8 +117,8 @@ def test_sniff_maxlog_without_vin_or_trailer() -> None:
     meta = sniff(MAXLOG_NO_VIN)
     assert meta is not None
     assert meta.format == "maxlog" and meta.vin is None
-    assert meta.recorded_start == _utc("2026-08-19 16:38:32")
-    assert meta.recorded_end == _utc("2026-08-19 16:39:14.103")
+    assert meta.recorded_start == _hk("2026-08-19 16:38:32")
+    assert meta.recorded_end == _hk("2026-08-19 16:39:14.103")
 
 
 def test_maxlog_vin_falls_back_to_mode09_line_and_rejects_garbage() -> None:
@@ -124,9 +126,9 @@ def test_maxlog_vin_falls_back_to_mode09_line_and_rejects_garbage() -> None:
     non-VIN value in either line yields None rather than a false mismatch."""
     text = decode(MAXLOG_HIACE)
     no_vehicle_id = "\n".join(l for l in text.splitlines() if not l.startswith("# vehicle_id:"))
-    assert sniff(no_vehicle_id.encode()).vin == "JHMGK5830HX202404"  # type: ignore[union-attr]
-    garbage = text.replace("# vehicle_id: JHMGK5830HX202404", "# vehicle_id: hiace-01")
-    garbage = garbage.replace("#   VIN: JHMGK5830HX202404", "#   VIN: N/A")
+    assert sniff(no_vehicle_id.encode()).vin == "JHMGK5831HX000000"  # type: ignore[union-attr]
+    garbage = text.replace("# vehicle_id: JHMGK5831HX000000", "# vehicle_id: hiace-01")
+    garbage = garbage.replace("#   VIN: JHMGK5831HX000000", "#   VIN: N/A")
     assert sniff(garbage.encode()).vin is None  # type: ignore[union-attr]
 
 
@@ -147,16 +149,49 @@ def test_unrecognised_payloads_return_none(payload: bytes) -> None:
 
 def test_normalise_vin_rejects_garbage() -> None:
     """Empty, N/A, wrong length and I/O/Q characters all yield None."""
-    assert normalise_vin("jhmgk5830hx202404") == "JHMGK5830HX202404"
-    for bad in (None, "", "N/A", "JHMGK5830HX20240", "JHMGK5830HX2024040", "IHMGK5830HX202404"):
+    assert normalise_vin("jhmgk5831hx000000") == "JHMGK5831HX000000"
+    for bad in (None, "", "N/A", "JHMGK5831HX00000", "JHMGK5831HX0000000", "IHMGK5831HX000000"):
         assert normalise_vin(bad) is None
 
 
 def test_parse_timestamp_accepts_both_precisions_and_never_guesses() -> None:
-    """Whole-second and fractional formats parse as UTC; junk → None."""
-    assert parse_timestamp("2026-05-08 11:20:39") == _utc("2026-05-08 11:20:39")
-    assert parse_timestamp("2026-05-08 11:20:39.5") == _utc("2026-05-08 11:20:39.5")
+    """Whole-second and fractional formats parse as HK time; junk → None."""
+    assert parse_timestamp("2026-05-08 11:20:39") == _hk("2026-05-08 11:20:39")
+    assert parse_timestamp("2026-05-08 11:20:39.5") == _hk("2026-05-08 11:20:39.5")
     assert parse_timestamp("yesterday") is None and parse_timestamp(None) is None
+
+
+def test_parse_timestamp_reads_wall_clock_as_hong_kong_time() -> None:
+    """Issue #257: a trip logged at 15:37 HKT is the instant 07:37 UTC, not
+    15:37 UTC (which a Hong Kong browser showed as 23:37)."""
+    # Arrange
+    raw = "2026-11-10 15:37:11"
+
+    # Act
+    parsed = parse_timestamp(raw)
+
+    # Assert
+    assert parsed == datetime(2026, 11, 10, 7, 37, 11, tzinfo=timezone.utc)
+    assert parsed is not None and parsed.utcoffset() == timedelta(hours=8)
+    assert parsed.strftime("%Y-%m-%d %H:%M:%S") == raw  # digits unchanged
+
+
+def test_logger_wall_clock_column_loads_in_hong_kong_time() -> None:
+    """The DB driver hands back UTC instants; the column type re-expresses
+    them in HK time (same instant) so the agent's case-context time range
+    shows the log's own wall-clock digits; NULL stays NULL."""
+    # Arrange
+    col = LoggerWallClock()
+    from_db = datetime(2026, 11, 10, 7, 37, 11, tzinfo=timezone.utc)
+
+    # Act
+    loaded = col.process_result_value(from_db, dialect=None)  # type: ignore[arg-type]
+
+    # Assert
+    assert loaded == from_db
+    assert loaded is not None
+    assert loaded.isoformat() == "2026-11-10T15:37:11+08:00"
+    assert col.process_result_value(None, dialect=None) is None  # type: ignore[arg-type]
 
 
 def test_storage_layout_and_atomic_write(tmp_path: pathlib.Path) -> None:

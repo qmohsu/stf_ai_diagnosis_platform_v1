@@ -1,7 +1,7 @@
 import http from "node:http";
 
 const workshopId = "11111111-1111-4111-8111-111111111111";
-const vinA = "JHMGK5830HX202404";
+const vinA = "JHMGK5831HX000000";
 const vinB = "1HGCM82633A123456";
 const vehicles = Array.from({ length: 51 }, (_, index) => ({
   id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
@@ -22,6 +22,9 @@ const secondLogId = "55555555-5555-4555-8555-555555555555";
 const pastConversationId = "66666666-6666-4666-8666-666666666666";
 const liveConversationId = "77777777-7777-4777-8777-777777777777";
 const archivedConversationId = "88888888-8888-4888-8888-888888888888";
+const partialTimeoutConversationId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+const runningPendingConversationId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+const terminalToolConversationId = "ffffffff-ffff-4fff-8fff-ffffffffffff";
 const manualId = "33333333-3333-4333-8333-333333333333";
 const logs = [
   { id: logId, vehicle_id: vehicleId, format: "maxlog", size_bytes: 15360, original_filename: "first-drive.csv", source: "device", recorded_start: "2026-10-29T08:00:00Z", recorded_end: "2026-10-29T08:15:00Z", uploaded_at: "2026-10-29T08:16:00Z", sha256: "private-sha" },
@@ -49,6 +52,26 @@ const pastEvents = [
   { seq: 5, event_type: "tool_result", payload: { tool: "submit_report", tool_call_id: "review-report", is_error: false }, created_at: "2026-10-28T08:13:40Z" },
   { seq: 6, event_type: "done", payload: { status: "done" }, created_at: "2026-10-28T08:14:00Z" },
 ];
+const pendingQueryEvents = [
+  { seq: 1, event_type: "session_start", payload: { obd_log_id: secondLogId }, created_at: "2026-10-28T08:13:00Z" },
+  ...Array.from({ length: 19 }, (_, index) => [
+    { seq: index * 2 + 2, event_type: "tool_call", payload: { tool: "delegate_to_obd_agent", tool_call_id: `timeout-${index + 1}` }, created_at: "2026-10-28T08:13:10Z" },
+    ...(index < 18 ? [{ seq: index * 2 + 3, event_type: "tool_result", payload: { tool: "delegate_to_obd_agent", tool_call_id: `timeout-${index + 1}`, is_error: false }, created_at: "2026-10-28T08:13:20Z" }] : []),
+  ]).flat(),
+];
+const partialTimeoutEvents = [
+  ...pendingQueryEvents,
+  { seq: 39, event_type: "done", payload: { status: "done" }, created_at: "2026-10-28T08:14:00Z" },
+];
+const terminalToolEvents = [
+  { seq: 1, event_type: "session_start", payload: { obd_log_id: secondLogId }, created_at: "2026-10-28T08:13:00Z" },
+  { seq: 2, event_type: "tool_call", payload: { tool: "submit_report", tool_call_id: "stopped-report-single" }, created_at: "2026-10-28T08:13:10Z" },
+  { seq: 3, event_type: "tool_call", payload: { tool: "delegate_to_manual_agent", tool_call_id: "stopped-manual" }, created_at: "2026-10-28T08:13:20Z" },
+  { seq: 4, event_type: "tool_call", payload: { tool: "submit_report", tool_call_id: "completed-report" }, created_at: "2026-10-28T08:13:30Z" },
+  { seq: 5, event_type: "tool_result", payload: { tool: "submit_report", tool_call_id: "completed-report", is_error: false }, created_at: "2026-10-28T08:13:40Z" },
+  { seq: 6, event_type: "tool_call", payload: { tool: "submit_report", tool_call_id: "stopped-report-group" }, created_at: "2026-10-28T08:13:50Z" },
+  { seq: 7, event_type: "done", payload: { status: "done" }, created_at: "2026-10-28T08:14:00Z" },
+];
 
 function liveEvents() {
   if (startedAt === null) return [];
@@ -61,6 +84,17 @@ function liveEvents() {
 }
 
 function conversation(id) {
+  if (id === partialTimeoutConversationId || id === runningPendingConversationId || id === terminalToolConversationId) {
+    const done = id !== runningPendingConversationId;
+    const hasReport = id === partialTimeoutConversationId;
+    return {
+      id, vehicle_id: vehicleId, obd_log_id: secondLogId, status: done ? "done" : "running", stage: done ? "complete" : "agent",
+      error_code: null, error_message: null, created_at: "2026-10-28T08:13:00Z",
+      started_at: "2026-10-28T08:13:00Z", finished_at: done ? "2026-10-28T08:14:00Z" : null,
+      // For the timeout report, simulate a stale summary so the loaded report's partial flag is authoritative.
+      has_report: hasReport, report_partial: hasReport ? false : null, events_archived: false,
+    };
+  }
   if (id === pastConversationId || id === archivedConversationId) return {
     id, vehicle_id: vehicleId, obd_log_id: secondLogId, status: "done", stage: "complete",
     error_code: null, error_message: null, created_at: "2026-10-28T08:13:00Z",
@@ -81,11 +115,12 @@ function conversation(id) {
 }
 
 function report(id) {
+  const partial = id === archivedConversationId || id === partialTimeoutConversationId;
   return { conversation_id: id,
     content_md: "# 診斷結論\n\n已查閱維修手冊，請檢查電裝系統。\n\n| 項目 | 結果 |\n| --- | --- |\n| 電路 | 待檢查 |",
     citations: [{ kind: "manual", ref: `${manualId}#電裝`, source: "trace", tool: "read_manual_section" }, { kind: "manual", ref: `${manualId}#未核實章節`, source: "NO_SOURCE" }, { kind: "dtc", ref: "P00AF", source: "NO_SOURCE" }],
-    partial: id === archivedConversationId, stopped_reason: id === archivedConversationId ? "budget" : "complete",
-    limitations: id === archivedConversationId ? ["診斷提早結束"] : [],
+    partial, stopped_reason: id === partialTimeoutConversationId ? "timeout" : id === archivedConversationId ? "budget" : "complete",
+    limitations: partial ? ["診斷提早結束"] : [],
     model: "openai:mock-v3", created_at: "2026-10-30T00:00:00Z", secret_internal: "must-not-leak" };
 }
 
@@ -95,7 +130,7 @@ function sendSse(req, res, id, afterSeq) {
   let last = afterSeq;
   let heartbeat = 0;
   const interval = setInterval(() => {
-    for (const event of id === pastConversationId ? pastEvents : liveEvents()) {
+    for (const event of id === pastConversationId ? pastEvents : id === partialTimeoutConversationId ? partialTimeoutEvents : id === runningPendingConversationId ? pendingQueryEvents : id === terminalToolConversationId ? terminalToolEvents : liveEvents()) {
       if (event.seq <= last) continue;
       res.write(`event: ${event.event_type}\nid: ${event.seq}\ndata: ${JSON.stringify(event)}\n\n`);
       last = event.seq;
@@ -183,7 +218,8 @@ const server = http.createServer(async (req, res) => {
     if (row.events_archived) return send(res, 410, { code: "events_archived" });
     const afterSeq = Number(url.searchParams.get("after_seq") || 0);
     if (req.headers.accept?.includes("text/event-stream")) return sendSse(req, res, id, afterSeq);
-    return send(res, 200, (id === pastConversationId ? pastEvents : liveEvents()).filter((event) => event.seq > afterSeq));
+    const rows = id === pastConversationId ? pastEvents : id === partialTimeoutConversationId ? partialTimeoutEvents : id === runningPendingConversationId ? pendingQueryEvents : id === terminalToolConversationId ? terminalToolEvents : liveEvents();
+    return send(res, 200, rows.filter((event) => event.seq > afterSeq));
   }
   if (url.pathname === `/v3/manuals/${manualId}/sections`) {
     const section = url.searchParams.get("section");

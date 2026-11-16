@@ -4,6 +4,9 @@ The data-ownership invariant (dev plan D8) is enforced here at the database
 level: ``vehicle_id`` is NOT NULL, so a raw log can never exist without a
 vehicle record.
 
+Recording times are stored as true instants and read back in the
+logger's zone (:class:`LoggerWallClock`).
+
 Author: Xiangzhu Yan
 """
 
@@ -23,9 +26,40 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import CHAR, UUID
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import TypeDecorator
 
 from stf_v3.db import Base
+from stf_v3.ingest.parsers.base import LOGGER_TZ
+
+
+class LoggerWallClock(TypeDecorator):
+    """``timestamptz`` that loads in the logger's zone (``LOGGER_TZ``).
+
+    The database keeps the true instant.  Loading it as Hong Kong time keeps
+    the wall-clock digits equal to the log's own ``Timestamp`` column, which
+    the diagnosis tools read as written, so the time range in the agent's
+    case context lines up with the rows it inspects (issue #257).  The API
+    shows the same value with a ``+08:00`` offset.
+    """
+
+    impl = DateTime(timezone=True)
+    cache_ok = True
+
+    def process_result_value(
+        self, value: Optional[datetime], dialect: Dialect
+    ) -> Optional[datetime]:
+        """Converts a loaded instant to ``LOGGER_TZ``.
+
+        Args:
+            value: Aware datetime from the driver, or ``None``.
+            dialect: SQLAlchemy dialect in use (unused).
+
+        Returns:
+            The same instant in ``LOGGER_TZ``, or ``None``.
+        """
+        return value.astimezone(LOGGER_TZ) if value is not None else None
 
 
 class ObdLog(Base):
@@ -62,10 +96,10 @@ class ObdLog(Base):
         Boolean, nullable=False, server_default="false"
     )
     recorded_start: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True)
+        LoggerWallClock()
     )
     recorded_end: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True)
+        LoggerWallClock()
     )
     uploaded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

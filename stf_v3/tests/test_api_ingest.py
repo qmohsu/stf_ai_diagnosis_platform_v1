@@ -21,7 +21,7 @@ TSV_OTHER = (FIXTURES / "jetson_tsv_other_vin.tsv").read_bytes()
 YAMAHA = (FIXTURES / "yamaha_dual.csv").read_bytes()
 MAXLOG_HIACE = (FIXTURES / "obd_maxlog_hiace.csv").read_bytes()
 MAXLOG_NO_VIN = (FIXTURES / "obd_maxlog_no_vin.csv").read_bytes()
-_VEHICLE = {"vin": "JHMGK5830HX202404", "manufacturer": "Honda", "model": "Jazz"}
+_VEHICLE = {"vin": "JHMGK5831HX000000", "manufacturer": "Honda", "model": "Jazz"}
 _OTHER = {"vin": "1HGCM82633A123456", "manufacturer": "Honda", "model": "Accord", "plate": "ZZ9999"}
 
 
@@ -66,10 +66,10 @@ async def test_upload_tsv_and_yamaha_store_metadata_and_bytes(
     r = await client.post(f"/v3/vehicles/{vid}/logs", headers=tech, files=_file("trip.tsv", TSV_OK))
     assert r.status_code == 201, r.text
     body = r.json()
-    assert body["format"] == "tsv" and body["vin_from_log"] == "JHMGK5830HX202404"
+    assert body["format"] == "tsv" and body["vin_from_log"] == "JHMGK5831HX000000"
     assert body["vin_mismatch"] is False and body["duplicate"] is False
     assert body["source"] == "web" and body["size_bytes"] == len(TSV_OK)
-    assert body["recorded_start"].startswith("2025-07-23T14:42:16")
+    assert body["recorded_start"] == "2025-07-23T14:42:16+08:00"  # issue #257
     stored = _storage_in_tmp / vid / f"{body['id']}.tsv"
     assert stored.read_bytes() == TSV_OK
 
@@ -91,9 +91,9 @@ async def test_upload_maxlog_stores_and_checks_vin(
     r = await client.post(f"/v3/vehicles/{vid}/logs", headers=tech, files=_file("hiace.csv", MAXLOG_HIACE))
     assert r.status_code == 201, r.text
     body = r.json()
-    assert body["format"] == "maxlog" and body["vin_from_log"] == "JHMGK5830HX202404"
-    assert body["recorded_start"].startswith("2026-06-22T15:39:54")
-    assert body["recorded_end"].startswith("2026-06-22T15:41:19")
+    assert body["format"] == "maxlog" and body["vin_from_log"] == "JHMGK5831HX000000"
+    assert body["recorded_start"] == "2026-06-22T15:39:54+08:00"  # issue #257
+    assert body["recorded_end"] == "2026-06-22T15:41:19+08:00"
     assert (_storage_in_tmp / vid / f"{body['id']}.csv").read_bytes() == MAXLOG_HIACE
     r = await client.get(f"/v3/logs/{body['id']}/raw", headers=tech)
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")

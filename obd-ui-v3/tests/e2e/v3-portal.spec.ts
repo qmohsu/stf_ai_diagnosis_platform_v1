@@ -30,7 +30,7 @@ test("login, workshop pagination, search and vehicle detail work on this viewpor
   await page.getByRole("link", { name: /STF-001/ }).click();
   await expect(page).toHaveURL(/\/vehicles\/00000000-0000-4000-8000-000000000001$/);
   await expect(page.getByRole("heading", { level: 1, name: "測試車輛" })).toBeVisible();
-  await expect(page.getByText("JHMGK5830HX202404")).toBeVisible();
+  await expect(page.getByText("JHMGK5831HX000000")).toBeVisible();
   await expect(page.locator("body")).not.toContainText("secret_internal");
   const pageOrigin = new URL(page.url()).origin;
   const apiRequests = browserRequests.map((url) => new URL(url)).filter(({ pathname }) => pathname.startsWith("/api/"));
@@ -73,7 +73,7 @@ test("old vehicle links return to the workshop entry and private responses are n
   await page.goto("/vehicles/plate/STF-001");
   await expect(page).toHaveURL(/\/$/);
   expect((await context.cookies()).some((cookie) => cookie.name === "portal_vehicle_context")).toBe(false);
-  await page.goto("/vehicles/vin/JHMGK5830HX202404/components/engine");
+  await page.goto("/vehicles/vin/JHMGK5831HX000000/components/engine");
   await expect(page).toHaveURL(/\/$/);
   await page.getByRole("link", { name: /測試工作坊/ }).click();
   await expect(page.locator(".vehicle-card").first()).toBeVisible();
@@ -83,7 +83,7 @@ test("old vehicle links return to the workshop entry and private responses are n
   const offlineHtml = await page.evaluate(async () => (await (await caches.match("/offline.html"))?.text()) ?? "");
   expect(offlineHtml).toContain("目前離線");
   expect(offlineHtml).not.toContain("manager");
-  expect(offlineHtml).not.toContain("JHMGK5830HX202404");
+  expect(offlineHtml).not.toContain("JHMGK5831HX000000");
   await context.setOffline(true);
   await expect(page.getByRole("heading", { name: "目前離線" })).toBeVisible();
   await expect(page.locator("body")).not.toContainText("STF-001");
@@ -191,6 +191,21 @@ test("PR #281 review: manual delegation and report submission have distinct simp
   await expect(page.locator(".event-item").filter({ hasText: "取得查詢結果" })).toHaveCount(2);
 });
 
+test("PR #282 merge: terminal manual and report calls stop without hiding raw events", async ({ page }) => {
+  await login(page);
+  await page.goto("/vehicles/00000000-0000-4000-8000-000000000001/conversations/ffffffff-ffff-4fff-8fff-ffffffffffff");
+  const process = page.locator(".diagnosis-process");
+  const manual = process.locator(".event-item").filter({ hasText: "查找維修手冊" });
+  const reports = process.locator(".event-item").filter({ hasText: "整理報告" });
+  await expect(manual).toContainText("查詢已中止。");
+  await expect(reports).toHaveCount(2);
+  await expect(reports.nth(0)).toContainText("報告整理已中止。");
+  await expect(reports.nth(1)).toContainText("已完成 1/2 次報告整理，1 次已中止。");
+  await page.getByRole("tab", { name: "技術細節" }).click();
+  await expect(process.locator(".event-item").filter({ hasText: "查詢資料" })).toHaveCount(4);
+  await expect(process.locator(".event-item").filter({ hasText: "取得查詢結果" })).toHaveCount(1);
+});
+
 test("an already-running diagnosis of another log is explained before navigation", async ({ page }) => {
   await login(page);
   await page.getByRole("link", { name: /測試工作坊/ }).click();
@@ -223,7 +238,7 @@ test("invite registration, vehicle creation, upload and manager device setup sta
   await page.getByRole("button", { name: "登入", exact: true }).click();
   await page.getByRole("link", { name: /測試工作坊/ }).click();
   await page.getByRole("button", { name: "建立車檔" }).click();
-  await page.getByLabel("VIN（17 碼）").fill("JHMGK5830HX202404");
+  await page.getByLabel("VIN（17 碼）").fill("JHMGK5831HX000000");
   await page.getByLabel("品牌").fill("Honda");
   await page.getByLabel("型號").fill("Civic");
   await page.getByRole("button", { name: "儲存車檔" }).click();
@@ -262,6 +277,39 @@ test("an archived process still opens its partial report", async ({ page }) => {
   await expect(page.getByText("部分報告", { exact: true })).toBeVisible();
   await expect(page.getByText("診斷提早結束")).toBeVisible();
   await expect(page.getByText("已查閱維修手冊，請檢查電裝系統。")).toBeVisible();
+  await expect(page.locator(".diagnosis-process .status-pill")).toHaveText("已完成（部分報告）");
+});
+
+test("issue #279 second round: partial report agrees with the process status", async ({ page }) => {
+  await login(page);
+  await page.goto("/vehicles/00000000-0000-4000-8000-000000000001/conversations/dddddddd-dddd-4ddd-8ddd-dddddddddddd");
+  const process = page.locator(".diagnosis-process");
+  await expect(process.locator(".status-pill")).toHaveText("已完成（部分報告）");
+  await expect(process.locator(".process-summary")).toHaveText("診斷已結束，已產生部分報告。");
+  await expect(page.locator(".report-limitation")).toContainText("診斷時間已達上限");
+});
+
+test("issue #279 second round: unmatched queries are stopped after diagnosis ends", async ({ page }) => {
+  await login(page);
+  await page.goto("/vehicles/00000000-0000-4000-8000-000000000001/conversations/dddddddd-dddd-4ddd-8ddd-dddddddddddd");
+  const process = page.locator(".diagnosis-process");
+  const queries = process.locator(".event-item").filter({ hasText: "分析行車資料（19 次）" });
+  await expect(queries).toHaveCount(1);
+  await expect(queries).toContainText("已完成 18/19 次查詢，1 次已中止。");
+  await expect(queries).not.toContainText("正在進行");
+  await page.getByRole("tab", { name: "技術細節" }).click();
+  await expect(process.locator(".event-item").filter({ hasText: "查詢資料" })).toHaveCount(19);
+  await expect(process.locator(".event-item").filter({ hasText: "取得查詢結果" })).toHaveCount(18);
+});
+
+test("issue #279 second round: unmatched queries remain in progress while diagnosis runs", async ({ page }) => {
+  await login(page);
+  await page.goto("/vehicles/00000000-0000-4000-8000-000000000001/conversations/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee");
+  const process = page.locator(".diagnosis-process");
+  const queries = process.locator(".event-item").filter({ hasText: "分析行車資料（19 次）" });
+  await expect(process.locator(".status-pill")).toHaveText("診斷中");
+  await expect(queries).toContainText("正在進行 18/19 次查詢");
+  await expect(queries).not.toContainText("已中止");
 });
 
 test.describe("stale conversation recovery", () => {

@@ -21,7 +21,7 @@ assert _spec is not None and _spec.loader is not None
 _spec.loader.exec_module(onboard)
 
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
-VIN_A = "JHMGK5830HX202404"   # fake VIN used by every fixture
+VIN_A = "JHMGK5831HX000000"   # fake VIN used by every fixture
 VIN_B = "1HGCM82633A123456"
 
 

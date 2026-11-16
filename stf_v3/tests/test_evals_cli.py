@@ -85,7 +85,7 @@ def test_cloud_goes_through_the_comparison_path_with_a_vin_pseudonym() -> None:
     ctx = LaneContext(model=model, manuals=[], manual_root=FIXTURES, fixture_dir=FIXTURES,
                       budgets_factory=lambda: Budgets.from_settings(s, profile), model_is_local=False)
     label = build_item_deps(ctx).vehicle_label()
-    assert "JHMGK5830HX202404" not in label and "VIN V-" in label
+    assert "JHMGK5831HX000000" not in label and "VIN V-" in label
 
 
 def test_the_eval_code_never_touches_the_allow_cloud_switch() -> None:

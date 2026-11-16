@@ -54,6 +54,7 @@ from stf_v3.diagnosis.agent.report import (
     DiagnosisReport,
     extract_citations,
     has_tool_call_residue,
+    strip_lead_in,
     strip_thinking_residue,
 )
 from stf_v3.diagnosis.agent.runner import RunOutcome, drive, make_limits
@@ -264,12 +265,18 @@ def build_report(deps: DiagDeps, outcome: RunOutcome, model: Model,
     text = outcome.output if not partial else ""
     if partial:
         text = (wrapup_text or "").strip() or last_assistant_text(outcome.messages)
-        lang = _lang(deps.locale)
-        note = _PARTIAL_NOTE.get(outcome.stopped_reason, {}).get(lang, outcome.stopped_reason)
-        text = _PARTIAL_HEADER[lang].format(note=note) + (text or _NO_TEXT[lang])
     # PROD-09 residue checks: thinking blocks are stripped (FM-1), unparsed
     # tool-call markup makes the report partial (FM-41).
     text, filter_hits, filter_removed = strip_thinking_residue(text or "")
+    # Issue #279: the model's chat line before the first heading goes too
+    # (before the partial header, which would otherwise hide it).
+    text, lead_in_removed = strip_lead_in(text)
+    if lead_in_removed:
+        logger.info("agent.report_lead_in_stripped", chars=lead_in_removed)
+    if partial:
+        lang = _lang(deps.locale)
+        note = _PARTIAL_NOTE.get(outcome.stopped_reason, {}).get(lang, outcome.stopped_reason)
+        text = _PARTIAL_HEADER[lang].format(note=note) + (text or _NO_TEXT[lang])
     limitations = list(outcome.limitations)
     if outcome.gate is not None and limitations:
         limitations[0] = gate_sentence(outcome.gate, deps.locale)   # the runner puts it first

@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Iterable, List, Tuple
 
 ALLOWED = {
-    "JHMGK5830HX202404": "project fake (CLAUDE.md)",
+    "JHMGK5831HX000000": "project fake (CLAUDE.md)",
     "1HGCM82633A123456": "project fake (CLAUDE.md)",
     "1HGBH41JXMN109186": "public ISO 3779 textbook example (Wikipedia), used by an obd_agent test",
 }

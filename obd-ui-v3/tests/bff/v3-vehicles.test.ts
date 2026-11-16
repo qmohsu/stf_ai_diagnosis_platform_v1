@@ -8,7 +8,7 @@ vi.mock("@/server/auth-session", () => ({ requirePortalSession: vi.fn() }));
 
 const workshopId = "11111111-1111-4111-8111-111111111111";
 const vehicleId = "00000000-0000-4000-8000-000000000001";
-const car = { id: vehicleId, workshop_id: workshopId, vin: "JHMGK5830HX202404", plate: "STF-001", manufacturer: "Honda", model: "Civic", nickname: null, created_at: "2026-09-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z", secret_internal: "must-not-leak" };
+const car = { id: vehicleId, workshop_id: workshopId, vin: "JHMGK5831HX000000", plate: "STF-001", manufacturer: "Honda", model: "Civic", nickname: null, created_at: "2026-09-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z", secret_internal: "must-not-leak" };
 const session = { token: "server-only-token", user: { id: "user", username: "manager", email: null, display_name: null, memberships: [{ workshop_id: workshopId, workshop_name: "測試工作坊", role: "manager" }] } };
 const request = (path: string) => new Request(`http://127.0.0.1:3001${path}`, { headers: { "x-real-ip": "198.51.100.51" } });
 

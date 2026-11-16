@@ -545,7 +545,7 @@ class TestConfigAndHygiene:
 # ── #258: the V3 leg can never break V2; password off the CLI; no VINs ─
 
 
-_FAKE_VINS = ("JHMGK5830HX202404", "1HGCM82633A123456")
+_FAKE_VINS = ("JHMGK5831HX000000", "1HGCM82633A123456")
 
 
 class TestV3LegIsolation:

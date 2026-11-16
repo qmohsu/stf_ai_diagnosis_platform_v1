@@ -20,7 +20,7 @@ from stf_v3.diagnosis.texts import ERROR_CODES, STOP_REASONS, WAIT_REASONS, erro
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 CONTRACT = ROOT / "docs" / "api" / "v3_openapi.json"
-FAKE_VINS = {"JHMGK5830HX202404", "1HGCM82633A123456"}
+FAKE_VINS = {"JHMGK5831HX000000", "1HGCM82633A123456"}
 _VIN = re.compile(r"\b[A-HJ-NPR-Z0-9]{17}\b")
 
 

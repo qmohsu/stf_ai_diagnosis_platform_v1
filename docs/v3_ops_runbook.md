@@ -2,8 +2,8 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.18（issue #279：前端上线状态与网关安全重建命令） |
-| 日期 | 2026-11-10 |
+| 版本 | v0.19（issue #285：停 vLLM 前保存日志） |
+| 日期 | 2026-11-15 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker` / `stf-v3-frontend`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
 
@@ -189,7 +189,7 @@ V1/V2/V3 唯一的本地模型来源（设计文档 D7，PROD-09 D1）：`Qwen/Q
 bash infra/vllm_ctl.sh start          # 起容器；冷启动约 10 分钟（2026-09-19 实测 599 s：权重来自本地卷 vllm_hf_cache，不联网）
 bash infra/vllm_ctl.sh wait           # 轮询 /v1/models 直到列出模型（默认最多 1200 s），超时打印显卡占用 + 末 30 行日志
 bash infra/vllm_ctl.sh status         # 容器状态 / 健康 / pod / 已服务模型 / 两卡显存
-bash infra/vllm_ctl.sh stop           # 停容器，释放两张卡
+bash infra/vllm_ctl.sh stop           # 先存退出状态 + 日志到 ~/stf_v3_logs/vllm/，再停容器、释放两张卡
 bash infra/vllm_ctl.sh logs 200
 bash infra/vllm_ctl.sh install-unit   # 开机自启单元 stf-llm.service —— 按需策略下【不安装】；只有决定常驻时才用
 ```
@@ -256,6 +256,7 @@ bash stf_v3/scripts/deploy_check.sh --max-age-min 5  # 第 9 项会对 Ollama �
 - **404 model not found**：`STF_V3_LLM_MODEL` 与 vLLM `--served-model-name` 不一致；核验第 9 项会列出实际服务的名字。
 - **报告里有思考文本 / 工具调用 XML**：`session_start.profile` 不是 `qwen-vllm`（模型名没对上 → 落到 generic）；显式设 `STF_V3_LLM_PROFILE=qwen-vllm`。
 - **跳过第 9 项**（离线演练等）：`LLM_CHECK=skip LLM_CHECK_REASON="…" bash stf_v3/scripts/deploy_check.sh`——输出里会有一行 `SKIP  model service` 带理由，默认从不跳过（FM-20）。
+- **启动中途退出**（控制器记 `vLLM exited while starting`，等待中的诊断最后报 `model_unavailable`）：`ls -t ~/stf_v3_logs/vllm/ | head -3` 看最新一份——开头是退出码、是否 OOM、重启次数和停机时的显卡占用，后面是末 3000 行容器日志。`down` 会删掉容器连同日志，所以 `stop`（手动或控制器）都先存一份（仅本人可读，留最新 20 份，issue #285）。
 - 重启计数：`podman inspect -f '{{.RestartCount}}' stf-vllm`；日志 `vllm_ctl.sh logs 200`。
 
 ## 5. Golden 评测（PROD-10）
@@ -508,7 +509,7 @@ podman rm -f -v stf-v3-restore-drill                        # 用完删掉（-v 
 
 ### 7.7 公开仓库：不许有真实 VIN
 
-仓库是公开的。CI 任务 `vin-scan`（每个 PR、每次推 main，不限路径）扫描全部入库文件里的 17 位 VIN 形状，只放行 `JHMGK5830HX202404`、`1HGCM82633A123456` 两个项目假 VIN（外加 obd_agent 测试用的教科书示例 VIN）；发现就失败，并且只打印打码后的形式。本地：`python3 stf_v3/scripts/check_no_vins.py`。issue / PR 里也只写假 VIN——2026-09-28 清理过一次真实 VIN（`#135`、`#136`、`#167`），评论已删了重发；#167 正文编辑历史里的原始版本 GitHub 不允许删，按用户决定保留、不再追。
+仓库是公开的。CI 任务 `vin-scan`（每个 PR、每次推 main，不限路径）扫描全部入库文件里的 17 位 VIN 形状，只放行 `JHMGK5831HX000000`、`1HGCM82633A123456` 两个项目假 VIN（外加 obd_agent 测试用的教科书示例 VIN）；发现就失败，并且只打印打码后的形式。本地：`python3 stf_v3/scripts/check_no_vins.py`。issue / PR 里也只写假 VIN——2026-09-28 清理过一次真实 VIN（`#135`、`#136`、`#167`），评论已删了重发；#167 正文编辑历史里的原始版本 GitHub 不允许删，按用户决定保留、不再追。
 
 ## 8. 日志（PROD-15A）
 
@@ -733,7 +734,8 @@ curl -fsS http://127.0.0.1:8080/ >/dev/null || exit 1
 podman rm -f stf-v3-frontend
 ```
 
-**修订记录**：v0.18（2026-11-10，issue #279）记录 2026-11-09 前端已由维护者
+**修订记录**：v0.19（2026-11-15，issue #285）§4.1、§4.7：`vllm_ctl.sh stop` 先把退出状态和日志存到 `~/stf_v3_logs/vllm/` 再 `down`，用于查明启动中途退出。
+v0.18（2026-11-10，issue #279）记录 2026-11-09 前端已由维护者
 部署上线及第一轮验收；§11.2、§11.3 的 Nginx 重建改为
 `up -d --no-recreate --no-deps nginx`，避免连带重建同组 Postgres 和 V1 API。
 
