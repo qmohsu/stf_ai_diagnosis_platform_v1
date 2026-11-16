@@ -177,6 +177,82 @@ test("issue #279: manual image keeps its natural size", async ({ page }) => {
   expect(width).toBeLessThanOrEqual(naturalWidth);
 });
 
+test("issue #292: manual HTML tables keep merged cells and only load validated manual images", async ({ page }) => {
+  await login(page);
+  const manualId = "33333333-3333-4333-8333-333333333333";
+  const imageRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.resourceType() === "image") imageRequests.push(request.url());
+  });
+  await page.goto(`/manuals/${manualId}?section=%E9%9B%BB%E8%A3%9D`);
+  const markdown = page.locator(".markdown-body");
+  const table = markdown.getByRole("table");
+  await expect(table).toBeVisible();
+  await expect(table.locator("thead th", { hasText: "接頭位置" })).toHaveAttribute("rowspan", "2");
+  await expect(table.locator("thead th", { hasText: "電源接腳與量測條件" })).toHaveAttribute("colspan", "3");
+  await expect(table.locator("tbody td", { hasText: "主線束" })).toHaveAttribute("rowspan", "2");
+  const imageCell = table.locator("tbody td").filter({ has: page.getByRole("img", { name: "接頭端子圖" }) });
+  await expect(imageCell).toHaveAttribute("colspan", "2");
+  await expect(table.locator("td br")).toHaveCount(1);
+
+  for (const [image, file] of [
+    [markdown.getByRole("img", { name: "電路示意圖" }), "diagram.png"],
+    [imageCell.getByRole("img", { name: "接頭端子圖" }), "connector.png"],
+  ] as const) {
+    const path = `/api/portal/manuals/${manualId}/assets/images/${file}`;
+    await expect(image).toHaveAttribute("src", path);
+    await expect(image).toHaveAttribute("loading", "lazy");
+    await expect(image).toHaveAttribute("decoding", "async");
+    await image.scrollIntoViewIfNeeded();
+    await image.evaluate((node: HTMLImageElement) => node.decode());
+    await expect.poll(() => image.evaluate((node: HTMLImageElement) => node.naturalWidth)).toBeGreaterThan(0);
+    expect(imageRequests).toContain(new URL(path, page.url()).href);
+  }
+  await expect(markdown.getByText("[圖片未提供：錯誤協定]", { exact: true })).toBeVisible();
+  await expect(markdown.getByText("[圖片未提供：錯誤路徑]", { exact: true })).toBeVisible();
+  expect(imageRequests.filter((url) => url.includes("blocked-292") || url.startsWith("javascript:"))).toEqual([]);
+  await expect(markdown.getByRole("img")).toHaveCount(2);
+  await expect(markdown.getByRole("heading", { name: "電裝系統" })).toBeVisible();
+  await expect(markdown.getByRole("heading", { name: "原始 HTML 標題" })).toHaveCount(0);
+  await expect(markdown.locator("script, style, iframe, a, [style]")).toHaveCount(0);
+  expect(await markdown.evaluate((root) => {
+    return Array.from(root.querySelectorAll("*")).flatMap((node) => node.getAttributeNames().filter((name) => /^on/i.test(name)));
+  })).toEqual([]);
+  expect(await markdown.innerHTML()).not.toContain("ISSUE_292_COMMENT");
+  await expect(markdown).not.toContainText(/ISSUE_292_(SCRIPT|STYLE|FRAME)/);
+
+  if (page.viewportSize()?.width === 360) {
+    expect(await markdown.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+    const scroll = await table.evaluate((node) => {
+      const container = node.parentElement!;
+      container.scrollLeft = 0;
+      container.scrollLeft = 64;
+      return {
+        separate: !container.classList.contains("markdown-body"),
+        overflow: getComputedStyle(container).overflowX,
+        content: container.scrollWidth,
+        visible: container.clientWidth,
+        offset: container.scrollLeft,
+        pageWidth: document.documentElement.scrollWidth,
+      };
+    });
+    expect(scroll.separate).toBe(true);
+    expect(scroll.overflow).toMatch(/^(auto|scroll)$/);
+    expect(scroll.content).toBeGreaterThan(scroll.visible);
+    expect(scroll.offset).toBeGreaterThan(0);
+    expect(scroll.pageWidth).toBeLessThanOrEqual(360);
+  }
+});
+
+test("issue #292: diagnosis reports skip raw HTML and still render Markdown tables", async ({ page }) => {
+  await login(page);
+  await page.goto("/vehicles/00000000-0000-4000-8000-000000000001/conversations/66666666-6666-4666-8666-666666666666");
+  const markdown = page.locator(".report-content .markdown-body");
+  await expect(markdown.getByRole("cell", { name: "待檢查" })).toBeVisible();
+  await expect(markdown.getByRole("table")).toHaveCount(1);
+  await expect(markdown).not.toContainText("報告 HTML 測試格");
+});
+
 test("PR #281 review: manual delegation and report submission have distinct simple labels", async ({ page }) => {
   await login(page);
   await page.goto("/vehicles/00000000-0000-4000-8000-000000000001/conversations/66666666-6666-4666-8666-666666666666");

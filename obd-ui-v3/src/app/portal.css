@@ -148,8 +148,12 @@ body { min-height:100vh; color:var(--ink); background:linear-gradient(165deg,#ea
 .markdown-body th,.markdown-body td { padding:8px 10px; border:1px solid var(--line); text-align:start; }
 .markdown-body blockquote { margin:14px 0; padding:2px 16px; border-left:3px solid #aac7dc; color:#53677a; }
 .markdown-plain-link { text-decoration:underline dotted; }
+.manual-table-scroll { max-width:100%; min-width:0; overflow-x:auto; }
+.manual-table-scroll [data-markdown-align="left"] { text-align:left; }
+.manual-table-scroll [data-markdown-align="center"] { text-align:center; }
+.manual-table-scroll [data-markdown-align="right"] { text-align:right; }
 .manual-image-wrap { display:block; margin:16px 0; }
-.manual-image-wrap img { display:block; max-width:100%; height:auto; border:1px solid var(--line); border-radius:8px; }
+.manual-image-wrap img { display:block; width:auto; max-width:100%; height:auto; border:1px solid var(--line); border-radius:8px; }
 .manual-image-missing { color:var(--muted); font-style:italic; }
 .manual-section { min-width:0; }
 @media (min-width:640px) {

@@ -117,7 +117,7 @@ function conversation(id) {
 function report(id) {
   const partial = id === archivedConversationId || id === partialTimeoutConversationId;
   return { conversation_id: id,
-    content_md: "# 診斷結論\n\n已查閱維修手冊，請檢查電裝系統。\n\n| 項目 | 結果 |\n| --- | --- |\n| 電路 | 待檢查 |",
+    content_md: "# 診斷結論\n\n已查閱維修手冊，請檢查電裝系統。\n\n| 項目 | 結果 |\n| --- | --- |\n| 電路 | 待檢查 |\n\n<table><tr><td>報告 HTML 測試格</td></tr></table>",
     citations: [{ kind: "manual", ref: `${manualId}#電裝`, source: "trace", tool: "read_manual_section" }, { kind: "manual", ref: `${manualId}#未核實章節`, source: "NO_SOURCE" }, { kind: "dtc", ref: "P00AF", source: "NO_SOURCE" }],
     partial, stopped_reason: id === partialTimeoutConversationId ? "timeout" : id === archivedConversationId ? "budget" : "complete",
     limitations: partial ? ["診斷提早結束"] : [],
@@ -225,11 +225,31 @@ const server = http.createServer(async (req, res) => {
     const section = url.searchParams.get("section");
     if (section !== "電裝" && section !== "electric") return send(res, 404, { code: "section_not_found" });
     return send(res, 200, { manual_id: manualId, section_id: "electric", title: "電裝系統",
-      content_md: "# 電裝系統\n\n原文：檢查電路接頭與保險絲。\n\n![電路示意圖](images/diagram.png)",
+      content_md: `# 電裝系統
+
+原文：檢查電路接頭與保險絲。
+
+![電路示意圖](images/diagram.png)
+
+<h3>原始 HTML 標題</h3>
+
+<table>
+<thead>
+<tr><th rowspan="2">接頭位置</th><th colspan="3">電源接腳與量測條件</th></tr>
+<tr><th>接腳編號與端子方向</th><th>點火開關開啟時的額定電壓</th><th>負載下容許的最大電壓降</th></tr>
+</thead>
+<tbody>
+<tr><td rowspan="2" style="color: red">主線束</td><td colspan="2"><img src="images/connector.png" alt="接頭端子圖" onerror="/* issue-292 */"></td><td>量測前<br>斷開接頭</td></tr>
+<tr><td><img src="javascript:void(0)" alt="錯誤協定"></td><td><img src="attachments/blocked-292.png" alt="錯誤路徑"></td><td>
+<script type="text/plain">ISSUE_292_SCRIPT</script><style>/* ISSUE_292_STYLE */</style><iframe>ISSUE_292_FRAME</iframe>
+<a href="#issue-292">原始 HTML 連結</a><!-- ISSUE_292_COMMENT -->
+</td></tr>
+</tbody>
+</table>`,
       index_track: true, page_range: [12, 13], secret_internal: "must-not-leak" });
   }
-  if (url.pathname === `/v3/manuals/${manualId}/assets/images/diagram.png`) {
-    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j8n8AAAAASUVORK5CYII=", "base64");
+  if ([`/v3/manuals/${manualId}/assets/images/diagram.png`, `/v3/manuals/${manualId}/assets/images/connector.png`].includes(url.pathname)) {
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=", "base64");
     res.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "private, no-store" });
     return res.end(png);
   }
