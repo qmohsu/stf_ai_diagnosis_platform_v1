@@ -8,7 +8,7 @@
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.38（issue #288：报告手册引用只记真读到的章节，中文章节名不再截断） |
+| **版本** | v1.39（issue #292：手册原文页安全显示 HTML 表格） |
 | **作者** | Xiangzhu Yan |
 | **最后更新** | 2026-11-16 |
 
@@ -492,6 +492,13 @@ Chrome 确认部分报告提示及时间上限原因可见，并指出左侧「�
 图片恢复原生懒加载和异步解码，保留天然尺寸与容器最大宽度。线上长章节图片
 加载及正式网址仍待维护者合并部署后复测。
 
+**手册原文页 HTML 表格（2026-11-16，[issue #292](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/292)）**：
+手册章节按白名单显示表格、合并单元格与格内图片。格内图片与 Markdown 图片共用手册资源路径校验，
+通过后按需加载并异步解码，校验失败时显示缺图提示。脚本、样式、内嵌页面、链接标签、
+事件属性与 HTML 注释均由渲染层过滤。360 px 视口内，宽表格可在自身区域横向滚动。
+诊断报告继续跳过原始 HTML。本地 `npm run verify` 通过（10 个测试文件、60 项测试，生产构建通过）。
+360 px 专项回归 2 项均通过；`npm run test:e2e` 在 360、390 和 1280 px 三种视口共通过 51 项。正式网址待合并部署后复测。
+
 #### PROD-14 — PWA 与移动打磨
 **目标**：可安装到手机主屏，弱网可用。**验收**：Android Chrome / iOS Safari 可安装；Lighthouse PWA 项通过；弱网下上传有进度与失败提示。
 **已实现（前端 PR #277）**：manifest、图标、Service Worker 静态
@@ -614,6 +621,7 @@ issue #270 前端与部署配置已合入，维护者于 2026-11-09 完成部署
 
 | 版本 | 日期 | 变更 |
 |---|---|---|
+| v1.39 | 2026-11-16 | PROD-13 修复手册原文页遗漏 HTML 表格的问题，补充合并单元格、格内图片、安全过滤、移动端局部滚动与诊断报告回归。架构未变，图无需改动。见 [issue #292](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/292)。 |
 | v1.38 | 2026-11-16 | issue #288：PROD-08 记报告手册引用的两处修正——只有 `read_manual_section` 真读到章节才记为 `trace`，并以唯一 node id 引用（同名章节时 AI 猜的编号不再冒充已核实，网页章节接口一定能打开）；正文里的引用保留中文章节名，不再截成 `fuel-fault-`。工具返回内容不变；评测门槛成绩单随 PR 提交。架构文档 v1.29；架构未变，**图无需改动**。 |
 | v1.37 | 2026-11-16 | [PR #281 评审评论](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/pull/281#issuecomment-6747883085) 后续：PROD-13 记录 `delegate_to_manual_agent`、`submit_report` 简明分类和状态描述修正，以及经安全校验的手册图片恢复懒加载、异步解码；合并主线的部分报告与终态未配对查询「已中止」规则，保留原生尺寸与技术细节视图。待合并部署及线上复测。无架构变化，图无需改动。 |
 | v1.36 | 2026-11-15 | 仓库示例 VIN 统一换成新的合成值（序号 000000，校验位有效）：测试、夹具、脚本、文档与评测常量 `FAKE_VIN` 同步，CI `vin-scan` 白名单只认新值；行为不变。评测门槛成绩单随 PR 提交；架构未变，**图无需改动**。 |
