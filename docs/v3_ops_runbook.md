@@ -2,8 +2,8 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.19（issue #285：停 vLLM 前保存日志） |
-| 日期 | 2026-11-15 |
+| 版本 | v0.20（宿主机转换环境 PyMuPDF 1.28.0，部署须重跑 install.sh） |
+| 日期 | 2026-11-17 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker` / `stf-v3-frontend`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
 
@@ -89,8 +89,8 @@ Postgres `max_connections = 100`，V1/V2 与 V3 共用。2026-09-14 实测占用
 systemctl --user status stf-v3-gpu-worker            # 状态
 journalctl --user -u stf-v3-gpu-worker -n 50         # 日志
 systemctl --user restart stf-v3-gpu-worker           # 部署后必做（不要在 converting 时做）
-bash stf_v3/gpu_worker/install.sh --check            # 11 项自检（版本、MinerU、密钥、linger、卷读写）
-bash stf_v3/gpu_worker/install.sh                    # 首次安装 / 升级环境
+bash stf_v3/gpu_worker/install.sh --check            # 12 项自检（版本、PyMuPDF 版本、MinerU、密钥、linger、卷读写）
+bash stf_v3/gpu_worker/install.sh                    # 首次安装 / 升级环境（单元文件或 [gpu] 依赖版本变了都要跑；--check 会核对 PyMuPDF 版本）
 ```
 
 它的存活与代码版本由 `/v3/health` 的 `gpu_worker` 字段和 `deploy_check.sh` 第 7 项判断（心跳文件 `.gpu_worker_status.json` 在手册卷根目录，入库期间由任务内的 ticker 线程每 30 秒刷新）。密钥单一来源：服务器 `infra/.env`（模式 600），systemd 单元通过 `EnvironmentFile` 读取，文件里没有任何字面量密钥。
@@ -734,7 +734,7 @@ curl -fsS http://127.0.0.1:8080/ >/dev/null || exit 1
 podman rm -f stf-v3-frontend
 ```
 
-**修订记录**：v0.19（2026-11-15，issue #285）§4.1、§4.7：`vllm_ctl.sh stop` 先把退出状态和日志存到 `~/stf_v3_logs/vllm/` 再 `down`，用于查明启动中途退出。
+**修订记录**：v0.20（2026-11-17）§1.6 宿主机 GPU 工人：`[gpu]` 依赖 PyMuPDF 1.24.14 → 1.28.0（旧版抢救表格乱码），`install.sh --check` 核对版本，依赖版本变了也要重跑 `install.sh`。v0.19（2026-11-15，issue #285）§4.1、§4.7：`vllm_ctl.sh stop` 先把退出状态和日志存到 `~/stf_v3_logs/vllm/` 再 `down`，用于查明启动中途退出。
 v0.18（2026-11-10，issue #279）记录 2026-11-09 前端已由维护者
 部署上线及第一轮验收；§11.2、§11.3 的 Nginx 重建改为
 `up -d --no-recreate --no-deps nginx`，避免连带重建同组 Postgres 和 V1 API。

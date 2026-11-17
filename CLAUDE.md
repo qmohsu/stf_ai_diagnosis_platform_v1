@@ -397,7 +397,9 @@ Python 3.11 venv (`~/venv-stf-v3`, editable install of the checkout) and
 consumes only the `gpu` queue (manual ingest = MinerU external CLI at
 `STF_V3_MINERU_BIN` → index build → cloud summaries → gates). Install /
 re-check with `bash stf_v3/gpu_worker/install.sh [--check]` (re-run it without
-`--check` whenever the unit file changes — PROD-11 changed its queues); **restart it
+`--check` whenever the unit file or the `[gpu]` extra pin changes — PROD-11 changed its
+queues, PyMuPDF went 1.24.14 → 1.28.0 on 2026-11-17; `--check` fails on a version
+mismatch); **restart it
 after every deploy** (`systemctl --user restart stf-v3-gpu-worker`) or
 `deploy_check.sh` check 7 fails on a commit mismatch. Logs:
 `journalctl --user -u stf-v3-gpu-worker -n 50`. Never restart it while a

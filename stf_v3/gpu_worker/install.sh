@@ -63,6 +63,12 @@ pv="$("$VENV/bin/python" -c 'import procrastinate; print(procrastinate.__version
 
 "$VENV/bin/python" -c 'import fitz, yaml, stf_v3.knowledge.pipeline.build' 2>/dev/null && ok "pipeline deps import" || fail "pipeline deps (pymupdf/yaml) missing"
 
+# PyMuPDF version decides how rescued tables read (1.24.14 garbles them);
+# a venv left on an old pin must fail here, not in the next manual.
+pin_pymupdf="$(sed -n 's/^gpu = \["pymupdf==\([0-9.]*\)"\].*/\1/p' "$REPO_DIR/stf_v3/pyproject.toml" | tr -d '\r')"
+have_pymupdf="$("$VENV/bin/python" -c 'import fitz; print(fitz.VersionBind)' 2>/dev/null | tail -1 || true)"
+[ -n "$pin_pymupdf" ] && [ "$have_pymupdf" = "$pin_pymupdf" ] && ok "PyMuPDF $have_pymupdf == pyproject pin" || fail "PyMuPDF ${have_pymupdf:-missing} != pyproject pin ${pin_pymupdf:-?} (re-run install.sh without --check)"
+
 if [ -f "$ENV_FILE" ]; then
   mode="$(stat -c '%a' "$ENV_FILE")"
   [ "$mode" = "600" ] && ok "env file mode 600" || fail "env file mode $mode (want 600, FM-21)"

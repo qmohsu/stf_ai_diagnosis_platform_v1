@@ -43,7 +43,10 @@ dev = [
 ]
 # Host GPU worker only (PROD-06): the index-build pipeline needs PyMuPDF.
 # MinerU itself is an external CLI in its own environment (settings.mineru_bin).
-gpu = ["pymupdf==1.24.14"]
+# 1.28.0 = the version the live manuals were built with; 1.24.14's
+# Table.to_markdown() garbles rescued tables (`&amp;#45;`, lost line
+# breaks, spaced-out letters).  gpu_worker/install.sh --check enforces it.
+gpu = ["pymupdf==1.28.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
