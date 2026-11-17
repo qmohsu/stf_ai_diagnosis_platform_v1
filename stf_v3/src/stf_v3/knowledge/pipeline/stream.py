@@ -106,6 +106,40 @@ def _mineru_text(content: dict) -> str:
     return ""
 
 
+def _part_text(part: object) -> str:
+    """Plain text of one MinerU rich-text part.
+
+    A part is a plain string or a typed dict such as
+    ``{'type': 'text', 'content': '...'}`` whose content may itself be
+    a list of parts.  Never returns the dict's ``repr``.
+    """
+    if isinstance(part, dict):
+        inner = part.get("content", "")
+        if isinstance(inner, list):
+            return "".join(_part_text(p) for p in inner)
+        return str(inner)
+    return str(part)
+
+
+def _caption_text(*fields: object) -> str:
+    """Caption / footnote fields as one line of plain text.
+
+    MinerU gives captions as lists of rich-text dicts; ``str()`` on
+    them leaked ``{'type': 'text', 'content': ...}`` into the manual
+    text.  A field may also be a bare string or dict.  A newline
+    inside a part becomes a space so the caption stays on one line.
+    """
+    parts: List[object] = []
+    for field_value in fields:
+        if isinstance(field_value, list):
+            parts.extend(field_value)
+        elif field_value:
+            parts.append(field_value)
+    return " ".join(
+        _part_text(p).replace("\n", " ") for p in parts
+    ).strip()
+
+
 def load_mineru_stream(
     content_list_path: Path,
 ) -> List[NormalizedItem]:
@@ -147,15 +181,13 @@ def load_mineru_stream(
                 html = (content.get("html") or "").strip()
                 image_path = _valid_image_path(content)
                 # Caption/footnote text rides along as text.
-                caption = content.get("table_caption") or []
-                footnote = content.get("table_footnote") or []
-                text = " ".join(
-                    str(x) for x in (*caption, *footnote)
-                ).strip()
+                text = _caption_text(
+                    content.get("table_caption"),
+                    content.get("table_footnote"),
+                )
             elif kind == ItemKind.IMAGE:
                 image_path = _valid_image_path(content)
-                caption = content.get("image_caption") or []
-                text = " ".join(str(x) for x in caption).strip()
+                text = _caption_text(content.get("image_caption"))
 
             bbox = raw.get("bbox")
             items.append(NormalizedItem(
