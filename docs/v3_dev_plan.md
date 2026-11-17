@@ -8,9 +8,9 @@
 | **架构图** | `docs/diagrams/stf_v3_final_architecture.excalidraw`（图文强制同步；预览由 `diagrams/render_excalidraw.py` 生成） |
 | **决策存档** | `.lavish/v3_dev_plan_decisions.html`（D1–D9，2026-09-08，本地不提交） |
 | **Ticket 前缀** | `PROD-XX` |
-| **版本** | v1.39（issue #292：手册原文页安全显示 HTML 表格） |
+| **版本** | v1.40（issue #292 后续：入库时复制表格内图片，补齐 TRICITY155 缺图） |
 | **作者** | Xiangzhu Yan |
-| **最后更新** | 2026-11-16 |
+| **最后更新** | 2026-11-17 |
 
 ## 0. 本计划的定位
 
@@ -296,6 +296,14 @@ worker、frontend 三个服务；部署核验新增第 11 项，检查前端容�
 连续读取章节和图片不再重复解析索引及计算正文 SHA-256，任一文件变化则
 重新校验。首次读取或文件变化时仍需同步校验；线上长章节性能及 TRICITY
 来源仍待维护者合并部署后复测。
+**issue #292 表格内图片（2026-11-17）**：MinerU 把表格里的图写成表格 HTML
+中的 `<img src="images/<文件名>">`。`pipeline/compose.py` 原样写入表格 HTML，
+却只复制独立图片，所以表格里引用的图从未进入手册的 `images/`（TRICITY155
+缺 147 张；Corolla 的表格里没有图）。现在写入表格时一并复制，只接受
+`images/` 下的单层文件名；源文件缺失时记入构建报告 `table_images.missing`，
+不阻断入库。存量 TRICITY155 已用当初的转换输出补齐 147 张：该输出与线上
+正文逐字节相同，只新增图片文件，正文和索引不变；线上图片查找 147/147
+可读。测试：`test_unit_pipeline_compose.py` 2 项。
 
 #### PROD-07 — Jetson 上传器接入 — **DONE（2026-09-17，PR #246；真机补录待协作者）**
 
@@ -621,6 +629,7 @@ issue #270 前端与部署配置已合入，维护者于 2026-11-09 完成部署
 
 | 版本 | 日期 | 变更 |
 |---|---|---|
+| v1.40 | 2026-11-17 | issue #292 后续：PROD-06 入库流水线复制表格 HTML 里引用的图片（此前从未复制，TRICITY155 缺 147 张，已用当初的转换输出补齐，正文与索引不变），构建报告记录复制数与缺失清单。架构未变，**图无需改动**。 |
 | v1.39 | 2026-11-16 | PROD-13 修复手册原文页遗漏 HTML 表格的问题，补充合并单元格、格内图片、安全过滤、移动端局部滚动与诊断报告回归。架构未变，图无需改动。见 [issue #292](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/issues/292)。 |
 | v1.38 | 2026-11-16 | issue #288：PROD-08 记报告手册引用的两处修正——只有 `read_manual_section` 真读到章节才记为 `trace`，并以唯一 node id 引用（同名章节时 AI 猜的编号不再冒充已核实，网页章节接口一定能打开）；正文里的引用保留中文章节名，不再截成 `fuel-fault-`。工具返回内容不变；评测门槛成绩单随 PR 提交。架构文档 v1.29；架构未变，**图无需改动**。 |
 | v1.37 | 2026-11-16 | [PR #281 评审评论](https://github.com/qmohsu/stf_ai_diagnosis_platform_v1/pull/281#issuecomment-6747883085) 后续：PROD-13 记录 `delegate_to_manual_agent`、`submit_report` 简明分类和状态描述修正，以及经安全校验的手册图片恢复懒加载、异步解码；合并主线的部分报告与终态未配对查询「已中止」规则，保留原生尺寸与技术细节视图。待合并部署及线上复测。无架构变化，图无需改动。 |

@@ -21,6 +21,7 @@ content without re-deriving structure.
 
 from __future__ import annotations
 
+import re
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -32,6 +33,32 @@ from stf_v3.knowledge.pipeline.authority import (
     normalize,
 )
 from stf_v3.knowledge.pipeline.stream import ItemKind, NormalizedItem
+
+# MinerU writes figures inside a table as ``<img src="images/<name>">``
+# in the table HTML.  Only a flat file name under ``images/`` is
+# accepted (no sub-path, no leading dot), so a reference can never
+# reach outside the engine's image directory.
+_TABLE_IMG_SRC_RE = re.compile(
+    r"""<img\b[^>]*?\ssrc\s*=\s*"""
+    r"""(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))""",
+    re.IGNORECASE,
+)
+_TABLE_IMG_PATH_RE = re.compile(r"images/([A-Za-z0-9_-][A-Za-z0-9_.-]*)")
+
+
+def _table_image_names(html: str) -> List[str]:
+    """Flat ``images/<name>`` sources of a table's ``<img>`` tags.
+
+    Returns:
+        File names in first-seen order, without duplicates.
+    """
+    names: Dict[str, None] = {}
+    for groups in _TABLE_IMG_SRC_RE.findall(html):
+        value = next((g for g in groups if g), "")
+        match = _TABLE_IMG_PATH_RE.fullmatch(value)
+        if match:
+            names.setdefault(match.group(1))
+    return list(names)
 
 
 @dataclass
@@ -76,6 +103,10 @@ class ComposeResult:
     recovered_lines: int = 0
     recovered_pages: List[int] = field(default_factory=list)
     images_emitted: int = 0
+    # Images referenced inside table HTML (issue #292): copied files,
+    # and references whose engine file was absent.
+    table_images_copied: int = 0
+    table_images_missing: List[str] = field(default_factory=list)
     item_lines: Dict[int, Tuple[int, int]] = field(
         default_factory=dict,
     )
@@ -190,6 +221,7 @@ def _emit_item(
             out.append(it.text + "\n")
             emitted_norm.append(normalize(it.text))
         if it.html:
+            _copy_table_images(it.html, engine_dir, images_dir, result)
             out.append(it.html + "\n")
             emitted_norm.append(normalize(it.html))
             return
@@ -226,6 +258,27 @@ def _emit_item(
             it, authority, images_dir, out,
             emitted_norm, result, try_table=False,
         )
+
+
+def _copy_table_images(
+    html: str,
+    engine_dir: Path,
+    images_dir: Path,
+    result: ComposeResult,
+) -> None:
+    """Copy the image files a table's HTML refers to (issue #292).
+
+    The HTML is emitted verbatim, so its ``images/<name>`` links only
+    work if the files sit next to the standalone figures.  A missing
+    engine file is recorded, not raised: the table text still counts.
+    """
+    for name in _table_image_names(html):
+        src = engine_dir / "images" / name
+        if src.is_file():
+            shutil.copy2(src, images_dir / name)
+            result.table_images_copied += 1
+        else:
+            result.table_images_missing.append(f"images/{name}")
 
 
 def _rescue_region(
