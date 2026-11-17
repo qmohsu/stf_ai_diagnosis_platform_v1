@@ -8,11 +8,14 @@ the standalone figures, or every in-table image is a broken link.
 
 from __future__ import annotations
 
+import importlib.util
 import pathlib
-from typing import List, Tuple
+import sys
+import types
+from typing import Callable, Iterator, List, Tuple
 
-from stf_v3.knowledge.pipeline.authority import BaselineLine
-from stf_v3.knowledge.pipeline.compose import compose
+import pytest
+
 from stf_v3.knowledge.pipeline.stream import ItemKind, NormalizedItem
 
 
@@ -21,15 +24,35 @@ class _OnePageAuthority:
 
     page_count = 1
 
-    def content_lines(self, page: int) -> List[BaselineLine]:
+    def content_lines(self, page: int) -> List[object]:
         """Returns no authoritative lines, so no backfill block."""
         return []
 
     def lines_in_region(
         self, page: int, bbox: Tuple[float, float, float, float],
-    ) -> List[BaselineLine]:
+    ) -> List[object]:
         """Returns no region lines."""
         return []
+
+
+@pytest.fixture()
+def compose_fn(monkeypatch: pytest.MonkeyPatch) -> Iterator[Callable]:
+    """``compose`` importable without PyMuPDF.
+
+    PyMuPDF is a build-host-only dependency and CI does not install
+    it.  ``compose`` never calls it, so a stub ``fitz`` lets the
+    module import; pipeline modules first imported here are dropped
+    afterwards so no later test sees the stub.
+    """
+    before = set(sys.modules)
+    if importlib.util.find_spec("fitz") is None:
+        monkeypatch.setitem(sys.modules, "fitz", types.ModuleType("fitz"))
+    from stf_v3.knowledge.pipeline.compose import compose
+
+    yield compose
+    for name in set(sys.modules) - before:
+        if name.startswith("stf_v3.knowledge.pipeline."):
+            del sys.modules[name]
 
 
 def _engine(tmp_path: pathlib.Path, names: List[str]) -> pathlib.Path:
@@ -47,7 +70,7 @@ def _table(html: str) -> NormalizedItem:
 
 
 def test_compose_copies_images_referenced_inside_table_html(
-    tmp_path: pathlib.Path,
+    tmp_path: pathlib.Path, compose_fn: Callable,
 ) -> None:
     """Each in-table image is copied once; an absent file is recorded."""
     # Arrange
@@ -61,7 +84,7 @@ def test_compose_copies_images_referenced_inside_table_html(
     out = tmp_path / "out"
 
     # Act
-    result = compose([_table(html)], _OnePageAuthority(), engine, out)
+    result = compose_fn([_table(html)], _OnePageAuthority(), engine, out)
 
     # Assert
     assert sorted(p.name for p in (out / "images").iterdir()) == [
@@ -74,7 +97,7 @@ def test_compose_copies_images_referenced_inside_table_html(
 
 
 def test_compose_ignores_table_image_refs_outside_engine_images(
-    tmp_path: pathlib.Path,
+    tmp_path: pathlib.Path, compose_fn: Callable,
 ) -> None:
     """Sub-paths, dot names and other dirs are never copied or listed."""
     # Arrange
@@ -95,7 +118,7 @@ def test_compose_ignores_table_image_refs_outside_engine_images(
     out = tmp_path / "out"
 
     # Act
-    result = compose([_table(html)], _OnePageAuthority(), engine, out)
+    result = compose_fn([_table(html)], _OnePageAuthority(), engine, out)
 
     # Assert
     assert list((out / "images").iterdir()) == []
