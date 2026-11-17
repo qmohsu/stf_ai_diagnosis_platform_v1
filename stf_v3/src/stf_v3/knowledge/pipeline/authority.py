@@ -16,6 +16,12 @@ from typing import Dict, List, Set, Tuple
 
 import fitz  # PyMuPDF — optional dep, build-host only.
 
+# PyMuPDF >= 1.26 prints a one-off hint about its optional layout
+# package to stdout; the pipeline does not use it, so keep the GPU
+# worker's output to its own log lines.
+if hasattr(fitz, "no_recommend_layout"):
+    fitz.no_recommend_layout()
+
 # Keep CJK ideographs and ASCII alphanumerics; drop everything
 # else (whitespace, punctuation, markup) so comparisons survive
 # rendering differences between the PDF layer and markdown.
