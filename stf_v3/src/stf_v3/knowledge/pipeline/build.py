@@ -121,7 +121,9 @@ def run_build(
         f"(tables_recovered="
         f"{sum(1 for r in result.rescues if r.table_markdown_recovered)}) "
         f"backfilled_lines={result.recovered_lines} "
-        f"images={result.images_emitted}"
+        f"images={result.images_emitted} "
+        f"table_images={result.table_images_copied} "
+        f"(missing={len(result.table_images_missing)})"
     )
     authority.close()
     gate_or_raise(audit)

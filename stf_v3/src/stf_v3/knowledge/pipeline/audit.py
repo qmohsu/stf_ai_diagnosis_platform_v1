@@ -115,6 +115,10 @@ def write_build_report(
             "pages": sorted(set(compose_result.recovered_pages)),
         },
         "images_emitted": compose_result.images_emitted,
+        "table_images": {
+            "copied": compose_result.table_images_copied,
+            "missing": compose_result.table_images_missing,
+        },
     }
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(
