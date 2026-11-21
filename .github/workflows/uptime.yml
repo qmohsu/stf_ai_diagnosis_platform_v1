@@ -14,6 +14,12 @@ on:
   schedule:
     - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
+    inputs:
+      simulate:
+        description: "down = alert drill: opens the issue without probing (the next run closes it)"
+        type: choice
+        options: [none, down]
+        default: none
   pull_request:
     paths:
       - ".github/workflows/uptime.yml"
@@ -42,9 +48,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Probe the site
         id: probe
+        env:
+          SIMULATE: ${{ inputs.simulate || 'none' }}
         run: |
           flags=""
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then flags="--fail-on-problem"; fi
+          if [ "$SIMULATE" = "down" ]; then flags="$flags --simulate down"; fi
           python3 stf_v3/scripts/uptime_probe.py --base-url "$SITE_URL" \
             --body-file "$RUNNER_TEMP/alert.md" --runbook-url "$RUNBOOK_URL" $flags
       - name: Open, update or close the alert issue

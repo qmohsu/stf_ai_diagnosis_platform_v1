@@ -19,6 +19,10 @@ short blip does not raise an alert.  What is checked:
 * ``controller``: the on-demand model controller ran in the last 15 min.
 * ``backup``: the last successful backup is younger than 36 hours.
 
+``--simulate down`` skips the probe and reports a drill problem, so a
+maintainer can check the alert channel end to end (the next real run
+closes the drill issue).
+
 The alert text never quotes the health document, only the lines below.
 
 Author: Xiangzhu Yan
@@ -45,6 +49,7 @@ DOWN_KEYS = ("site", "api")
 HKT = dt.timezone(dt.timedelta(hours=8))
 TITLE_DOWN = "【自动告警】线上网站无法访问"
 TITLE_DEGRADED = "【自动告警】线上服务异常"
+DRILL = "【演练】模拟网站无法访问：手动触发，用来验证告警通道，下一次检测会自动关闭"
 
 
 def fetch(url: str) -> Fetched:
@@ -189,9 +194,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     p.add_argument("--body-file")
     p.add_argument("--runbook-url", default="")
     p.add_argument("--fail-on-problem", action="store_true")
+    p.add_argument("--simulate", choices=("none", "down"), default="none",
+                   help="down: report a drill problem without probing")
     args = p.parse_args(argv)
     base = args.base_url.rstrip("/")
-    problems = probe(base, attempts=args.attempts, pause_s=args.pause)
+    if args.simulate == "down":
+        problems = {"site": DRILL}
+    else:
+        problems = probe(base, attempts=args.attempts, pause_s=args.pause)
     state = state_of(problems)
     print(f"state={state}")
     for key in sorted(problems):

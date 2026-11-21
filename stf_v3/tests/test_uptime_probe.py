@@ -168,3 +168,22 @@ def test_main_writes_outputs_and_body(tmp_path: pathlib.Path, monkeypatch) -> No
     written = out.read_text(encoding="utf-8")
     assert "state=down" in written and f"title={up.TITLE_DOWN}" in written
     assert "HTTP 503" in body.read_text(encoding="utf-8")
+
+
+def test_a_drill_reports_down_without_probing(tmp_path: pathlib.Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """--simulate down lets the maintainer test the alert channel: no
+    request is made and the text says it is a drill."""
+    out, body = tmp_path / "out.txt", tmp_path / "body.md"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(out))
+
+    def no_network(*_a: Any, **_k: Any) -> Any:
+        raise AssertionError("a drill must not probe")
+
+    monkeypatch.setattr(up, "probe", no_network)
+
+    rc = up.main(["--base-url", BASE, "--body-file", str(body),
+                  "--simulate", "down"])
+
+    assert rc == 0
+    assert "state=down" in out.read_text(encoding="utf-8")
+    assert "演练" in body.read_text(encoding="utf-8")
