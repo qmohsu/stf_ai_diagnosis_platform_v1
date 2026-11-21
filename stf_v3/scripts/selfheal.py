@@ -20,6 +20,9 @@ What one pass does:
   **non-zero** exit code (killed or crashed).  Exit code 0 means somebody
   stopped it on purpose: it is left alone.  A deploy removes containers
   instead of leaving them exited, so a deploy is never disturbed.
+* A managed container that podman still calls ``running`` although its
+  process is gone (its conmon was killed with it) is first stopped, so
+  that podman notices; it then counts as exited with code -1.
 * Nothing is started while memory is still short (it would be killed
   again), and a container is started at most ``MAX_STARTS`` times an hour.
 * Containers that need the database wait until Postgres accepts
@@ -102,6 +105,11 @@ def _read(path: str) -> Optional[str]:
         return None
 
 
+def _pid_alive(pid: int) -> bool:
+    """Says whether a host process still exists."""
+    return os.path.exists(f"/proc/{pid}")
+
+
 def list_containers(run: Runner) -> Containers:
     """Reads every container's state from podman.
 
@@ -129,8 +137,9 @@ def list_containers(run: Runner) -> Containers:
                 "running": state == "running",
                 "exited": state in ("exited", "stopped"),
                 "exit_code": int(row.get("ExitCode") or 0),
-                "exited_at": int(row.get("ExitedAt") or 0),
+                "exited_at": max(int(row.get("ExitedAt") or 0), 0),
                 "pod": str(row.get("Pod") or ""),
+                "pid": int(row.get("Pid") or 0),
             }
     return found
 
@@ -242,6 +251,7 @@ def run_pass(
     read: Reader = _read,
     now: Optional[int] = None,
     sleep: Callable[[float], None] = time.sleep,
+    alive: Callable[[int], bool] = _pid_alive,
 ) -> str:
     """Runs one self-heal pass.
 
@@ -251,6 +261,7 @@ def run_pass(
         read: Host file reader (scripted in tests).
         now: Current epoch seconds (tests pass a fixed value).
         sleep: Sleep function (tests pass a no-op).
+        alive: Says whether a host pid exists (scripted in tests).
 
     Returns:
         The pass result: ``ok``, ``paused``, ``podman_unavailable``,
@@ -287,6 +298,22 @@ def run_pass(
         containers = list_containers(run)
     except CollectError as exc:
         return finish("podman_unavailable", str(exc))
+    # When a container's conmon is killed together with it, podman keeps
+    # saying "running" for a process that is gone.  A stop makes podman
+    # notice (exit code -1); the normal rule then starts it after the grace.
+    ghosts = [
+        name for name in MANAGED
+        if name in containers and containers[name]["running"]
+        and containers[name]["pid"] > 0 and not alive(containers[name]["pid"])
+    ]
+    for name in ghosts:
+        run(["podman", "stop", "-t", "2", name])
+        act("marked_dead", container=name)
+    if ghosts:
+        try:
+            containers = list_containers(run)
+        except CollectError as exc:
+            return finish("podman_unavailable", str(exc))
     todo, capped = due(containers, starts, now)
     if not todo:
         if capped:

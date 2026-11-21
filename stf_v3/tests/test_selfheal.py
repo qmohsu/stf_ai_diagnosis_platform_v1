@@ -45,12 +45,14 @@ class FakeHost:
         self.ps_fails = False
         self.db_accepts = True
         self.start_fails: set = set()
+        self.dead_pids: set = set()
+        self.clock = NOW
 
     def add(self, name: str, state: str, exit_code: int = 0,
             exited_at: int = KILLED_AT, pod: str = "") -> None:
         self.rows[name] = {"Names": [name], "State": state,
                            "ExitCode": exit_code, "ExitedAt": exited_at,
-                           "Pod": pod}
+                           "Pod": pod, "Pid": 1000 + len(self.rows)}
 
     def kill(self, *names: str, exit_code: int = 137,
              exited_at: int = KILLED_AT) -> None:
@@ -74,8 +76,11 @@ class FakeHost:
                 self.rows["stf-ollama"]["State"] = "running"
             return 0, name
         if cmd[:2] == ["podman", "stop"]:
-            self.rows[cmd[2]].update(State="exited", ExitCode=0)
-            return 0, cmd[2]
+            row = self.rows[cmd[-1]]
+            ghost = row["Pid"] in self.dead_pids
+            row.update(State="exited", ExitCode=-1 if ghost else 0,
+                       ExitedAt=self.clock)
+            return 0, cmd[-1]
         if cmd[:2] == ["podman", "exec"]:
             return (0 if self.db_accepts else 2), ""
         raise AssertionError(f"unexpected command: {cmd}")
@@ -87,12 +92,14 @@ class FakeHost:
         return [c[2] for c in self.calls if c[:2] == ["podman", "start"]]
 
     def stopped(self) -> List[str]:
-        return [c[2] for c in self.calls if c[:2] == ["podman", "stop"]]
+        return [c[-1] for c in self.calls if c[:2] == ["podman", "stop"]]
 
 
 def _pass(host: FakeHost, tmp_path: pathlib.Path, now: int = NOW) -> str:
+    host.clock = now
     return sh.run_pass(tmp_path, run=host.run, read=host.read, now=now,
-                       sleep=lambda _s: None)
+                       sleep=lambda _s: None,
+                       alive=lambda pid: pid not in host.dead_pids)
 
 
 def _log(tmp_path: pathlib.Path) -> List[dict]:
@@ -284,7 +291,7 @@ def test_containers_of_other_pods_are_never_stopped(tmp_path: pathlib.Path) -> N
         return real_run(cmd)
 
     result = sh.run_pass(tmp_path, run=run, read=host.read, now=NOW,
-                         sleep=lambda _s: None)
+                         sleep=lambda _s: None, alive=lambda _pid: True)
 
     assert result == "healed"
     assert host.stopped() == []
@@ -308,3 +315,21 @@ def test_state_files_are_world_readable_not_writable(
     if os.name == "posix":
         for name in ("selfheal.json", "selfheal.jsonl"):
             assert (tmp_path / name).stat().st_mode & 0o777 == 0o644
+
+
+def test_a_container_podman_still_calls_running_is_noticed(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Found in the server drill: when conmon is killed together with the
+    container, podman keeps saying "running" for a process that is gone.
+    The pass makes podman notice, then starts it after the grace period."""
+    host = FakeHost()
+    host.dead_pids = {host.rows["stf-v3-frontend"]["Pid"]}
+
+    assert _pass(host, tmp_path) == "ok"
+    assert host.stopped() == ["stf-v3-frontend"] and host.started() == []
+    assert host.rows["stf-v3-frontend"]["ExitCode"] == -1
+    assert [a["action"] for a in _log(tmp_path)] == ["marked_dead"]
+
+    assert _pass(host, tmp_path, NOW + sh.GRACE_S) == "healed"
+    assert host.started() == ["stf-v3-frontend"]

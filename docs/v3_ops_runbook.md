@@ -754,6 +754,7 @@ podman rm -f stf-v3-frontend
 
 - **只管 6 个容器，按这个顺序**：`stf-postgres` → `stf-diagnostic-api` → `stf-nginx` → `stf-v3-api` → `stf-v3-worker` → `stf-v3-frontend`。只用 `podman start`（同一个容器、同一个镜像），不重建，不碰别的容器（`stf-vllm` 归按需控制器管）。
 - **只拉异常退出的**：已退出满 3 分钟，且退出码不是 0。退出码 0 表示有人正常停掉了它，不拉。部署是删掉容器再新建，不会留下「已退出」的容器，所以不受影响。
+- **Podman 还显示「运行中」但进程已经不在的容器也算**：容器和它的监护进程 conmon 一起被杀时会这样（2026-11-22 服务器演练发现）。脚本先 `podman stop` 让 Podman 认清它已停（退出码 -1），之后按上一条规则拉起。
 - **内存还紧张时不拉**（`/proc/pressure/memory` 的 `full avg10` ≥ 10，或可用内存 < 8 GB）：拉起来也会再被杀，等下一轮。每个容器每小时最多拉 3 次。
 - **需要数据库的三个容器**（`stf-diagnostic-api`、`stf-v3-api`、`stf-v3-worker`）等 Postgres 能连上才拉。
 - **连带拉起的 Ollama 会被再停掉**：拉 `stf-diagnostic-api` 会把它依赖的 `stf-ollama` 一起带起来，旧 API 启动时的预热会把模型装进两张显卡，挡住 V3 按需启动 vLLM（2026-11-22 人工恢复时就踩到了）。规则：同一个 pod 里被连带拉起的容器，之前是正常停掉的（退出码 0）就立刻再停；之前是被杀的（说明原本在跑）就保留。
