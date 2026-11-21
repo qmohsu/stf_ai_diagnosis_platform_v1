@@ -2,8 +2,8 @@
 
 | 文档控制 | |
 |---|---|
-| 版本 | v0.20（宿主机转换环境 PyMuPDF 1.28.0，部署须重跑 install.sh） |
-| 日期 | 2026-11-17 |
+| 版本 | v0.21（2026-11-21 停机后新增 §12：自动拉起、外部告警、手动恢复顺序） |
+| 日期 | 2026-11-22 |
 | 作者 | Xiangzhu Yan |
 | 适用 | PolyU 服务器 `ssh polyu-gpu`，仓库 `~/stf_ai_diagnosis_platform_v1`，V3 容器 `stf-v3-api` / `stf-v3-worker` / `stf-v3-frontend`，宿主机服务 `stf-v3-gpu-worker`，模型服务容器 `stf-vllm`（compose 项目 `stf_llm`） |
 
@@ -71,6 +71,8 @@ DRILL PASS: job re-picked after restart (attempts = 2)
 ```
 
 宿主机工人同理：`kill -9` 正在入库的手册任务 → 2 分钟内被回收 → 从工作目录续跑（MinerU 产物已在，跳过显卡阶段）。**正常部署请不要在手册 `converting` 时重启宿主机工人**（会触发一次不必要的回收重跑）。
+
+**排队锁冲突（2026-11-21 事故）**：被杀在 `doing` 的任务如果带排队锁（目前只有按需模型控制器 `llm.reconcile`），而同一把锁的下一趟已经在 `todo` 里等着，它就放不回 `todo`。修复前，`jobs.recover_stalled` 每 2 分钟报一次唯一约束冲突，控制器永久卡住（`/v3/health` 的 `controller_seen_s` 一直增长，新诊断会一直等模型），只能人工结束那个任务。现在回收时把它结束为 `aborted`（等着的那一趟做的是同一件事），日志 `queue.stalled_job_superseded`；每个任务单独处理，某个任务回收失败不再连累其他任务和工人清理，失败的那一轮照常报错，日志 `queue.stalled_job_unrecovered`。
 
 ### 1.5 连接预算与上限（FM-25；PROD-15A FM-45）
 
@@ -543,6 +545,8 @@ podman rm -f -v stf-v3-restore-drill                        # 用完删掉（-v 
 | 要回滚到旧版本 | 部署前检查 + 回滚步骤 | §6.5 |
 | 后端好像被改过 / 不确定谁部署的 | `deploy_watch.py report` | §10.2 |
 | 前端首页 502、登录共享限流或日志卷不可写 | 前端 `/api/health`、Nginx 配置与客户端 IP、`stf_v3_frontend_logs` 所有权 | §11 |
+| 网站打不开，或收到 `site-alert` issue | `selfheal.py status`、`podman ps -a`、`journalctl --user \| grep 'systemd-oomd killed'` | §12 |
+| 诊断一直等模型，`controller_seen_s` 很大 | `queue_ops.sh status` 里卡在 `doing` 的 `llm.reconcile` | §1.4、§12.4 |
 
 ## 10. 协作者只读访问与部署变动监控（#272）
 
@@ -734,7 +738,67 @@ curl -fsS http://127.0.0.1:8080/ >/dev/null || exit 1
 podman rm -f stf-v3-frontend
 ```
 
-**修订记录**：v0.20（2026-11-17）§1.6 宿主机 GPU 工人：`[gpu]` 依赖 PyMuPDF 1.24.14 → 1.28.0（旧版抢救表格乱码），`install.sh --check` 核对版本，依赖版本变了也要重跑 `install.sh`。v0.19（2026-11-15，issue #285）§4.1、§4.7：`vllm_ctl.sh stop` 先把退出状态和日志存到 `~/stf_v3_logs/vllm/` 再 `down`，用于查明启动中途退出。
+## 12. 停机与自动恢复（2026-11-21 事故后新增）
+
+### 12.1 2026-11-21 发生了什么
+
+共用服务器内存吃紧（不是我们占的，本账号当时约 7 GB），系统的内存保护 `systemd-oomd` 从 02:21 起陆续杀掉本账号下的进程：`cloudflared`、部署监控、当晚 03:30 的备份、宿主机 GPU 工人，以及全部容器（退出码 137）。服务器没有重启。`cloudflared` 与 GPU 工人由 systemd 自动拉起；**容器不会自己回来**，也没有任何告警，网站从 02:56 停到 11-22 00:50（约 22 小时），由人工恢复。数据没有丢（Postgres 自动完成崩溃恢复）。
+
+怎么认出这类事故：
+
+- `journalctl --user | grep 'systemd-oomd killed'` 有记录；
+- `podman ps -a` 里 `stf-*` 是 `Exited (137)`，`uptime` 显示服务器并没有重启；
+- `deploy_watch.py report` 出现成百条未确认的变化；宿主机 GPU 工人日志反复报连不上 5432。
+
+### 12.2 自动拉起（`stf-v3-selfheal.timer`，每 2 分钟）
+
+- **只管 6 个容器，按这个顺序**：`stf-postgres` → `stf-diagnostic-api` → `stf-nginx` → `stf-v3-api` → `stf-v3-worker` → `stf-v3-frontend`。只用 `podman start`（同一个容器、同一个镜像），不重建，不碰别的容器（`stf-vllm` 归按需控制器管）。
+- **只拉异常退出的**：已退出满 3 分钟，且退出码不是 0。退出码 0 表示有人正常停掉了它，不拉。部署是删掉容器再新建，不会留下「已退出」的容器，所以不受影响。
+- **Podman 还显示「运行中」但进程已经不在的容器也算**：容器和它的监护进程 conmon 一起被杀时会这样（2026-11-22 服务器演练发现）。脚本先 `podman stop` 让 Podman 认清它已停（退出码 -1），之后按上一条规则拉起。
+- **内存还紧张时不拉**（`/proc/pressure/memory` 的 `full avg10` ≥ 10，或可用内存 < 8 GB）：拉起来也会再被杀，等下一轮。每个容器每小时最多拉 3 次。
+- **需要数据库的三个容器**（`stf-diagnostic-api`、`stf-v3-api`、`stf-v3-worker`）等 Postgres 能连上才拉。
+- **连带拉起的 Ollama 会被再停掉**：拉 `stf-diagnostic-api` 会把它依赖的 `stf-ollama` 一起带起来，旧 API 启动时的预热会把模型装进两张显卡，挡住 V3 按需启动 vLLM（2026-11-22 人工恢复时就踩到了）。规则：同一个 pod 里被连带拉起的容器，之前是正常停掉的（退出码 0）就立刻再停；之前是被杀的（说明原本在跑）就保留。
+- 预计恢复时间：被杀后约 5 分钟（3 分钟观察 + 一轮定时 + 启动）。
+
+```
+python3 ~/.local/share/stf_selfheal/selfheal.py status             # 上一轮结果 + 最近的动作
+python3 ~/.local/share/stf_selfheal/selfheal.py pause --note "…"   # 维护时暂停
+python3 ~/.local/share/stf_selfheal/selfheal.py resume
+bash stf_v3/ops/install_selfheal.sh [--check]                      # 安装 / 自检（改了脚本或单元文件后重跑）
+```
+
+- 状态在 `~/stf_v3_status/`（`selfheal.json` 上一轮、`selfheal.jsonl` 动作、`selfheal.pause` 暂停标记），只有容器名和状态。它拉起容器同样会被部署变动监控记下，事后 `deploy_watch.py ack`。
+- 定时器跑的是装在 `~/.local/share/stf_selfheal/`（700）的副本；`--check` 会发现副本或单元文件过期、定时器没启用、最近 10 分钟没跑过，并提示是否仍处于暂停。
+- **要故意让受管容器以非 0 退出码停着**（`podman kill`、回滚演练）之前先 `pause`，做完 `resume`。
+- 它不做的事：不重建容器、不跑迁移、不补备份、不启动 vLLM；服务器整机重启后的启动顺序仍按 §4.1 手动执行。
+
+### 12.3 外部探测与告警（GitHub `uptime` 工作流，每 15 分钟）
+
+从 GitHub 的机器访问正式网址。它在服务器之外，所以服务器或隧道整个挂掉也能发现。
+
+| 检查 | 不满足时判为 |
+|---|---|
+| 登录页返回 200 | 网站无法访问 |
+| `/v3/health` 返回 200，`status` 和 `db` 都是 `ok` | 网站无法访问 |
+| 宿主机 GPU 工人有心跳 | 服务异常 |
+| 按需模型控制器 15 分钟内运行过（`model_service.controller_seen_s`） | 服务异常 |
+| 最近一次成功备份不超过 36 小时 | 服务异常 |
+
+- 同一个问题连续 4 次（间隔 30 秒）都在才算数，部署时的短暂中断不会告警。
+- 有问题时保持**一个**打开的 issue（标签 `site-alert`，指派给维护者，GitHub 会发邮件）。情况变了（无法访问 ↔ 服务异常）就改标题并补一条评论；恢复后自动评论并关闭。issue 里只有检测时间和上表的问题描述，不贴健康检查原文。
+- 手动跑一次：仓库 Actions → `uptime` → Run workflow。选 `simulate = down` 是**告警演练**：不访问网站，直接开一个标明「演练」的告警 issue，用来确认邮件能收到；下一次检测（最多 15 分钟后，或再手动跑一次）会自动关闭它。
+- GitHub 的定时任务可能晚几分钟到几十分钟；仓库连续 60 天没有活动时，GitHub 会停用定时工作流，需要到 Actions 页重新启用。
+
+### 12.4 自动拉起没救回来时：手动恢复顺序
+
+1. 确认内存压力已经过去：`cat /proc/pressure/memory`、`free -g`。
+2. `podman start stf-postgres`（崩溃恢复自动完成）→ `podman start stf-diagnostic-api` → **立刻** `podman stop stf-ollama`（如果它之前是停着的；用 `nvidia-smi` 确认显存已释放）→ `podman start stf-nginx`。共用 pod 不要用 `podman-compose up`。
+3. V3：`predeploy_check.sh` → `isolation_check.sh snapshot` → `podman-compose -p stf_v3 … down` 再 `up -d stf-v3-api stf-v3-worker stf-v3-frontend`（只 `podman start` 的话，部署核验里「30 分钟内新建」的三项会红）→ `systemctl --user restart stf-v3-gpu-worker`。
+4. 看 `/v3/health` 的 `model_service.controller_seen_s`：应在一两分钟以内。一直增长说明控制器任务卡在 `doing`，见 §1.4「排队锁冲突」。
+5. 备份被打断的话补跑：`systemctl --user start --no-block stf-v3-backup.service`（状态 `activating` 表示正在跑，约 2 分钟）。
+6. `deploy_check.sh`（vLLM 关着时带 `LLM_CHECK=skip`）→ `isolation_check.sh compare` → `deploy_watch.py ack --note "…"`。
+
+**修订记录**：v0.21（2026-11-22）新增 §12 停机与自动恢复（2026-11-21 事故经过、自动拉起定时服务、GitHub 外部探测与告警 issue、手动恢复顺序）；§1.4 补「排队锁冲突」；§9 加两行。v0.20（2026-11-17）§1.6 宿主机 GPU 工人：`[gpu]` 依赖 PyMuPDF 1.24.14 → 1.28.0（旧版抢救表格乱码），`install.sh --check` 核对版本，依赖版本变了也要重跑 `install.sh`。v0.19（2026-11-15，issue #285）§4.1、§4.7：`vllm_ctl.sh stop` 先把退出状态和日志存到 `~/stf_v3_logs/vllm/` 再 `down`，用于查明启动中途退出。
 v0.18（2026-11-10，issue #279）记录 2026-11-09 前端已由维护者
 部署上线及第一轮验收；§11.2、§11.3 的 Nginx 重建改为
 `up -d --no-recreate --no-deps nginx`，避免连带重建同组 Postgres 和 V1 API。

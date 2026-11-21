@@ -1,0 +1,11 @@
+# Every 2 minutes: a killed container is back about five minutes later
+# (3 minutes of grace + one tick), unless memory is still short.
+[Unit]
+Description=STF self-heal every 2 minutes
+
+[Timer]
+OnCalendar=*:0/2
+AccuracySec=15s
+
+[Install]
+WantedBy=timers.target

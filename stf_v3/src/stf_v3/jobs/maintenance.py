@@ -15,12 +15,22 @@ job is marked failed and its conversation closed as ``error``
 sees what happened and can start again.  Stalled is decided from worker
 heartbeats only, never from how long a job has run (FM-35).
 
+2026-11-21 outage: a stalled job whose ``queueing_lock`` is already held
+by a waiting twin cannot go back to ``todo`` (the unique index allows one
+``todo`` per queueing lock).  The retry raised on every run, so the model
+controller's ``llm.reconcile`` stayed ``doing``, kept its ``lock`` and
+blocked the waiting pass for good.  Such a job is now ended as ``aborted``:
+the waiting twin does the same work.  Each job is handled on its own, so
+one that cannot be recovered no longer blocks the others or the worker
+pruning; the run still ends in error so the failure is visible.
+
 Author: Xiangzhu Yan
 """
 
 import inspect
 
 import structlog
+from procrastinate import exceptions as procrastinate_exceptions
 from procrastinate.jobs import Status
 
 from stf_v3.jobs.app import app
@@ -34,10 +44,22 @@ async def _maybe_await(value):  # type: ignore[no-untyped-def]
     return await value if inspect.isawaitable(value) else value
 
 
+class StalledRecoveryError(RuntimeError):
+    """Some stalled jobs could not be recovered in this run."""
+
+
 @app.periodic(cron="*/2 * * * *")
 @app.task(name="jobs.recover_stalled", queue="default", pass_context=False)
 async def recover_stalled(timestamp: int) -> None:
-    """Re-queues stalled jobs; closes stalled diagnoses instead (PROD-11)."""
+    """Re-queues stalled jobs; closes stalled diagnoses instead (PROD-11).
+
+    Args:
+        timestamp: Scheduled time of this periodic run (epoch seconds).
+
+    Raises:
+        StalledRecoveryError: If at least one stalled job could not be
+            recovered; every other job and the worker pruning still ran.
+    """
     from stf_v3.db import SessionLocal
     from stf_v3.diagnosis.store import close_for_job
     from stf_v3.diagnosis.tasks import DIAGNOSIS_TASK
@@ -45,17 +67,36 @@ async def recover_stalled(timestamp: int) -> None:
 
     manager = app.job_manager
     stalled = await _maybe_await(manager.get_stalled_jobs(seconds_since_heartbeat=STALL_SECONDS))
-    count = 0
+    count = superseded = 0
+    unrecovered = []
     for job in stalled:
-        if job.task_name == DIAGNOSIS_TASK:
-            await manager.finish_job_by_id_async(job.id, Status.FAILED, delete_job=False)
-            closed = await close_for_job(SessionLocal, job.id, "diagnosis_interrupted",
-                                         locale=settings.default_locale)
-            log.warning("queue.stalled_diagnosis_closed", job_id=job.id, conversation_closed=closed)
-            continue
-        await _maybe_await(manager.retry_job(job))
-        count += 1
-        log.warning("queue.stalled_job_requeued", job_id=job.id, task=job.task_name, attempts=job.attempts)
+        try:
+            if job.task_name == DIAGNOSIS_TASK:
+                await manager.finish_job_by_id_async(job.id, Status.FAILED, delete_job=False)
+                closed = await close_for_job(SessionLocal, job.id, "diagnosis_interrupted",
+                                             locale=settings.default_locale)
+                log.warning("queue.stalled_diagnosis_closed", job_id=job.id, conversation_closed=closed)
+                continue
+            try:
+                await _maybe_await(manager.retry_job(job))
+            except procrastinate_exceptions.UniqueViolation as exc:
+                if not exc.queueing_lock:
+                    raise
+                # A twin with the same queueing lock already waits: end this
+                # one so its ``lock`` is released and the twin can run.
+                await manager.finish_job_by_id_async(job.id, Status.ABORTED, delete_job=False)
+                superseded += 1
+                log.warning("queue.stalled_job_superseded", job_id=job.id, task=job.task_name,
+                            queueing_lock=exc.queueing_lock)
+                continue
+            count += 1
+            log.warning("queue.stalled_job_requeued", job_id=job.id, task=job.task_name, attempts=job.attempts)
+        except Exception as exc:  # one job must not block the rest; the run fails below
+            unrecovered.append(job.id)
+            log.error("queue.stalled_job_unrecovered", job_id=job.id, task=job.task_name,
+                      error_type=type(exc).__name__, error=str(exc)[:300])
     await _maybe_await(manager.prune_stalled_workers(seconds_since_heartbeat=STALL_SECONDS))
-    if count:
-        log.info("queue.recover_stalled", requeued=count, at=timestamp)
+    if count or superseded:
+        log.info("queue.recover_stalled", requeued=count, superseded=superseded, at=timestamp)
+    if unrecovered:
+        raise StalledRecoveryError(f"{len(unrecovered)} stalled job(s) not recovered: {unrecovered}")

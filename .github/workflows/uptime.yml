@@ -1,0 +1,89 @@
+# 2026-11-21 outage: the site was down for 22 hours and nobody was told.
+# Every 15 minutes this probes the public site from GitHub's runners (outside
+# the server, so a dead server or tunnel is noticed too) and keeps ONE open
+# issue labelled `site-alert` while something is wrong; GitHub mails the
+# assignee.  The issue is closed automatically when the probe is clean again.
+# Runbook: docs/v3_ops_runbook.md §12.
+#
+# A pull request that changes the probe runs it once (read-only, no issue).
+# GitHub disables scheduled workflows after 60 days without repository
+# activity; re-enable it in the Actions tab if that ever happens.
+name: uptime
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+    inputs:
+      simulate:
+        description: "down = alert drill: opens the issue without probing (the next run closes it)"
+        type: choice
+        options: [none, down]
+        default: none
+  pull_request:
+    paths:
+      - ".github/workflows/uptime.yml"
+      - "stf_v3/scripts/uptime_probe.py"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+env:
+  SITE_URL: https://stf-diagnosis.dev
+  ALERT_LABEL: site-alert
+  ALERT_ASSIGNEE: talonMMA
+  RUNBOOK_URL: https://github.com/${{ github.repository }}/blob/main/docs/v3_ops_runbook.md
+
+jobs:
+  probe:
+    name: public site answers
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe the site
+        id: probe
+        env:
+          SIMULATE: ${{ inputs.simulate || 'none' }}
+        run: |
+          flags=""
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then flags="--fail-on-problem"; fi
+          if [ "$SIMULATE" = "down" ]; then flags="$flags --simulate down"; fi
+          python3 stf_v3/scripts/uptime_probe.py --base-url "$SITE_URL" \
+            --body-file "$RUNNER_TEMP/alert.md" --runbook-url "$RUNBOOK_URL" $flags
+      - name: Open, update or close the alert issue
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATE: ${{ steps.probe.outputs.state }}
+          TITLE: ${{ steps.probe.outputs.title }}
+        run: |
+          set -euo pipefail
+          repo="$GITHUB_REPOSITORY"
+          open="$(gh issue list -R "$repo" --label "$ALERT_LABEL" --state open --limit 1 --json number,title --jq '.[0] // empty')"
+          number="$(printf '%s' "$open" | jq -r '.number // empty')"
+          old_title="$(printf '%s' "$open" | jq -r '.title // empty')"
+          if [ "$STATE" = "ok" ]; then
+            if [ -n "$number" ]; then
+              gh issue comment "$number" -R "$repo" --body "自动检测：$(TZ=Asia/Hong_Kong date '+%Y-%m-%d %H:%M')（香港时间）各项检查已恢复正常，本 issue 自动关闭。"
+              gh issue close "$number" -R "$repo"
+            fi
+            exit 0
+          fi
+          if [ -z "$number" ]; then
+            gh label create "$ALERT_LABEL" -R "$repo" --color B60205 \
+              --description "Automatic alert from the uptime workflow" --force
+            gh issue create -R "$repo" --title "$TITLE" --label "$ALERT_LABEL" \
+              --assignee "$ALERT_ASSIGNEE" --body-file "$RUNNER_TEMP/alert.md" \
+            || gh issue create -R "$repo" --title "$TITLE" --label "$ALERT_LABEL" \
+              --body-file "$RUNNER_TEMP/alert.md"
+          elif [ "$old_title" != "$TITLE" ]; then
+            # the situation changed (down <-> degraded): say so once
+            gh issue edit "$number" -R "$repo" --title "$TITLE"
+            gh issue comment "$number" -R "$repo" --body-file "$RUNNER_TEMP/alert.md"
+          fi
