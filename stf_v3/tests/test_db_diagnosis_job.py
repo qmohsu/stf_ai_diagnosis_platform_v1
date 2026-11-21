@@ -510,6 +510,109 @@ async def test_stalled_diagnosis_is_closed_not_requeued(client, workshop_with_co
     assert _types(await events_of(cid))[-2:] == ["error", "done"]
 
 
+async def _recover_stalled() -> None:
+    """Runs one pass of the periodic stalled-job recovery."""
+    from stf_v3.jobs import maintenance
+
+    task = maintenance.recover_stalled
+    await (task.__wrapped__(0) if hasattr(task, "__wrapped__") else task.func(0))
+
+
+async def test_stalled_recovery_handles_each_job_on_its_own(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """2026-11-21 outage: a stalled job whose queueing lock is taken by a
+    waiting twin is ended as aborted; a job that cannot be recovered does
+    not stop the others or the worker pruning, and the run ends in error."""
+    from types import SimpleNamespace
+
+    from procrastinate import exceptions as procrastinate_exceptions
+    from procrastinate.jobs import Status
+
+    from stf_v3.jobs import maintenance
+    from stf_v3.jobs.app import app
+
+    # Arrange
+    seen: dict = {"finished": [], "retried": [], "pruned": 0}
+
+    class FakeManager:
+        async def get_stalled_jobs(self, seconds_since_heartbeat: float) -> Any:
+            return [SimpleNamespace(id=1, task_name="llm.reconcile", attempts=0),
+                    SimpleNamespace(id=2, task_name="knowledge.ingest_manual", attempts=0),
+                    SimpleNamespace(id=3, task_name="jobs.drill_sleep", attempts=0)]
+
+        async def finish_job_by_id_async(self, job_id: int, status: Any, delete_job: bool) -> None:
+            seen["finished"].append((job_id, status, delete_job))
+
+        async def retry_job(self, job: Any) -> None:
+            if job.id == 1:
+                raise procrastinate_exceptions.UniqueViolation(
+                    "duplicate key", constraint_name="procrastinate_jobs_queueing_lock_idx_v1",
+                    queueing_lock="llm-reconcile")
+            if job.id == 2:
+                raise procrastinate_exceptions.ConnectorException("connection lost")
+            seen["retried"].append(job.id)
+
+        async def prune_stalled_workers(self, seconds_since_heartbeat: float) -> None:
+            seen["pruned"] += 1
+
+    monkeypatch.setattr(app, "job_manager", FakeManager())
+
+    # Act
+    with pytest.raises(maintenance.StalledRecoveryError) as raised:
+        await _recover_stalled()
+
+    # Assert
+    assert seen["finished"] == [(1, Status.ABORTED, False)]
+    assert seen["retried"] == [3]
+    assert seen["pruned"] == 1
+    assert "[2]" in str(raised.value)
+
+
+async def test_stalled_controller_pass_with_a_waiting_twin_frees_the_lock(clean_db) -> None:  # type: ignore[no-untyped-def]
+    """2026-11-21 outage, on the real queue tables: the model controller's
+    pass is killed while ``doing`` and its next pass already waits.  The
+    recovery ends the dead one, re-queues an ordinary stalled job, and the
+    waiting pass can then be picked up (the controller is not stuck)."""
+    from stf_v3.db import engine
+    from stf_v3.diagnosis.tasks import llm_reconcile
+    from stf_v3.jobs.app import app
+    from stf_v3.jobs.drill import sleep_task
+
+    async with app.open_async():
+        try:
+            # Arrange: pass A is running, its twin B waits, C is an ordinary job.
+            async with engine.begin() as conn:  # nothing left over from other tests
+                await conn.execute(text("TRUNCATE procrastinate_jobs CASCADE"))
+            manager = app.job_manager
+            job_a = await llm_reconcile.defer_async()
+            dead_worker = await manager.register_worker()
+            running = await manager.fetch_job(queues=["llm"], worker_id=dead_worker)
+            assert running is not None and running.id == job_a
+            job_b = await llm_reconcile.defer_async()
+            job_c = await sleep_task.defer_async(seconds=1)
+            assert (await manager.fetch_job(queues=["default"], worker_id=dead_worker)).id == job_c
+            assert await manager.fetch_job(queues=["llm"], worker_id=dead_worker) is None
+            async with engine.begin() as conn:  # the worker was killed 10 minutes ago
+                await conn.execute(text("UPDATE procrastinate_workers SET last_heartbeat = now() - interval '10 minutes'"))
+
+            # Act
+            await _recover_stalled()
+
+            # Assert
+            async def status_of(job_id: int) -> str:
+                return [j.status for j in await manager.list_jobs_async(id=job_id)][0]
+
+            assert await status_of(job_a) == "aborted"
+            assert await status_of(job_b) == "todo"
+            assert await status_of(job_c) == "todo"
+            live_worker = await manager.register_worker()
+            picked = await manager.fetch_job(queues=["llm"], worker_id=live_worker)
+            assert picked is not None and picked.id == job_b
+        finally:
+            async with engine.begin() as conn:
+                await conn.execute(text("TRUNCATE procrastinate_jobs CASCADE"))
+                await conn.execute(text("DELETE FROM procrastinate_workers"))
+
+
 # ── T-19 sweeping ──────────────────────────────────────────────────────
 
 

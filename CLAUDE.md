@@ -459,6 +459,23 @@ of server work (a change we did not make = someone else touched the backend) and
 `… ack --note "<what we did>"` after every deploy / branch verification.  Install
 / check: `bash stf_v3/ops/install_deploy_watch.sh [--check]` (runbook §10).
 
+**Self-heal + uptime alert (2026-11-22, after the 2026-11-21 outage)**: under
+server-wide memory pressure `systemd-oomd` kills everything in our user slice, and
+containers do not come back on their own (22 h of silent downtime).  Host timer
+`stf-v3-selfheal.timer` (every 2 min, installed copy in `~/.local/share/stf_selfheal/`)
+`podman start`s the six core containers in order (`stf-postgres` → `stf-diagnostic-api` →
+`stf-nginx` → `stf-v3-api` → `stf-v3-worker` → `stf-v3-frontend`) once they have been
+exited ≥ 3 min with a NON-zero exit code (exit 0 = stopped on purpose, left alone; waits
+while memory is short; ≤ 3 starts per container per hour) and re-stops a `stf-ollama` it
+started as a side effect (its warm-up would fill both GPUs and block vLLM).  Run
+`python3 ~/.local/share/stf_selfheal/selfheal.py status` at the start of server work;
+`… pause --note "<why>"` before deliberately killing a managed container, `… resume`
+after.  Install / check: `bash stf_v3/ops/install_selfheal.sh [--check]`.  GitHub workflow
+`uptime` (every 15 min, from outside the server) keeps ONE open issue labelled
+`site-alert` while the site is down or degraded (GPU worker heartbeat, model controller
+silent > 15 min, backup > 36 h) and closes it on recovery: an open `site-alert` issue
+comes before any other work.  Manual recovery order and traps: runbook §12.
+
 **V3 branch verification** — for any change to the V3 API, worker or
 frontend (the build and `up` below include `stf-v3-frontend`; the migrate
 step is a no-op when no migration is new). Over non-interactive `ssh`,

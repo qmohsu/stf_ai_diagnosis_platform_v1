@@ -1,0 +1,14 @@
+# STF self-heal (2026-11-21 outage): starts containers that were killed.
+# Rendered and installed by stf_v3/ops/install_selfheal.sh; started by
+# stf-v3-selfheal.timer.  Runs the installed copy, not the checkout.
+[Unit]
+Description=STF self-heal (start the STF containers again after they were killed)
+
+[Service]
+Type=oneshot
+# state files are world-readable on purpose, never group/other writable
+UMask=0022
+Environment=STF_SELFHEAL_DIR=@STATE@
+ExecStart=/usr/bin/python3 @LIB@/selfheal.py run
+TimeoutStartSec=10min
+Nice=5
